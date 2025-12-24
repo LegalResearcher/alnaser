@@ -278,20 +278,20 @@ const AdminSubjects = () => {
         {/* Subjects List */}
         <div className="bg-card rounded-xl border">
           {!selectedLevel ? (
-            <div className="p-12 text-center text-muted-foreground">
-              <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>اختر مستوى لعرض المواد</p>
+            <div className="p-8 sm:p-12 text-center text-muted-foreground">
+              <BookOpen className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4 opacity-50" />
+              <p className="text-sm sm:text-base">اختر مستوى لعرض المواد</p>
             </div>
           ) : isLoading ? (
-            <div className="p-4 space-y-4">
+            <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
               {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-24 rounded-lg" />
+                <Skeleton key={i} className="h-28 sm:h-24 rounded-lg" />
               ))}
             </div>
           ) : subjects.length === 0 ? (
-            <div className="p-12 text-center text-muted-foreground">
-              <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>لا توجد مواد في هذا المستوى</p>
+            <div className="p-8 sm:p-12 text-center text-muted-foreground">
+              <BookOpen className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4 opacity-50" />
+              <p className="text-sm sm:text-base">لا توجد مواد في هذا المستوى</p>
             </div>
           ) : (
             <DndContext
@@ -378,9 +378,9 @@ const AdminSubjects = () => {
             {/* Basic Info */}
             <div className="space-y-4">
               <h3 className="font-bold text-sm text-muted-foreground">المعلومات الأساسية</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2 col-span-2">
-                  <Label>اسم المادة *</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="space-y-2 col-span-1 sm:col-span-2">
+                  <Label className="text-sm">اسم المادة *</Label>
                   <Input
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -388,8 +388,8 @@ const AdminSubjects = () => {
                     required
                   />
                 </div>
-                <div className="space-y-2 col-span-2">
-                  <Label>الوصف</Label>
+                <div className="space-y-2 col-span-1 sm:col-span-2">
+                  <Label className="text-sm">الوصف</Label>
                   <Textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -398,7 +398,7 @@ const AdminSubjects = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>اسم مُعدّ الأسئلة</Label>
+                  <Label className="text-sm">اسم مُعدّ الأسئلة</Label>
                   <Input
                     value={formData.author_name}
                     onChange={(e) => setFormData({ ...formData, author_name: e.target.value })}
@@ -407,7 +407,7 @@ const AdminSubjects = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
+                  <Label className="flex items-center gap-2 text-sm">
                     <Lock className="w-4 h-4 text-amber-500" />
                     كلمة مرور الاختبار
                   </Label>
@@ -424,9 +424,9 @@ const AdminSubjects = () => {
             {/* Exam Settings */}
             <div className="space-y-4">
               <h3 className="font-bold text-sm text-muted-foreground">إعدادات الاختبار</h3>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-2">
-                  <Label>عدد الأسئلة لكل اختبار</Label>
+                  <Label className="text-sm">عدد الأسئلة لكل اختبار</Label>
                   <Input
                     type="number"
                     value={formData.questions_per_exam}
@@ -437,7 +437,7 @@ const AdminSubjects = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>درجة النجاح (%)</Label>
+                  <Label className="text-sm">درجة النجاح (%)</Label>
                   <Input
                     type="number"
                     value={formData.passing_score}
@@ -455,7 +455,7 @@ const AdminSubjects = () => {
               <h3 className="font-bold text-sm text-muted-foreground">إعدادات الوقت</h3>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>الوقت الافتراضي (دقيقة)</Label>
+                  <Label className="text-sm">الوقت الافتراضي (دقيقة)</Label>
                   <Input
                     type="number"
                     value={formData.default_time_minutes}
@@ -465,10 +465,10 @@ const AdminSubjects = () => {
                     max={180}
                   />
                 </div>
-                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                  <div>
-                    <Label>السماح للطالب بتعديل الوقت</Label>
-                    <p className="text-sm text-muted-foreground">يمكن للطالب اختيار وقت مختلف</p>
+                <div className="flex items-center justify-between p-3 sm:p-4 bg-muted/50 rounded-lg gap-3">
+                  <div className="min-w-0">
+                    <Label className="text-sm">السماح للطالب بتعديل الوقت</Label>
+                    <p className="text-xs sm:text-sm text-muted-foreground">يمكن للطالب اختيار وقت مختلف</p>
                   </div>
                   <Switch
                     checked={formData.allow_time_modification}
@@ -476,9 +476,9 @@ const AdminSubjects = () => {
                   />
                 </div>
                 {formData.allow_time_modification && (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-2">
-                      <Label>الحد الأدنى (دقيقة)</Label>
+                      <Label className="text-sm">الحد الأدنى (دقيقة)</Label>
                       <Input
                         type="number"
                         value={formData.min_time_minutes}
@@ -489,7 +489,7 @@ const AdminSubjects = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>الحد الأقصى (دقيقة)</Label>
+                      <Label className="text-sm">الحد الأقصى (دقيقة)</Label>
                       <Input
                         type="number"
                         value={formData.max_time_minutes}
@@ -504,14 +504,14 @@ const AdminSubjects = () => {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t">
-              <Button type="button" variant="outline" onClick={handleCloseDialog}>
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-4 border-t">
+              <Button type="button" variant="outline" onClick={handleCloseDialog} className="w-full sm:w-auto">
                 إلغاء
               </Button>
               <Button
                 type="submit"
                 disabled={saveMutation.isPending}
-                className="gradient-primary text-primary-foreground border-0"
+                className="w-full sm:w-auto gradient-primary text-primary-foreground border-0"
               >
                 {saveMutation.isPending ? 'جاري الحفظ...' : editingSubject ? 'تحديث' : 'إضافة'}
               </Button>
@@ -522,18 +522,18 @@ const AdminSubjects = () => {
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteSubject} onOpenChange={() => setDeleteSubject(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="w-[95vw] max-w-md p-4 sm:p-6">
           <AlertDialogHeader>
-            <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
-            <AlertDialogDescription className="text-right">
+            <AlertDialogTitle className="text-base sm:text-lg">تأكيد الحذف</AlertDialogTitle>
+            <AlertDialogDescription className="text-right text-sm">
               هل أنت متأكد من حذف مادة "{deleteSubject?.name}"؟ سيتم حذف جميع الأسئلة المرتبطة بها.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-row-reverse gap-2">
-            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+          <AlertDialogFooter className="flex-col-reverse sm:flex-row-reverse gap-2">
+            <AlertDialogCancel className="w-full sm:w-auto">إلغاء</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteSubject && deleteMutation.mutate(deleteSubject)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               حذف
             </AlertDialogAction>
