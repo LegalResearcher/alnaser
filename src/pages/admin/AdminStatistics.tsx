@@ -62,16 +62,16 @@ const AdminStatistics = () => {
   if (isLoading) {
     return (
       <AdminLayout>
-        <div className="space-y-6">
-          <Skeleton className="h-10 w-48" />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="space-y-4 sm:space-y-6">
+          <Skeleton className="h-8 sm:h-10 w-32 sm:w-48" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
             {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-32 rounded-xl" />
+              <Skeleton key={i} className="h-24 sm:h-32 rounded-xl" />
             ))}
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Skeleton className="h-80 rounded-xl" />
-            <Skeleton className="h-80 rounded-xl" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+            <Skeleton className="h-64 sm:h-80 rounded-xl" />
+            <Skeleton className="h-64 sm:h-80 rounded-xl" />
           </div>
         </div>
       </AdminLayout>
@@ -80,64 +80,64 @@ const AdminStatistics = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold">الإحصائيات</h1>
-          <p className="text-muted-foreground">نظرة تفصيلية على أداء المنصة</p>
+          <h1 className="text-xl sm:text-2xl font-bold">الإحصائيات</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">نظرة تفصيلية على أداء المنصة</p>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-card rounded-xl border p-5">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-blue-500 flex items-center justify-center">
-                <Users className="w-6 h-6 text-white" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+          <div className="bg-card rounded-xl border p-4 sm:p-5">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-blue-500 flex items-center justify-center shrink-0">
+                <Users className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
-              <div>
-                <p className="text-2xl font-bold">{stats?.totalVisits.toLocaleString()}</p>
-                <p className="text-sm text-muted-foreground">إجمالي الزيارات</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-card rounded-xl border p-5">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-emerald-500 flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats?.totalExams.toLocaleString()}</p>
-                <p className="text-sm text-muted-foreground">إجمالي الاختبارات</p>
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-bold">{stats?.totalVisits.toLocaleString()}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">إجمالي الزيارات</p>
               </div>
             </div>
           </div>
-          <div className="bg-card rounded-xl border p-5">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-amber-500 flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-white" />
+          <div className="bg-card rounded-xl border p-4 sm:p-5">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-emerald-500 flex items-center justify-center shrink-0">
+                <BookOpen className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
-              <div>
-                <p className="text-2xl font-bold">{stats?.passRate}%</p>
-                <p className="text-sm text-muted-foreground">نسبة النجاح</p>
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-bold">{stats?.totalExams.toLocaleString()}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">إجمالي الاختبارات</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-card rounded-xl border p-4 sm:p-5 sm:col-span-2 md:col-span-1">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-amber-500 flex items-center justify-center shrink-0">
+                <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xl sm:text-2xl font-bold">{stats?.passRate}%</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">نسبة النجاح</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Exams by Subject */}
-          <div className="bg-card rounded-xl border p-5">
-            <h3 className="font-bold mb-4 flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-primary" />
+          <div className="bg-card rounded-xl border p-4 sm:p-5">
+            <h3 className="font-bold mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
+              <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
               الاختبارات حسب المادة
             </h3>
-            <div className="h-64">
+            <div className="h-48 sm:h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stats?.subjectData} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} />
+                  <XAxis type="number" tick={{ fontSize: 10 }} />
+                  <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 10 }} />
                   <Tooltip />
                   <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
                 </BarChart>
@@ -146,20 +146,20 @@ const AdminStatistics = () => {
           </div>
 
           {/* Pass/Fail Ratio */}
-          <div className="bg-card rounded-xl border p-5">
-            <h3 className="font-bold mb-4 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-primary" />
+          <div className="bg-card rounded-xl border p-4 sm:p-5">
+            <h3 className="font-bold mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
+              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
               نسبة النجاح والرسوب
             </h3>
-            <div className="h-64">
+            <div className="h-48 sm:h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={stats?.passFailData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
+                    innerRadius={40}
+                    outerRadius={70}
                     paddingAngle={5}
                     dataKey="value"
                     label={({ name, value }) => `${name}: ${value}`}
@@ -175,17 +175,17 @@ const AdminStatistics = () => {
           </div>
 
           {/* Daily Exams */}
-          <div className="bg-card rounded-xl border p-5 lg:col-span-2">
-            <h3 className="font-bold mb-4 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-primary" />
+          <div className="bg-card rounded-xl border p-4 sm:p-5 lg:col-span-2">
+            <h3 className="font-bold mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
+              <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
               الاختبارات خلال الأيام الأخيرة
             </h3>
-            <div className="h-64">
+            <div className="h-48 sm:h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stats?.dailyData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                  <YAxis />
+                  <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
                   <Tooltip />
                   <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                 </BarChart>
