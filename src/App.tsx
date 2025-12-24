@@ -18,6 +18,8 @@ import AdminUsers from "./pages/admin/AdminUsers";
 import AdminDeletionRequests from "./pages/admin/AdminDeletionRequests";
 import AdminStatistics from "./pages/admin/AdminStatistics";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminLevels from "./pages/admin/AdminLevels";
+import AdminSubjects from "./pages/admin/AdminSubjects";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +44,8 @@ const App = () => (
             <Route path="/admin/users" element={<AdminUsers />} />
             <Route path="/admin/deletion-requests" element={<AdminDeletionRequests />} />
             <Route path="/admin/statistics" element={<AdminStatistics />} />
+            <Route path="/admin/levels" element={<AdminLevels />} />
+            <Route path="/admin/subjects" element={<AdminSubjects />} />
             <Route path="/admin/settings" element={<AdminSettings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

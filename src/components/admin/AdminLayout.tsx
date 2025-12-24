@@ -1,6 +1,6 @@
 import { ReactNode, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Scale, LayoutDashboard, BookOpen, Users, Settings, BarChart3, LogOut, Menu, X, Trash2 } from 'lucide-react';
+import { Scale, LayoutDashboard, BookOpen, Users, Settings, BarChart3, LogOut, Menu, X, Trash2, Layers, FolderOpen } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -12,10 +12,12 @@ interface AdminLayoutProps {
 
 const navItems = [
   { href: '/admin', label: 'لوحة التحكم', icon: LayoutDashboard },
+  { href: '/admin/levels', label: 'إدارة المستويات', icon: Layers, adminOnly: true },
+  { href: '/admin/subjects', label: 'إدارة المواد', icon: FolderOpen, adminOnly: true },
   { href: '/admin/questions', label: 'إدارة الأسئلة', icon: BookOpen },
-  { href: '/admin/users', label: 'إدارة المستخدمين', icon: Users },
-  { href: '/admin/deletion-requests', label: 'طلبات الحذف', icon: Trash2 },
-  { href: '/admin/statistics', label: 'الإحصائيات', icon: BarChart3 },
+  { href: '/admin/users', label: 'إدارة المستخدمين', icon: Users, adminOnly: true },
+  { href: '/admin/deletion-requests', label: 'طلبات الحذف', icon: Trash2, adminOnly: true },
+  { href: '/admin/statistics', label: 'الإحصائيات', icon: BarChart3, adminOnly: true },
   { href: '/admin/settings', label: 'الإعدادات', icon: Settings },
 ];
 
@@ -82,9 +84,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1">
             {navItems.map((item) => {
-              // Hide user management for editors
-              if (item.href === '/admin/users' && role !== 'admin') return null;
-              if (item.href === '/admin/deletion-requests' && role !== 'admin') return null;
+              // Hide admin-only items for editors
+              if (item.adminOnly && role !== 'admin') return null;
 
               const isActive = location.pathname === item.href;
               return (

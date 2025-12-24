@@ -28,11 +28,11 @@ const ExamStart = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('subjects')
-        .select('*')
+        .select('*, levels(name)')
         .eq('id', subjectId)
         .maybeSingle();
       if (error) throw error;
-      return data as Subject | null;
+      return data as (Subject & { levels: { name: string } | null }) | null;
     },
     enabled: !!subjectId,
   });
@@ -127,6 +127,11 @@ const ExamStart = () => {
                 <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-4">
                   <Target className="w-8 h-8 text-primary-foreground" />
                 </div>
+                {subject.levels?.name && (
+                  <span className="inline-block px-3 py-1 bg-muted rounded-full text-sm text-muted-foreground mb-2">
+                    {subject.levels.name}
+                  </span>
+                )}
                 <h1 className="text-2xl md:text-3xl font-bold mb-2">{subject.name}</h1>
                 {subject.author_name && (
                   <p className="text-muted-foreground flex items-center justify-center gap-2">
@@ -163,6 +168,19 @@ const ExamStart = () => {
                     className="bg-background h-12"
                   />
                 </div>
+
+                {/* Welcome Message */}
+                {studentName.trim() && (
+                  <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 text-center">
+                    <p className="text-primary font-medium">
+                      مرحباً <span className="font-bold">{studentName}</span>! 👋
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      أنت على وشك بدء اختبار {subject.name}
+                      {subject.levels?.name && ` - ${subject.levels.name}`}
+                    </p>
+                  </div>
+                )}
 
                 {/* Exam Year */}
                 <div className="space-y-2">
