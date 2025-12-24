@@ -269,12 +269,12 @@ const AdminQuestions = () => {
                 <Calendar className="w-4 h-4" />
                 نموذج الاختبار
               </Label>
-              <Select value={selectedYear} onValueChange={setSelectedYear}>
+              <Select value={selectedYear || "all"} onValueChange={(v) => setSelectedYear(v === "all" ? "" : v)}>
                 <SelectTrigger className="bg-background">
                   <SelectValue placeholder="كل السنوات" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover">
-                  <SelectItem value="">كل السنوات</SelectItem>
+                  <SelectItem value="all">كل السنوات</SelectItem>
                   {EXAM_YEARS.map((year) => (
                     <SelectItem key={year} value={year.toString()}>
                       نموذج {year}
