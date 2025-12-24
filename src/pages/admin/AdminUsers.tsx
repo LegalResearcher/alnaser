@@ -1,0 +1,264 @@
+import { useState } from 'react';
+import { AdminLayout } from '@/components/admin/AdminLayout';
+import { Plus, Trash2, Mail, Shield, User } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+
+const AdminUsers = () => {
+  const { toast } = useToast();
+  const { user: currentUser } = useAuth();
+  const queryClient = useQueryClient();
+  
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [deleteUser, setDeleteUser] = useState<any>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  const { data: editors = [], isLoading } = useQuery({
+    queryKey: ['editors'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('*')
+        .eq('role', 'editor');
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const addEditorMutation = useMutation({
+    mutationFn: async ({ email, password }: { email: string; password: string }) => {
+      // Create user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('Failed to create user');
+
+      // Add editor role
+      const { error: roleError } = await supabase.from('user_roles').insert({
+        user_id: authData.user.id,
+        role: 'editor',
+      });
+      if (roleError) throw roleError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['editors'] });
+      toast({ title: 'تم إضافة المحرر بنجاح' });
+      setIsDialogOpen(false);
+      setEmail('');
+      setPassword('');
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'خطأ',
+        description: error.message || 'حدث خطأ أثناء إضافة المحرر',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const deleteEditorMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase.from('user_roles').delete().eq('user_id', userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['editors'] });
+      toast({ title: 'تم حذف المحرر' });
+      setDeleteUser(null);
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      toast({ title: 'يرجى ملء جميع الحقول', variant: 'destructive' });
+      return;
+    }
+    if (password.length < 6) {
+      toast({ title: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل', variant: 'destructive' });
+      return;
+    }
+    addEditorMutation.mutate({ email, password });
+  };
+
+  return (
+    <AdminLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">إدارة المستخدمين</h1>
+            <p className="text-muted-foreground">إضافة وإدارة المحررين</p>
+          </div>
+          <Button
+            onClick={() => setIsDialogOpen(true)}
+            className="gradient-primary text-primary-foreground border-0 gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            إضافة محرر
+          </Button>
+        </div>
+
+        {/* Current Admin */}
+        <div className="bg-card rounded-xl border p-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <Shield className="w-6 h-6 text-primary" />
+            </div>
+            <div className="flex-1">
+              <p className="font-medium">{currentUser?.email}</p>
+              <p className="text-sm text-muted-foreground">مسؤول (Admin)</p>
+            </div>
+            <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-medium rounded-full">
+              أنت
+            </span>
+          </div>
+        </div>
+
+        {/* Editors List */}
+        <div className="bg-card rounded-xl border">
+          <div className="p-4 border-b">
+            <h2 className="font-bold flex items-center gap-2">
+              <User className="w-5 h-5 text-primary" />
+              المحررون ({editors.length})
+            </h2>
+          </div>
+          {isLoading ? (
+            <div className="p-4 space-y-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-16 rounded-lg" />
+              ))}
+            </div>
+          ) : editors.length === 0 ? (
+            <div className="p-12 text-center text-muted-foreground">
+              <User className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>لا يوجد محررون</p>
+            </div>
+          ) : (
+            <div className="divide-y">
+              {editors.map((editor) => (
+                <div key={editor.id} className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                      <User className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="font-medium">{editor.user_id}</p>
+                      <p className="text-sm text-muted-foreground">محرر (Editor)</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => setDeleteUser(editor)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Add Editor Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>إضافة محرر جديد</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label>البريد الإلكتروني</Label>
+              <div className="relative">
+                <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pr-10 bg-background"
+                  dir="ltr"
+                  placeholder="editor@example.com"
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>كلمة المرور</Label>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="bg-background"
+                dir="ltr"
+                placeholder="••••••••"
+                required
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                إلغاء
+              </Button>
+              <Button
+                type="submit"
+                disabled={addEditorMutation.isPending}
+                className="gradient-primary text-primary-foreground border-0"
+              >
+                {addEditorMutation.isPending ? 'جاري الإضافة...' : 'إضافة'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteUser} onOpenChange={() => setDeleteUser(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
+            <AlertDialogDescription className="text-right">
+              هل أنت متأكد من حذف هذا المحرر؟ لن يتمكن من الوصول للوحة التحكم بعد الآن.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-2">
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteUser && deleteEditorMutation.mutate(deleteUser.user_id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </AdminLayout>
+  );
+};
+
+export default AdminUsers;
