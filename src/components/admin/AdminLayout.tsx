@@ -62,27 +62,37 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed inset-y-0 right-0 z-50 w-64 bg-card border-l transform transition-transform duration-300 lg:translate-x-0 lg:static",
+        "fixed inset-y-0 right-0 z-50 w-[280px] sm:w-64 bg-card border-l transform transition-transform duration-300 lg:translate-x-0 lg:static",
         sidebarOpen ? "translate-x-0" : "translate-x-full"
       )}>
         <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="p-6 border-b">
-            <Link to="/admin" className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-                <Scale className="w-5 h-5 text-primary-foreground" />
-              </div>
-              <div>
-                <span className="font-bold text-lg block">لوحة التحكم</span>
-                <span className="text-xs text-muted-foreground">
-                  {role === 'admin' ? 'مسؤول' : 'محرر'}
-                </span>
-              </div>
-            </Link>
+          {/* Logo & Close Button */}
+          <div className="p-4 sm:p-6 border-b">
+            <div className="flex items-center justify-between">
+              <Link to="/admin" className="flex items-center gap-2 sm:gap-3" onClick={() => setSidebarOpen(false)}>
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl gradient-primary flex items-center justify-center shrink-0">
+                  <Scale className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
+                </div>
+                <div className="min-w-0">
+                  <span className="font-bold text-base sm:text-lg block truncate">لوحة التحكم</span>
+                  <span className="text-xs text-muted-foreground">
+                    {role === 'admin' ? 'مسؤول' : 'محرر'}
+                  </span>
+                </div>
+              </Link>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden shrink-0 h-8 w-8"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-1">
+          <nav className="flex-1 p-3 sm:p-4 space-y-1 overflow-y-auto">
             {navItems.map((item) => {
               // Hide admin-only items for editors
               if (item.adminOnly && role !== 'admin') return null;
@@ -94,27 +104,27 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   to={item.href}
                   onClick={() => setSidebarOpen(false)}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-3 rounded-xl transition-colors",
+                    "flex items-center gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl transition-colors text-sm sm:text-base",
                     isActive
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
-                  <item.icon className="w-5 h-5" />
-                  <span>{item.label}</span>
+                  <item.icon className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                  <span className="truncate">{item.label}</span>
                 </Link>
               );
             })}
           </nav>
 
           {/* Footer */}
-          <div className="p-4 border-t">
+          <div className="p-3 sm:p-4 border-t">
             <Button
               variant="ghost"
               onClick={handleLogout}
-              className="w-full justify-start gap-3 text-destructive hover:text-destructive hover:bg-destructive/10"
+              className="w-full justify-start gap-3 text-destructive hover:text-destructive hover:bg-destructive/10 text-sm sm:text-base h-10 sm:h-11"
             >
-              <LogOut className="w-5 h-5" />
+              <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
               تسجيل الخروج
             </Button>
           </div>
