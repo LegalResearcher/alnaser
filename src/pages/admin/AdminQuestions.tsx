@@ -1,3 +1,4 @@
+// Admin Questions Page
 import { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Plus, Search, Edit2, Trash2, Calendar, BookOpen, Filter, FileSpreadsheet } from 'lucide-react';
