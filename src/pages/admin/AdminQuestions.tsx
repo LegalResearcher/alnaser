@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { Plus, Search, Edit2, Trash2, Calendar, BookOpen, Filter } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Calendar, BookOpen, Filter, FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -29,6 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { ExcelImportDialog } from '@/components/admin/ExcelImportDialog';
 
 const AdminQuestions = () => {
   const { role, user } = useAuth();
@@ -40,6 +41,7 @@ const AdminQuestions = () => {
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [deleteQuestion, setDeleteQuestion] = useState<Question | null>(null);
 
@@ -210,14 +212,25 @@ const AdminQuestions = () => {
             <h1 className="text-2xl font-bold">إدارة الأسئلة</h1>
             <p className="text-muted-foreground">إضافة وتعديل وحذف الأسئلة</p>
           </div>
-          <Button
-            onClick={() => setIsDialogOpen(true)}
-            disabled={!selectedSubject}
-            className="gradient-primary text-primary-foreground border-0 gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            إضافة سؤال
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsImportDialogOpen(true)}
+              disabled={!selectedSubject}
+              className="gap-2"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              استيراد من Excel
+            </Button>
+            <Button
+              onClick={() => setIsDialogOpen(true)}
+              disabled={!selectedSubject}
+              className="gradient-primary text-primary-foreground border-0 gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              إضافة سؤال
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -527,6 +540,13 @@ const AdminQuestions = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Excel Import Dialog */}
+      <ExcelImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        subjectId={selectedSubject}
+      />
     </AdminLayout>
   );
 };
