@@ -1,0 +1,72 @@
+/* App.css - Alnaser Legal Platform
+  تم تحويل هذا الملف لإدارة الحركات الخاصة والمؤثرات البصرية المتقدمة 
+*/
+
+#root {
+  /* إلغاء التنسيق المركزي الافتراضي للسماح لـ MainLayout بالتحكم الكامل */
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* تحسين حركة اللوجو لتكون أكثر نعومة وفخامة */
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  filter: drop-shadow(0 0 1em rgba(59, 130, 246, 0.1));
+}
+
+.logo:hover {
+  filter: drop-shadow(0 0 2.5em var(--primary));
+  transform: scale(1.05) rotate(5deg);
+}
+
+/* حركة الدوران الخاصة بأيقونة React أو الأيقونات التقنية */
+@keyframes logo-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .logo-animate-slow {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+/* كلاسات مخصصة للنصوص القانونية والمراجع */
+.legal-text-shadow {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* تحسين شكل السكرول بار (Scrollbar) ليتناسب مع فخامة المنصة */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.3);
+  border-radius: 10px;
+  transition: background 0.3s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary));
+}
+
+/* تأثيرات الظهور التدريجي للعناصر */
+.reveal-on-scroll {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.8s ease-out;
+}
+
+.reveal-on-scroll.active {
+  opacity: 1;
+  transform: translateY(0);
+}
