@@ -89,3 +89,15 @@ export function clearAppCache(): void {
     }
   });
 }
+
+// Force clear cache on first load if needed (run once)
+export function initializeCache(): void {
+  const cacheVersion = 'v2'; // Increment this to force cache clear
+  const storedVersion = localStorage.getItem('app_cache_version');
+  
+  if (storedVersion !== cacheVersion) {
+    clearAppCache();
+    localStorage.setItem('app_cache_version', cacheVersion);
+    console.log('Cache cleared and updated to', cacheVersion);
+  }
+}
