@@ -1,0 +1,93 @@
+/* ---------------------------------------------------------
+  Project: Alnaser Legal Platform (منصة الناصر)
+  Description: Global Styles & Tailwind CSS Configuration
+  Developed by: Mueen Al-Nasser (أ. معين الناصر)
+  Version: 1.0.0
+  ---------------------------------------------------------
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ألوان واجهة الناصر الاحترافية - Light Mode */
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --primary: 217 91% 60%; /* اللون الأزرق الملكي المميز */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 160 84% 39%;
+    --secondary-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    --radius: 0.85rem; /* زوايا دائرية أكثر حداثة */
+
+    /* ألوان المستويات الدراسية */
+    --level-1: 217 91% 60%;
+    --level-2: 160 84% 39%;
+    --level-3: 38 92% 50%;
+    --level-4: 0 84% 60%;
+
+    /* تدرجات لونية خاصة بمنصة الناصر */
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(199 89% 48%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(217 91% 60% / 0.1) 0%, hsl(160 84% 39% / 0.1) 100%);
+  }
+
+  .dark {
+    /* إعدادات الوضع الليلي (Dark Mode) */
+    --background: 222 47% 8%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 11%;
+    --border: 217 33% 17%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    direction: rtl; /* تفعيل التوجه من اليمين لليسار كأساس للمنصة */
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-cairo antialiased;
+  }
+
+  /* تنسيقات العناوين القانونية */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-cairo font-bold tracking-tight;
+  }
+}
+
+@layer utilities {
+  /* تأثير الزجاج - Glassmorphism */
+  .glass {
+    @apply bg-card/80 backdrop-blur-lg border border-border/50;
+  }
+
+  /* تفاعل البطاقات عند مرور الماوس */
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-2;
+  }
+
+  /* حركات الظهور الاحترافية */
+  .animate-fade-in {
+    animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
