@@ -108,16 +108,16 @@ const AdminUsers = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold">إدارة المستخدمين</h1>
-            <p className="text-muted-foreground">إضافة وإدارة المحررين</p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold">إدارة المستخدمين</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">إضافة وإدارة المحررين</p>
           </div>
           <Button
             onClick={() => setIsDialogOpen(true)}
-            className="gradient-primary text-primary-foreground border-0 gap-2"
+            className="gradient-primary text-primary-foreground border-0 gap-2 w-full sm:w-auto"
           >
             <Plus className="w-4 h-4" />
             إضافة محرر
@@ -125,16 +125,16 @@ const AdminUsers = () => {
         </div>
 
         {/* Current Admin */}
-        <div className="bg-card rounded-xl border p-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <Shield className="w-6 h-6 text-primary" />
+        <div className="bg-card rounded-xl border p-3 sm:p-4">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
             </div>
-            <div className="flex-1">
-              <p className="font-medium">{currentUser?.email}</p>
-              <p className="text-sm text-muted-foreground">مسؤول (Admin)</p>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-sm sm:text-base truncate">{currentUser?.email}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">مسؤول (Admin)</p>
             </div>
-            <span className="px-3 py-1 bg-primary/10 text-primary text-sm font-medium rounded-full">
+            <span className="px-2 sm:px-3 py-1 bg-primary/10 text-primary text-xs sm:text-sm font-medium rounded-full shrink-0">
               أنت
             </span>
           </div>
@@ -142,43 +142,43 @@ const AdminUsers = () => {
 
         {/* Editors List */}
         <div className="bg-card rounded-xl border">
-          <div className="p-4 border-b">
-            <h2 className="font-bold flex items-center gap-2">
-              <User className="w-5 h-5 text-primary" />
+          <div className="p-3 sm:p-4 border-b">
+            <h2 className="font-bold flex items-center gap-2 text-sm sm:text-base">
+              <User className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
               المحررون ({editors.length})
             </h2>
           </div>
           {isLoading ? (
-            <div className="p-4 space-y-4">
+            <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
               {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-16 rounded-lg" />
+                <Skeleton key={i} className="h-14 sm:h-16 rounded-lg" />
               ))}
             </div>
           ) : editors.length === 0 ? (
-            <div className="p-12 text-center text-muted-foreground">
-              <User className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>لا يوجد محررون</p>
+            <div className="p-8 sm:p-12 text-center text-muted-foreground">
+              <User className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-4 opacity-50" />
+              <p className="text-sm sm:text-base">لا يوجد محررون</p>
             </div>
           ) : (
             <div className="divide-y">
               {editors.map((editor) => (
-                <div key={editor.id} className="p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                      <User className="w-5 h-5 text-muted-foreground" />
+                <div key={editor.id} className="p-3 sm:p-4 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                      <User className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
                     </div>
-                    <div>
-                      <p className="font-medium">{editor.user_id}</p>
-                      <p className="text-sm text-muted-foreground">محرر (Editor)</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-xs sm:text-sm truncate" dir="ltr">{editor.user_id}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">محرر (Editor)</p>
                     </div>
                   </div>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="text-destructive hover:text-destructive"
+                    className="text-destructive hover:text-destructive h-8 w-8 sm:h-9 sm:w-9 shrink-0"
                     onClick={() => setDeleteUser(editor)}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </Button>
                 </div>
               ))}
@@ -189,20 +189,20 @@ const AdminUsers = () => {
 
       {/* Add Editor Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[95vw] max-w-md max-h-[85vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>إضافة محرر جديد</DialogTitle>
+            <DialogTitle className="text-lg sm:text-xl">إضافة محرر جديد</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label>البريد الإلكتروني</Label>
+              <Label className="text-sm">البريد الإلكتروني</Label>
               <div className="relative">
                 <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pr-10 bg-background"
+                  className="pr-10 bg-background text-sm sm:text-base"
                   dir="ltr"
                   placeholder="editor@example.com"
                   required
@@ -210,25 +210,25 @@ const AdminUsers = () => {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>كلمة المرور</Label>
+              <Label className="text-sm">كلمة المرور</Label>
               <Input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="bg-background"
+                className="bg-background text-sm sm:text-base"
                 dir="ltr"
                 placeholder="••••••••"
                 required
               />
             </div>
-            <div className="flex justify-end gap-3 pt-4">
-              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="w-full sm:w-auto">
                 إلغاء
               </Button>
               <Button
                 type="submit"
                 disabled={addEditorMutation.isPending}
-                className="gradient-primary text-primary-foreground border-0"
+                className="gradient-primary text-primary-foreground border-0 w-full sm:w-auto"
               >
                 {addEditorMutation.isPending ? 'جاري الإضافة...' : 'إضافة'}
               </Button>
@@ -239,18 +239,18 @@ const AdminUsers = () => {
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteUser} onOpenChange={() => setDeleteUser(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="w-[95vw] max-w-md p-4 sm:p-6">
           <AlertDialogHeader>
-            <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
-            <AlertDialogDescription className="text-right">
+            <AlertDialogTitle className="text-lg sm:text-xl">تأكيد الحذف</AlertDialogTitle>
+            <AlertDialogDescription className="text-right text-sm sm:text-base">
               هل أنت متأكد من حذف هذا المحرر؟ لن يتمكن من الوصول للوحة التحكم بعد الآن.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-row-reverse gap-2">
-            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+          <AlertDialogFooter className="flex-col-reverse sm:flex-row-reverse gap-2">
+            <AlertDialogCancel className="w-full sm:w-auto">إلغاء</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteUser && deleteEditorMutation.mutate(deleteUser.user_id)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto"
             >
               حذف
             </AlertDialogAction>
