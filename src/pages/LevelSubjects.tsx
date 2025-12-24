@@ -1,18 +1,16 @@
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Clock, Target, User, Lock, BookOpen } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
-import { Button } from '@/components/ui/button';
-import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Level, Subject } from '@/types/database';
-import { Skeleton } from '@/components/ui/skeleton';
+import { useCachedQuery } from '@/hooks/useCachedQuery';
 
 const LevelSubjects = () => {
   const { levelId } = useParams<{ levelId: string }>();
 
-  const { data: level, isLoading: levelLoading } = useQuery({
-    queryKey: ['level', levelId],
-    queryFn: async () => {
+  const { data: level, isLoading: levelLoading } = useCachedQuery<Level | null>(
+    ['level', levelId],
+    async () => {
       const { data, error } = await supabase
         .from('levels')
         .select('*')
@@ -21,12 +19,12 @@ const LevelSubjects = () => {
       if (error) throw error;
       return data as Level | null;
     },
-    enabled: !!levelId,
-  });
+    { enabled: !!levelId }
+  );
 
-  const { data: subjects = [], isLoading: subjectsLoading } = useQuery({
-    queryKey: ['subjects', levelId],
-    queryFn: async () => {
+  const { data: subjects = [], isLoading: subjectsLoading } = useCachedQuery<Subject[]>(
+    ['subjects', levelId],
+    async () => {
       const { data, error } = await supabase
         .from('subjects')
         .select('*')
@@ -35,10 +33,10 @@ const LevelSubjects = () => {
       if (error) throw error;
       return data as Subject[];
     },
-    enabled: !!levelId,
-  });
+    { enabled: !!levelId }
+  );
 
-  const isLoading = levelLoading || subjectsLoading;
+  const isLoading = (levelLoading && !level) || (subjectsLoading && subjects.length === 0);
 
   return (
     <MainLayout>
@@ -54,8 +52,8 @@ const LevelSubjects = () => {
           <div className="text-center max-w-2xl mx-auto mb-12">
             {isLoading ? (
               <>
-                <Skeleton className="h-10 w-48 mx-auto mb-4" />
-                <Skeleton className="h-6 w-72 mx-auto" />
+                <div className="h-10 w-48 mx-auto mb-4 bg-muted animate-pulse rounded" />
+                <div className="h-6 w-72 mx-auto bg-muted animate-pulse rounded" />
               </>
             ) : (
               <>
@@ -73,7 +71,7 @@ const LevelSubjects = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {isLoading ? (
               Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-52 rounded-2xl" />
+                <div key={i} className="h-52 rounded-2xl bg-muted animate-pulse" />
               ))
             ) : subjects.length === 0 ? (
               <div className="col-span-full text-center py-12">

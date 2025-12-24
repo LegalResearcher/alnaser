@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Level } from '@/types/database';
+import { useCachedQuery } from '@/hooks/useCachedQuery';
 
 const levelColors = [
   'from-blue-500 to-blue-600',
@@ -13,17 +13,17 @@ const levelColors = [
 ];
 
 export function LevelsPreview() {
-  const { data: levels = [] } = useQuery({
-    queryKey: ['levels'],
-    queryFn: async () => {
+  const { data: levels = [] } = useCachedQuery<Level[]>(
+    ['levels'],
+    async () => {
       const { data, error } = await supabase
         .from('levels')
         .select('*')
         .order('order_index');
       if (error) throw error;
       return data as Level[];
-    },
-  });
+    }
+  );
 
   return (
     <section className="py-20" id="levels">

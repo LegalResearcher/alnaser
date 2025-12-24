@@ -1,10 +1,9 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Clock, Target } from 'lucide-react';
+import { ArrowLeft, BookOpen } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
-import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Level, Subject } from '@/types/database';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Level } from '@/types/database';
+import { useCachedQuery } from '@/hooks/useCachedQuery';
 
 const levelColors = [
   { bg: 'from-blue-500 to-blue-600', light: 'bg-blue-50 text-blue-600' },
@@ -14,21 +13,21 @@ const levelColors = [
 ];
 
 const Levels = () => {
-  const { data: levels = [], isLoading: levelsLoading } = useQuery({
-    queryKey: ['levels'],
-    queryFn: async () => {
+  const { data: levels = [], isLoading: levelsLoading } = useCachedQuery<Level[]>(
+    ['levels'],
+    async () => {
       const { data, error } = await supabase
         .from('levels')
         .select('*')
         .order('order_index');
       if (error) throw error;
       return data as Level[];
-    },
-  });
+    }
+  );
 
-  const { data: subjectCounts = {} } = useQuery({
-    queryKey: ['subject-counts'],
-    queryFn: async () => {
+  const { data: subjectCounts = {} } = useCachedQuery<Record<string, number>>(
+    ['subject-counts'],
+    async () => {
       const { data, error } = await supabase
         .from('subjects')
         .select('level_id');
@@ -39,8 +38,8 @@ const Levels = () => {
         counts[s.level_id] = (counts[s.level_id] || 0) + 1;
       });
       return counts;
-    },
-  });
+    }
+  );
 
   return (
     <MainLayout>
@@ -58,9 +57,9 @@ const Levels = () => {
 
           {/* Levels Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-            {levelsLoading ? (
+            {levelsLoading && levels.length === 0 ? (
               Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-64 rounded-2xl" />
+                <div key={i} className="h-64 rounded-2xl bg-muted animate-pulse" />
               ))
             ) : (
               levels.map((level, index) => (
