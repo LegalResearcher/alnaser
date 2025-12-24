@@ -1,0 +1,18 @@
+# Alnaser Web Projects - Optimized Robots.txt
+# يخبر المحركات بالوصول للمحتوى العام ومنع الصفحات الإدارية
+
+User-agent: *
+Allow: /
+# منع زحف المحركات لصفحات الإدارة لضمان الخصوصية ونظافة نتائج البحث
+Disallow: /admin/
+Disallow: /login/
+
+# تخصيص لوسائل التواصل لضمان ظهور الصور بشكل صحيح (Open Graph)
+User-agent: Twitterbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+# رابط خريطة الموقع (Sitemap) - استبدل الرابط برابط موقعك الفعلي
+Sitemap: https://your-domain.com/sitemap.xml
