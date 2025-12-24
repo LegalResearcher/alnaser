@@ -52,30 +52,30 @@ const AdminDashboard = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Page Header */}
         <div>
-          <h1 className="text-2xl font-bold">لوحة التحكم</h1>
-          <p className="text-muted-foreground">نظرة عامة على منصة الباحث القانوني</p>
+          <h1 className="text-xl sm:text-2xl font-bold">لوحة التحكم</h1>
+          <p className="text-sm text-muted-foreground">نظرة عامة على منصة الباحث القانوني</p>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4">
           {isLoading ? (
             Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-32 rounded-xl" />
+              <Skeleton key={i} className="h-24 sm:h-32 rounded-xl" />
             ))
           ) : (
             statCards.map((stat, index) => (
               <div
                 key={index}
-                className="bg-card rounded-xl border p-5 card-hover"
+                className="bg-card rounded-xl border p-3 sm:p-5 card-hover"
               >
-                <div className={`w-10 h-10 rounded-lg ${stat.color} flex items-center justify-center mb-3`}>
-                  <stat.icon className="w-5 h-5 text-white" />
+                <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg ${stat.color} flex items-center justify-center mb-2 sm:mb-3`}>
+                  <stat.icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                 </div>
-                <p className="text-2xl font-bold">{stat.value}</p>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
+                <p className="text-lg sm:text-2xl font-bold">{stat.value}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">{stat.label}</p>
               </div>
             ))
           )}
@@ -83,26 +83,26 @@ const AdminDashboard = () => {
 
         {/* Recent Exams */}
         <div className="bg-card rounded-xl border">
-          <div className="p-5 border-b">
-            <h2 className="font-bold flex items-center gap-2">
-              <Clock className="w-5 h-5 text-primary" />
+          <div className="p-3 sm:p-5 border-b">
+            <h2 className="font-bold flex items-center gap-2 text-sm sm:text-base">
+              <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
               آخر الاختبارات
             </h2>
           </div>
           <div className="divide-y">
             {recentExams.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground">
+              <div className="p-6 sm:p-8 text-center text-muted-foreground text-sm">
                 لا توجد اختبارات بعد
               </div>
             ) : (
               recentExams.map((exam: any) => (
-                <div key={exam.id} className="p-4 flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{exam.student_name}</p>
-                    <p className="text-sm text-muted-foreground">{exam.subjects?.name}</p>
+                <div key={exam.id} className="p-3 sm:p-4 flex items-center justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-sm sm:text-base truncate">{exam.student_name}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">{exam.subjects?.name}</p>
                   </div>
-                  <div className="text-left">
-                    <p className={`font-bold ${exam.passed ? 'text-success' : 'text-destructive'}`}>
+                  <div className="text-left shrink-0">
+                    <p className={`font-bold text-sm sm:text-base ${exam.passed ? 'text-success' : 'text-destructive'}`}>
                       {exam.score}/{exam.total_questions}
                     </p>
                     <p className="text-xs text-muted-foreground">

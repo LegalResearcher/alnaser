@@ -240,17 +240,18 @@ const AdminSubjects = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold">إدارة المواد</h1>
-            <p className="text-muted-foreground">اسحب وأفلت لإعادة ترتيب المواد</p>
+        <div className="flex flex-col gap-3 sm:gap-4">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold">إدارة المواد</h1>
+            <p className="text-sm text-muted-foreground">اسحب وأفلت لإعادة ترتيب المواد</p>
           </div>
           <Button
+            size="sm"
             onClick={() => setIsDialogOpen(true)}
             disabled={!selectedLevel || role !== 'admin'}
-            className="gradient-primary text-primary-foreground border-0 gap-2"
+            className="gradient-primary text-primary-foreground border-0 gap-1.5 w-fit text-xs sm:text-sm"
           >
             <Plus className="w-4 h-4" />
             إضافة مادة
@@ -304,34 +305,34 @@ const AdminSubjects = () => {
               >
                 <div className="divide-y">
                   {subjects.map((subject) => (
-                    <div key={subject.id} className="p-4 hover:bg-muted/50 transition-colors">
+                    <div key={subject.id} className="p-3 sm:p-4 hover:bg-muted/50 transition-colors">
                       <SortableItem id={subject.id}>
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-bold">{subject.name}</h3>
+                        <div className="flex items-start justify-between gap-2 sm:gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <h3 className="font-bold text-sm sm:text-base truncate">{subject.name}</h3>
                               {subject.password && (
-                                <Lock className="w-4 h-4 text-amber-500" />
+                                <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 shrink-0" />
                               )}
                             </div>
                             {subject.description && (
-                              <p className="text-sm text-muted-foreground mb-2">{subject.description}</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground mb-2 line-clamp-2">{subject.description}</p>
                             )}
-                            <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+                            <div className="flex flex-wrap gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground">
                               <span className="flex items-center gap-1">
-                                <Clock className="w-4 h-4" />
-                                {subject.default_time_minutes} دقيقة
+                                <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                {subject.default_time_minutes} د
                               </span>
                               <span className="flex items-center gap-1">
-                                <Target className="w-4 h-4" />
-                                {subject.passing_score}% للنجاح
+                                <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                {subject.passing_score}%
                               </span>
                               <span className="flex items-center gap-1">
-                                <BookOpen className="w-4 h-4" />
+                                <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                 {subject.questions_per_exam} سؤال
                               </span>
                               {subject.author_name && (
-                                <span className="flex items-center gap-1">
+                                <span className="flex items-center gap-1 hidden sm:flex">
                                   <User className="w-4 h-4" />
                                   {subject.author_name}
                                 </span>
@@ -339,14 +340,14 @@ const AdminSubjects = () => {
                             </div>
                           </div>
                           {role === 'admin' && (
-                            <div className="flex items-center gap-2 shrink-0">
-                              <Button variant="ghost" size="icon" onClick={() => handleEdit(subject)}>
+                            <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 shrink-0">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={() => handleEdit(subject)}>
                                 <Edit2 className="w-4 h-4" />
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="text-destructive hover:text-destructive"
+                                className="h-8 w-8 sm:h-10 sm:w-10 text-destructive hover:text-destructive"
                                 onClick={() => setDeleteSubject(subject)}
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -366,7 +367,7 @@ const AdminSubjects = () => {
 
       {/* Add/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[85vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Settings className="w-5 h-5" />

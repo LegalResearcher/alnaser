@@ -208,39 +208,45 @@ const AdminQuestions = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold">إدارة الأسئلة</h1>
-            <p className="text-muted-foreground">إضافة وتعديل وحذف الأسئلة</p>
+        <div className="flex flex-col gap-3 sm:gap-4">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold truncate">إدارة الأسئلة</h1>
+            <p className="text-sm text-muted-foreground">إضافة وتعديل وحذف الأسئلة</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
+              size="sm"
               onClick={() => setIsHtmlImportDialogOpen(true)}
               disabled={!selectedSubject}
-              className="gap-2"
+              className="gap-1.5 text-xs sm:text-sm"
             >
               <FileCode className="w-4 h-4" />
-              استيراد من HTML
+              <span className="hidden sm:inline">استيراد من HTML</span>
+              <span className="sm:hidden">HTML</span>
             </Button>
             <Button
               variant="outline"
+              size="sm"
               onClick={() => setIsImportDialogOpen(true)}
               disabled={!selectedSubject}
-              className="gap-2"
+              className="gap-1.5 text-xs sm:text-sm"
             >
               <FileSpreadsheet className="w-4 h-4" />
-              استيراد من Excel
+              <span className="hidden sm:inline">استيراد من Excel</span>
+              <span className="sm:hidden">Excel</span>
             </Button>
             <Button
+              size="sm"
               onClick={() => setIsDialogOpen(true)}
               disabled={!selectedSubject}
-              className="gradient-primary text-primary-foreground border-0 gap-2"
+              className="gradient-primary text-primary-foreground border-0 gap-1.5 text-xs sm:text-sm"
             >
               <Plus className="w-4 h-4" />
-              إضافة سؤال
+              <span className="hidden sm:inline">إضافة سؤال</span>
+              <span className="sm:hidden">إضافة</span>
             </Button>
           </div>
         </div>
@@ -346,43 +352,43 @@ const AdminQuestions = () => {
           ) : (
             <div className="divide-y">
               {questions.map((question, index) => (
-                <div key={question.id} className="p-4 hover:bg-muted/50 transition-colors">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="w-6 h-6 rounded bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">
+                <div key={question.id} className="p-3 sm:p-4 hover:bg-muted/50 transition-colors">
+                  <div className="flex items-start justify-between gap-2 sm:gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <span className="w-5 h-5 sm:w-6 sm:h-6 rounded bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">
                           {index + 1}
                         </span>
                         {question.exam_year && (
-                          <span className="text-xs bg-muted px-2 py-1 rounded-full">
+                          <span className="text-xs bg-muted px-2 py-0.5 sm:py-1 rounded-full">
                             نموذج {question.exam_year}
                           </span>
                         )}
                       </div>
-                      <p className="font-medium mb-2 line-clamp-2">{question.question_text}</p>
-                      <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-                        <span className={cn(question.correct_option === 'A' && 'text-success font-medium')}>
+                      <p className="font-medium mb-2 text-sm sm:text-base line-clamp-3 sm:line-clamp-2">{question.question_text}</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground">
+                        <span className={cn("truncate", question.correct_option === 'A' && 'text-success font-medium')}>
                           أ. {question.option_a}
                         </span>
-                        <span className={cn(question.correct_option === 'B' && 'text-success font-medium')}>
+                        <span className={cn("truncate", question.correct_option === 'B' && 'text-success font-medium')}>
                           ب. {question.option_b}
                         </span>
-                        <span className={cn(question.correct_option === 'C' && 'text-success font-medium')}>
+                        <span className={cn("truncate", question.correct_option === 'C' && 'text-success font-medium')}>
                           ج. {question.option_c}
                         </span>
-                        <span className={cn(question.correct_option === 'D' && 'text-success font-medium')}>
+                        <span className={cn("truncate", question.correct_option === 'D' && 'text-success font-medium')}>
                           د. {question.option_d}
                         </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(question)}>
+                    <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 shrink-0">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10" onClick={() => handleEdit(question)}>
                         <Edit2 className="w-4 h-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="text-destructive hover:text-destructive"
+                        className="h-8 w-8 sm:h-10 sm:w-10 text-destructive hover:text-destructive"
                         onClick={() => setDeleteQuestion(question)}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -398,7 +404,7 @@ const AdminQuestions = () => {
 
       {/* Add/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[85vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>
               {editingQuestion ? 'تعديل السؤال' : 'إضافة سؤال جديد'}

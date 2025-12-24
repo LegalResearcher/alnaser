@@ -124,25 +124,25 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-h-screen">
         {/* Top Bar */}
-        <header className="sticky top-0 z-30 bg-card border-b px-4 lg:px-6 h-16 flex items-center justify-between">
+        <header className="sticky top-0 z-30 bg-card border-b px-3 sm:px-4 lg:px-6 h-14 sm:h-16 flex items-center justify-between gap-2">
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden"
+            className="lg:hidden shrink-0"
             onClick={() => setSidebarOpen(true)}
           >
             <Menu className="w-5 h-5" />
           </Button>
 
-          <div className="flex items-center gap-4 mr-auto">
-            <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
+          <div className="flex items-center gap-2 sm:gap-4 mr-auto">
+            <Link to="/" className="text-xs sm:text-sm text-muted-foreground hover:text-foreground whitespace-nowrap">
               عرض الموقع
             </Link>
           </div>
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-4 lg:p-6">
+        <main className="flex-1 p-3 sm:p-4 lg:p-6 pb-safe">
           {children}
         </main>
       </div>
