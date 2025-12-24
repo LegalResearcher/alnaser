@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { Plus, Edit2, Trash2, BookOpen, Clock, Target, Settings, User, Lock, GripVertical } from 'lucide-react';
+import { Plus, Edit2, Trash2, BookOpen, Clock, Target, Settings, User, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Slider } from '@/components/ui/slider';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Level, Subject } from '@/types/database';
@@ -30,6 +29,22 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { SortableItem } from '@/components/admin/SortableItem';
 
 const AdminSubjects = () => {
   const { role } = useAuth();
@@ -54,6 +69,17 @@ const AdminSubjects = () => {
     author_name: '',
   });
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   const { data: levels = [] } = useQuery({
     queryKey: ['levels'],
     queryFn: async () => {
@@ -71,6 +97,22 @@ const AdminSubjects = () => {
       const { data, error } = await query;
       if (error) throw error;
       return data as Subject[];
+    },
+  });
+
+  const reorderMutation = useMutation({
+    mutationFn: async (newOrder: { id: string; order_index: number }[]) => {
+      for (const item of newOrder) {
+        const { error } = await supabase
+          .from('subjects')
+          .update({ order_index: item.order_index })
+          .eq('id', item.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subjects'] });
+      toast({ title: 'تم تحديث الترتيب' });
     },
   });
 
@@ -94,6 +136,7 @@ const AdminSubjects = () => {
           .eq('id', editingSubject.id);
         if (error) throw error;
       } else {
+        const maxOrder = Math.max(...subjects.map(s => s.order_index), 0);
         const { error } = await supabase.from('subjects').insert({
           level_id: selectedLevel,
           name: data.name,
@@ -106,6 +149,7 @@ const AdminSubjects = () => {
           passing_score: data.passing_score,
           password: data.password || null,
           author_name: data.author_name || null,
+          order_index: maxOrder + 1,
         });
         if (error) throw error;
       }
@@ -131,6 +175,25 @@ const AdminSubjects = () => {
       setDeleteSubject(null);
     },
   });
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = subjects.findIndex((s) => s.id === active.id);
+      const newIndex = subjects.findIndex((s) => s.id === over.id);
+
+      const newSubjects = arrayMove(subjects, oldIndex, newIndex);
+      const newOrder = newSubjects.map((subject, index) => ({
+        id: subject.id,
+        order_index: index + 1,
+      }));
+
+      // Optimistic update
+      queryClient.setQueryData(['subjects', selectedLevel], newSubjects);
+      reorderMutation.mutate(newOrder);
+    }
+  };
 
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
@@ -182,7 +245,7 @@ const AdminSubjects = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold">إدارة المواد</h1>
-            <p className="text-muted-foreground">إعدادات المواد والاختبارات</p>
+            <p className="text-muted-foreground">اسحب وأفلت لإعادة ترتيب المواد</p>
           </div>
           <Button
             onClick={() => setIsDialogOpen(true)}
@@ -230,65 +293,73 @@ const AdminSubjects = () => {
               <p>لا توجد مواد في هذا المستوى</p>
             </div>
           ) : (
-            <div className="divide-y">
-              {subjects.map((subject) => (
-                <div key={subject.id} className="p-4 hover:bg-muted/50 transition-colors">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3">
-                      <div className="mt-1 cursor-move text-muted-foreground">
-                        <GripVertical className="w-5 h-5" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-bold">{subject.name}</h3>
-                          {subject.password && (
-                            <Lock className="w-4 h-4 text-amber-500" />
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={subjects.map((s) => s.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="divide-y">
+                  {subjects.map((subject) => (
+                    <div key={subject.id} className="p-4 hover:bg-muted/50 transition-colors">
+                      <SortableItem id={subject.id}>
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-bold">{subject.name}</h3>
+                              {subject.password && (
+                                <Lock className="w-4 h-4 text-amber-500" />
+                              )}
+                            </div>
+                            {subject.description && (
+                              <p className="text-sm text-muted-foreground mb-2">{subject.description}</p>
+                            )}
+                            <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-4 h-4" />
+                                {subject.default_time_minutes} دقيقة
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Target className="w-4 h-4" />
+                                {subject.passing_score}% للنجاح
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <BookOpen className="w-4 h-4" />
+                                {subject.questions_per_exam} سؤال
+                              </span>
+                              {subject.author_name && (
+                                <span className="flex items-center gap-1">
+                                  <User className="w-4 h-4" />
+                                  {subject.author_name}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {role === 'admin' && (
+                            <div className="flex items-center gap-2 shrink-0">
+                              <Button variant="ghost" size="icon" onClick={() => handleEdit(subject)}>
+                                <Edit2 className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => setDeleteSubject(subject)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           )}
                         </div>
-                        {subject.description && (
-                          <p className="text-sm text-muted-foreground mb-2">{subject.description}</p>
-                        )}
-                        <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-4 h-4" />
-                            {subject.default_time_minutes} دقيقة
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Target className="w-4 h-4" />
-                            {subject.passing_score}% للنجاح
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <BookOpen className="w-4 h-4" />
-                            {subject.questions_per_exam} سؤال
-                          </span>
-                          {subject.author_name && (
-                            <span className="flex items-center gap-1">
-                              <User className="w-4 h-4" />
-                              {subject.author_name}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                      </SortableItem>
                     </div>
-                    {role === 'admin' && (
-                      <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(subject)}>
-                          <Edit2 className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => setDeleteSubject(subject)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </SortableContext>
+            </DndContext>
           )}
         </div>
       </div>

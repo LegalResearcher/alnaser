@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { Plus, Edit2, Trash2, GripVertical, Layers } from 'lucide-react';
+import { Plus, Edit2, Trash2, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,6 +27,22 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { SortableItem } from '@/components/admin/SortableItem';
 
 const COLORS = [
   { name: 'أزرق', value: '#3B82F6' },
@@ -52,6 +68,17 @@ const AdminLevels = () => {
     color: '#3B82F6',
   });
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   const { data: levels = [], isLoading } = useQuery({
     queryKey: ['levels'],
     queryFn: async () => {
@@ -71,6 +98,22 @@ const AdminLevels = () => {
         counts[s.level_id] = (counts[s.level_id] || 0) + 1;
       });
       return counts;
+    },
+  });
+
+  const reorderMutation = useMutation({
+    mutationFn: async (newOrder: { id: string; order_index: number }[]) => {
+      for (const item of newOrder) {
+        const { error } = await supabase
+          .from('levels')
+          .update({ order_index: item.order_index })
+          .eq('id', item.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['levels'] });
+      toast({ title: 'تم تحديث الترتيب' });
     },
   });
 
@@ -119,6 +162,25 @@ const AdminLevels = () => {
     },
   });
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = levels.findIndex((l) => l.id === active.id);
+      const newIndex = levels.findIndex((l) => l.id === over.id);
+
+      const newLevels = arrayMove(levels, oldIndex, newIndex);
+      const newOrder = newLevels.map((level, index) => ({
+        id: level.id,
+        order_index: index + 1,
+      }));
+
+      // Optimistic update
+      queryClient.setQueryData(['levels'], newLevels);
+      reorderMutation.mutate(newOrder);
+    }
+  };
+
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingLevel(null);
@@ -166,7 +228,7 @@ const AdminLevels = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold">إدارة المستويات</h1>
-            <p className="text-muted-foreground">إنشاء وترتيب المستويات الدراسية</p>
+            <p className="text-muted-foreground">اسحب وأفلت لإعادة ترتيب المستويات</p>
           </div>
           <Button
             onClick={() => setIsDialogOpen(true)}
@@ -191,44 +253,54 @@ const AdminLevels = () => {
               <p>لا توجد مستويات</p>
             </div>
           ) : (
-            <div className="divide-y">
-              {levels.map((level, index) => (
-                <div key={level.id} className="p-4 hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                      <div className="cursor-move text-muted-foreground">
-                        <GripVertical className="w-5 h-5" />
-                      </div>
-                      <div
-                        className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold"
-                        style={{ backgroundColor: level.color || '#3B82F6' }}
-                      >
-                        {index + 1}
-                      </div>
-                      <div>
-                        <h3 className="font-bold">{level.name}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {subjectCounts[level.id] || 0} مادة
-                        </p>
-                      </div>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={levels.map((l) => l.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="divide-y">
+                  {levels.map((level, index) => (
+                    <div key={level.id} className="p-4 hover:bg-muted/50 transition-colors">
+                      <SortableItem id={level.id}>
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-4">
+                            <div
+                              className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold shrink-0"
+                              style={{ backgroundColor: level.color || '#3B82F6' }}
+                            >
+                              {index + 1}
+                            </div>
+                            <div>
+                              <h3 className="font-bold">{level.name}</h3>
+                              <p className="text-sm text-muted-foreground">
+                                {subjectCounts[level.id] || 0} مادة
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button variant="ghost" size="icon" onClick={() => handleEdit(level)}>
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => setDeleteLevel(level)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </SortableItem>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(level)}>
-                        <Edit2 className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => setDeleteLevel(level)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </SortableContext>
+            </DndContext>
           )}
         </div>
       </div>
