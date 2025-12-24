@@ -333,21 +333,21 @@ const AdminQuestions = () => {
 
         {/* Questions List */}
         <div className="bg-card rounded-xl border">
-          {!selectedSubject ? (
-            <div className="p-12 text-center text-muted-foreground">
-              <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>اختر مادة لعرض الأسئلة</p>
+        {!selectedSubject ? (
+            <div className="p-8 sm:p-12 text-center text-muted-foreground">
+              <BookOpen className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4 opacity-50" />
+              <p className="text-sm sm:text-base">اختر مادة لعرض الأسئلة</p>
             </div>
           ) : isLoading ? (
-            <div className="p-4 space-y-4">
+            <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
               {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-24 rounded-lg" />
+                <Skeleton key={i} className="h-28 sm:h-24 rounded-lg" />
               ))}
             </div>
           ) : questions.length === 0 ? (
-            <div className="p-12 text-center text-muted-foreground">
-              <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>لا توجد أسئلة</p>
+            <div className="p-8 sm:p-12 text-center text-muted-foreground">
+              <BookOpen className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4 opacity-50" />
+              <p className="text-sm sm:text-base">لا توجد أسئلة</p>
             </div>
           ) : (
             <div className="divide-y">
@@ -422,9 +422,9 @@ const AdminQuestions = () => {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
-                <Label className={cn(formData.correct_option === 'A' && 'text-success')}>
+                <Label className={cn("text-sm", formData.correct_option === 'A' && 'text-success')}>
                   الخيار أ *
                 </Label>
                 <Input
@@ -435,7 +435,7 @@ const AdminQuestions = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label className={cn(formData.correct_option === 'B' && 'text-success')}>
+                <Label className={cn("text-sm", formData.correct_option === 'B' && 'text-success')}>
                   الخيار ب *
                 </Label>
                 <Input
@@ -446,7 +446,7 @@ const AdminQuestions = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label className={cn(formData.correct_option === 'C' && 'text-success')}>
+                <Label className={cn("text-sm", formData.correct_option === 'C' && 'text-success')}>
                   الخيار ج *
                 </Label>
                 <Input
@@ -457,7 +457,7 @@ const AdminQuestions = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label className={cn(formData.correct_option === 'D' && 'text-success')}>
+                <Label className={cn("text-sm", formData.correct_option === 'D' && 'text-success')}>
                   الخيار د *
                 </Label>
                 <Input
@@ -469,9 +469,9 @@ const AdminQuestions = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
-                <Label>الإجابة الصحيحة *</Label>
+                <Label className="text-sm">الإجابة الصحيحة *</Label>
                 <Select
                   value={formData.correct_option}
                   onValueChange={(v) => setFormData({ ...formData, correct_option: v as 'A' | 'B' | 'C' | 'D' })}
@@ -488,7 +488,7 @@ const AdminQuestions = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>نموذج سنة الاختبار</Label>
+                <Label className="text-sm">نموذج سنة الاختبار</Label>
                 <Select
                   value={formData.exam_year}
                   onValueChange={(v) => setFormData({ ...formData, exam_year: v })}
@@ -508,7 +508,7 @@ const AdminQuestions = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>ملاحظة إرشادية (اختياري)</Label>
+              <Label className="text-sm">ملاحظة إرشادية (اختياري)</Label>
               <Textarea
                 value={formData.hint}
                 onChange={(e) => setFormData({ ...formData, hint: e.target.value })}
@@ -518,14 +518,14 @@ const AdminQuestions = () => {
               />
             </div>
 
-            <div className="flex justify-end gap-3 pt-4">
-              <Button type="button" variant="outline" onClick={handleCloseDialog}>
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={handleCloseDialog} className="w-full sm:w-auto">
                 إلغاء
               </Button>
               <Button
                 type="submit"
                 disabled={saveMutation.isPending}
-                className="gradient-primary text-primary-foreground border-0"
+                className="w-full sm:w-auto gradient-primary text-primary-foreground border-0"
               >
                 {saveMutation.isPending ? 'جاري الحفظ...' : editingQuestion ? 'تحديث' : 'إضافة'}
               </Button>
@@ -536,22 +536,22 @@ const AdminQuestions = () => {
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteQuestion} onOpenChange={() => setDeleteQuestion(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="w-[95vw] max-w-md p-4 sm:p-6">
           <AlertDialogHeader>
-            <AlertDialogTitle>
+            <AlertDialogTitle className="text-base sm:text-lg">
               {role === 'admin' ? 'تأكيد الحذف' : 'طلب حذف'}
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-right">
+            <AlertDialogDescription className="text-right text-sm">
               {role === 'admin'
                 ? 'هل أنت متأكد من حذف هذا السؤال؟ لا يمكن التراجع عن هذا الإجراء.'
                 : 'سيتم إرسال طلب حذف هذا السؤال للمسؤول للموافقة عليه.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-row-reverse gap-2">
-            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+          <AlertDialogFooter className="flex-col-reverse sm:flex-row-reverse gap-2">
+            <AlertDialogCancel className="w-full sm:w-auto">إلغاء</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteQuestion && deleteMutation.mutate(deleteQuestion)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {role === 'admin' ? 'حذف' : 'إرسال الطلب'}
             </AlertDialogAction>
