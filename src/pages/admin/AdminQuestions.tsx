@@ -1,7 +1,7 @@
 // Admin Questions Page
 import { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { Plus, Search, Edit2, Trash2, Calendar, BookOpen, Filter, FileSpreadsheet } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Calendar, BookOpen, Filter, FileSpreadsheet, FileCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -31,6 +31,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ExcelImportDialog } from '@/components/admin/ExcelImportDialog';
+import { HtmlImportDialog } from '@/components/admin/HtmlImportDialog';
 
 const AdminQuestions = () => {
   const { role, user } = useAuth();
@@ -43,6 +44,7 @@ const AdminQuestions = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isHtmlImportDialogOpen, setIsHtmlImportDialogOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [deleteQuestion, setDeleteQuestion] = useState<Question | null>(null);
 
@@ -214,6 +216,15 @@ const AdminQuestions = () => {
             <p className="text-muted-foreground">إضافة وتعديل وحذف الأسئلة</p>
           </div>
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsHtmlImportDialogOpen(true)}
+              disabled={!selectedSubject}
+              className="gap-2"
+            >
+              <FileCode className="w-4 h-4" />
+              استيراد من HTML
+            </Button>
             <Button
               variant="outline"
               onClick={() => setIsImportDialogOpen(true)}
@@ -546,6 +557,13 @@ const AdminQuestions = () => {
       <ExcelImportDialog
         open={isImportDialogOpen}
         onOpenChange={setIsImportDialogOpen}
+        subjectId={selectedSubject}
+      />
+
+      {/* HTML Import Dialog */}
+      <HtmlImportDialog
+        open={isHtmlImportDialogOpen}
+        onOpenChange={setIsHtmlImportDialogOpen}
         subjectId={selectedSubject}
       />
     </AdminLayout>
