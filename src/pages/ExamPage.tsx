@@ -7,8 +7,8 @@ import { Progress } from '@/components/ui/progress';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Question } from '@/types/database';
-import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { useCachedQuery } from '@/hooks/useCachedQuery';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,6 +46,7 @@ const ExamPage = () => {
     }
   }, [state, subjectId, navigate]);
 
+  // Questions need fresh data (random selection), so no caching
   const { data: questions = [], isLoading } = useQuery({
     queryKey: ['exam-questions', subjectId, state?.examYear, state?.questionsCount],
     queryFn: async () => {
@@ -64,9 +65,10 @@ const ExamPage = () => {
     enabled: !!subjectId && !!state?.examYear,
   });
 
-  const { data: subject } = useQuery({
-    queryKey: ['subject', subjectId],
-    queryFn: async () => {
+  // Cache subject data for faster display
+  const { data: subject } = useCachedQuery(
+    ['subject', subjectId],
+    async () => {
       const { data, error } = await supabase
         .from('subjects')
         .select('*')
@@ -75,8 +77,8 @@ const ExamPage = () => {
       if (error) throw error;
       return data;
     },
-    enabled: !!subjectId,
-  });
+    { enabled: !!subjectId }
+  );
 
   // Timer
   useEffect(() => {
@@ -160,7 +162,7 @@ const ExamPage = () => {
     return (
       <MainLayout>
         <div className="container mx-auto px-4 py-12">
-          <Skeleton className="h-96 max-w-3xl mx-auto rounded-2xl" />
+          <div className="h-96 max-w-3xl mx-auto rounded-2xl bg-muted animate-pulse" />
         </div>
       </MainLayout>
     );

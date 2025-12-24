@@ -7,11 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Subject, EXAM_YEARS } from '@/types/database';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { useCachedQuery } from '@/hooks/useCachedQuery';
+import { useQuery } from '@tanstack/react-query';
 
 const ExamStart = () => {
   const { subjectId } = useParams<{ subjectId: string }>();
@@ -23,9 +23,9 @@ const ExamStart = () => {
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [examTime, setExamTime] = useState<number>(30);
 
-  const { data: subject, isLoading } = useQuery({
-    queryKey: ['subject', subjectId],
-    queryFn: async () => {
+  const { data: subject, isLoading } = useCachedQuery<(Subject & { levels: { name: string } | null }) | null>(
+    ['subject', subjectId],
+    async () => {
       const { data, error } = await supabase
         .from('subjects')
         .select('*, levels(name)')
@@ -34,9 +34,10 @@ const ExamStart = () => {
       if (error) throw error;
       return data as (Subject & { levels: { name: string } | null }) | null;
     },
-    enabled: !!subjectId,
-  });
+    { enabled: !!subjectId }
+  );
 
+  // Question count needs to be fresh (not cached) since it depends on selectedYear
   const { data: questionCount = 0, isLoading: countLoading } = useQuery({
     queryKey: ['question-count', subjectId, selectedYear],
     queryFn: async () => {
@@ -84,11 +85,12 @@ const ExamStart = () => {
     });
   };
 
-  if (isLoading) {
+  // Show cached content immediately, only show skeleton if no cache AND loading
+  if (isLoading && !subject) {
     return (
       <MainLayout>
         <div className="container mx-auto px-4 py-12">
-          <Skeleton className="h-96 max-w-2xl mx-auto rounded-2xl" />
+          <div className="h-96 max-w-2xl mx-auto rounded-2xl bg-muted animate-pulse" />
         </div>
       </MainLayout>
     );
