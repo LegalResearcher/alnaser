@@ -79,7 +79,7 @@ const ExamResult = () => {
 📊 النتيجة: ${state.score}/${state.totalQuestions} (${scorePercentage}%)
 ${state.passed ? '✅ لقد نجحت في الاختبار!' : '❌ سأحاول مجدداً لتحسين نتيجتي'}
 
-🔗 اختبر نفسك الآن عبر منصة الناصر:
+🔗 اختبر نفسك الآن عبر منصة الباحث القانوني:
 https://alnaser.vercel.app/
 
 ✨ تطوير: الناصر تِك للحلول الرقمية`;
