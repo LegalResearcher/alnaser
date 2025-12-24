@@ -65,27 +65,27 @@ const AdminSettings = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-6 max-w-2xl">
+      <div className="space-y-4 sm:space-y-6 max-w-2xl">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold">الإعدادات</h1>
-          <p className="text-muted-foreground">إدارة إعدادات الحساب</p>
+          <h1 className="text-xl sm:text-2xl font-bold">الإعدادات</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">إدارة إعدادات الحساب</p>
         </div>
 
         {/* Account Info */}
-        <div className="bg-card rounded-xl border p-6">
-          <h2 className="font-bold mb-4 flex items-center gap-2">
-            <User className="w-5 h-5 text-primary" />
+        <div className="bg-card rounded-xl border p-4 sm:p-6">
+          <h2 className="font-bold mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
+            <User className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
             معلومات الحساب
           </h2>
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div>
-              <Label className="text-muted-foreground">البريد الإلكتروني</Label>
-              <p className="font-medium mt-1">{user?.email}</p>
+              <Label className="text-muted-foreground text-xs sm:text-sm">البريد الإلكتروني</Label>
+              <p className="font-medium mt-1 text-sm sm:text-base break-all">{user?.email}</p>
             </div>
             <div>
-              <Label className="text-muted-foreground">تاريخ الإنشاء</Label>
-              <p className="font-medium mt-1">
+              <Label className="text-muted-foreground text-xs sm:text-sm">تاريخ الإنشاء</Label>
+              <p className="font-medium mt-1 text-sm sm:text-base">
                 {user?.created_at
                   ? new Date(user.created_at).toLocaleDateString('ar-SA', {
                       year: 'numeric',
@@ -99,32 +99,32 @@ const AdminSettings = () => {
         </div>
 
         {/* Change Password */}
-        <div className="bg-card rounded-xl border p-6">
-          <h2 className="font-bold mb-4 flex items-center gap-2">
-            <Lock className="w-5 h-5 text-primary" />
+        <div className="bg-card rounded-xl border p-4 sm:p-6">
+          <h2 className="font-bold mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
+            <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
             تغيير كلمة المرور
           </h2>
           <form onSubmit={handlePasswordChange} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="new-password">كلمة المرور الجديدة</Label>
+              <Label htmlFor="new-password" className="text-sm">كلمة المرور الجديدة</Label>
               <Input
                 id="new-password"
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="bg-background"
+                className="bg-background text-sm sm:text-base"
                 dir="ltr"
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirm-password">تأكيد كلمة المرور</Label>
+              <Label htmlFor="confirm-password" className="text-sm">تأكيد كلمة المرور</Label>
               <Input
                 id="confirm-password"
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="bg-background"
+                className="bg-background text-sm sm:text-base"
                 dir="ltr"
                 required
               />
@@ -132,7 +132,7 @@ const AdminSettings = () => {
             <Button
               type="submit"
               disabled={isLoading}
-              className="gradient-primary text-primary-foreground border-0 gap-2"
+              className="gradient-primary text-primary-foreground border-0 gap-2 w-full sm:w-auto"
             >
               <Save className="w-4 h-4" />
               {isLoading ? 'جاري الحفظ...' : 'حفظ التغييرات'}
