@@ -66,35 +66,45 @@ const AdminDeletionRequests = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold">طلبات الحذف</h1>
-          <p className="text-muted-foreground">مراجعة طلبات حذف الأسئلة من المحررين</p>
+          <h1 className="text-xl sm:text-2xl font-bold">طلبات الحذف</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">مراجعة طلبات حذف الأسئلة من المحررين</p>
         </div>
 
         {/* Requests List */}
         <div className="bg-card rounded-xl border">
           {isLoading ? (
-            <div className="p-4 space-y-4">
+            <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
               {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-24 rounded-lg" />
+                <Skeleton key={i} className="h-28 sm:h-24 rounded-lg" />
               ))}
             </div>
           ) : requests.length === 0 ? (
-            <div className="p-12 text-center text-muted-foreground">
-              <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>لا توجد طلبات حذف معلقة</p>
+            <div className="p-8 sm:p-12 text-center text-muted-foreground">
+              <Clock className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4 opacity-50" />
+              <p className="text-sm sm:text-base">لا توجد طلبات حذف معلقة</p>
             </div>
           ) : (
             <div className="divide-y">
               {requests.map((request: any) => (
-                <div key={request.id} className="p-4">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
-                      <AlertTriangle className="w-5 h-5 text-amber-600" />
+                <div key={request.id} className="p-3 sm:p-4">
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+                    <div className="flex items-start gap-3 sm:gap-4">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                        <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />
+                      </div>
+                      <div className="flex-1 min-w-0 sm:hidden">
+                        <p className="font-medium text-sm mb-1 line-clamp-2">
+                          {request.questions?.question_text}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          المادة: {request.questions?.subjects?.name}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 hidden sm:block">
                       <p className="font-medium mb-1 line-clamp-2">
                         {request.questions?.question_text}
                       </p>
@@ -116,11 +126,28 @@ const AdminDeletionRequests = () => {
                         })}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    {/* Mobile only details */}
+                    <div className="sm:hidden space-y-1">
+                      {request.reason && (
+                        <p className="text-xs text-muted-foreground">
+                          السبب: {request.reason}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(request.created_at).toLocaleDateString('ar-SA', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
                       <Button
                         size="sm"
                         variant="outline"
-                        className="text-destructive hover:text-destructive gap-1"
+                        className="flex-1 sm:flex-none text-destructive hover:text-destructive gap-1 text-xs sm:text-sm"
                         onClick={() => handleRequestMutation.mutate({
                           requestId: request.id,
                           questionId: request.question_id,
@@ -133,7 +160,7 @@ const AdminDeletionRequests = () => {
                       </Button>
                       <Button
                         size="sm"
-                        className="bg-success hover:bg-success/90 text-success-foreground gap-1"
+                        className="flex-1 sm:flex-none bg-success hover:bg-success/90 text-success-foreground gap-1 text-xs sm:text-sm"
                         onClick={() => handleRequestMutation.mutate({
                           requestId: request.id,
                           questionId: request.question_id,
