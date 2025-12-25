@@ -249,6 +249,16 @@ export const HtmlImportDialog = ({ open, onOpenChange, subjectId }: HtmlImportDi
 
   const importQuestions = async () => {
     if (parsedQuestions.length === 0 || !subjectId) return;
+    
+    if (!user?.id) {
+      toast({ 
+        title: 'خطأ في المصادقة', 
+        description: 'يجب تسجيل الدخول لاستيراد الأسئلة. يرجى تحديث الصفحة والمحاولة مرة أخرى.',
+        variant: 'destructive' 
+      });
+      return;
+    }
+    
     setStep('importing');
     setProgress(0);
     try {

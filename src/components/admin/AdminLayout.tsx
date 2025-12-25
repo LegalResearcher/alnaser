@@ -28,20 +28,22 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, role, isLoading, signOut } = useAuth();
+  const { user, role, isLoading, isRoleLoading, signOut } = useAuth();
 
   useEffect(() => {
-    if (!isLoading && (!user || !role)) {
+    // لا توجه المستخدم إلا إذا انتهى التحميل ولا يوجد مستخدم
+    if (!isLoading && !user) {
       navigate('/admin/login');
     }
-  }, [user, role, isLoading, navigate]);
+  }, [user, isLoading, navigate]);
 
   const handleLogout = async () => {
     await signOut();
     navigate('/admin/login');
   };
 
-  if (isLoading) {
+  // إظهار شاشة التحميل إذا كان المستخدم موجوداً ولكن الدور لم يُجلب بعد
+  if (isLoading || (user && isRoleLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="relative w-12 h-12">
