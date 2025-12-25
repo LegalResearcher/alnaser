@@ -11,6 +11,7 @@ interface AuthContextType {
   isEditor: boolean;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isRoleLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
@@ -27,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<AppRole | null>(cachedRole);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRoleLoading, setIsRoleLoading] = useState(true);
   
   const isMounted = useRef(true);
 
@@ -34,9 +36,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // إذا كانت البيانات موجودة في الكاش لنفس المستخدم، لا داعي لطلبها مجدداً
     if (cachedUserId === userId && cachedRole !== null) {
       setRole(cachedRole);
+      setIsRoleLoading(false);
       return cachedRole;
     }
 
+    setIsRoleLoading(true);
     try {
       const { data, error } = await supabase
         .from('user_roles')
@@ -52,12 +56,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cachedUserId = userId;
       if (isMounted.current) {
         setRole(userRole);
+        setIsRoleLoading(false);
       }
       return userRole;
     } catch (error) {
       console.error('⚠️ Auth Error [Role Fetch]:', error);
       if (isMounted.current) {
         setRole(null);
+        setIsRoleLoading(false);
       }
       return null;
     }
@@ -88,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (event === 'SIGNED_OUT') {
           setRole(null);
+          setIsRoleLoading(false);
           cachedRole = null;
           cachedUserId = null;
         } else if (currentSession?.user) {
@@ -163,10 +170,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isEditor: role === 'editor',
     isAuthenticated: !!user,
     isLoading,
+    isRoleLoading,
     signIn,
     signUp,
     signOut,
-  }), [user, session, role, isLoading, signIn, signUp, signOut]);
+  }), [user, session, role, isLoading, isRoleLoading, signIn, signUp, signOut]);
 
   return (
     <AuthContext.Provider value={value}>
