@@ -40,7 +40,7 @@ export function useIsMobile() {
       if (mql.removeEventListener) {
         mql.removeEventListener("change", onChange);
       } else {
-        mql.removeClassNameListener(onChange);
+        mql.removeListener(onChange);
       }
     };
   }, []);

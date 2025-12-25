@@ -28,8 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(cachedRole);
   const [isLoading, setIsLoading] = useState(true);
   
-  // استخدام Ref لمنع التداخل بين الطلبات
-  const isInitialMount = useRef(true);
+  const isMounted = useRef(true);
 
   const fetchUserRole = useCallback(async (userId: string) => {
     // إذا كانت البيانات موجودة في الكاش لنفس المستخدم، لا داعي لطلبها مجدداً
@@ -51,70 +50,84 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       cachedRole = userRole;
       cachedUserId = userId;
-      setRole(userRole);
+      if (isMounted.current) {
+        setRole(userRole);
+      }
       return userRole;
     } catch (error) {
       console.error('⚠️ Auth Error [Role Fetch]:', error);
-      setRole(null);
+      if (isMounted.current) {
+        setRole(null);
+      }
       return null;
     }
   }, []);
 
   useEffect(() => {
-    let mounted = true;
+    isMounted.current = true;
 
-    const initialize = async () => {
-      try {
-        // 1. الحصول على الجلسة الحالية
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        
-        if (!mounted) return;
-
-        if (currentSession) {
-          setSession(currentSession);
-          setUser(currentSession.user);
-          await fetchUserRole(currentSession.user.id);
-        }
-      } catch (error) {
-        console.error('⚠️ Auth Init Error:', error);
-      } finally {
-        // ضمان إنهاء حالة التحميل مهما كانت النتيجة
-        if (mounted) {
-          setIsLoading(false);
-          isInitialMount.current = false;
-        }
+    // Safety timeout - ensure loading never stays true indefinitely
+    const safetyTimeout = setTimeout(() => {
+      if (isMounted.current && isLoading) {
+        console.warn('Auth loading timeout - forcing completion');
+        setIsLoading(false);
       }
-    };
+    }, 5000);
 
-    initialize();
-
-    // 2. مراقبة التغييرات (دخول/خروج)
+    // 1. Set up auth state listener FIRST (critical order)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
-        if (!mounted) return;
+      (event, currentSession) => {
+        if (!isMounted.current) return;
 
-        // تجنب المعالجة المزدوجة أثناء التشغيل الأول
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          setSession(currentSession);
-          setUser(currentSession?.user ?? null);
-          if (currentSession?.user) {
-            await fetchUserRole(currentSession.user.id);
-          }
-        } else if (event === 'SIGNED_OUT') {
-          setSession(null);
-          setUser(null);
+        // Synchronous state updates only - NO async/await here
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+        
+        // Always end loading on any auth event
+        setIsLoading(false);
+
+        if (event === 'SIGNED_OUT') {
           setRole(null);
           cachedRole = null;
           cachedUserId = null;
+        } else if (currentSession?.user) {
+          // Defer Supabase calls with setTimeout(0) to prevent deadlock
+          const userId = currentSession.user.id;
+          setTimeout(() => {
+            if (isMounted.current) {
+              fetchUserRole(userId);
+            }
+          }, 0);
         }
-        
-        // تأكيد إغلاق التحميل في حال تم استدعاء هذا الحدث بدلاً من initialize
-        setIsLoading(false);
       }
     );
 
+    // 2. THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      if (!isMounted.current) return;
+
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
+      setIsLoading(false);
+
+      if (currentSession?.user) {
+        // Defer role fetch
+        setTimeout(() => {
+          if (isMounted.current) {
+            fetchUserRole(currentSession.user.id);
+          }
+        }, 0);
+      }
+    }).catch((error) => {
+      console.error('⚠️ Auth Init Error:', error);
+      if (isMounted.current) {
+        setIsLoading(false);
+      }
+    });
+
     return () => {
-      mounted = false;
+      isMounted.current = false;
+      clearTimeout(safetyTimeout);
       subscription.unsubscribe();
     };
   }, [fetchUserRole]);
@@ -129,12 +142,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     try {
-      await supabase.auth.signOut();
+      // Clear cache first
+      cachedRole = null;
+      cachedUserId = null;
       setRole(null);
       setUser(null);
       setSession(null);
-      cachedRole = null;
-      cachedUserId = null;
+      
+      await supabase.auth.signOut();
     } catch (error) {
       console.error("Logout error", error);
     }
