@@ -344,9 +344,9 @@ const AdminQuestions = () => {
                   <div className="flex-1">
                     <div className="flex justify-between items-start">
                       <p className="font-bold text-slate-800 text-lg mb-4 leading-relaxed cursor-pointer" onClick={() => toggleSelectOne(q.id)}>{q.question_text}</p>
-                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="sm" onClick={() => { setEditingQuestion(q); setFormData({ question_text: q.question_text, option_a: q.option_a, option_b: q.option_b, option_c: q.option_c || '', option_d: q.option_d || '', correct_option: q.correct_option as any, hint: q.hint || '', exam_year: q.exam_year?.toString() || '' }); setIsDialogOpen(true); }} className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 bg-white border border-slate-100"><Edit2 className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="sm" onClick={() => setDeleteQuestion(q)} className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600 bg-white border border-slate-100"><Trash2 className="w-4 h-4" /></Button>
+                      <div className="flex gap-2 shrink-0">
+                        <Button variant="ghost" size="sm" onClick={() => { setEditingQuestion(q); setFormData({ question_text: q.question_text, option_a: q.option_a, option_b: q.option_b, option_c: q.option_c || '', option_d: q.option_d || '', correct_option: q.correct_option as any, hint: q.hint || '', exam_year: q.exam_year?.toString() || '' }); setIsDialogOpen(true); }} className="h-9 w-9 p-0 hover:bg-blue-50 hover:text-blue-600 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg"><Edit2 className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="sm" onClick={() => setDeleteQuestion(q)} className="h-9 w-9 p-0 hover:bg-red-100 hover:text-red-700 bg-red-50 text-red-600 border border-red-200 rounded-lg"><Trash2 className="w-4 h-4" /></Button>
                       </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
