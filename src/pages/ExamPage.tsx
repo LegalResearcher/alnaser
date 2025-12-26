@@ -47,6 +47,7 @@ const ExamPage = () => {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [timeLeft, setTimeLeft] = useState((state?.examTime || 30) * 60);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [showReviewDialog, setShowReviewDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // حماية من الدخول المباشر بدون بيانات
@@ -287,11 +288,78 @@ const ExamPage = () => {
               <br />بمجرد التأكيد، سيتم تصحيح اختبارك وإصدار النتيجة فوراً.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex gap-4 mt-8">
+          <AlertDialogFooter className="flex flex-col sm:flex-row gap-4 mt-8">
+             <AlertDialogCancel 
+               onClick={() => { setShowSubmitDialog(false); setShowReviewDialog(true); }}
+               className="flex-1 h-14 rounded-2xl font-bold"
+             >
+               مراجعة الأسئلة
+             </AlertDialogCancel>
              <AlertDialogAction onClick={handleSubmit} className="flex-1 h-14 rounded-2xl bg-primary text-white font-black">
               تأكيد وتسليم
             </AlertDialogAction>
-            <AlertDialogCancel className="flex-1 h-14 rounded-2xl">مراجعة الأسئلة</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* حوار مراجعة الأسئلة */}
+      <AlertDialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
+        <AlertDialogContent className="rounded-[2.5rem] p-6 md:p-8 max-w-3xl max-h-[90vh] overflow-hidden">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-2xl font-black text-center mb-4">مراجعة الأسئلة</AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-sm text-slate-500">
+              اضغط على السؤال للانتقال إليه
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="my-4 max-h-[50vh] overflow-y-auto">
+            <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 gap-2">
+              {questions.map((q, index) => {
+                const isAnswered = !!answers[q.id];
+                return (
+                  <button
+                    key={q.id}
+                    onClick={() => {
+                      setCurrentIndex(index);
+                      setShowReviewDialog(false);
+                    }}
+                    className={cn(
+                      "w-12 h-12 rounded-xl font-black text-lg transition-all border-2",
+                      isAnswered 
+                        ? "bg-emerald-50 border-emerald-400 text-emerald-700" 
+                        : "bg-rose-50 border-rose-300 text-rose-600",
+                      currentIndex === index && "ring-2 ring-primary ring-offset-2"
+                    )}
+                  >
+                    {index + 1}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center text-sm font-bold text-slate-600 my-4 px-2">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-emerald-400 rounded"></div>
+              <span>تمت الإجابة ({answeredCount})</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-rose-300 rounded"></div>
+              <span>لم تتم الإجابة ({questions.length - answeredCount})</span>
+            </div>
+          </div>
+
+          <AlertDialogFooter className="flex flex-col sm:flex-row gap-3 mt-4">
+            <AlertDialogCancel className="flex-1 h-12 rounded-xl font-bold">
+              متابعة المراجعة
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => { setShowReviewDialog(false); setShowSubmitDialog(true); }}
+              className="flex-1 h-12 rounded-xl bg-primary text-white font-black"
+            >
+              <Flag className="w-4 h-4 ml-2" />
+              تسليم الاختبار
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

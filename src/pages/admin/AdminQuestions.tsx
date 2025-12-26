@@ -220,12 +220,12 @@ const AdminQuestions = () => {
         question_text: q.question_text || "سؤال",
         option_a: q.option_a || "", 
         option_b: q.option_b || "",
-        option_c: q.option_c || "", // إرسال نص فارغ بدلاً من null
+        option_c: q.option_c || "",
         option_d: q.option_d || "", 
         correct_option: q.correct_option || 'A',
         exam_year: selectedYear ? parseInt(selectedYear) : null,
         created_by: user.id,
-        status: 'active'
+        status: 'active' as const
       }));
 
       const { data, error } = await supabase.from('questions').insert(formatted).select();
@@ -251,7 +251,7 @@ const AdminQuestions = () => {
         option_c: data.option_c || "", option_d: data.option_d || "",
         correct_option: data.correct_option,
         exam_year: data.exam_year ? parseInt(data.exam_year) : null,
-        created_by: user?.id, status: 'active'
+        created_by: user?.id, status: 'active' as const
       };
 
       if (editingQuestion) {
