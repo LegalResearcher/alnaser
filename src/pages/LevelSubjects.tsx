@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Level, Subject } from '@/types/database';
 import { useCachedQuery } from '@/hooks/useCachedQuery';
 import { cn } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
 
 const LevelSubjects = () => {
   const { levelId } = useParams<{ levelId: string }>();
@@ -42,6 +43,26 @@ const LevelSubjects = () => {
     },
     { enabled: !!levelId }
   );
+
+  // جلب عدد الأسئلة الفعلي لكل مادة
+  const { data: questionCounts = {} } = useQuery({
+    queryKey: ['question-counts', levelId, subjects.map(s => s.id)],
+    queryFn: async () => {
+      const counts: Record<string, number> = {};
+      for (const subject of subjects) {
+        const { count, error } = await supabase
+          .from('questions')
+          .select('*', { count: 'exact', head: true })
+          .eq('subject_id', subject.id)
+          .eq('status', 'active');
+        if (!error) {
+          counts[subject.id] = count || 0;
+        }
+      }
+      return counts;
+    },
+    enabled: subjects.length > 0
+  });
 
   const isLoading = (levelLoading && !level) || (subjectsLoading && subjects.length === 0);
 
@@ -139,7 +160,9 @@ const LevelSubjects = () => {
                         <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center">
                           <Target className="w-4 h-4 text-primary/70" />
                         </div>
-                        <span className="text-[11px] font-black uppercase tracking-tighter">{subject.questions_per_exam} سؤال</span>
+                        <span className="text-[11px] font-black uppercase tracking-tighter">
+                          {questionCounts[subject.id] !== undefined ? questionCounts[subject.id] : subject.questions_per_exam} سؤال
+                        </span>
                       </div>
                       <div className="flex items-center gap-3 text-slate-400 group-hover:text-slate-600 transition-colors">
                         <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center">
