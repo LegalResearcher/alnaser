@@ -140,6 +140,7 @@ export type Database = {
           correct_option: string
           created_at: string
           created_by: string | null
+          exam_form: string | null
           exam_year: number | null
           hint: string | null
           id: string
@@ -156,6 +157,7 @@ export type Database = {
           correct_option: string
           created_at?: string
           created_by?: string | null
+          exam_form?: string | null
           exam_year?: number | null
           hint?: string | null
           id?: string
@@ -172,6 +174,7 @@ export type Database = {
           correct_option?: string
           created_at?: string
           created_by?: string | null
+          exam_form?: string | null
           exam_year?: number | null
           hint?: string | null
           id?: string
@@ -303,10 +306,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_question_count: {
-        Args: { p_exam_year?: number; p_subject_id: string }
-        Returns: number
-      }
+      get_question_count:
+        | {
+            Args: { p_exam_year?: number; p_subject_id: string }
+            Returns: number
+          }
+        | {
+            Args: {
+              p_exam_form?: string
+              p_exam_year?: number
+              p_subject_id: string
+            }
+            Returns: number
+          }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

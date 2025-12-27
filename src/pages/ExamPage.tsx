@@ -3,6 +3,7 @@
  * Project: Alnaser Legal Platform
  * Component: Exam Engine (Active Quiz)
  * Developed by: Mueen Al-Nasser
+ * Version: 2.0 (Exam Forms + Clean Options + Hide Empty)
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -31,11 +32,22 @@ import {
 interface ExamState {
   studentName: string;
   examYear: number;
+  examForm?: string;
   examTime: number;
   questionsCount: number;
   subjectName?: string;
   levelName?: string;
 }
+
+// دالة تنظيف نص الخيار من البادئات
+const cleanOptionText = (text: string | null | undefined): string => {
+  if (!text) return '';
+  // إزالة البادئات مثل (+), (-), 1-, 2., etc
+  return text
+    .replace(/^[\(\+\-\)\s]+/, '') // إزالة (+) أو (-) في البداية
+    .replace(/^[\d]+[\.\-\)\s]+/, '') // إزالة 1- أو 2. في البداية
+    .trim();
+};
 
 const ExamPage = () => {
   const { subjectId } = useParams<{ subjectId: string }>();
@@ -57,22 +69,29 @@ const ExamPage = () => {
     }
   }, [state, subjectId, navigate]);
 
-  // جلب الأسئلة من قاعدة البيانات
+  // جلب الأسئلة من قاعدة البيانات مع دعم النموذج
   const { data: questions = [], isLoading } = useQuery({
-    queryKey: ['exam-questions', subjectId, state?.examYear, state?.questionsCount],
+    queryKey: ['exam-questions', subjectId, state?.examYear, state?.examForm, state?.questionsCount],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('questions')
         .select('*')
         .eq('subject_id', subjectId)
-        .eq('exam_year', state.examYear)
         .eq('status', 'active');
       
+      if (state.examYear) {
+        query = query.eq('exam_year', state.examYear);
+      }
+      if (state.examForm) {
+        query = query.eq('exam_form', state.examForm);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       
-      // خلط الأسئلة واختيار العدد المطلوب
+      // خلط الأسئلة - تحميل جميع الأسئلة بدون حد
       const shuffled = (data as Question[]).sort(() => Math.random() - 0.5);
-      return shuffled.slice(0, state.questionsCount);
+      return shuffled;
     },
     enabled: !!subjectId && !!state?.examYear,
   });
@@ -130,7 +149,6 @@ const ExamPage = () => {
         timeTaken,
         questions,
         answers,
-        // --- البيانات الحيوية للمشاركة ---
         subjectName: state.subjectName || subject?.name,
         levelName: state.levelName,
         examYear: state.examYear
@@ -173,6 +191,13 @@ const ExamPage = () => {
   const progress = (answeredCount / questions.length) * 100;
   const isTimeWarning = timeLeft < 60;
 
+  // تحضير الخيارات المتاحة (إخفاء الفارغة)
+  const availableOptions = ['A', 'B', 'C', 'D'].filter(option => {
+    const optionKey = `option_${option.toLowerCase()}` as keyof Question;
+    const optionText = currentQuestion[optionKey] as string;
+    return optionText && optionText.trim().length > 0;
+  });
+
   return (
     <MainLayout>
       <section className="py-8 bg-slate-50/50 min-h-screen">
@@ -209,9 +234,10 @@ const ExamPage = () => {
                 </h2>
 
                 <div className="grid grid-cols-1 gap-4">
-                  {['A', 'B', 'C', 'D'].map((option) => {
+                  {availableOptions.map((option) => {
                     const optionKey = `option_${option.toLowerCase()}` as keyof Question;
-                    const optionText = currentQuestion[optionKey] as string;
+                    const rawOptionText = currentQuestion[optionKey] as string;
+                    const optionText = cleanOptionText(rawOptionText);
                     const isSelected = answers[currentQuestion.id] === option;
 
                     return (

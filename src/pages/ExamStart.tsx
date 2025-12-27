@@ -3,14 +3,14 @@
  * Project: Alnaser Legal Platform
  * Component: Exam Start & Setup
  * Developed by: Mueen Al-Nasser
- * Fix: Data Integrity, Z-index, and Time Modification Slider
+ * Version: 2.0 (Exam Forms Support)
  */
 
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   ArrowRight, Clock, Target, User, Lock, Play, 
-  Calendar, Info, ShieldCheck, Sparkles, ChevronLeft 
+  Calendar, Info, ShieldCheck, Sparkles, ChevronLeft, FileText
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,13 @@ import { useCachedQuery } from '@/hooks/useCachedQuery';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 
+// نماذج الاختبار
+const EXAM_FORMS = [
+  { id: 'General', name: 'نموذج العام' },
+  { id: 'Parallel', name: 'نموذج الموازي' },
+  { id: 'Mixed', name: 'نموذج مختلط' }
+];
+
 const ExamStart = () => {
   const { subjectId } = useParams<{ subjectId: string }>();
   const navigate = useNavigate();
@@ -33,6 +40,7 @@ const ExamStart = () => {
   const [studentName, setStudentName] = useState('');
   const [password, setPassword] = useState('');
   const [selectedYear, setSelectedYear] = useState<string>('');
+  const [selectedExamForm, setSelectedExamForm] = useState<string>('General');
   const [examTime, setExamTime] = useState<number>(30);
 
   // جلب بيانات المادة والمستوى
@@ -50,16 +58,26 @@ const ExamStart = () => {
     { enabled: !!subjectId }
   );
 
-  // حساب عدد الأسئلة المتوفرة بناءً على السنة المختارة
+  // حساب عدد الأسئلة المتوفرة بناءً على السنة والنموذج
   const { data: questionCount = 0, isLoading: countLoading } = useQuery({
-    queryKey: ['question-count', subjectId, selectedYear],
+    queryKey: ['question-count', subjectId, selectedYear, selectedExamForm],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_question_count', {
-        p_subject_id: subjectId,
-        p_exam_year: selectedYear ? parseInt(selectedYear) : null,
-      });
+      let query = supabase
+        .from('questions')
+        .select('*', { count: 'exact', head: true })
+        .eq('subject_id', subjectId)
+        .eq('status', 'active');
+      
+      if (selectedYear) {
+        query = query.eq('exam_year', parseInt(selectedYear));
+      }
+      if (selectedExamForm) {
+        query = query.eq('exam_form', selectedExamForm);
+      }
+      
+      const { count, error } = await query;
       if (error) throw error;
-      return data as number;
+      return count || 0;
     },
     enabled: !!subjectId,
   });
@@ -85,17 +103,18 @@ const ExamStart = () => {
       return;
     }
     if (questionCount === 0) {
-      toast({ title: 'نعتذر', description: 'لا توجد أسئلة متوفرة لهذا العام حالياً', variant: 'destructive' });
+      toast({ title: 'نعتذر', description: 'لا توجد أسئلة متوفرة لهذا الاختيار حالياً', variant: 'destructive' });
       return;
     }
 
-    // تمرير كافة البيانات لصفحة الاختبار (Engine)
+    // تمرير كافة البيانات لصفحة الاختبار (Engine) - بدون حد للأسئلة
     navigate(`/exam/${subjectId}/start`, {
       state: {
         studentName,
         examYear: parseInt(selectedYear),
-        examTime: examTime, // الوقت الذي يختاره الطالب أو الافتراضي
-        questionsCount: Math.min(subject?.questions_per_exam || 20, questionCount),
+        examForm: selectedExamForm,
+        examTime: examTime,
+        questionsCount: questionCount, // جميع الأسئلة المتوفرة
         subjectName: subject?.name,
         levelName: subject?.levels?.name,
       },
@@ -196,30 +215,49 @@ const ExamStart = () => {
                     </div>
                   </div>
 
-                  {/* اختيار السنة وعدد الأسئلة */}
-                  <div className="grid md:grid-cols-2 gap-6 items-end">
-                    <div className="space-y-3">
-                      <Label className="text-sm font-black text-slate-700 mr-2 uppercase tracking-wide">نموذج سنة الاختبار</Label>
-                      <Select value={selectedYear} onValueChange={setSelectedYear}>
-                        <SelectTrigger className="h-16 rounded-[1.5rem] bg-slate-50 border-slate-100 font-bold px-6">
-                          <SelectValue placeholder="اختر السنة" />
-                        </SelectTrigger>
-                        <SelectContent className="z-[9999] bg-white border-slate-200 rounded-2xl shadow-2xl max-h-[300px] overflow-y-auto">
-                          {EXAM_YEARS.map((year) => (
-                            <SelectItem key={year} value={year.toString()} className="h-12 rounded-xl cursor-pointer hover:bg-slate-50">
-                              دورة عام {year}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  {/* اختيار السنة */}
+                  <div className="space-y-3">
+                    <Label className="text-sm font-black text-slate-700 mr-2 uppercase tracking-wide">نموذج سنة الاختبار</Label>
+                    <Select value={selectedYear} onValueChange={setSelectedYear}>
+                      <SelectTrigger className="h-16 rounded-[1.5rem] bg-slate-50 border-slate-100 font-bold px-6">
+                        <SelectValue placeholder="اختر السنة" />
+                      </SelectTrigger>
+                      <SelectContent className="z-[9999] bg-white border-slate-200 rounded-2xl shadow-2xl max-h-[300px] overflow-y-auto">
+                        {EXAM_YEARS.map((year) => (
+                          <SelectItem key={year} value={year.toString()} className="h-12 rounded-xl cursor-pointer hover:bg-slate-50">
+                            دورة عام {year}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                    <div className="bg-slate-900 rounded-[1.5rem] p-5 h-16 flex items-center justify-between px-6 shadow-xl shadow-slate-200">
-                      <span className="text-slate-400 text-xs font-bold uppercase tracking-widest text-right">الأسئلة المتوفرة</span>
-                      <span className="text-white font-black text-lg">
-                        {countLoading ? '...' : questionCount}
-                      </span>
-                    </div>
+                  {/* اختيار النموذج */}
+                  <div className="space-y-3">
+                    <Label className="text-sm font-black text-slate-700 mr-2 uppercase tracking-wide flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      نموذج الاختبار
+                    </Label>
+                    <Select value={selectedExamForm} onValueChange={setSelectedExamForm}>
+                      <SelectTrigger className="h-16 rounded-[1.5rem] bg-slate-50 border-slate-100 font-bold px-6">
+                        <SelectValue placeholder="اختر النموذج" />
+                      </SelectTrigger>
+                      <SelectContent className="z-[9999] bg-white border-slate-200 rounded-2xl shadow-2xl">
+                        {EXAM_FORMS.map((form) => (
+                          <SelectItem key={form.id} value={form.id} className="h-12 rounded-xl cursor-pointer hover:bg-slate-50">
+                            {form.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* عدد الأسئلة المتوفرة */}
+                  <div className="bg-slate-900 rounded-[1.5rem] p-5 flex items-center justify-between px-6 shadow-xl shadow-slate-200">
+                    <span className="text-slate-400 text-xs font-bold uppercase tracking-widest text-right">الأسئلة المتوفرة</span>
+                    <span className="text-white font-black text-lg">
+                      {countLoading ? '...' : questionCount}
+                    </span>
                   </div>
 
                   {/* شريط التحكم بالوقت (بناءً على شرط الإدارة) */}
