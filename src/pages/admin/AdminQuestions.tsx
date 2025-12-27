@@ -1,8 +1,8 @@
-/**
+﻿/**
  * Alnasser Tech Digital Solutions
  * Project: Alnaser Legal Platform
  * Developed by: Mueen Al-Nasser
- * Version: 21.1 (Fixed Delete Logic & UI Refresh)
+ * Version: 21.0 (Exam Forms Support)
  */
 
 import { useState, useRef } from 'react';
@@ -34,12 +34,14 @@ import Tesseract from 'tesseract.js';
 // رابط الـ Worker (ثابت)
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
 
+// نماذج الاختبار
 const EXAM_FORMS = [
   { id: 'General', name: 'نموذج العام' },
   { id: 'Parallel', name: 'نموذج الموازي' },
   { id: 'Mixed', name: 'نموذج مختلط' }
 ];
 
+// --- المحرك الذكي الشامل (يدعم 3 أنماط الآن) ---
 const parseSanaaLegalContent = (text: string) => {
   const cleanText = text.replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/_/g, '');
   const lines = cleanText.split('\n');
@@ -50,14 +52,21 @@ const parseSanaaLegalContent = (text: string) => {
     const t = line.trim();
     if (!t || t.length < 2) return;
 
+    // 1. تحديد ما إذا كان السطر "خياراً"
     const hasOptionIndicators = t.includes('+') || t.includes('-') || t.startsWith('1)') || t.startsWith('2)') || t.startsWith('3)') || t.startsWith('4)');
     const isTrueFalse = t.includes('العبارة صحيحة') || t.includes('العبارة خاطئة');
     const isOption = (hasOptionIndicators || isTrueFalse) && (t.match(/\d/) || t.startsWith('+') || t.startsWith('-'));
 
     if (isOption) {
       if (!current) return;
+      
       const isCorrect = t.includes('+');
-      let cleanVal = t.replace(/^[\(\s\d\)\.\-\+]+/, '').replace(/[\+\-]$/, '').trim();
+      
+      let cleanVal = t
+        .replace(/^[\(\s\d\)\.\-\+]+/, '')
+        .replace(/[\+\-]$/, '')
+        .trim();
+        
       if (t.includes('العبارة صحيحة')) cleanVal = 'العبارة صحيحة';
       else if (t.includes('العبارة خاطئة')) cleanVal = 'العبارة خاطئة';
 
@@ -65,6 +74,7 @@ const parseSanaaLegalContent = (text: string) => {
         current.count++;
         const letters = ['A', 'B', 'C', 'D'];
         const letter = letters[current.count - 1];
+        
         if (letter) {
           current[`option_${letter.toLowerCase()}`] = cleanVal;
           if (isCorrect) current.correct_option = letter;
@@ -76,6 +86,7 @@ const parseSanaaLegalContent = (text: string) => {
         results.push(current);
         current = null;
       }
+
       if (!current) {
         current = {
           id: Math.random().toString(36).substr(2, 9),
@@ -89,6 +100,7 @@ const parseSanaaLegalContent = (text: string) => {
       }
     }
   });
+
   if (current && current.count > 0) results.push(current);
   return results;
 };
@@ -112,6 +124,7 @@ const AdminQuestions = () => {
   const [previewSearch, setPreviewSearch] = useState('');
   const [importExamForm, setImportExamForm] = useState<string>('General');
 
+  // حالات التعديل والحذف
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [deleteQuestion, setDeleteQuestion] = useState<Question | null>(null);
@@ -123,6 +136,7 @@ const AdminQuestions = () => {
     correct_option: 'A' as 'A' | 'B' | 'C' | 'D', hint: '', exam_year: '', exam_form: 'General',
   });
 
+  // معالجة PDF
   const processPDF = async (file: File) => {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -192,46 +206,56 @@ const AdminQuestions = () => {
     enabled: !!selectedSubject,
   });
 
+  // --- حفظ جماعي ---
   const bulkSave = useMutation({
     mutationFn: async (list: any[]) => {
       if (!selectedSubject) throw new Error("اختر المادة أولاً");
+      if (!user?.id) throw new Error("سجل دخولك");
+
       const formatted = list.map(q => ({
         subject_id: selectedSubject,
         question_text: q.question_text || "سؤال",
-        option_a: q.option_a || "", option_b: q.option_b || "",
-        option_c: q.option_c || "", option_d: q.option_d || "", 
+        option_a: q.option_a || "", 
+        option_b: q.option_b || "",
+        option_c: q.option_c || "",
+        option_d: q.option_d || "", 
         correct_option: q.correct_option || 'A',
         exam_year: selectedYear ? parseInt(selectedYear) : null,
         exam_form: importExamForm,
-        created_by: user?.id,
+        created_by: user.id,
         status: 'active' as const
       }));
+
       const { data, error } = await supabase.from('questions').insert(formatted).select();
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['questions'] });
-      toast({ title: '✅ تم الحفظ بنجاح' });
+      toast({ title: '✅ تم الحفظ بنجاح', description: `تمت إضافة ${previewQuestions.length} سؤال.` });
       setIsPreviewOpen(false); setPreviewQuestions([]);
     },
     onError: (err: any) => toast({ title: 'خطأ', description: err.message, variant: 'destructive' })
   });
 
+  // --- حفظ فردي (إضافة/تعديل) ---
   const saveSingleMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       if (!selectedSubject) throw new Error("اختر المادة");
       const payload = {
         subject_id: selectedSubject,
         question_text: data.question_text,
-        option_a: data.option_a, option_b: data.option_b,
-        option_c: data.option_c, option_d: data.option_d,
+        option_a: data.option_a || "", 
+        option_b: data.option_b || "",
+        option_c: data.option_c || "", 
+        option_d: data.option_d || "",
         correct_option: data.correct_option,
         exam_year: data.exam_year ? parseInt(data.exam_year) : null,
         exam_form: data.exam_form || 'General',
         created_by: user?.id, 
         status: 'active' as const
       };
+
       if (editingQuestion) {
         const { error } = await supabase.from('questions').update(payload).eq('id', editingQuestion.id);
         if (error) throw error;
@@ -242,13 +266,14 @@ const AdminQuestions = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['questions'] });
-      toast({ title: 'تم الحفظ بنجاح ✅' });
+      toast({ title: editingQuestion ? 'تم التعديل ✅' : 'تمت الإضافة ✅' });
       setIsDialogOpen(false); setEditingQuestion(null);
+      setFormData({ question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', hint: '', exam_year: '', exam_form: 'General' });
     },
     onError: (err: any) => toast({ title: 'خطأ', description: err.message, variant: 'destructive' })
   });
 
-  // --- إصلاح الحذف المتعدد ---
+  // --- حذف متعدد ---
   const bulkDeleteMutation = useMutation({
     mutationFn: async () => {
       if (selectedIds.length === 0) return;
@@ -257,11 +282,10 @@ const AdminQuestions = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['questions'] });
-      toast({ title: `تم حذف ${selectedIds.length} سؤال بنجاح` });
-      setSelectedIds([]);
-      setIsBulkDeleteDialogOpen(false);
+      toast({ title: `تم حذف ${selectedIds.length} سؤال` });
+      setSelectedIds([]); setIsBulkDeleteDialogOpen(false);
     },
-    onError: (err: any) => toast({ title: 'خطأ في الحذف', description: err.message, variant: 'destructive' })
+    onError: (err: any) => toast({ title: 'خطأ', description: err.message, variant: 'destructive' })
   });
 
   const toggleSelectAll = () => selectedIds.length === questions.length ? setSelectedIds([]) : setSelectedIds(questions.map(q => q.id));
@@ -301,7 +325,7 @@ const AdminQuestions = () => {
           <div className="relative"><Search className="absolute right-3 top-2.5 w-4 h-4 text-slate-400" /><Input placeholder="بحث..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pr-10 bg-white border-slate-200 rounded-xl" /></div>
         </div>
 
-        {/* Select All */}
+        {/* Select All Checkbox */}
         {questions.length > 0 && (
           <div className="flex items-center gap-3 px-4 py-2 bg-white rounded-xl border border-slate-100 font-cairo font-bold text-sm text-slate-600">
             <Checkbox checked={selectedIds.length === questions.length && questions.length > 0} onCheckedChange={toggleSelectAll} className="w-5 h-5 border-slate-300 data-[state=checked]:bg-primary" />
@@ -317,7 +341,7 @@ const AdminQuestions = () => {
             <div className="p-6 space-y-4"><Skeleton className="h-28 w-full rounded-2xl" /><Skeleton className="h-28 w-full rounded-2xl" /></div>
           ) : (
             <div className="divide-y divide-slate-50 font-cairo">
-              {questions.map((q) => (
+              {questions.map((q, i) => (
                 <div key={q.id} className={cn("p-6 hover:bg-slate-50 transition-colors group relative flex gap-4 items-start", selectedIds.includes(q.id) && "bg-blue-50/50")}>
                   <div className="pt-1"><Checkbox checked={selectedIds.includes(q.id)} onCheckedChange={() => toggleSelectOne(q.id)} className="w-5 h-5 border-slate-300 data-[state=checked]:bg-primary" /></div>
                   <div className="flex-1">
@@ -339,56 +363,6 @@ const AdminQuestions = () => {
           )}
         </div>
       </div>
-
-      {/* --- إصلاح الحذف الفردي --- */}
-      <AlertDialog open={!!deleteQuestion} onOpenChange={() => setDeleteQuestion(null)}>
-        <AlertDialogContent className="rounded-3xl z-[9999] bg-white p-8 border-none shadow-2xl font-cairo">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="font-black text-2xl text-slate-900">حذف السؤال</AlertDialogTitle>
-            <AlertDialogDescription>هل أنت متأكد؟ سيتم نقل السؤال إلى سلة المحذوفات.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-3 mt-8 font-bold">
-            <AlertDialogCancel className="rounded-xl font-bold">تراجع</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={async () => {
-                if (deleteQuestion) {
-                  const { error } = await supabase.from('questions').update({ status: 'deleted' }).eq('id', deleteQuestion.id);
-                  if (!error) {
-                    queryClient.invalidateQueries({ queryKey: ['questions'] });
-                    toast({ title: 'تم حذف السؤال بنجاح' });
-                  } else {
-                    toast({ title: 'خطأ', description: error.message, variant: 'destructive' });
-                  }
-                  setDeleteQuestion(null);
-                }
-              }} 
-              className="bg-destructive text-white rounded-xl font-black px-10"
-            >
-              حذف نهائي
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* --- الحذف الجماعي --- */}
-      <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
-        <AlertDialogContent className="rounded-3xl z-[9999] bg-white p-8 border-none shadow-2xl font-cairo">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="font-black text-2xl text-slate-900">حذف ({selectedIds.length}) سؤال</AlertDialogTitle>
-            <AlertDialogDescription>سيتم حذف جميع الأسئلة المحددة نهائياً. هل أنت متأكد؟</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-3 mt-8 font-bold">
-            <AlertDialogCancel className="rounded-xl font-bold">تراجع</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => bulkDeleteMutation.mutate()} 
-              disabled={bulkDeleteMutation.isPending} 
-              className="bg-destructive text-white rounded-xl font-black px-10"
-            >
-              {bulkDeleteMutation.isPending ? "جاري الحذف..." : "حذف الجميع"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Import Preview */}
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
@@ -433,27 +407,49 @@ const AdminQuestions = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog إضافة/تعديل */}
+      <AlertDialog open={!!deleteQuestion} onOpenChange={() => setDeleteQuestion(null)}>
+        <AlertDialogContent className="rounded-3xl z-[9999] bg-white p-8 border-none shadow-2xl font-cairo">
+          <AlertDialogHeader><AlertDialogTitle className="font-black text-2xl text-slate-900">حذف السؤال</AlertDialogTitle></AlertDialogHeader>
+          <AlertDialogFooter className="gap-3 mt-8 font-bold"><AlertDialogCancel className="rounded-xl font-bold">تراجع</AlertDialogCancel><AlertDialogAction onClick={() => deleteQuestion && supabase.from('questions').update({ status: 'deleted' }).eq('id', deleteQuestion.id).then(() => { queryClient.invalidateQueries(); setDeleteQuestion(null); })} className="bg-destructive text-white rounded-xl font-black px-10">حذف نهائي</AlertDialogAction></AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
+        <AlertDialogContent className="rounded-3xl z-[9999] bg-white p-8 border-none shadow-2xl font-cairo">
+          <AlertDialogHeader><AlertDialogTitle className="font-black text-2xl text-slate-900">حذف ({selectedIds.length}) سؤال</AlertDialogTitle></AlertDialogHeader>
+          <AlertDialogDescription>سيتم حذف جميع الأسئلة المحددة. هل أنت متأكد؟</AlertDialogDescription>
+          <AlertDialogFooter className="gap-3 mt-8 font-bold"><AlertDialogCancel className="rounded-xl font-bold">تراجع</AlertDialogCancel><AlertDialogAction onClick={() => bulkDeleteMutation.mutate()} disabled={bulkDeleteMutation.isPending} className="bg-destructive text-white rounded-xl font-black px-10">حذف الجميع</AlertDialogAction></AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl bg-white rounded-3xl p-8 z-[9999] font-cairo font-bold shadow-2xl border-none">
           <DialogHeader><DialogTitle className="text-2xl font-black">{editingQuestion ? 'تعديل السؤال' : 'إضافة سؤال جديد'}</DialogTitle></DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); saveSingleMutation.mutate(formData); }} className="space-y-6 mt-4">
             <div className="space-y-2.5"><Label className="font-black text-slate-700">نص السؤال *</Label><Textarea value={formData.question_text} onChange={(e) => setFormData({ ...formData, question_text: e.target.value })} required className="rounded-2xl border-slate-200 min-h-[120px]" /></div>
             <div className="grid grid-cols-2 gap-4">{['a', 'b', 'c', 'd'].map(l => <div key={l}><Label className="text-xs mb-1 block">خيار {l.toUpperCase()}</Label><Input placeholder={`نص الخيار...`} value={formData[`option_${l}` as keyof typeof formData] as string} onChange={(e) => setFormData({ ...formData, [`option_${l}`]: e.target.value })} className="rounded-xl h-12" /></div>)}</div>
+            
             <div className="grid grid-cols-3 gap-4">
                <div>
                   <Label>الإجابة الصحيحة</Label>
                   <Select value={formData.correct_option} onValueChange={(v) => setFormData({...formData, correct_option: v as 'A' | 'B' | 'C' | 'D'})}>
-                    <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-slate-200"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-slate-200">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent className="z-[10001] bg-white border border-slate-200 shadow-xl rounded-xl">
-                      <SelectItem value="A">أ (A)</SelectItem><SelectItem value="B">ب (B)</SelectItem><SelectItem value="C">ج (C)</SelectItem><SelectItem value="D">د (D)</SelectItem>
+                      <SelectItem value="A">أ (A)</SelectItem>
+                      <SelectItem value="B">ب (B)</SelectItem>
+                      <SelectItem value="C">ج (C)</SelectItem>
+                      <SelectItem value="D">د (D)</SelectItem>
                     </SelectContent>
                   </Select>
                </div>
                <div>
                   <Label>السنة</Label>
                   <Select value={formData.exam_year} onValueChange={(v) => setFormData({...formData, exam_year: v})}>
-                    <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-slate-200"><SelectValue placeholder="اختر السنة" /></SelectTrigger>
+                    <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-slate-200">
+                      <SelectValue placeholder="اختر السنة" />
+                    </SelectTrigger>
                     <SelectContent className="z-[10001] bg-white border border-slate-200 shadow-xl rounded-xl max-h-[200px] overflow-y-auto">
                       {EXAM_YEARS.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}
                     </SelectContent>
@@ -462,13 +458,16 @@ const AdminQuestions = () => {
                <div>
                   <Label>النموذج</Label>
                   <Select value={formData.exam_form} onValueChange={(v) => setFormData({...formData, exam_form: v})}>
-                    <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-slate-200"><SelectValue placeholder="اختر النموذج" /></SelectTrigger>
+                    <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-slate-200">
+                      <SelectValue placeholder="اختر النموذج" />
+                    </SelectTrigger>
                     <SelectContent className="z-[10001] bg-white border border-slate-200 shadow-xl rounded-xl">
                       {EXAM_FORMS.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                </div>
             </div>
+            
             <Button type="submit" disabled={saveSingleMutation.isPending} className="gradient-primary text-white w-full h-12 rounded-xl text-lg font-black shadow-lg">
               {saveSingleMutation.isPending ? 'جاري الحفظ...' : 'حفظ البيانات'}
             </Button>
