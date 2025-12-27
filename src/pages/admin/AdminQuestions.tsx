@@ -2,7 +2,7 @@
  * Alnasser Tech Digital Solutions
  * Project: Alnaser Legal Platform
  * Developed by: Mueen Al-Nasser
- * Version: 20.0 (All-in-One Parser: Old + T/F + +/- Patterns + Full CRUD)
+ * Version: 21.0 (Exam Forms Support)
  */
 
 import { useState, useRef } from 'react';
@@ -34,6 +34,13 @@ import Tesseract from 'tesseract.js';
 // رابط الـ Worker (ثابت)
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
 
+// نماذج الاختبار
+const EXAM_FORMS = [
+  { id: 'General', name: 'نموذج العام' },
+  { id: 'Parallel', name: 'نموذج الموازي' },
+  { id: 'Mixed', name: 'نموذج مختلط' }
+];
+
 // --- المحرك الذكي الشامل (يدعم 3 أنماط الآن) ---
 const parseSanaaLegalContent = (text: string) => {
   const cleanText = text.replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/_/g, '');
@@ -46,10 +53,6 @@ const parseSanaaLegalContent = (text: string) => {
     if (!t || t.length < 2) return;
 
     // 1. تحديد ما إذا كان السطر "خياراً"
-    // يدعم:
-    // - النمط 1: (1) العبارة صحيحة
-    // - النمط 2: 1) - نص الخيار
-    // - النمط 3: + نص الخيار
     const hasOptionIndicators = t.includes('+') || t.includes('-') || t.startsWith('1)') || t.startsWith('2)') || t.startsWith('3)') || t.startsWith('4)');
     const isTrueFalse = t.includes('العبارة صحيحة') || t.includes('العبارة خاطئة');
     const isOption = (hasOptionIndicators || isTrueFalse) && (t.match(/\d/) || t.startsWith('+') || t.startsWith('-'));
@@ -57,16 +60,13 @@ const parseSanaaLegalContent = (text: string) => {
     if (isOption) {
       if (!current) return;
       
-      // تحديد الإجابة الصحيحة (وجود علامة +)
       const isCorrect = t.includes('+');
       
-      // تنظيف نص الخيار (إزالة الأرقام والرموز في البداية)
       let cleanVal = t
-        .replace(/^[\(\s\d\)\.\-\+]+/, '') // حذف مثل "1) - " أو "(1 + "
-        .replace(/[\+\-]$/, '') // حذف + أو - في النهاية
+        .replace(/^[\(\s\d\)\.\-\+]+/, '')
+        .replace(/[\+\-]$/, '')
         .trim();
         
-      // تصحيح نصوص الصح والخطأ إذا تأثرت بالتنظيف
       if (t.includes('العبارة صحيحة')) cleanVal = 'العبارة صحيحة';
       else if (t.includes('العبارة خاطئة')) cleanVal = 'العبارة خاطئة';
 
@@ -82,9 +82,6 @@ const parseSanaaLegalContent = (text: string) => {
       }
     } 
     else {
-      // 2. إذا لم يكن خياراً، فهو "سؤال"
-      
-      // إذا كان لدينا سؤال سابق مكتمل (لديه خيارات)، نحفظه ونبدأ جديداً
       if (current && current.count > 0) {
         results.push(current);
         current = null;
@@ -93,14 +90,12 @@ const parseSanaaLegalContent = (text: string) => {
       if (!current) {
         current = {
           id: Math.random().toString(36).substr(2, 9),
-          // تنظيف السؤال من الأرقام في آخره (مثل نمط PDF جامعتكم)
           question_text: t.replace(/[\(\s\d\)]+$/, '').trim(),
           option_a: '', option_b: '', option_c: '', option_d: '',
           correct_option: 'A',
           count: 0
         };
       } else {
-        // إذا كان سؤالاً طويلاً (عدة أسطر)، ندمج النص
         current.question_text += ' ' + t.replace(/[\(\s\d\)]+$/, '').trim();
       }
     }
@@ -119,6 +114,7 @@ const AdminQuestions = () => {
   const [selectedLevel, setSelectedLevel] = useState<string>('');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<string>('');
+  const [selectedExamForm, setSelectedExamForm] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   
   const [isFileUploadOpen, setIsFileUploadOpen] = useState(false);
@@ -126,6 +122,7 @@ const AdminQuestions = () => {
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   const [previewQuestions, setPreviewQuestions] = useState<any[]>([]);
   const [previewSearch, setPreviewSearch] = useState('');
+  const [importExamForm, setImportExamForm] = useState<string>('General');
 
   // حالات التعديل والحذف
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -136,7 +133,7 @@ const AdminQuestions = () => {
 
   const [formData, setFormData] = useState({
     question_text: '', option_a: '', option_b: '', option_c: '', option_d: '',
-    correct_option: 'A' as any, hint: '', exam_year: '',
+    correct_option: 'A' as 'A' | 'B' | 'C' | 'D', hint: '', exam_year: '', exam_form: 'General',
   });
 
   // معالجة PDF
@@ -149,7 +146,6 @@ const AdminQuestions = () => {
       const textContent = await page.getTextContent();
       if (textContent.items.length > 0) {
         const items: any[] = textContent.items;
-        // ترتيب مكاني دقيق
         items.sort((a, b) => (b.transform[5] - a.transform[5]) || (a.transform[4] - b.transform[4]));
         let lastY = -1;
         items.forEach(it => {
@@ -198,18 +194,19 @@ const AdminQuestions = () => {
   const { data: subjects = [] } = useQuery({ queryKey: ['subjects', selectedLevel], queryFn: async () => { let q = supabase.from('subjects').select('*').order('order_index'); if(selectedLevel) q = q.eq('level_id', selectedLevel); return (await q).data as Subject[]; } });
   
   const { data: questions = [], isLoading } = useQuery({
-    queryKey: ['questions', selectedSubject, selectedYear, searchQuery],
+    queryKey: ['questions', selectedSubject, selectedYear, selectedExamForm, searchQuery],
     queryFn: async () => {
       let query = supabase.from('questions').select('*').eq('status', 'active').order('created_at', { ascending: false });
       if (selectedSubject) query = query.eq('subject_id', selectedSubject);
       if (selectedYear) query = query.eq('exam_year', parseInt(selectedYear));
+      if (selectedExamForm) query = query.eq('exam_form', selectedExamForm);
       const { data } = await query;
       return data as Question[];
     },
     enabled: !!selectedSubject,
   });
 
-  // --- حفظ جماعي (مع إصلاح الـ NULL) ---
+  // --- حفظ جماعي ---
   const bulkSave = useMutation({
     mutationFn: async (list: any[]) => {
       if (!selectedSubject) throw new Error("اختر المادة أولاً");
@@ -220,12 +217,13 @@ const AdminQuestions = () => {
         question_text: q.question_text || "سؤال",
         option_a: q.option_a || "", 
         option_b: q.option_b || "",
-        option_c: q.option_c || "", // إرسال نص فارغ بدلاً من null
+        option_c: q.option_c || "",
         option_d: q.option_d || "", 
         correct_option: q.correct_option || 'A',
         exam_year: selectedYear ? parseInt(selectedYear) : null,
+        exam_form: importExamForm,
         created_by: user.id,
-        status: 'active'
+        status: 'active' as const
       }));
 
       const { data, error } = await supabase.from('questions').insert(formatted).select();
@@ -242,16 +240,20 @@ const AdminQuestions = () => {
 
   // --- حفظ فردي (إضافة/تعديل) ---
   const saveSingleMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: typeof formData) => {
       if (!selectedSubject) throw new Error("اختر المادة");
       const payload = {
         subject_id: selectedSubject,
         question_text: data.question_text,
-        option_a: data.option_a || "", option_b: data.option_b || "",
-        option_c: data.option_c || "", option_d: data.option_d || "",
+        option_a: data.option_a || "", 
+        option_b: data.option_b || "",
+        option_c: data.option_c || "", 
+        option_d: data.option_d || "",
         correct_option: data.correct_option,
         exam_year: data.exam_year ? parseInt(data.exam_year) : null,
-        created_by: user?.id, status: 'active'
+        exam_form: data.exam_form || 'General',
+        created_by: user?.id, 
+        status: 'active' as const
       };
 
       if (editingQuestion) {
@@ -266,7 +268,7 @@ const AdminQuestions = () => {
       queryClient.invalidateQueries({ queryKey: ['questions'] });
       toast({ title: editingQuestion ? 'تم التعديل ✅' : 'تمت الإضافة ✅' });
       setIsDialogOpen(false); setEditingQuestion(null);
-      setFormData({ question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', hint: '', exam_year: '' });
+      setFormData({ question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', hint: '', exam_year: '', exam_form: 'General' });
     },
     onError: (err: any) => toast({ title: 'خطأ', description: err.message, variant: 'destructive' })
   });
@@ -308,17 +310,18 @@ const AdminQuestions = () => {
             <Button variant="outline" size="sm" onClick={() => setIsFileUploadOpen(true)} disabled={!selectedSubject} className="gap-2 border-primary/20 bg-primary/5 text-primary font-bold shadow-sm">
               <ScanLine className="w-4 h-4" /> استيراد PDF
             </Button>
-            <Button size="sm" onClick={() => { setEditingQuestion(null); setFormData({question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', hint: '', exam_year: ''}); setIsDialogOpen(true); }} disabled={!selectedSubject} className="gradient-primary text-white gap-2 shadow-lg">
+            <Button size="sm" onClick={() => { setEditingQuestion(null); setFormData({question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', hint: '', exam_year: '', exam_form: 'General'}); setIsDialogOpen(true); }} disabled={!selectedSubject} className="gradient-primary text-white gap-2 shadow-lg">
               <Plus className="w-4 h-4" /> إضافة سؤال
             </Button>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100 relative z-20 font-bold font-cairo">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100 relative z-20 font-bold font-cairo">
           <Select value={selectedLevel} onValueChange={setSelectedLevel}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="المستوى" /></SelectTrigger><SelectContent className="z-[9999] bg-white">{levels.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent></Select>
           <Select value={selectedSubject} onValueChange={setSelectedSubject}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="المادة" /></SelectTrigger><SelectContent className="z-[9999] bg-white">{subjects.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select>
-          <Select value={selectedYear || "all"} onValueChange={(v) => setSelectedYear(v === "all" ? "" : v)}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="السنة" /></SelectTrigger><SelectContent className="z-[9999] bg-white shadow-2xl"><SelectItem value="all">الكل</SelectItem>{EXAM_YEARS.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}</SelectContent></Select>
+          <Select value={selectedYear || "all"} onValueChange={(v) => setSelectedYear(v === "all" ? "" : v)}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="السنة" /></SelectTrigger><SelectContent className="z-[9999] bg-white shadow-2xl"><SelectItem value="all">كل السنوات</SelectItem>{EXAM_YEARS.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}</SelectContent></Select>
+          <Select value={selectedExamForm || "all"} onValueChange={(v) => setSelectedExamForm(v === "all" ? "" : v)}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="النموذج" /></SelectTrigger><SelectContent className="z-[9999] bg-white shadow-2xl"><SelectItem value="all">كل النماذج</SelectItem>{EXAM_FORMS.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent></Select>
           <div className="relative"><Search className="absolute right-3 top-2.5 w-4 h-4 text-slate-400" /><Input placeholder="بحث..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pr-10 bg-white border-slate-200 rounded-xl" /></div>
         </div>
 
@@ -344,8 +347,8 @@ const AdminQuestions = () => {
                   <div className="flex-1">
                     <div className="flex justify-between items-start">
                       <p className="font-bold text-slate-800 text-lg mb-4 leading-relaxed cursor-pointer" onClick={() => toggleSelectOne(q.id)}>{q.question_text}</p>
-                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="sm" onClick={() => { setEditingQuestion(q); setFormData({ question_text: q.question_text, option_a: q.option_a, option_b: q.option_b, option_c: q.option_c || '', option_d: q.option_d || '', correct_option: q.correct_option as any, hint: q.hint || '', exam_year: q.exam_year?.toString() || '' }); setIsDialogOpen(true); }} className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 bg-white border border-slate-100"><Edit2 className="w-4 h-4" /></Button>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => { setEditingQuestion(q); setFormData({ question_text: q.question_text, option_a: q.option_a, option_b: q.option_b, option_c: q.option_c || '', option_d: q.option_d || '', correct_option: q.correct_option as 'A' | 'B' | 'C' | 'D', hint: q.hint || '', exam_year: q.exam_year?.toString() || '', exam_form: (q as any).exam_form || 'General' }); setIsDialogOpen(true); }} className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 bg-white border border-slate-100"><Edit2 className="w-4 h-4" /></Button>
                         <Button variant="ghost" size="sm" onClick={() => setDeleteQuestion(q)} className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600 bg-white border border-slate-100"><Trash2 className="w-4 h-4" /></Button>
                       </div>
                     </div>
@@ -366,7 +369,18 @@ const AdminQuestions = () => {
         <DialogContent className="max-w-5xl bg-white rounded-3xl p-8 border-none shadow-2xl h-[94vh] flex flex-col overflow-hidden z-[9999] font-cairo">
           <DialogHeader className="border-b pb-6 flex flex-row items-center justify-between">
             <DialogTitle className="text-2xl font-black flex items-center gap-3 text-slate-900"><Eye className="text-primary w-8 h-8" /> مراجعة الاستيراد</DialogTitle>
-            <div className="flex gap-3"><Button variant="ghost" onClick={() => setIsPreviewOpen(false)} className="rounded-xl font-bold px-8">إلغاء</Button><Button onClick={() => bulkSave.mutate(previewQuestions)} disabled={bulkSave.isPending} className="gradient-primary text-white font-black px-12 rounded-xl shadow-xl">{bulkSave.isPending ? <Loader2 className="animate-spin" /> : "حفظ الكل"}</Button></div>
+            <div className="flex gap-3">
+              <Select value={importExamForm} onValueChange={setImportExamForm}>
+                <SelectTrigger className="w-40 rounded-xl bg-slate-50 border-slate-200">
+                  <SelectValue placeholder="النموذج" />
+                </SelectTrigger>
+                <SelectContent className="z-[10001] bg-white">
+                  {EXAM_FORMS.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Button variant="ghost" onClick={() => setIsPreviewOpen(false)} className="rounded-xl font-bold px-8">إلغاء</Button>
+              <Button onClick={() => bulkSave.mutate(previewQuestions)} disabled={bulkSave.isPending} className="gradient-primary text-white font-black px-12 rounded-xl shadow-xl">{bulkSave.isPending ? <Loader2 className="animate-spin" /> : "حفظ الكل"}</Button>
+            </div>
           </DialogHeader>
           <div className="mt-4"><Input placeholder="بحث..." value={previewSearch} onChange={(e) => setPreviewSearch(e.target.value)} className="h-12 bg-slate-50 border-slate-100 rounded-2xl font-bold" /></div>
           <ScrollArea className="flex-1 mt-6 pr-4">
@@ -413,17 +427,16 @@ const AdminQuestions = () => {
           <DialogHeader><DialogTitle className="text-2xl font-black">{editingQuestion ? 'تعديل السؤال' : 'إضافة سؤال جديد'}</DialogTitle></DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); saveSingleMutation.mutate(formData); }} className="space-y-6 mt-4">
             <div className="space-y-2.5"><Label className="font-black text-slate-700">نص السؤال *</Label><Textarea value={formData.question_text} onChange={(e) => setFormData({ ...formData, question_text: e.target.value })} required className="rounded-2xl border-slate-200 min-h-[120px]" /></div>
-            <div className="grid grid-cols-2 gap-4">{['a', 'b', 'c', 'd'].map(l => <div key={l}><Label className="text-xs mb-1 block">خيار {l.toUpperCase()}</Label><Input placeholder={`نص الخيار...`} value={formData[`option_${l}` as keyof typeof formData]} onChange={(e) => setFormData({ ...formData, [`option_${l}`]: e.target.value })} className="rounded-xl h-12" /></div>)}</div>
+            <div className="grid grid-cols-2 gap-4">{['a', 'b', 'c', 'd'].map(l => <div key={l}><Label className="text-xs mb-1 block">خيار {l.toUpperCase()}</Label><Input placeholder={`نص الخيار...`} value={formData[`option_${l}` as keyof typeof formData] as string} onChange={(e) => setFormData({ ...formData, [`option_${l}`]: e.target.value })} className="rounded-xl h-12" /></div>)}</div>
             
-            {/* التعديل المطلوب هنا: حقول الإجابة والسنة مع SelectContent portalled={false} لضمان الظهور */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
                <div>
                   <Label>الإجابة الصحيحة</Label>
-                  <Select value={formData.correct_option} onValueChange={(v) => setFormData({...formData, correct_option: v as any})}>
+                  <Select value={formData.correct_option} onValueChange={(v) => setFormData({...formData, correct_option: v as 'A' | 'B' | 'C' | 'D'})}>
                     <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-slate-200">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent portalled={false} className="z-[10001] bg-white border border-slate-200 shadow-xl rounded-xl">
+                    <SelectContent className="z-[10001] bg-white border border-slate-200 shadow-xl rounded-xl">
                       <SelectItem value="A">أ (A)</SelectItem>
                       <SelectItem value="B">ب (B)</SelectItem>
                       <SelectItem value="C">ج (C)</SelectItem>
@@ -437,8 +450,19 @@ const AdminQuestions = () => {
                     <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-slate-200">
                       <SelectValue placeholder="اختر السنة" />
                     </SelectTrigger>
-                    <SelectContent portalled={false} className="z-[10001] bg-white border border-slate-200 shadow-xl rounded-xl max-h-[200px] overflow-y-auto">
+                    <SelectContent className="z-[10001] bg-white border border-slate-200 shadow-xl rounded-xl max-h-[200px] overflow-y-auto">
                       {EXAM_YEARS.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+               </div>
+               <div>
+                  <Label>النموذج</Label>
+                  <Select value={formData.exam_form} onValueChange={(v) => setFormData({...formData, exam_form: v})}>
+                    <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-slate-200">
+                      <SelectValue placeholder="اختر النموذج" />
+                    </SelectTrigger>
+                    <SelectContent className="z-[10001] bg-white border border-slate-200 shadow-xl rounded-xl">
+                      {EXAM_FORMS.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                </div>
