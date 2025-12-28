@@ -364,36 +364,63 @@ const AdminQuestions = () => {
         </div>
       </div>
 
-      {/* Import Preview */}
+      {/* Import Preview - Mobile Optimized with Sticky Footer */}
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="max-w-5xl bg-white rounded-3xl p-8 border-none shadow-2xl h-[94vh] flex flex-col overflow-hidden z-[9999] font-cairo">
-          <DialogHeader className="border-b pb-6 flex flex-row items-center justify-between">
-            <DialogTitle className="text-2xl font-black flex items-center gap-3 text-slate-900"><Eye className="text-primary w-8 h-8" /> مراجعة الاستيراد</DialogTitle>
-            <div className="flex gap-3">
-              <Select value={importExamForm} onValueChange={setImportExamForm}>
-                <SelectTrigger className="w-40 rounded-xl bg-slate-50 border-slate-200">
-                  <SelectValue placeholder="النموذج" />
-                </SelectTrigger>
-                <SelectContent className="z-[10001] bg-white">
-                  {EXAM_FORMS.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Button variant="ghost" onClick={() => setIsPreviewOpen(false)} className="rounded-xl font-bold px-8">إلغاء</Button>
-              <Button onClick={() => bulkSave.mutate(previewQuestions)} disabled={bulkSave.isPending} className="gradient-primary text-white font-black px-12 rounded-xl shadow-xl">{bulkSave.isPending ? <Loader2 className="animate-spin" /> : "حفظ الكل"}</Button>
+        <DialogContent className="max-w-5xl bg-white rounded-none md:rounded-3xl p-0 border-none shadow-2xl h-[100dvh] md:h-[94vh] flex flex-col overflow-hidden z-[9999] font-cairo">
+          {/* Sticky Header */}
+          <div className="sticky top-0 z-10 bg-white border-b px-4 md:px-8 py-4 md:py-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <DialogTitle className="text-lg md:text-2xl font-black flex items-center gap-2 md:gap-3 text-slate-900">
+                <Eye className="text-primary w-5 h-5 md:w-8 md:h-8" /> مراجعة الاستيراد
+              </DialogTitle>
+              <div className="flex items-center gap-2">
+                <Select value={importExamForm} onValueChange={setImportExamForm}>
+                  <SelectTrigger className="w-32 md:w-40 rounded-xl bg-slate-50 border-slate-200 text-sm">
+                    <SelectValue placeholder="النموذج" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[10001] bg-white">
+                    {EXAM_FORMS.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Button variant="ghost" onClick={() => setIsPreviewOpen(false)} className="rounded-xl font-bold px-4 md:px-8 text-sm">إلغاء</Button>
+              </div>
             </div>
-          </DialogHeader>
-          <div className="mt-4"><Input placeholder="بحث..." value={previewSearch} onChange={(e) => setPreviewSearch(e.target.value)} className="h-12 bg-slate-50 border-slate-100 rounded-2xl font-bold" /></div>
-          <ScrollArea className="flex-1 mt-6 pr-4">
-            <div className="space-y-10 pb-12">
+          </div>
+
+          {/* Search */}
+          <div className="px-4 md:px-8 py-3">
+            <Input placeholder="بحث..." value={previewSearch} onChange={(e) => setPreviewSearch(e.target.value)} className="h-10 md:h-12 bg-slate-50 border-slate-100 rounded-2xl font-bold text-sm" />
+          </div>
+
+          {/* Scrollable Content */}
+          <ScrollArea className="flex-1 px-4 md:px-8">
+            <div className="space-y-6 md:space-y-10 pb-6">
               {previewQuestions.filter(x => x.question_text.includes(previewSearch)).map((q) => (
-                <div key={q.id} className="bg-slate-50/50 p-8 rounded-[36px] border border-slate-100 relative group/item">
-                  <button onClick={() => setPreviewQuestions(prev => prev.filter(p => p.id !== q.id))} className="absolute -left-3 -top-3 w-10 h-10 bg-white border border-red-100 text-destructive rounded-2xl flex items-center justify-center shadow-lg hover:bg-destructive hover:text-white transition-all opacity-0 group-hover/item:opacity-100 z-30"><Trash2 className="w-5 h-5" /></button>
-                  <Textarea value={q.question_text} onChange={(e) => { const up = [...previewQuestions]; const i = up.findIndex(x => x.id === q.id); up[i].question_text = e.target.value; setPreviewQuestions(up); }} className="mb-8 rounded-2xl border-slate-200 font-bold text-lg bg-white min-h-[100px] font-cairo shadow-sm" dir="rtl" />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">{['A', 'B', 'C', 'D'].map(l => (<div key={l} className="space-y-2 font-cairo"><div className="flex justify-between items-center px-1"><Label className="text-[10px] font-black uppercase">خيار ({l})</Label><button onClick={() => { const up = [...previewQuestions]; const i = up.findIndex(x => x.id === q.id); up[i].correct_option = l; setPreviewQuestions(up); }} className={cn("text-[9px] font-black px-2.5 py-1 rounded-lg transition-all", q.correct_option === l ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-400")}>{q.correct_option === l ? 'إجابة صحيحة' : 'تحديد'}</button></div><Input value={q[`option_${l.toLowerCase()}`]} onChange={(e) => { const up = [...previewQuestions]; const i = up.findIndex(x => x.id === q.id); up[i][`option_${l.toLowerCase()}`] = e.target.value; setPreviewQuestions(up); }} className="rounded-xl border-slate-200 bg-white font-bold h-12" dir="rtl" /></div>))}</div>
+                <div key={q.id} className="bg-slate-50/50 p-4 md:p-8 rounded-2xl md:rounded-[36px] border border-slate-100 relative group/item">
+                  <button onClick={() => setPreviewQuestions(prev => prev.filter(p => p.id !== q.id))} className="absolute -left-2 -top-2 md:-left-3 md:-top-3 w-8 h-8 md:w-10 md:h-10 bg-white border border-red-100 text-destructive rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg hover:bg-destructive hover:text-white transition-all z-30"><Trash2 className="w-4 h-4 md:w-5 md:h-5" /></button>
+                  <Textarea value={q.question_text} onChange={(e) => { const up = [...previewQuestions]; const i = up.findIndex(x => x.id === q.id); up[i].question_text = e.target.value; setPreviewQuestions(up); }} className="mb-4 md:mb-8 rounded-xl md:rounded-2xl border-slate-200 font-bold text-sm md:text-lg bg-white min-h-[80px] md:min-h-[100px] font-cairo shadow-sm" dir="rtl" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
+                    {['A', 'B', 'C', 'D'].map(l => (
+                      <div key={l} className="space-y-1.5 md:space-y-2 font-cairo">
+                        <div className="flex justify-between items-center px-1">
+                          <Label className="text-[9px] md:text-[10px] font-black uppercase">خيار ({l})</Label>
+                          <button onClick={() => { const up = [...previewQuestions]; const i = up.findIndex(x => x.id === q.id); up[i].correct_option = l; setPreviewQuestions(up); }} className={cn("text-[8px] md:text-[9px] font-black px-2 md:px-2.5 py-0.5 md:py-1 rounded-lg transition-all", q.correct_option === l ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-400")}>{q.correct_option === l ? 'إجابة صحيحة' : 'تحديد'}</button>
+                        </div>
+                        <Input value={q[`option_${l.toLowerCase()}`]} onChange={(e) => { const up = [...previewQuestions]; const i = up.findIndex(x => x.id === q.id); up[i][`option_${l.toLowerCase()}`] = e.target.value; setPreviewQuestions(up); }} className="rounded-xl border-slate-200 bg-white font-bold h-10 md:h-12 text-sm" dir="rtl" />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
           </ScrollArea>
+
+          {/* Sticky Footer */}
+          <div className="sticky bottom-0 z-10 bg-white border-t px-4 md:px-8 py-4 shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
+            <Button onClick={() => bulkSave.mutate(previewQuestions)} disabled={bulkSave.isPending} className="gradient-primary text-white font-black w-full h-12 md:h-14 rounded-xl shadow-xl text-base md:text-lg">
+              {bulkSave.isPending ? <Loader2 className="animate-spin" /> : `حفظ جميع الأسئلة (${previewQuestions.length})`}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -410,7 +437,26 @@ const AdminQuestions = () => {
       <AlertDialog open={!!deleteQuestion} onOpenChange={() => setDeleteQuestion(null)}>
         <AlertDialogContent className="rounded-3xl z-[9999] bg-white p-8 border-none shadow-2xl font-cairo">
           <AlertDialogHeader><AlertDialogTitle className="font-black text-2xl text-slate-900">حذف السؤال</AlertDialogTitle></AlertDialogHeader>
-          <AlertDialogFooter className="gap-3 mt-8 font-bold"><AlertDialogCancel className="rounded-xl font-bold">تراجع</AlertDialogCancel><AlertDialogAction onClick={() => deleteQuestion && supabase.from('questions').update({ status: 'deleted' }).eq('id', deleteQuestion.id).then(() => { queryClient.invalidateQueries(); setDeleteQuestion(null); })} className="bg-destructive text-white rounded-xl font-black px-10">حذف نهائي</AlertDialogAction></AlertDialogFooter>
+          <AlertDialogFooter className="gap-3 mt-8 font-bold">
+            <AlertDialogCancel className="rounded-xl font-bold">تراجع</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={async () => {
+                if (!deleteQuestion) return;
+                try {
+                  const { error } = await supabase.from('questions').update({ status: 'deleted' }).eq('id', deleteQuestion.id);
+                  if (error) throw error;
+                  queryClient.invalidateQueries({ queryKey: ['questions'] });
+                  toast({ title: 'تم حذف السؤال بنجاح ✅' });
+                  setDeleteQuestion(null);
+                } catch (err: any) {
+                  toast({ title: 'خطأ في الحذف', description: err.message || 'تأكد من صلاحيات الحذف', variant: 'destructive' });
+                }
+              }} 
+              className="bg-destructive text-white rounded-xl font-black px-10"
+            >
+              حذف نهائي
+            </AlertDialogAction>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
