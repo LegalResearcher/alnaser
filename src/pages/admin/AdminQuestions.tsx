@@ -6,6 +6,7 @@
  */
 
 import { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { 
   Plus, Search, Edit2, Trash2, BookOpen, CheckCircle2, FileUp, 
@@ -106,10 +107,56 @@ const parseSanaaLegalContent = (text: string) => {
 };
 
 const AdminQuestions = () => {
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, isAdmin, isEditor } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const requireAdminOrEditor = () => {
+    if (!user) {
+      const err: any = new Error('يلزم تسجيل الدخول لإجراء هذه العملية');
+      err.code = 'AUTH_REQUIRED';
+      throw err;
+    }
+
+    if (!isAdmin && !isEditor) {
+      const err: any = new Error('ليس لديك صلاحية لتنفيذ هذا الإجراء');
+      err.code = 'FORBIDDEN';
+      throw err;
+    }
+  };
+
+  const getFriendlyError = (err: any): { title: string; description: string } => {
+    const raw = (err?.message ?? err?.error_description ?? '').toString();
+    const lower = raw.toLowerCase();
+
+    if (err?.code === 'AUTH_REQUIRED') {
+      return {
+        title: 'يلزم تسجيل الدخول',
+        description: 'سجّل الدخول بحساب مدير/محرر ثم أعد المحاولة.',
+      };
+    }
+
+    if (err?.code === 'FORBIDDEN') {
+      return {
+        title: 'لا تملك صلاحية',
+        description: 'هذه العملية متاحة فقط للمديرين أو المحررين.',
+      };
+    }
+
+    if (lower.includes('row-level security') || lower.includes('violates row-level security')) {
+      return {
+        title: 'خطأ صلاحيات (RLS)',
+        description: 'حسابك الحالي لا يملك صلاحية التعديل/الحذف. تأكد من تسجيل الدخول وأن دورك (admin/editor) مُسجل في النظام.',
+      };
+    }
+
+    return {
+      title: 'حدث خطأ',
+      description: raw || 'حدث خطأ غير متوقع. حاول مرة أخرى.',
+    };
+  };
   
   const [selectedLevel, setSelectedLevel] = useState<string>('');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
@@ -273,19 +320,53 @@ const AdminQuestions = () => {
     onError: (err: any) => toast({ title: 'خطأ', description: err.message, variant: 'destructive' })
   });
 
-  // --- حذف متعدد ---
-  const bulkDeleteMutation = useMutation({
-    mutationFn: async () => {
-      if (selectedIds.length === 0) return;
-      const { error } = await supabase.from('questions').update({ status: 'deleted' }).in('id', selectedIds);
+  // --- حذف منطقي (سؤال واحد أو عدة أسئلة) ---
+  const softDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      requireAdminOrEditor();
+      if (!ids.length) return;
+
+      const { error } = await supabase
+        .from('questions')
+        .update({ status: 'deleted' })
+        .in('id', ids);
+
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['questions'] });
-      toast({ title: `تم حذف ${selectedIds.length} سؤال` });
-      setSelectedIds([]); setIsBulkDeleteDialogOpen(false);
+    onMutate: async (ids) => {
+      await queryClient.cancelQueries({ queryKey: ['questions'] });
+      const previous = queryClient.getQueriesData<Question[]>({ queryKey: ['questions'] });
+
+      queryClient.setQueriesData<Question[]>({ queryKey: ['questions'] }, (old) => {
+        if (!old) return old as any;
+        return old.filter((q) => !ids.includes(q.id));
+      });
+
+      return { previous };
     },
-    onError: (err: any) => toast({ title: 'خطأ', description: err.message, variant: 'destructive' })
+    onError: (err: any, _ids, ctx) => {
+      if (ctx?.previous) {
+        ctx.previous.forEach(([key, data]) => queryClient.setQueryData(key, data));
+      }
+
+      const friendly = getFriendlyError(err);
+      toast({ title: friendly.title, description: friendly.description, variant: 'destructive' });
+
+      if (err?.code === 'AUTH_REQUIRED') {
+        navigate('/admin/login');
+      }
+    },
+    onSuccess: (_data, ids) => {
+      queryClient.invalidateQueries({ queryKey: ['questions'] });
+      toast({ title: `تم حذف ${ids.length} سؤال ✅` });
+
+      // إغلاق الحوارات وتصفير التحديد عند الحذف الجماعي
+      if (ids.length > 1) {
+        setSelectedIds([]);
+        setIsBulkDeleteDialogOpen(false);
+      }
+      setDeleteQuestion(null);
+    },
   });
 
   const toggleSelectAll = () => selectedIds.length === questions.length ? setSelectedIds([]) : setSelectedIds(questions.map(q => q.id));
@@ -439,22 +520,15 @@ const AdminQuestions = () => {
           <AlertDialogHeader><AlertDialogTitle className="font-black text-2xl text-slate-900">حذف السؤال</AlertDialogTitle></AlertDialogHeader>
           <AlertDialogFooter className="gap-3 mt-8 font-bold">
             <AlertDialogCancel className="rounded-xl font-bold">تراجع</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={async () => {
+            <AlertDialogAction
+              onClick={() => {
                 if (!deleteQuestion) return;
-                try {
-                  const { error } = await supabase.from('questions').update({ status: 'deleted' }).eq('id', deleteQuestion.id);
-                  if (error) throw error;
-                  queryClient.invalidateQueries({ queryKey: ['questions'] });
-                  toast({ title: 'تم حذف السؤال بنجاح ✅' });
-                  setDeleteQuestion(null);
-                } catch (err: any) {
-                  toast({ title: 'خطأ في الحذف', description: err.message || 'تأكد من صلاحيات الحذف', variant: 'destructive' });
-                }
-              }} 
+                softDeleteMutation.mutate([deleteQuestion.id]);
+              }}
+              disabled={softDeleteMutation.isPending}
               className="bg-destructive text-white rounded-xl font-black px-10"
             >
-              حذف نهائي
+              حذف
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -464,7 +538,7 @@ const AdminQuestions = () => {
         <AlertDialogContent className="rounded-3xl z-[9999] bg-white p-8 border-none shadow-2xl font-cairo">
           <AlertDialogHeader><AlertDialogTitle className="font-black text-2xl text-slate-900">حذف ({selectedIds.length}) سؤال</AlertDialogTitle></AlertDialogHeader>
           <AlertDialogDescription>سيتم حذف جميع الأسئلة المحددة. هل أنت متأكد؟</AlertDialogDescription>
-          <AlertDialogFooter className="gap-3 mt-8 font-bold"><AlertDialogCancel className="rounded-xl font-bold">تراجع</AlertDialogCancel><AlertDialogAction onClick={() => bulkDeleteMutation.mutate()} disabled={bulkDeleteMutation.isPending} className="bg-destructive text-white rounded-xl font-black px-10">حذف الجميع</AlertDialogAction></AlertDialogFooter>
+          <AlertDialogFooter className="gap-3 mt-8 font-bold"><AlertDialogCancel className="rounded-xl font-bold">تراجع</AlertDialogCancel><AlertDialogAction onClick={() => softDeleteMutation.mutate(selectedIds)} disabled={softDeleteMutation.isPending} className="bg-destructive text-white rounded-xl font-black px-10">حذف الجميع</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
