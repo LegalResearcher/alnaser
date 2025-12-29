@@ -327,6 +327,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin_or_editor: { Args: { _user_id: string }; Returns: boolean }
+      soft_delete_questions: { Args: { p_ids: string[] }; Returns: number }
     }
     Enums: {
       app_role: "admin" | "editor"

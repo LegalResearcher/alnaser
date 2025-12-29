@@ -320,18 +320,16 @@ const AdminQuestions = () => {
     onError: (err: any) => toast({ title: 'خطأ', description: err.message, variant: 'destructive' })
   });
 
-  // --- حذف منطقي (سؤال واحد أو عدة أسئلة) ---
+  // --- حذف منطقي عبر RPC (سؤال واحد أو عدة أسئلة) ---
   const softDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
       requireAdminOrEditor();
-      if (!ids.length) return;
+      if (!ids.length) return 0;
 
-      const { error } = await supabase
-        .from('questions')
-        .update({ status: 'deleted' })
-        .in('id', ids);
+      const { data, error } = await supabase.rpc('soft_delete_questions', { p_ids: ids });
 
       if (error) throw error;
+      return data as number;
     },
     onMutate: async (ids) => {
       await queryClient.cancelQueries({ queryKey: ['questions'] });
