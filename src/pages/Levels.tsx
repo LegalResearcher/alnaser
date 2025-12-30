@@ -63,28 +63,28 @@ const Levels = () => {
 
   return (
     <MainLayout>
-      <section className="py-12 md:py-24 bg-slate-50/50 min-h-screen">
-        <div className="container mx-auto px-6">
+      <section className="py-8 md:py-24 bg-slate-50/50 min-h-[calc(100vh-80px)]">
+        <div className="container mx-auto px-4 md:px-6">
           
           {/* Header - تصميم فخم ومركزي */}
-          <div className="text-center max-w-3xl mx-auto mb-20 space-y-4">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-black uppercase tracking-[0.2em] animate-fade-in">
-              <GraduationCap className="w-4 h-4" />
+          <div className="text-center max-w-3xl mx-auto mb-12 md:mb-20 space-y-3 md:space-y-4">
+            <div className="inline-flex items-center gap-2 px-3 md:px-4 py-1 md:py-1.5 rounded-full bg-primary/10 text-primary text-[10px] md:text-xs font-black uppercase tracking-[0.15em] md:tracking-[0.2em] animate-fade-in">
+              <GraduationCap className="w-3.5 h-3.5 md:w-4 md:h-4" />
               المسار الأكاديمي القانوني
             </div>
-            <h1 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tight">
+            <h1 className="text-3xl md:text-6xl font-black text-slate-900 tracking-tight">
               اختر <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-600">مستواك الدراسي</span>
             </h1>
-            <p className="text-slate-500 text-lg md:text-xl font-medium">
+            <p className="text-slate-500 text-base md:text-xl font-medium px-4">
               حدد المرحلة التعليمية التي تنتمي إليها للوصول إلى بنك الأسئلة المخصص لك.
             </p>
           </div>
 
           {/* Levels Grid - (2x2) على الكمبيوتر وعمودي على الجوال */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8 max-w-5xl mx-auto">
             {levelsLoading && levels.length === 0 ? (
               Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-72 rounded-[3rem] bg-white border border-slate-100 animate-pulse shadow-sm" />
+                <div key={i} className="h-56 md:h-72 rounded-[2rem] md:rounded-[3rem] bg-white border border-slate-100 animate-pulse shadow-sm" />
               ))
             ) : (
               levels.map((level, index) => (
@@ -95,55 +95,55 @@ const Levels = () => {
                 >
                   {/* Card Main Container */}
                   <div className={cn(
-                    "bg-white rounded-[3rem] border border-slate-100 overflow-hidden transition-all duration-500 hover:-translate-y-3 flex flex-col h-full shadow-sm hover:shadow-2xl",
+                    "bg-white rounded-[2rem] md:rounded-[3rem] border border-slate-100 overflow-hidden transition-all duration-500 hover:-translate-y-2 md:hover:-translate-y-3 flex flex-col h-full shadow-sm hover:shadow-2xl active:scale-[0.98]",
                     levelColors[index]?.shadow || "shadow-slate-200"
                   )}>
                     
                     {/* Visual Top Section */}
                     <div className={cn(
-                      "h-44 bg-gradient-to-br relative overflow-hidden",
+                      "h-32 md:h-44 bg-gradient-to-br relative overflow-hidden",
                       levelColors[index]?.bg || levelColors[0].bg
                     )}>
                       {/* تأثير الشبكة (Mesh Pattern) */}
                       <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_2px_2px,white_1px,transparent_0)] bg-[length:24px_24px]" />
                       
                       {/* الرقم العائم - تصميم زجاجي */}
-                      <div className="absolute bottom-6 right-8">
-                        <div className="w-20 h-20 rounded-[2rem] bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center rotate-12 group-hover:rotate-0 transition-transform duration-500 shadow-2xl">
-                          <span className="text-5xl font-black text-white">{index + 1}</span>
+                      <div className="absolute bottom-4 md:bottom-6 right-4 md:right-8">
+                        <div className="w-14 h-14 md:w-20 md:h-20 rounded-[1.25rem] md:rounded-[2rem] bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center rotate-12 group-hover:rotate-0 transition-transform duration-500 shadow-2xl">
+                          <span className="text-3xl md:text-5xl font-black text-white">{index + 1}</span>
                         </div>
                       </div>
 
                       {/* شارة عدد المواد */}
-                      <div className="absolute top-6 left-8">
-                        <span className="bg-black/10 backdrop-blur-sm text-white text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
-                          <Layers className="w-3.5 h-3.5 text-primary" />
-                          {subjectCounts[level.id] || 0} مادة تعليمية
+                      <div className="absolute top-4 md:top-6 left-4 md:left-8">
+                        <span className="bg-black/10 backdrop-blur-sm text-white text-[9px] md:text-[10px] font-black uppercase tracking-widest px-3 md:px-4 py-1 md:py-1.5 rounded-full border border-white/10 flex items-center gap-1.5 md:gap-2">
+                          <Layers className="w-3 h-3 md:w-3.5 md:h-3.5 text-primary" />
+                          {subjectCounts[level.id] || 0} مادة
                         </span>
                       </div>
                     </div>
 
                     {/* Content Section */}
-                    <div className="p-10 flex-1 flex flex-col">
-                      <div className="flex items-center gap-2 mb-3">
-                         <Sparkles className={cn("w-5 h-5", levelColors[index]?.icon)} />
-                         <h2 className="font-black text-2xl text-slate-800 group-hover:text-primary transition-colors tracking-tight">
+                    <div className="p-6 md:p-10 flex-1 flex flex-col">
+                      <div className="flex items-center gap-2 mb-2 md:mb-3">
+                         <Sparkles className={cn("w-4 h-4 md:w-5 md:h-5", levelColors[index]?.icon)} />
+                         <h2 className="font-black text-xl md:text-2xl text-slate-800 group-hover:text-primary transition-colors tracking-tight">
                           {level.name}
                         </h2>
                       </div>
                       
-                      <p className="text-slate-500 font-medium leading-relaxed mb-8 line-clamp-2">
+                      <p className="text-slate-500 font-medium leading-relaxed mb-6 md:mb-8 line-clamp-2 text-sm md:text-base">
                         {level.description}
                       </p>
                       
                       {/* Action Button */}
-                      <div className="mt-auto pt-6 border-t border-slate-50 flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-primary font-black text-xs uppercase tracking-[0.2em]">
-                          <BookOpen className="w-4 h-4" />
+                      <div className="mt-auto pt-4 md:pt-6 border-t border-slate-50 flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-primary font-black text-[10px] md:text-xs uppercase tracking-[0.15em] md:tracking-[0.2em]">
+                          <BookOpen className="w-3.5 h-3.5 md:w-4 md:h-4" />
                           <span>تصفح المواد</span>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all duration-300">
-                          <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all duration-300">
+                          <ArrowLeft className="w-4 h-4 md:w-5 md:h-5 group-hover:-translate-x-1 transition-transform" />
                         </div>
                       </div>
                     </div>

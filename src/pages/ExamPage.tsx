@@ -202,44 +202,43 @@ const ExamPage = () => {
 
   return (
     <MainLayout>
-      <section className="py-8 bg-slate-50/50 min-h-screen font-cairo text-right" dir="rtl">
-        <div className="container mx-auto px-4 md:px-6">
+      <section className="py-4 md:py-8 bg-slate-50/50 min-h-[calc(100vh-80px)] font-cairo text-right" dir="rtl">
+        <div className="container mx-auto px-3 md:px-6">
           <div className="max-w-4xl mx-auto">
             
             {/* Header: التقدم والوقت */}
-            <div className="sticky top-20 z-40 bg-white/80 backdrop-blur-xl rounded-[2.5rem] border border-slate-200 p-3 md:p-5 mb-8 shadow-xl flex items-center justify-between gap-4">
-              <div className="flex flex-col gap-2 flex-1 max-w-[60%]">
-                <div className="flex items-center justify-between text-xs font-black text-slate-400">
+            <div className="sticky top-16 md:top-20 z-40 bg-white/80 backdrop-blur-xl rounded-2xl md:rounded-[2.5rem] border border-slate-200 p-2.5 md:p-5 mb-4 md:mb-8 shadow-xl flex items-center justify-between gap-2 md:gap-4">
+              <div className="flex flex-col gap-1.5 md:gap-2 flex-1 max-w-[55%] md:max-w-[60%]">
+                <div className="flex items-center justify-between text-[10px] md:text-xs font-black text-slate-400">
                   <span>السؤال {currentIndex + 1} / {questions.length}</span>
-                  <span className="text-primary">{Math.round(progress)}% اكتمل</span>
+                  <span className="text-primary">{Math.round(progress)}%</span>
                 </div>
-                <Progress value={progress} className="h-3 rounded-full" />
+                <Progress value={progress} className="h-2 md:h-3 rounded-full" />
               </div>
               
               <div className={cn(
-                "flex items-center gap-3 font-black text-xl md:text-2xl px-6 py-3 rounded-2xl",
+                "flex items-center gap-2 md:gap-3 font-black text-base md:text-2xl px-3 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl",
                 isTimeWarning ? "bg-rose-500 text-white animate-pulse" : "bg-slate-900 text-white"
               )}>
-                <Clock className="w-6 h-6" />
+                <Clock className="w-4 h-4 md:w-6 md:h-6" />
                 <span dir="ltr">{formatTime(timeLeft)}</span>
               </div>
             </div>
 
             {/* بطاقة السؤال */}
             {currentQuestion && (
-              <div className="bg-white rounded-[3.5rem] border border-slate-200 shadow-2xl p-8 md:p-14 mb-8">
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-black tracking-widest mb-8">
+              <div className="bg-white rounded-[2rem] md:rounded-[3.5rem] border border-slate-200 shadow-2xl p-5 md:p-14 mb-4 md:mb-8">
+                <div className="inline-flex items-center gap-2 px-3 md:px-4 py-1 md:py-1.5 rounded-full bg-slate-100 text-slate-500 text-[9px] md:text-[10px] font-black tracking-widest mb-5 md:mb-8">
                   اختبار عام {state.examYear} {state.examForm === 'Parallel' ? '- موازي' : ''}
                 </div>
-                <h2 className="text-2xl md:text-3xl font-black text-slate-800 mb-12 leading-relaxed text-right">
+                <h2 className="text-lg md:text-3xl font-black text-slate-800 mb-6 md:mb-12 leading-relaxed text-right">
                   {currentQuestion.question_text}
                 </h2>
 
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 gap-3 md:gap-4">
                   {availableOptions.map((option) => {
                     const optionKey = `option_${option.toLowerCase()}` as keyof Question;
                     const rawOptionText = currentQuestion[optionKey] as string;
-                    // تطبيق التنظيف الشامل (البداية والنهاية)
                     const optionText = cleanOptionText(rawOptionText);
                     const isSelected = answers[currentQuestion.id] === option;
 
@@ -248,20 +247,20 @@ const ExamPage = () => {
                         key={option}
                         onClick={() => setAnswers({...answers, [currentQuestion.id]: option})}
                         className={cn(
-                          "w-full text-right p-6 rounded-3xl border-2 transition-all flex items-center gap-5",
-                          isSelected ? "border-primary bg-primary/[0.03]" : "border-slate-100 bg-slate-50 hover:border-primary/20"
+                          "w-full text-right p-4 md:p-6 rounded-2xl md:rounded-3xl border-2 transition-all flex items-center gap-3 md:gap-5 active:scale-[0.98]",
+                          isSelected ? "border-primary bg-primary/[0.03] shadow-lg" : "border-slate-100 bg-slate-50 hover:border-primary/20"
                         )}
                       >
                         <div className={cn(
-                          "w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-sm shrink-0",
+                          "w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center font-black text-base md:text-lg shadow-sm shrink-0",
                           isSelected ? "bg-primary text-white" : "bg-white text-slate-400 border border-slate-200"
                         )}>
                           {option}
                         </div>
-                        <span className={cn("flex-1 text-lg font-bold text-right", isSelected ? "text-primary" : "text-slate-600")}>
+                        <span className={cn("flex-1 text-sm md:text-lg font-bold text-right", isSelected ? "text-primary" : "text-slate-600")}>
                           {optionText}
                         </span>
-                        {isSelected && <CheckCircle2 className="w-6 h-6 text-primary shrink-0" />}
+                        {isSelected && <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6 text-primary shrink-0" />}
                       </button>
                     );
                   })}
@@ -270,29 +269,29 @@ const ExamPage = () => {
             )}
 
             {/* أزرار التنقل */}
-            <div className="flex justify-between items-center gap-4">
+            <div className="flex justify-between items-center gap-2 md:gap-4">
               <Button
                 variant="outline"
                 onClick={() => setCurrentIndex(prev => Math.max(0, prev - 1))}
                 disabled={currentIndex === 0}
-                className="rounded-2xl h-14 px-8 border-slate-200 font-bold"
+                className="rounded-xl md:rounded-2xl h-12 md:h-14 px-4 md:px-8 border-slate-200 font-bold text-sm md:text-base active:scale-95"
               >
-                <ChevronRight className="ml-2 w-5 h-5" /> السابق
+                <ChevronRight className="ml-1 md:ml-2 w-4 h-4 md:w-5 md:h-5" /> السابق
               </Button>
 
               {currentIndex === questions.length - 1 ? (
                 <Button
                   onClick={() => setShowSubmitDialog(true)}
-                  className="rounded-2xl h-14 px-10 bg-slate-900 text-white font-black"
+                  className="rounded-xl md:rounded-2xl h-12 md:h-14 px-5 md:px-10 bg-slate-900 text-white font-black text-sm md:text-base active:scale-95"
                 >
-                  <Flag className="w-5 h-5 ml-2" /> تسليم الاختبار
+                  <Flag className="w-4 h-4 md:w-5 md:h-5 ml-1 md:ml-2" /> تسليم
                 </Button>
               ) : (
                 <Button
                   onClick={() => setCurrentIndex(prev => Math.min(questions.length - 1, prev + 1))}
-                  className="rounded-2xl h-14 px-10 bg-primary text-white font-black"
+                  className="rounded-xl md:rounded-2xl h-12 md:h-14 px-5 md:px-10 bg-primary text-white font-black text-sm md:text-base active:scale-95"
                 >
-                  السؤال التالي <ChevronLeft className="mr-2 w-5 h-5" />
+                  التالي <ChevronLeft className="mr-1 md:mr-2 w-4 h-4 md:w-5 md:h-5" />
                 </Button>
               )}
             </div>
