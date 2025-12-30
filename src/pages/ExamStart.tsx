@@ -149,8 +149,8 @@ const ExamStart = () => {
 
   return (
     <MainLayout>
-      <section className="py-12 md:py-24 bg-slate-50/50 min-h-screen">
-        <div className="container mx-auto px-6 relative">
+      <section className="py-8 md:py-16 bg-slate-50/50 min-h-[calc(100vh-80px)]">
+        <div className="container mx-auto px-4 md:px-6 relative">
           
           <button
             onClick={() => navigate(-1)}
@@ -162,39 +162,39 @@ const ExamStart = () => {
 
           <div className="max-w-3xl mx-auto">
             
-            <div className="bg-white rounded-[3.5rem] border border-slate-200 shadow-2xl shadow-slate-200/60 overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-700">
+            <div className="bg-white rounded-[2rem] md:rounded-[3.5rem] border border-slate-200 shadow-2xl shadow-slate-200/60 overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-700">
               
-              <div className="bg-slate-900 p-10 md:p-14 text-white text-center relative overflow-hidden">
+              <div className="bg-slate-900 p-8 md:p-14 text-white text-center relative overflow-hidden">
                 <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_50%_120%,#3b82f6,transparent)]" />
                 <div className="relative z-10 flex flex-col items-center">
-                  <div className="w-20 h-20 rounded-[2rem] bg-primary/20 backdrop-blur-xl border border-white/10 flex items-center justify-center mb-6 shadow-2xl">
-                    <ShieldCheck className="w-10 h-10 text-primary shadow-sm" />
+                  <div className="w-16 h-16 md:w-20 md:h-20 rounded-[1.5rem] md:rounded-[2rem] bg-primary/20 backdrop-blur-xl border border-white/10 flex items-center justify-center mb-4 md:mb-6 shadow-2xl">
+                    <ShieldCheck className="w-8 h-8 md:w-10 md:h-10 text-primary" />
                   </div>
                   {subject.levels?.name && (
-                    <span className="inline-block px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-black uppercase tracking-[0.2em] text-primary/80 mb-4">
+                    <span className="inline-block px-3 py-1 md:px-4 md:py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] md:text-xs font-black uppercase tracking-[0.15em] md:tracking-[0.2em] text-primary/80 mb-3 md:mb-4">
                       {subject.levels.name}
                     </span>
                   )}
-                  <h1 className="text-3xl md:text-4xl font-black mb-4 tracking-tight leading-tight">
+                  <h1 className="text-2xl md:text-4xl font-black mb-2 md:mb-4 tracking-tight leading-tight">
                     تجهيز اختبار <br /> 
                     <span className="text-primary">{subject.name}</span>
                   </h1>
                 </div>
               </div>
 
-              <div className="p-8 md:p-14 space-y-10">
+              <div className="p-6 md:p-14 space-y-8 md:space-y-10">
                 
                 {/* بطاقات معلومات الاختبار */}
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="bg-slate-50 rounded-[2.5rem] p-6 text-center border border-slate-100 group hover:border-primary/20 transition-all">
-                    <Target className="w-6 h-6 text-primary mx-auto mb-3" />
-                    <p className="text-2xl font-black text-slate-800">{subject.passing_score}%</p>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">درجة النجاح</p>
+                <div className="grid grid-cols-2 gap-3 md:gap-6">
+                  <div className="bg-slate-50 rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-6 text-center border border-slate-100 group hover:border-primary/20 hover:shadow-lg transition-all duration-300">
+                    <Target className="w-5 h-5 md:w-6 md:h-6 text-primary mx-auto mb-2 md:mb-3" />
+                    <p className="text-xl md:text-2xl font-black text-slate-800">{subject.passing_score}%</p>
+                    <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">درجة النجاح</p>
                   </div>
-                  <div className="bg-slate-50 rounded-[2.5rem] p-6 text-center border border-slate-100 group hover:border-primary/20 transition-all">
-                    <Clock className="w-6 h-6 text-primary mx-auto mb-3" />
-                    <p className="text-2xl font-black text-slate-800">{examTime}</p>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">الدقائق المتاحة</p>
+                  <div className="bg-slate-50 rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-6 text-center border border-slate-100 group hover:border-primary/20 hover:shadow-lg transition-all duration-300">
+                    <Clock className="w-5 h-5 md:w-6 md:h-6 text-primary mx-auto mb-2 md:mb-3" />
+                    <p className="text-xl md:text-2xl font-black text-slate-800">{examTime}</p>
+                    <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">الدقائق المتاحة</p>
                   </div>
                 </div>
 
@@ -305,18 +305,18 @@ const ExamStart = () => {
                   <Button
                     onClick={handleStartExam}
                     disabled={!studentName.trim() || !selectedYear || questionCount === 0}
-                    className="w-full h-20 text-xl font-black rounded-[2rem] bg-primary hover:bg-blue-600 text-white shadow-2xl shadow-primary/30 transition-all gap-4 group"
+                    className="w-full h-16 md:h-20 text-lg md:text-xl font-black rounded-[1.5rem] md:rounded-[2rem] bg-primary hover:bg-blue-600 text-white shadow-2xl shadow-primary/30 hover:shadow-primary/50 transition-all duration-300 gap-3 md:gap-4 group active:scale-[0.98]"
                   >
                     <span>ابدأ الاختبار الآن</span>
-                    <Play className="w-6 h-6 fill-current group-hover:scale-110 transition-transform" />
+                    <Play className="w-5 h-5 md:w-6 md:h-6 fill-current group-hover:scale-110 transition-transform" />
                   </Button>
                 </div>
               </div>
 
-              <div className="p-8 bg-slate-50 border-t border-slate-100 text-center flex items-center justify-center gap-2">
-                 <Info className="w-4 h-4 text-slate-400" />
+              <div className="p-6 md:p-8 bg-slate-50 border-t border-slate-100 text-center flex items-center justify-center gap-2 rounded-b-[3.5rem]">
+                 <Info className="w-4 h-4 text-slate-400 shrink-0" />
                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest text-center">
-                   بالضغط على ابدأ، سيتم تفعيل المؤقت الزمني تلقائياً. تأكد من استقرار اتصالك بالإنترنت.
+                   بالضغط على ابدأ، سيتم تفعيل المؤقت الزمني تلقائياً.
                  </p>
               </div>
             </div>

@@ -10,13 +10,16 @@ interface MainLayoutProps {
 export function MainLayout({ children }: MainLayoutProps) {
   const { pathname } = useLocation();
 
+  // إظهار الفوتر فقط في الصفحة الرئيسية
+  const showFooter = pathname === '/';
+
   // التأكد من صعود الصفحة للأعلى عند تغيير المسار (UX احترافي)
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [pathname]);
 
   return (
-    <div className="min-h-screen flex flex-col relative bg-background selection:bg-primary/20 selection:text-primary">
+    <div className="min-h-screen flex flex-col relative bg-background selection:bg-primary/20 selection:text-primary overflow-x-hidden">
       
       {/* عناصر الخلفية الفنية (Ambient Background) - تعطي طابعاً عالمياً */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
@@ -33,18 +36,13 @@ export function MainLayout({ children }: MainLayoutProps) {
 
       {/* منطقة المحتوى الرئيسي مع أنيميشن دخول ناعم */}
       <main className="flex-1 w-full flex flex-col animate-in fade-in duration-700 ease-out">
-        {/* تم إضافة حاوية اختيارية هنا لضمان تباعد المحتوى بشكل قياسي 
-           يمكنك إزالة max-w-7xl إذا كنت تفضل التصميم بعرض الشاشة الكامل 
-        */}
         <div className="w-full mx-auto">
           {children}
         </div>
       </main>
 
-      {/* الفوتر المطور */}
-      <Footer />
-
-      {/* زر اختياري: العودة للأعلى (يمكن تفعيله لاحقاً) */}
+      {/* الفوتر - يظهر فقط في الصفحة الرئيسية */}
+      {showFooter && <Footer />}
     </div>
   );
 }
