@@ -3,6 +3,7 @@ import { Scale, Menu, X, ArrowLeft } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const navLinks = [
   { href: '/', label: 'الرئيسية' },
@@ -78,9 +79,12 @@ export function Header() {
           </nav>
 
           {/* Actions Section */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* زر تبديل الوضع الليلي */}
+            <ThemeToggle />
+            
             <Link to="/levels" className="hidden sm:block">
-              <Button className="rounded-full px-6 font-bold bg-gradient-to-r from-primary to-blue-600 hover:from-blue-600 hover:to-primary text-white border-0 shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all duration-300">
+              <Button className="rounded-full px-6 font-bold bg-gradient-to-r from-primary to-blue-600 hover:from-blue-600 hover:to-primary text-primary-foreground border-0 shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all duration-300">
                 ابدأ رحلتك
                 <ArrowLeft className="mr-2 w-4 h-4 rotate-180" />
               </Button>
