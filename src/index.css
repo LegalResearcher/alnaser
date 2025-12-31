@@ -42,11 +42,44 @@
   }
 
   .dark {
-    /* إعدادات الوضع الليلي (Dark Mode) */
+    /* إعدادات الوضع الليلي (Dark Mode) المتكاملة */
     --background: 222 47% 8%;
     --foreground: 210 40% 98%;
+
     --card: 222 47% 11%;
-    --border: 217 33% 17%;
+    --card-foreground: 210 40% 98%;
+
+    --primary: 217 91% 65%;
+    --primary-foreground: 222 47% 8%;
+
+    --secondary: 160 70% 45%;
+    --secondary-foreground: 222 47% 8%;
+
+    --border: 217 33% 20%;
+    --input: 217 33% 17%;
+    --ring: 217 91% 65%;
+
+    --muted: 217 33% 15%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62% 55%;
+    --destructive-foreground: 210 40% 98%;
+
+    --success: 160 70% 45%;
+    --success-foreground: 222 47% 8%;
+
+    /* المستويات */
+    --level-1: 217 91% 65%;
+    --level-2: 160 70% 45%;
+    --level-3: 38 85% 55%;
+    --level-4: 0 75% 60%;
+
+    /* تدرجات الوضع الليلي */
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 65%) 0%, hsl(199 80% 55%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(217 91% 65% / 0.15) 0%, hsl(160 70% 45% / 0.1) 100%);
   }
 }
 

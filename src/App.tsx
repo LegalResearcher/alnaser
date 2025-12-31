@@ -1,6 +1,7 @@
 import { Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -48,7 +49,7 @@ const queryClient = new QueryClient({
 
 // مكون شاشة التحميل البسيطة (Loading Spinner)
 const PageLoader = () => (
-  <div className="min-h-screen flex items-center justify-center bg-slate-50">
+  <div className="min-h-screen flex items-center justify-center bg-background">
     <div className="relative w-12 h-12">
       <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
       <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin" />
@@ -58,43 +59,45 @@ const PageLoader = () => (
 
 const App = () => (
   <ErrorBoundary>
-    <BrowserRouter>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner position="top-center" expand={false} richColors />
-            
-            {/* Suspense: يضمن عرض شاشة تحميل أنيقة أثناء جلب الصفحة المطلوبة */}
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                {/* المسارات العامة (Public Routes) */}
-                <Route path="/" element={<Index />} />
-                <Route path="/levels" element={<Levels />} />
-                <Route path="/levels/:levelId" element={<LevelSubjects />} />
-                <Route path="/exam/:subjectId" element={<ExamStart />} />
-                <Route path="/exam/:subjectId/start" element={<ExamPage />} />
-                <Route path="/exam/:subjectId/result" element={<ExamResult />} />
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange={false}>
+      <BrowserRouter>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner position="top-center" expand={false} richColors />
+              
+              {/* Suspense: يضمن عرض شاشة تحميل أنيقة أثناء جلب الصفحة المطلوبة */}
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  {/* المسارات العامة (Public Routes) */}
+                  <Route path="/" element={<Index />} />
+                  <Route path="/levels" element={<Levels />} />
+                  <Route path="/levels/:levelId" element={<LevelSubjects />} />
+                  <Route path="/exam/:subjectId" element={<ExamStart />} />
+                  <Route path="/exam/:subjectId/start" element={<ExamPage />} />
+                  <Route path="/exam/:subjectId/result" element={<ExamResult />} />
 
-                {/* مسارات الإدارة (Admin Routes) */}
-                <Route path="/admin/login" element={<AdminLogin />} />
-                <Route path="/admin" element={<AdminDashboard />} />
-                <Route path="/admin/questions" element={<AdminQuestions />} />
-                <Route path="/admin/users" element={<AdminUsers />} />
-                <Route path="/admin/deletion-requests" element={<AdminDeletionRequests />} />
-                <Route path="/admin/statistics" element={<AdminStatistics />} />
-                <Route path="/admin/levels" element={<AdminLevels />} />
-                <Route path="/admin/subjects" element={<AdminSubjects />} />
-                <Route path="/admin/settings" element={<AdminSettings />} />
+                  {/* مسارات الإدارة (Admin Routes) */}
+                  <Route path="/admin/login" element={<AdminLogin />} />
+                  <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="/admin/questions" element={<AdminQuestions />} />
+                  <Route path="/admin/users" element={<AdminUsers />} />
+                  <Route path="/admin/deletion-requests" element={<AdminDeletionRequests />} />
+                  <Route path="/admin/statistics" element={<AdminStatistics />} />
+                  <Route path="/admin/levels" element={<AdminLevels />} />
+                  <Route path="/admin/subjects" element={<AdminSubjects />} />
+                  <Route path="/admin/settings" element={<AdminSettings />} />
 
-                {/* مسار الخطأ (404) */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </TooltipProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    </BrowserRouter>
+                  {/* مسار الخطأ (404) */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </TooltipProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   </ErrorBoundary>
 );
 
