@@ -1,9 +1,10 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Scale, Menu, X, ArrowLeft } from 'lucide-react';
+import { Menu, X, ArrowLeft } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import logoImage from '@/assets/logo.jpg';
 
 const navLinks = [
   { href: '/', label: 'الرئيسية' },
@@ -38,11 +39,14 @@ export function Header() {
       <div className="container mx-auto px-6">
         <div className="flex items-center justify-between h-14">
           
-          {/* Logo Section - تصميم أيقونة أكثر عمقاً */}
+          {/* Logo Section */}
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="relative overflow-hidden w-11 h-11 rounded-2xl bg-gradient-to-tr from-primary to-blue-600 flex items-center justify-center shadow-md group-hover:shadow-primary/25 group-hover:shadow-2xl transition-all duration-500">
-              <Scale className="w-6 h-6 text-white relative z-10 transition-transform duration-500 group-hover:scale-110" />
-              <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="relative overflow-hidden w-11 h-11 rounded-xl shadow-md group-hover:shadow-primary/25 group-hover:shadow-xl transition-all duration-500">
+              <img 
+                src={logoImage} 
+                alt="الباحث القانوني" 
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+              />
             </div>
             <div className="flex flex-col">
               <span className="text-lg font-bold tracking-tight text-foreground leading-none">
