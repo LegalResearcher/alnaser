@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { Question } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 import html2canvas from 'html2canvas';
+import logoImage from '@/assets/logo.jpg';
 
 interface ResultState {
   studentName: string;
@@ -112,6 +113,44 @@ https://alnaser.vercel.app/
         scale: 2,
         useCORS: true,
       });
+      
+      // إضافة العلامة المائية للشعار
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        const logo = new Image();
+        logo.crossOrigin = 'anonymous';
+        logo.src = logoImage;
+        
+        await new Promise<void>((resolve, reject) => {
+          logo.onload = () => {
+            // حجم وموقع الشعار (أسفل يسار)
+            const logoSize = 80;
+            const padding = 20;
+            const x = canvas.width - logoSize - padding;
+            const y = canvas.height - logoSize - padding;
+            
+            // إضافة خلفية نصف شفافة للشعار
+            ctx.save();
+            ctx.globalAlpha = 0.9;
+            ctx.beginPath();
+            ctx.arc(x + logoSize / 2, y + logoSize / 2, logoSize / 2 + 5, 0, Math.PI * 2);
+            ctx.fillStyle = 'white';
+            ctx.fill();
+            ctx.restore();
+            
+            // رسم الشعار
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(x + logoSize / 2, y + logoSize / 2, logoSize / 2, 0, Math.PI * 2);
+            ctx.clip();
+            ctx.drawImage(logo, x, y, logoSize, logoSize);
+            ctx.restore();
+            
+            resolve();
+          };
+          logo.onerror = () => resolve(); // استمر حتى لو فشل تحميل الشعار
+        });
+      }
       
       const link = document.createElement('a');
       link.download = `نتيجة-${state.subjectName || 'الاختبار'}-${scorePercentage}%.png`;
