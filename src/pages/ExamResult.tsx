@@ -9,14 +9,15 @@ import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { 
   CheckCircle, XCircle, Clock, Target, 
   RotateCcw, Home, Share2, Eye, EyeOff, 
-  Trophy, Medal, AlertCircle, ChevronDown, Sparkles, Zap
+  Trophy, Medal, AlertCircle, ChevronDown, Sparkles, Zap, Download, Loader2
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { Question } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
+import html2canvas from 'html2canvas';
 
 interface ResultState {
   studentName: string;
@@ -38,6 +39,8 @@ const ExamResult = () => {
   const navigate = useNavigate();
   const state = location.state as ResultState;
   const [showReview, setShowReview] = useState(false);
+  const [isSavingImage, setIsSavingImage] = useState(false);
+  const resultCardRef = useRef<HTMLDivElement>(null);
 
   if (!state) {
     return (
@@ -99,6 +102,38 @@ https://alnaser.vercel.app/
     }
   };
 
+  const handleSaveAsImage = async () => {
+    if (!resultCardRef.current) return;
+    
+    setIsSavingImage(true);
+    try {
+      const canvas = await html2canvas(resultCardRef.current, {
+        backgroundColor: null,
+        scale: 2,
+        useCORS: true,
+      });
+      
+      const link = document.createElement('a');
+      link.download = `نتيجة-${state.subjectName || 'الاختبار'}-${scorePercentage}%.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      
+      toast({
+        title: "تم حفظ الصورة بنجاح",
+        description: "يمكنك الآن مشاركتها مع زملائك",
+      });
+    } catch (error) {
+      console.error('Error saving image:', error);
+      toast({
+        title: "حدث خطأ",
+        description: "لم نتمكن من حفظ الصورة",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingImage(false);
+    }
+  };
+
   return (
     <MainLayout>
       <section className="py-8 md:py-16 min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
@@ -106,7 +141,9 @@ https://alnaser.vercel.app/
           <div className="max-w-2xl mx-auto">
             
             {/* بطاقة النتيجة الرئيسية */}
-            <div className={cn(
+            <div 
+              ref={resultCardRef}
+              className={cn(
               "relative bg-card rounded-3xl border shadow-2xl overflow-hidden mb-8 transition-all duration-500 animate-in zoom-in-95",
               state.passed 
                 ? "border-emerald-500/20 shadow-emerald-500/10 dark:shadow-emerald-500/5" 
@@ -204,24 +241,44 @@ https://alnaser.vercel.app/
                 </div>
 
                 {/* أزرار الإجراءات */}
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={() => setShowReview(!showReview)}
+                      className="flex-1 h-14 rounded-xl gap-2 font-bold border-border hover:bg-muted transition-all active:scale-[0.98]"
+                    >
+                      {showReview ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      {showReview ? 'إخفاء المراجعة' : 'مراجعة الإجابات'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={handleShare}
+                      className="flex-1 h-14 rounded-xl gap-2 font-bold border-primary/30 text-primary hover:bg-primary/10 transition-all active:scale-[0.98]"
+                    >
+                      <Share2 className="w-5 h-5" />
+                      مشاركة النتيجة
+                    </Button>
+                  </div>
                   <Button
-                    variant="outline"
                     size="lg"
-                    onClick={() => setShowReview(!showReview)}
-                    className="flex-1 h-14 rounded-xl gap-2 font-bold border-border hover:bg-muted transition-all active:scale-[0.98]"
+                    onClick={handleSaveAsImage}
+                    disabled={isSavingImage}
+                    className="w-full h-14 rounded-xl gap-2 font-bold bg-gradient-to-l from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
                   >
-                    {showReview ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    {showReview ? 'إخفاء المراجعة' : 'مراجعة الإجابات'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    onClick={handleShare}
-                    className="flex-1 h-14 rounded-xl gap-2 font-bold border-primary/30 text-primary hover:bg-primary/10 transition-all active:scale-[0.98]"
-                  >
-                    <Share2 className="w-5 h-5" />
-                    مشاركة النتيجة
+                    {isSavingImage ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        جاري الحفظ...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-5 h-5" />
+                        حفظ كصورة
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>
