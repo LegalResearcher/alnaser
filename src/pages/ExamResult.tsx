@@ -104,54 +104,153 @@ https://alnaser.vercel.app/
   };
 
   const handleSaveAsImage = async () => {
-    if (!resultCardRef.current) return;
-    
     setIsSavingImage(true);
     try {
-      const canvas = await html2canvas(resultCardRef.current, {
-        backgroundColor: null,
-        scale: 2,
-        useCORS: true,
-      });
+      const width = 600;
+      const height = 800;
+      const scale = 2;
       
-      // إضافة العلامة المائية للشعار
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        const logo = new Image();
-        logo.crossOrigin = 'anonymous';
-        logo.src = logoImage;
-        
-        await new Promise<void>((resolve, reject) => {
-          logo.onload = () => {
-            // حجم وموقع الشعار (أسفل يسار)
-            const logoSize = 80;
-            const padding = 20;
-            const x = canvas.width - logoSize - padding;
-            const y = canvas.height - logoSize - padding;
-            
-            // إضافة خلفية نصف شفافة للشعار
-            ctx.save();
-            ctx.globalAlpha = 0.9;
-            ctx.beginPath();
-            ctx.arc(x + logoSize / 2, y + logoSize / 2, logoSize / 2 + 5, 0, Math.PI * 2);
-            ctx.fillStyle = 'white';
-            ctx.fill();
-            ctx.restore();
-            
-            // رسم الشعار
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(x + logoSize / 2, y + logoSize / 2, logoSize / 2, 0, Math.PI * 2);
-            ctx.clip();
-            ctx.drawImage(logo, x, y, logoSize, logoSize);
-            ctx.restore();
-            
-            resolve();
-          };
-          logo.onerror = () => resolve(); // استمر حتى لو فشل تحميل الشعار
-        });
+      const canvas = document.createElement('canvas');
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+      const ctx = canvas.getContext('2d')!;
+      ctx.scale(scale, scale);
+      
+      // تفعيل دعم النص العربي
+      ctx.direction = 'rtl';
+      ctx.textAlign = 'center';
+      
+      // الخلفية
+      const gradient = ctx.createLinearGradient(0, 0, 0, height);
+      if (state.passed) {
+        gradient.addColorStop(0, '#10b981');
+        gradient.addColorStop(0.4, '#059669');
+        gradient.addColorStop(1, '#1e293b');
+      } else {
+        gradient.addColorStop(0, '#475569');
+        gradient.addColorStop(0.4, '#334155');
+        gradient.addColorStop(1, '#1e293b');
+      }
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+      
+      // أيقونة الكأس/الميدالية
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.beginPath();
+      ctx.arc(width / 2, 120, 60, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.font = 'bold 50px Arial';
+      ctx.fillStyle = 'white';
+      ctx.fillText(state.passed ? '🏆' : '🎖️', width / 2, 135);
+      
+      // اسم المنصة
+      ctx.font = 'bold 18px Arial';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.fillText('منصة الباحث القانوني', width / 2, 220);
+      
+      // المستوى والمادة
+      ctx.font = '14px Arial';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      const levelSubject = `${state.levelName || ''} • ${state.subjectName || ''}`;
+      ctx.fillText(levelSubject, width / 2, 250);
+      
+      // العنوان الرئيسي
+      ctx.font = 'bold 24px Arial';
+      ctx.fillStyle = 'white';
+      if (state.passed) {
+        ctx.fillText('تهانينا، لقد نجحت! 🎉', width / 2, 300);
+      } else {
+        ctx.fillText('محاولة جيدة، استمر!', width / 2, 300);
       }
       
+      // النتيجة الكبيرة
+      ctx.font = 'bold 100px Arial';
+      ctx.fillStyle = state.passed ? '#34d399' : 'white';
+      ctx.fillText(`${scorePercentage}%`, width / 2, 420);
+      
+      // الإجابات الصحيحة
+      ctx.font = 'bold 18px Arial';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.fillText(`${state.score} إجابة صحيحة من أصل ${state.totalQuestions}`, width / 2, 470);
+      
+      // مربعات الإحصائيات
+      const boxY = 510;
+      const boxWidth = 140;
+      const boxHeight = 80;
+      const gap = 20;
+      
+      // مربع درجة النجاح
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.beginPath();
+      ctx.roundRect(width / 2 - boxWidth - gap / 2, boxY, boxWidth, boxHeight, 15);
+      ctx.fill();
+      
+      ctx.font = 'bold 28px Arial';
+      ctx.fillStyle = 'white';
+      ctx.fillText(`${state.passingScore}%`, width / 2 - boxWidth / 2 - gap / 2, boxY + 40);
+      ctx.font = '12px Arial';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.fillText('درجة النجاح', width / 2 - boxWidth / 2 - gap / 2, boxY + 62);
+      
+      // مربع الوقت
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.beginPath();
+      ctx.roundRect(width / 2 + gap / 2, boxY, boxWidth, boxHeight, 15);
+      ctx.fill();
+      
+      ctx.font = 'bold 22px Arial';
+      ctx.fillStyle = 'white';
+      ctx.fillText(formatTime(state.timeTaken), width / 2 + boxWidth / 2 + gap / 2, boxY + 40);
+      ctx.font = '12px Arial';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.fillText('الوقت المستغرق', width / 2 + boxWidth / 2 + gap / 2, boxY + 62);
+      
+      // اسم الطالب
+      ctx.font = 'bold 20px Arial';
+      ctx.fillStyle = 'white';
+      ctx.fillText(`الطالب: ${state.studentName}`, width / 2, 650);
+      
+      // التاريخ
+      ctx.font = '14px Arial';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.fillText(new Date().toLocaleDateString('ar-SA'), width / 2, 680);
+      
+      // إضافة الشعار
+      const logo = new Image();
+      logo.crossOrigin = 'anonymous';
+      logo.src = logoImage;
+      
+      await new Promise<void>((resolve) => {
+        logo.onload = () => {
+          const logoSize = 60;
+          const padding = 20;
+          const x = width - logoSize - padding;
+          const y = height - logoSize - padding;
+          
+          // خلفية بيضاء للشعار
+          ctx.save();
+          ctx.globalAlpha = 0.95;
+          ctx.beginPath();
+          ctx.arc(x + logoSize / 2, y + logoSize / 2, logoSize / 2 + 4, 0, Math.PI * 2);
+          ctx.fillStyle = 'white';
+          ctx.fill();
+          ctx.restore();
+          
+          // رسم الشعار دائري
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(x + logoSize / 2, y + logoSize / 2, logoSize / 2, 0, Math.PI * 2);
+          ctx.clip();
+          ctx.drawImage(logo, x, y, logoSize, logoSize);
+          ctx.restore();
+          
+          resolve();
+        };
+        logo.onerror = () => resolve();
+      });
+      
+      // تحميل الصورة
       const link = document.createElement('a');
       link.download = `نتيجة-${state.subjectName || 'الاختبار'}-${scorePercentage}%.png`;
       link.href = canvas.toDataURL('image/png');
