@@ -44,19 +44,30 @@ const ExamStart = () => {
   const [examTime, setExamTime] = useState<number>(30);
 
   // جلب بيانات المادة والمستوى
-  const { data: subject, isLoading } = useCachedQuery<(Subject & { levels: { name: string } | null }) | null>(
+  const { data: subject, isLoading } = useCachedQuery<(Subject & { levels: { name: string; is_disabled: boolean; disabled_message: string | null } | null }) | null>(
     ['subject', subjectId],
     async () => {
       const { data, error } = await supabase
         .from('subjects')
-        .select('*, levels(name)')
+        .select('*, levels(name, is_disabled, disabled_message)')
         .eq('id', subjectId)
         .maybeSingle();
       if (error) throw error;
-      return data as (Subject & { levels: { name: string } | null }) | null;
+      return data as (Subject & { levels: { name: string; is_disabled: boolean; disabled_message: string | null } | null }) | null;
     },
     { enabled: !!subjectId }
   );
+
+  // حماية: إعادة توجيه إذا كان المستوى معطلاً
+  useEffect(() => {
+    if (subject?.levels?.is_disabled) {
+      toast({
+        title: subject.levels.disabled_message || 'هذا القسم غير متاح حالياً',
+        variant: 'destructive',
+      });
+      navigate('/levels', { replace: true });
+    }
+  }, [subject, navigate, toast]);
 
   // حساب عدد الأسئلة المتوفرة بناءً على السنة والنموذج
   const { data: questionCount = 0, isLoading: countLoading } = useQuery({
