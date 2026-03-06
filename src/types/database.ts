@@ -9,6 +9,8 @@ export interface Level {
   order_index: number;
   created_at: string;
   updated_at: string;
+  is_disabled?: boolean;
+  disabled_message?: string | null;
 }
 
 export interface Subject {

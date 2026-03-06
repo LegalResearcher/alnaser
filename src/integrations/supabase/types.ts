@@ -110,7 +110,9 @@ export type Database = {
           color: string | null
           created_at: string
           description: string | null
+          disabled_message: string | null
           id: string
+          is_disabled: boolean
           name: string
           order_index: number
           updated_at: string
@@ -119,7 +121,9 @@ export type Database = {
           color?: string | null
           created_at?: string
           description?: string | null
+          disabled_message?: string | null
           id?: string
+          is_disabled?: boolean
           name: string
           order_index?: number
           updated_at?: string
@@ -128,7 +132,9 @@ export type Database = {
           color?: string | null
           created_at?: string
           description?: string | null
+          disabled_message?: string | null
           id?: string
+          is_disabled?: boolean
           name?: string
           order_index?: number
           updated_at?: string
