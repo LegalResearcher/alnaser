@@ -2,7 +2,7 @@
  * Alnasser Tech Digital Solutions
  * Project: Alnaser Legal Platform
  * Developed by: Mueen Al-Nasser
- * Version: 21.0 (Exam Forms Support + JSON Import)
+ * Version: 22.0 (RTL Fix + Arabic Text Support)
  */
 
 import { useState, useRef } from 'react';
@@ -42,7 +42,7 @@ const EXAM_FORMS = [
   { id: 'Mixed', name: 'نموذج مختلط' }
 ];
 
-// --- المحرك الذكي الشامل (يدعم 3 أنماط الآن) ---
+// --- المحرك الذكي الشامل (يدعم العربية بالكامل + RTL) ---
 const parseSanaaLegalContent = (text: string) => {
   const cleanText = text.replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/_/g, '');
   const lines = cleanText.split('\n');
@@ -53,21 +53,25 @@ const parseSanaaLegalContent = (text: string) => {
     const t = line.trim();
     if (!t || t.length < 2) return;
 
-    // 1. تحديد ما إذا كان السطر "خياراً"
-    const hasOptionIndicators = t.includes('+') || t.includes('-') || t.startsWith('1)') || t.startsWith('2)') || t.startsWith('3)') || t.startsWith('4)');
+    // تحديد ما إذا كان السطر "خياراً" - يدعم الأرقام العربية والإنجليزية
+    const hasOptionIndicators =
+      t.includes('+') || t.includes('-') ||
+      t.startsWith('1)') || t.startsWith('2)') || t.startsWith('3)') || t.startsWith('4)') ||
+      t.startsWith('١)') || t.startsWith('٢)') || t.startsWith('٣)') || t.startsWith('٤)');
+
     const isTrueFalse = t.includes('العبارة صحيحة') || t.includes('العبارة خاطئة');
-    const isOption = (hasOptionIndicators || isTrueFalse) && (t.match(/\d/) || t.startsWith('+') || t.startsWith('-'));
+    const isOption = (hasOptionIndicators || isTrueFalse) && (t.match(/[\d١٢٣٤]/) || t.startsWith('+') || t.startsWith('-'));
 
     if (isOption) {
       if (!current) return;
-      
+
       const isCorrect = t.includes('+');
-      
+
       let cleanVal = t
-        .replace(/^[\(\s\d\)\.\-\+]+/, '')
+        .replace(/^[\(\s\d١٢٣٤\)\.\-\+]+/, '')
         .replace(/[\+\-]$/, '')
         .trim();
-        
+
       if (t.includes('العبارة صحيحة')) cleanVal = 'العبارة صحيحة';
       else if (t.includes('العبارة خاطئة')) cleanVal = 'العبارة خاطئة';
 
@@ -75,13 +79,13 @@ const parseSanaaLegalContent = (text: string) => {
         current.count++;
         const letters = ['A', 'B', 'C', 'D'];
         const letter = letters[current.count - 1];
-        
+
         if (letter) {
           current[`option_${letter.toLowerCase()}`] = cleanVal;
           if (isCorrect) current.correct_option = letter;
         }
       }
-    } 
+    }
     else {
       if (current && current.count > 0) {
         results.push(current);
@@ -91,13 +95,13 @@ const parseSanaaLegalContent = (text: string) => {
       if (!current) {
         current = {
           id: Math.random().toString(36).substr(2, 9),
-          question_text: t.replace(/[\(\s\d\)]+$/, '').trim(),
+          question_text: t.replace(/^[\(\s\d١٢٣٤\)]+/, '').trim(),
           option_a: '', option_b: '', option_c: '', option_d: '',
           correct_option: 'A',
           count: 0
         };
       } else {
-        current.question_text += ' ' + t.replace(/[\(\s\d\)]+$/, '').trim();
+        current.question_text += ' ' + t.replace(/^[\(\s\d١٢٣٤\)]+/, '').trim();
       }
     }
   });
@@ -157,19 +161,20 @@ const AdminQuestions = () => {
       description: raw || 'حدث خطأ غير متوقع. حاول مرة أخرى.',
     };
   };
-  
+
   const [selectedLevel, setSelectedLevel] = useState<string>('');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [selectedExamForm, setSelectedExamForm] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   const [isFileUploadOpen, setIsFileUploadOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   const [previewQuestions, setPreviewQuestions] = useState<any[]>([]);
   const [previewSearch, setPreviewSearch] = useState('');
   const [importExamForm, setImportExamForm] = useState<string>('General');
+  const [pasteText, setPasteText] = useState('');
 
   // حالات التعديل والحذف
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -220,15 +225,13 @@ const AdminQuestions = () => {
     if (!file) return;
     setIsProcessingFile(true);
     try {
-      // التحقق مما إذا كان الملف JSON
       if (file.type === "application/json" || file.name.endsWith(".json")) {
         const textContent = await file.text();
         const jsonData = JSON.parse(textContent);
-        
-        // التأكد من أن البيانات مصفوفة وتحويلها للصيغة المطلوبة للمعاينة
+
         if (Array.isArray(jsonData)) {
           const mappedQuestions = jsonData.map((q: any) => ({
-            id: Math.random().toString(36).substr(2, 9), // معرف مؤقت للمعاينة
+            id: Math.random().toString(36).substr(2, 9),
             question_text: q.question_text || "",
             option_a: q.option_a || "",
             option_b: q.option_b || "",
@@ -236,9 +239,9 @@ const AdminQuestions = () => {
             option_d: q.option_d || "",
             correct_option: q.correct_option || "A",
             exam_form: q.exam_form || "General",
-            count: 4 // لضمان العرض الصحيح
+            count: 4
           }));
-          
+
           if (mappedQuestions.length > 0) {
             setPreviewQuestions(mappedQuestions);
             setIsFileUploadOpen(false);
@@ -250,7 +253,6 @@ const AdminQuestions = () => {
           toast({ title: 'تنبيه', description: 'صيغة ملف JSON غير صحيحة (يجب أن يكون مصفوفة).', variant: 'destructive' });
         }
       } else {
-        // المعالجة العادية لملفات PDF والنصوص
         const content = file.type === "application/pdf" ? await processPDF(file) : await file.text();
         const extracted = parseSanaaLegalContent(content);
         if (extracted.length > 0) {
@@ -270,9 +272,23 @@ const AdminQuestions = () => {
     }
   };
 
+  // معالجة النص الملصق مباشرة
+  const handlePasteText = () => {
+    if (!pasteText.trim()) return;
+    const extracted = parseSanaaLegalContent(pasteText);
+    if (extracted.length > 0) {
+      setPreviewQuestions(extracted);
+      setIsFileUploadOpen(false);
+      setIsPreviewOpen(true);
+      setPasteText('');
+    } else {
+      toast({ title: 'تنبيه', description: 'لم يتم العثور على أسئلة. تأكد من الصيغة الصحيحة.', variant: 'destructive' });
+    }
+  };
+
   const { data: levels = [] } = useQuery({ queryKey: ['levels'], queryFn: async () => (await supabase.from('levels').select('*').order('order_index')).data as Level[] });
   const { data: subjects = [] } = useQuery({ queryKey: ['subjects', selectedLevel], queryFn: async () => { let q = supabase.from('subjects').select('*').order('order_index'); if(selectedLevel) q = q.eq('level_id', selectedLevel); return (await q).data as Subject[]; } });
-  
+
   const { data: questions = [], isLoading } = useQuery({
     queryKey: ['questions', selectedSubject, selectedYear, selectedExamForm, searchQuery],
     queryFn: async () => {
@@ -295,10 +311,10 @@ const AdminQuestions = () => {
       const formatted = list.map(q => ({
         subject_id: selectedSubject,
         question_text: q.question_text || "سؤال",
-        option_a: q.option_a || "", 
+        option_a: q.option_a || "",
         option_b: q.option_b || "",
         option_c: q.option_c || "",
-        option_d: q.option_d || "", 
+        option_d: q.option_d || "",
         correct_option: q.correct_option || 'A',
         exam_year: selectedYear ? parseInt(selectedYear) : null,
         exam_form: importExamForm,
@@ -325,14 +341,14 @@ const AdminQuestions = () => {
       const payload = {
         subject_id: selectedSubject,
         question_text: data.question_text,
-        option_a: data.option_a || "", 
+        option_a: data.option_a || "",
         option_b: data.option_b || "",
-        option_c: data.option_c || "", 
+        option_c: data.option_c || "",
         option_d: data.option_d || "",
         correct_option: data.correct_option,
         exam_year: data.exam_year ? parseInt(data.exam_year) : null,
         exam_form: data.exam_form || 'General',
-        created_by: user?.id, 
+        created_by: user?.id,
         status: 'active' as const
       };
 
@@ -353,7 +369,7 @@ const AdminQuestions = () => {
     onError: (err: any) => toast({ title: 'خطأ', description: err.message, variant: 'destructive' })
   });
 
-  // --- حذف منطقي عبر RPC (سؤال واحد أو عدة أسئلة) ---
+  // --- حذف منطقي عبر RPC ---
   const softDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
       requireAdminOrEditor();
@@ -391,7 +407,6 @@ const AdminQuestions = () => {
       queryClient.invalidateQueries({ queryKey: ['questions'] });
       toast({ title: `تم حذف ${ids.length} سؤال ✅` });
 
-      // إغلاق الحوارات وتصفير التحديد عند الحذف الجماعي
       if (ids.length > 1) {
         setSelectedIds([]);
         setIsBulkDeleteDialogOpen(false);
@@ -420,7 +435,7 @@ const AdminQuestions = () => {
             )}
             <div className="h-8 w-px bg-slate-200 mx-2 hidden md:block"></div>
             <Button variant="outline" size="sm" onClick={() => setIsFileUploadOpen(true)} disabled={!selectedSubject} className="gap-2 border-primary/20 bg-primary/5 text-primary font-bold shadow-sm">
-              <ScanLine className="w-4 h-4" /> استيراد PDF/JSON
+              <ScanLine className="w-4 h-4" /> استيراد PDF/JSON/نص
             </Button>
             <Button size="sm" onClick={() => { setEditingQuestion(null); setFormData({question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', hint: '', exam_year: '', exam_form: 'General'}); setIsDialogOpen(true); }} disabled={!selectedSubject} className="gradient-primary text-white gap-2 shadow-lg">
               <Plus className="w-4 h-4" /> إضافة سؤال
@@ -434,7 +449,7 @@ const AdminQuestions = () => {
           <Select value={selectedSubject} onValueChange={setSelectedSubject}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="المادة" /></SelectTrigger><SelectContent className="z-[9999] bg-white">{subjects.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select>
           <Select value={selectedYear || "all"} onValueChange={(v) => setSelectedYear(v === "all" ? "" : v)}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="السنة" /></SelectTrigger><SelectContent className="z-[9999] bg-white shadow-2xl"><SelectItem value="all">كل السنوات</SelectItem>{EXAM_YEARS.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}</SelectContent></Select>
           <Select value={selectedExamForm || "all"} onValueChange={(v) => setSelectedExamForm(v === "all" ? "" : v)}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="النموذج" /></SelectTrigger><SelectContent className="z-[9999] bg-white shadow-2xl"><SelectItem value="all">كل النماذج</SelectItem>{EXAM_FORMS.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent></Select>
-          <div className="relative"><Search className="absolute right-3 top-2.5 w-4 h-4 text-slate-400" /><Input placeholder="بحث..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pr-10 bg-white border-slate-200 rounded-xl" /></div>
+          <div className="relative"><Search className="absolute right-3 top-2.5 w-4 h-4 text-slate-400" /><Input placeholder="بحث..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pr-10 bg-white border-slate-200 rounded-xl" dir="rtl" /></div>
         </div>
 
         {/* Select All Checkbox */}
@@ -476,7 +491,7 @@ const AdminQuestions = () => {
         </div>
       </div>
 
-      {/* Import Preview - Mobile Optimized with Sticky Footer */}
+      {/* Import Preview */}
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
         <DialogContent className="max-w-5xl bg-white rounded-none md:rounded-3xl p-0 border-none shadow-2xl h-[100dvh] md:h-[94vh] flex flex-col overflow-hidden z-[9999] font-cairo">
           {/* Sticky Header */}
@@ -501,7 +516,14 @@ const AdminQuestions = () => {
 
           {/* Search */}
           <div className="px-4 md:px-8 py-3">
-            <Input placeholder="بحث..." value={previewSearch} onChange={(e) => setPreviewSearch(e.target.value)} className="h-10 md:h-12 bg-slate-50 border-slate-100 rounded-2xl font-bold text-sm" />
+            <Input
+              placeholder="بحث..."
+              value={previewSearch}
+              onChange={(e) => setPreviewSearch(e.target.value)}
+              className="h-10 md:h-12 bg-slate-50 border-slate-100 rounded-2xl font-bold text-sm text-right"
+              dir="rtl"
+              lang="ar"
+            />
           </div>
 
           {/* Scrollable Content */}
@@ -510,7 +532,13 @@ const AdminQuestions = () => {
               {previewQuestions.filter(x => x.question_text.includes(previewSearch)).map((q) => (
                 <div key={q.id} className="bg-slate-50/50 p-4 md:p-8 rounded-2xl md:rounded-[36px] border border-slate-100 relative group/item">
                   <button onClick={() => setPreviewQuestions(prev => prev.filter(p => p.id !== q.id))} className="absolute -left-2 -top-2 md:-left-3 md:-top-3 w-8 h-8 md:w-10 md:h-10 bg-white border border-red-100 text-destructive rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg hover:bg-destructive hover:text-white transition-all z-30"><Trash2 className="w-4 h-4 md:w-5 md:h-5" /></button>
-                  <Textarea value={q.question_text} onChange={(e) => { const up = [...previewQuestions]; const i = up.findIndex(x => x.id === q.id); up[i].question_text = e.target.value; setPreviewQuestions(up); }} className="mb-4 md:mb-8 rounded-xl md:rounded-2xl border-slate-200 font-bold text-sm md:text-lg bg-white min-h-[80px] md:min-h-[100px] font-cairo shadow-sm" dir="rtl" />
+                  <Textarea
+                    value={q.question_text}
+                    onChange={(e) => { const up = [...previewQuestions]; const i = up.findIndex(x => x.id === q.id); up[i].question_text = e.target.value; setPreviewQuestions(up); }}
+                    className="mb-4 md:mb-8 rounded-xl md:rounded-2xl border-slate-200 font-bold text-sm md:text-lg bg-white min-h-[80px] md:min-h-[100px] font-cairo shadow-sm text-right"
+                    dir="rtl"
+                    lang="ar"
+                  />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
                     {['A', 'B', 'C', 'D'].map(l => (
                       <div key={l} className="space-y-1.5 md:space-y-2 font-cairo">
@@ -518,7 +546,13 @@ const AdminQuestions = () => {
                           <Label className="text-[9px] md:text-[10px] font-black uppercase">خيار ({l})</Label>
                           <button onClick={() => { const up = [...previewQuestions]; const i = up.findIndex(x => x.id === q.id); up[i].correct_option = l; setPreviewQuestions(up); }} className={cn("text-[8px] md:text-[9px] font-black px-2 md:px-2.5 py-0.5 md:py-1 rounded-lg transition-all", q.correct_option === l ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-400")}>{q.correct_option === l ? 'إجابة صحيحة' : 'تحديد'}</button>
                         </div>
-                        <Input value={q[`option_${l.toLowerCase()}`]} onChange={(e) => { const up = [...previewQuestions]; const i = up.findIndex(x => x.id === q.id); up[i][`option_${l.toLowerCase()}`] = e.target.value; setPreviewQuestions(up); }} className="rounded-xl border-slate-200 bg-white font-bold h-10 md:h-12 text-sm" dir="rtl" />
+                        <Input
+                          value={q[`option_${l.toLowerCase()}`]}
+                          onChange={(e) => { const up = [...previewQuestions]; const i = up.findIndex(x => x.id === q.id); up[i][`option_${l.toLowerCase()}`] = e.target.value; setPreviewQuestions(up); }}
+                          className="rounded-xl border-slate-200 bg-white font-bold h-10 md:h-12 text-sm text-right"
+                          dir="rtl"
+                          lang="ar"
+                        />
                       </div>
                     ))}
                   </div>
@@ -536,12 +570,51 @@ const AdminQuestions = () => {
         </DialogContent>
       </Dialog>
 
+      {/* File Upload Dialog - مع دعم اللصق المباشر */}
       <Dialog open={isFileUploadOpen} onOpenChange={setIsFileUploadOpen}>
-        <DialogContent className="max-w-md bg-white rounded-3xl p-10 shadow-2xl border-none z-[9999] font-cairo">
-          <DialogHeader><DialogTitle className="text-2xl font-black flex items-center gap-3 text-slate-900"><ScanLine className="text-primary" /> رفع ملف الاختبار</DialogTitle></DialogHeader>
-          <div onClick={() => fileInputRef.current?.click()} className="mt-8 border-2 border-dashed border-slate-200 rounded-3xl p-12 text-center hover:border-primary/40 hover:bg-primary/5 cursor-pointer group transition-all relative overflow-hidden">
-            <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
-            {isProcessingFile ? <div className="flex flex-col items-center gap-4"><Loader2 className="w-12 h-12 text-primary animate-spin" /><p className="text-sm font-black text-slate-600">جاري المعالجة...</p></div> : <div className="flex flex-col items-center gap-4"><div className="p-5 bg-slate-100 rounded-2xl transition-all shadow-sm group-hover:bg-white"><FileText className="w-10 h-10 text-slate-400 group-hover:text-primary" /></div><p className="font-black text-slate-700 text-lg font-cairo">اضغط لاختيار ملف PDF أو JSON</p></div>}
+        <DialogContent className="max-w-lg bg-white rounded-3xl p-10 shadow-2xl border-none z-[9999] font-cairo">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black flex items-center gap-3 text-slate-900">
+              <ScanLine className="text-primary" /> استيراد الأسئلة
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* حقل اللصق المباشر - مع دعم RTL كامل */}
+          <div className="mt-6 space-y-3">
+            <Label className="font-black text-slate-700 text-sm">لصق النص مباشرة</Label>
+            <Textarea
+              dir="rtl"
+              lang="ar"
+              placeholder="الصق الأسئلة هنا بالصيغة:&#10;نص السؤال؟&#10;1) الخيار الأول.&#10;2) الخيار الصحيح. +&#10;3) الخيار الثالث."
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+              className="w-full min-h-[160px] rounded-2xl border-slate-200 font-cairo font-bold text-right text-sm resize-none"
+            />
+            <Button
+              onClick={handlePasteText}
+              disabled={!pasteText.trim()}
+              className="gradient-primary text-white font-black w-full h-11 rounded-xl shadow-lg"
+            >
+              استيراد النص
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-3 my-4">
+            <div className="flex-1 h-px bg-slate-200" />
+            <span className="text-xs text-slate-400 font-bold">أو</span>
+            <div className="flex-1 h-px bg-slate-200" />
+          </div>
+
+          {/* رفع ملف */}
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            className="border-2 border-dashed border-slate-200 rounded-3xl p-8 text-center hover:border-primary/40 hover:bg-primary/5 cursor-pointer group transition-all relative overflow-hidden"
+          >
+            <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".pdf,.json,.txt" />
+            {isProcessingFile
+              ? <div className="flex flex-col items-center gap-4"><Loader2 className="w-12 h-12 text-primary animate-spin" /><p className="text-sm font-black text-slate-600">جاري المعالجة...</p></div>
+              : <div className="flex flex-col items-center gap-4"><div className="p-5 bg-slate-100 rounded-2xl transition-all shadow-sm group-hover:bg-white"><FileText className="w-10 h-10 text-slate-400 group-hover:text-primary" /></div><p className="font-black text-slate-700 font-cairo">اضغط لاختيار ملف PDF أو JSON</p></div>
+            }
           </div>
         </DialogContent>
       </Dialog>
@@ -577,48 +650,58 @@ const AdminQuestions = () => {
         <DialogContent className="max-w-2xl bg-white rounded-3xl p-8 z-[9999] font-cairo font-bold shadow-2xl border-none">
           <DialogHeader><DialogTitle className="text-2xl font-black">{editingQuestion ? 'تعديل السؤال' : 'إضافة سؤال جديد'}</DialogTitle></DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); saveSingleMutation.mutate(formData); }} className="space-y-6 mt-4">
-            <div className="space-y-2.5"><Label className="font-black text-slate-700">نص السؤال *</Label><Textarea value={formData.question_text} onChange={(e) => setFormData({ ...formData, question_text: e.target.value })} required className="rounded-2xl border-slate-200 min-h-[120px]" /></div>
-            <div className="grid grid-cols-2 gap-4">{['a', 'b', 'c', 'd'].map(l => <div key={l}><Label className="text-xs mb-1 block">خيار {l.toUpperCase()}</Label><Input placeholder={`نص الخيار...`} value={formData[`option_${l}` as keyof typeof formData] as string} onChange={(e) => setFormData({ ...formData, [`option_${l}`]: e.target.value })} className="rounded-xl h-12" /></div>)}</div>
-            
-            <div className="grid grid-cols-3 gap-4">
-               <div>
-                  <Label>الإجابة الصحيحة</Label>
-                  <Select value={formData.correct_option} onValueChange={(v) => setFormData({...formData, correct_option: v as 'A' | 'B' | 'C' | 'D'})}>
-                    <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-slate-200">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="z-[10001] bg-white border border-slate-200 shadow-xl rounded-xl">
-                      <SelectItem value="A">أ (A)</SelectItem>
-                      <SelectItem value="B">ب (B)</SelectItem>
-                      <SelectItem value="C">ج (C)</SelectItem>
-                      <SelectItem value="D">د (D)</SelectItem>
-                    </SelectContent>
-                  </Select>
-               </div>
-               <div>
-                  <Label>السنة</Label>
-                  <Select value={formData.exam_year} onValueChange={(v) => setFormData({...formData, exam_year: v})}>
-                    <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-slate-200">
-                      <SelectValue placeholder="اختر السنة" />
-                    </SelectTrigger>
-                    <SelectContent className="z-[10001] bg-white border border-slate-200 shadow-xl rounded-xl max-h-[200px] overflow-y-auto">
-                      {EXAM_YEARS.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-               </div>
-               <div>
-                  <Label>النموذج</Label>
-                  <Select value={formData.exam_form} onValueChange={(v) => setFormData({...formData, exam_form: v})}>
-                    <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-slate-200">
-                      <SelectValue placeholder="اختر النموذج" />
-                    </SelectTrigger>
-                    <SelectContent className="z-[10001] bg-white border border-slate-200 shadow-xl rounded-xl">
-                      {EXAM_FORMS.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-               </div>
+            <div className="space-y-2.5">
+              <Label className="font-black text-slate-700">نص السؤال *</Label>
+              <Textarea value={formData.question_text} onChange={(e) => setFormData({ ...formData, question_text: e.target.value })} required className="rounded-2xl border-slate-200 min-h-[120px] text-right" dir="rtl" lang="ar" />
             </div>
-            
+            <div className="grid grid-cols-2 gap-4">
+              {['a', 'b', 'c', 'd'].map(l => (
+                <div key={l}>
+                  <Label className="text-xs mb-1 block">خيار {l.toUpperCase()}</Label>
+                  <Input placeholder="نص الخيار..." value={formData[`option_${l}` as keyof typeof formData] as string} onChange={(e) => setFormData({ ...formData, [`option_${l}`]: e.target.value })} className="rounded-xl h-12 text-right" dir="rtl" lang="ar" />
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label>الإجابة الصحيحة</Label>
+                <Select value={formData.correct_option} onValueChange={(v) => setFormData({...formData, correct_option: v as 'A' | 'B' | 'C' | 'D'})}>
+                  <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-slate-200">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="z-[10001] bg-white border border-slate-200 shadow-xl rounded-xl">
+                    <SelectItem value="A">أ (A)</SelectItem>
+                    <SelectItem value="B">ب (B)</SelectItem>
+                    <SelectItem value="C">ج (C)</SelectItem>
+                    <SelectItem value="D">د (D)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>السنة</Label>
+                <Select value={formData.exam_year} onValueChange={(v) => setFormData({...formData, exam_year: v})}>
+                  <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-slate-200">
+                    <SelectValue placeholder="اختر السنة" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[10001] bg-white border border-slate-200 shadow-xl rounded-xl max-h-[200px] overflow-y-auto">
+                    {EXAM_YEARS.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>النموذج</Label>
+                <Select value={formData.exam_form} onValueChange={(v) => setFormData({...formData, exam_form: v})}>
+                  <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-slate-200">
+                    <SelectValue placeholder="اختر النموذج" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[10001] bg-white border border-slate-200 shadow-xl rounded-xl">
+                    {EXAM_FORMS.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <Button type="submit" disabled={saveSingleMutation.isPending} className="gradient-primary text-white w-full h-12 rounded-xl text-lg font-black shadow-lg">
               {saveSingleMutation.isPending ? 'جاري الحفظ...' : 'حفظ البيانات'}
             </Button>
