@@ -27,7 +27,7 @@ export function HeroSection() {
 
           {/* Description */}
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 leading-relaxed animate-fade-in" style={{ animationDelay: '0.1s' }}>
-            منصة تفاعلية متكاملة تضم أكثر من 1000 سؤال في مختلف مجالات القانون، مصممة لمساعدتك في التحضير للامتحانات والارتقاء بمستواك المهني.
+            منصة تفاعلية متكاملة تضم أكثر من 5000 سؤال في مختلف مجالات القانون، مصممة لمساعدتك في التحضير للامتحانات والارتقاء بمستواك المهني.
           </p>
 
           {/* CTA Buttons */}
@@ -49,7 +49,7 @@ export function HeroSection() {
           {/* Features */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in" style={{ animationDelay: '0.3s' }}>
             {[
-              { icon: BookOpen, label: '+1000 سؤال', sublabel: 'متنوع ومحدث' },
+              { icon: BookOpen, label: '+5000 سؤال', sublabel: 'متنوع ومحدث' },
               { icon: Users, label: '4 مستويات', sublabel: 'تدريجية' },
               { icon: Award, label: '43 مادة', sublabel: 'قانونية' },
               { icon: CheckCircle, label: 'نتائج فورية', sublabel: 'مع التصحيح' },
