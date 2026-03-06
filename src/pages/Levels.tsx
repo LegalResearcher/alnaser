@@ -1,10 +1,17 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, BookOpen, GraduationCap, Layers, Sparkles } from 'lucide-react';
+import { ArrowLeft, BookOpen, GraduationCap, Layers, Sparkles, ShieldOff } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { Level } from '@/types/database';
 import { useCachedQuery } from '@/hooks/useCachedQuery';
 import { cn } from '@/lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 // تدرجات لونية مطورة تعطي طابعاً عالمياً (3-stop gradients)
 const levelColors = [
@@ -31,6 +38,8 @@ const levelColors = [
 ];
 
 const Levels = () => {
+  const [disabledDialog, setDisabledDialog] = useState<Level | null>(null);
+
   // جلب المستويات مع الترتيب
   const { data: levels = [], isLoading: levelsLoading } = useCachedQuery<Level[]>(
     ['levels'],
@@ -87,73 +96,126 @@ const Levels = () => {
                 <div key={i} className="h-56 md:h-72 rounded-[2rem] md:rounded-[3rem] bg-white border border-slate-100 animate-pulse shadow-sm" />
               ))
             ) : (
-              levels.map((level, index) => (
-                <Link
-                  key={level.id}
-                  to={`/levels/${level.id}`}
-                  className="group relative"
-                >
-                  {/* Card Main Container */}
-                  <div className={cn(
-                    "bg-white rounded-[2rem] md:rounded-[3rem] border border-slate-100 overflow-hidden transition-all duration-500 hover:-translate-y-2 md:hover:-translate-y-3 flex flex-col h-full shadow-sm hover:shadow-2xl active:scale-[0.98]",
-                    levelColors[index]?.shadow || "shadow-slate-200"
-                  )}>
-                    
-                    {/* Visual Top Section */}
+              levels.map((level, index) => {
+                const isDisabled = level.is_disabled;
+                const CardWrapper = isDisabled ? 'div' : Link;
+                const cardProps = isDisabled
+                  ? {
+                      onClick: () => setDisabledDialog(level),
+                      className: 'group relative cursor-not-allowed',
+                    }
+                  : {
+                      to: `/levels/${level.id}`,
+                      className: 'group relative',
+                    };
+
+                return (
+                  <CardWrapper key={level.id} {...(cardProps as any)}>
+                    {/* Card Main Container */}
                     <div className={cn(
-                      "h-32 md:h-44 bg-gradient-to-br relative overflow-hidden",
-                      levelColors[index]?.bg || levelColors[0].bg
+                      "bg-white rounded-[2rem] md:rounded-[3rem] border border-slate-100 overflow-hidden transition-all duration-500 flex flex-col h-full shadow-sm active:scale-[0.98]",
+                      isDisabled
+                        ? 'opacity-60 grayscale-[30%]'
+                        : 'hover:-translate-y-2 md:hover:-translate-y-3 hover:shadow-2xl',
+                      !isDisabled && (levelColors[index]?.shadow || "shadow-slate-200")
                     )}>
-                      {/* تأثير الشبكة (Mesh Pattern) */}
-                      <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_2px_2px,white_1px,transparent_0)] bg-[length:24px_24px]" />
                       
-                      {/* الرقم العائم - تصميم زجاجي */}
-                      <div className="absolute bottom-4 md:bottom-6 right-4 md:right-8">
-                        <div className="w-14 h-14 md:w-20 md:h-20 rounded-[1.25rem] md:rounded-[2rem] bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center rotate-12 group-hover:rotate-0 transition-transform duration-500 shadow-2xl">
-                          <span className="text-3xl md:text-5xl font-black text-white">{index + 1}</span>
+                      {/* Visual Top Section */}
+                      <div className={cn(
+                        "h-32 md:h-44 bg-gradient-to-br relative overflow-hidden",
+                        isDisabled ? 'from-gray-400 via-gray-400 to-gray-300' : (levelColors[index]?.bg || levelColors[0].bg)
+                      )}>
+                        {/* تأثير الشبكة */}
+                        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_2px_2px,white_1px,transparent_0)] bg-[length:24px_24px]" />
+                        
+                        {/* أيقونة القفل للمعطل */}
+                        {isDisabled && (
+                          <div className="absolute inset-0 flex items-center justify-center z-10">
+                            <ShieldOff className="w-12 h-12 md:w-16 md:h-16 text-white/60" />
+                          </div>
+                        )}
+                        
+                        {/* الرقم العائم */}
+                        <div className="absolute bottom-4 md:bottom-6 right-4 md:right-8">
+                          <div className="w-14 h-14 md:w-20 md:h-20 rounded-[1.25rem] md:rounded-[2rem] bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center rotate-12 group-hover:rotate-0 transition-transform duration-500 shadow-2xl">
+                            <span className="text-3xl md:text-5xl font-black text-white">{index + 1}</span>
+                          </div>
+                        </div>
+
+                        {/* شارة عدد المواد */}
+                        <div className="absolute top-4 md:top-6 left-4 md:left-8">
+                          <span className="bg-black/10 backdrop-blur-sm text-white text-[9px] md:text-[10px] font-black uppercase tracking-widest px-3 md:px-4 py-1 md:py-1.5 rounded-full border border-white/10 flex items-center gap-1.5 md:gap-2">
+                            <Layers className="w-3 h-3 md:w-3.5 md:h-3.5 text-primary" />
+                            {subjectCounts[level.id] || 0} مادة
+                          </span>
                         </div>
                       </div>
 
-                      {/* شارة عدد المواد */}
-                      <div className="absolute top-4 md:top-6 left-4 md:left-8">
-                        <span className="bg-black/10 backdrop-blur-sm text-white text-[9px] md:text-[10px] font-black uppercase tracking-widest px-3 md:px-4 py-1 md:py-1.5 rounded-full border border-white/10 flex items-center gap-1.5 md:gap-2">
-                          <Layers className="w-3 h-3 md:w-3.5 md:h-3.5 text-primary" />
-                          {subjectCounts[level.id] || 0} مادة
-                        </span>
+                      {/* Content Section */}
+                      <div className="p-6 md:p-10 flex-1 flex flex-col">
+                        <div className="flex items-center gap-2 mb-2 md:mb-3">
+                           <Sparkles className={cn("w-4 h-4 md:w-5 md:h-5", isDisabled ? 'text-gray-400' : levelColors[index]?.icon)} />
+                           <h2 className={cn(
+                             "font-black text-xl md:text-2xl tracking-tight",
+                             isDisabled ? 'text-slate-400' : 'text-slate-800 group-hover:text-primary transition-colors'
+                           )}>
+                            {level.name}
+                          </h2>
+                          {isDisabled && (
+                            <span className="text-[10px] md:text-xs bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 px-2 py-0.5 rounded-full font-bold shrink-0">
+                              غير متاح
+                            </span>
+                          )}
+                        </div>
+                        
+                        <p className="text-slate-500 font-medium leading-relaxed mb-6 md:mb-8 line-clamp-2 text-sm md:text-base">
+                          {level.description}
+                        </p>
+                        
+                        {/* Action Button */}
+                        <div className="mt-auto pt-4 md:pt-6 border-t border-slate-50 flex items-center justify-between">
+                          <div className={cn(
+                            "flex items-center gap-2 font-black text-[10px] md:text-xs uppercase tracking-[0.15em] md:tracking-[0.2em]",
+                            isDisabled ? 'text-gray-400' : 'text-primary'
+                          )}>
+                            <BookOpen className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                            <span>{isDisabled ? 'غير متاح حالياً' : 'تصفح المواد'}</span>
+                          </div>
+                          <div className={cn(
+                            "w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all duration-300",
+                            isDisabled
+                              ? 'bg-gray-100 text-gray-400'
+                              : 'bg-slate-50 group-hover:bg-primary group-hover:text-white'
+                          )}>
+                            <ArrowLeft className="w-4 h-4 md:w-5 md:h-5 group-hover:-translate-x-1 transition-transform" />
+                          </div>
+                        </div>
                       </div>
                     </div>
-
-                    {/* Content Section */}
-                    <div className="p-6 md:p-10 flex-1 flex flex-col">
-                      <div className="flex items-center gap-2 mb-2 md:mb-3">
-                         <Sparkles className={cn("w-4 h-4 md:w-5 md:h-5", levelColors[index]?.icon)} />
-                         <h2 className="font-black text-xl md:text-2xl text-slate-800 group-hover:text-primary transition-colors tracking-tight">
-                          {level.name}
-                        </h2>
-                      </div>
-                      
-                      <p className="text-slate-500 font-medium leading-relaxed mb-6 md:mb-8 line-clamp-2 text-sm md:text-base">
-                        {level.description}
-                      </p>
-                      
-                      {/* Action Button */}
-                      <div className="mt-auto pt-4 md:pt-6 border-t border-slate-50 flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-primary font-black text-[10px] md:text-xs uppercase tracking-[0.15em] md:tracking-[0.2em]">
-                          <BookOpen className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                          <span>تصفح المواد</span>
-                        </div>
-                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all duration-300">
-                          <ArrowLeft className="w-4 h-4 md:w-5 md:h-5 group-hover:-translate-x-1 transition-transform" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              ))
+                  </CardWrapper>
+                );
+              })
             )}
           </div>
         </div>
       </section>
+
+      {/* Dialog for disabled level */}
+      <Dialog open={!!disabledDialog} onOpenChange={() => setDisabledDialog(null)}>
+        <DialogContent className="w-[90vw] max-w-sm text-center p-6 sm:p-8">
+          <DialogHeader className="items-center">
+            <div className="w-16 h-16 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center mx-auto mb-3">
+              <ShieldOff className="w-8 h-8 text-orange-500" />
+            </div>
+            <DialogTitle className="text-lg sm:text-xl font-bold">
+              {disabledDialog?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm sm:text-base text-muted-foreground leading-relaxed mt-2">
+            {disabledDialog?.disabled_message || 'هذا القسم غير متاح حالياً'}
+          </p>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 };
