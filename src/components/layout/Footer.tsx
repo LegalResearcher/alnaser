@@ -57,7 +57,6 @@ export function Footer() {
               {[
                 { to: "/", label: "الرئيسية" },
                 { to: "/levels", label: "المستويات" },
-                { to: "/admin/login", label: "لوحة المسؤول" },
                 { to: "/privacy", label: "الخصوصية" }
               ].map((link) => (
                 <li key={link.to}>
