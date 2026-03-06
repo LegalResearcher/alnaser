@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, ArrowRight, Clock, Target, User, 
@@ -9,10 +10,12 @@ import { Level, Subject } from '@/types/database';
 import { useCachedQuery } from '@/hooks/useCachedQuery';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
 
 const LevelSubjects = () => {
   const { levelId } = useParams<{ levelId: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   // جلب بيانات المستوى الحالي
   const { data: level, isLoading: levelLoading } = useCachedQuery<Level | null>(
@@ -28,6 +31,17 @@ const LevelSubjects = () => {
     },
     { enabled: !!levelId }
   );
+
+  // إعادة توجيه إذا كان المستوى معطلاً
+  useEffect(() => {
+    if (level && level.is_disabled) {
+      toast({
+        title: level.disabled_message || 'هذا القسم غير متاح حالياً',
+        variant: 'destructive',
+      });
+      navigate('/levels', { replace: true });
+    }
+  }, [level, navigate, toast]);
 
   // جلب المواد التابعة لهذا المستوى
   const { data: subjects = [], isLoading: subjectsLoading } = useCachedQuery<Subject[]>(
