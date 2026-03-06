@@ -67,8 +67,8 @@ export function ContactSection() {
             <div className="space-y-4">
               {[
                 { icon: Mail, title: 'البريد الإلكتروني', detail: 'info@legal-researcher.com', href: 'mailto:info@legal-researcher.com' },
-                { icon: Phone, title: 'الدعم المباشر', detail: '+966 50 123 4567', href: 'tel:+966501234567' },
-                { icon: MapPin, title: 'المقر الرئيسي', detail: 'المملكة العربية السعودية', href: '#' }
+                { icon: Phone, title: 'الدعم المباشر', detail: '+967 ', href: 'tel:+967' },
+                { icon: MapPin, title: 'المقر الرئيسي', detail: 'صنعاء-الجمهورية اليمنية', href: '#' }
               ].map((item, idx) => (
                 <a 
                   key={idx}
