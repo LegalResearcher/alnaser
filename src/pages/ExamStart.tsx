@@ -3,14 +3,14 @@
  * Project: Alnaser Legal Platform
  * Component: Exam Start & Setup
  * Developed by: Mueen Al-Nasser
- * Version: 2.0 (Exam Forms Support)
+ * Version: 3.0 (Visual Redesign)
  */
 
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { 
-  ArrowRight, Clock, Target, User, Lock, Play, 
-  Calendar, Info, ShieldCheck, Sparkles, ChevronLeft, FileText
+import {
+  Clock, Target, User, Lock, Play,
+  Info, ShieldCheck, FileText, ChevronLeft
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -25,26 +25,58 @@ import { useCachedQuery } from '@/hooks/useCachedQuery';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 
-// نماذج الاختبار
 const EXAM_FORMS = [
-  { id: 'General', name: 'نموذج العام' },
+  { id: 'General',  name: 'نموذج العام' },
   { id: 'Parallel', name: 'نموذج الموازي' },
-  { id: 'Mixed', name: 'نموذج مختلط' }
+  { id: 'Mixed',    name: 'نموذج مختلط' },
 ];
+
+/* ─────────────────────────────────────────────
+   Small reusable sub-components
+───────────────────────────────────────────── */
+
+function InfoCard({ icon, value, label }: { icon: React.ReactNode; value: string | number; label: string }) {
+  return (
+    <div className="
+      flex flex-col items-center gap-2 p-5
+      bg-slate-50 border border-slate-100 rounded-[1.5rem]
+      hover:border-blue-200 hover:shadow-md hover:shadow-blue-50
+      transition-all duration-300 cursor-default
+    ">
+      <span className="text-primary">{icon}</span>
+      <p className="text-2xl font-black text-slate-800 leading-none">{value}</p>
+      <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em]">{label}</p>
+    </div>
+  );
+}
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <Label className="text-[11px] font-black text-slate-700 uppercase tracking-[0.12em]">
+      {children}
+    </Label>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Main Component
+───────────────────────────────────────────── */
 
 const ExamStart = () => {
   const { subjectId } = useParams<{ subjectId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [studentName, setStudentName] = useState('');
-  const [password, setPassword] = useState('');
-  const [selectedYear, setSelectedYear] = useState<string>('');
+  const [studentName,      setStudentName]      = useState('');
+  const [password,         setPassword]         = useState('');
+  const [selectedYear,     setSelectedYear]     = useState<string>('');
   const [selectedExamForm, setSelectedExamForm] = useState<string>('General');
-  const [examTime, setExamTime] = useState<number>(30);
+  const [examTime,         setExamTime]         = useState<number>(30);
 
-  // جلب بيانات المادة والمستوى
-  const { data: subject, isLoading } = useCachedQuery<(Subject & { levels: { name: string; is_disabled: boolean; disabled_message: string | null } | null }) | null>(
+  /* ── Data fetching ── */
+  const { data: subject, isLoading } = useCachedQuery<
+    (Subject & { levels: { name: string; is_disabled: boolean; disabled_message: string | null } | null }) | null
+  >(
     ['subject', subjectId],
     async () => {
       const { data, error } = await supabase
@@ -58,18 +90,6 @@ const ExamStart = () => {
     { enabled: !!subjectId }
   );
 
-  // حماية: إعادة توجيه إذا كان المستوى معطلاً
-  useEffect(() => {
-    if (subject?.levels?.is_disabled) {
-      toast({
-        title: subject.levels.disabled_message || 'هذا القسم غير متاح حالياً',
-        variant: 'destructive',
-      });
-      navigate('/levels', { replace: true });
-    }
-  }, [subject, navigate, toast]);
-
-  // حساب عدد الأسئلة المتوفرة بناءً على السنة والنموذج
   const { data: questionCount = 0, isLoading: countLoading } = useQuery({
     queryKey: ['question-count', subjectId, selectedYear, selectedExamForm],
     queryFn: async () => {
@@ -78,14 +98,8 @@ const ExamStart = () => {
         .select('*', { count: 'exact', head: true })
         .eq('subject_id', subjectId)
         .eq('status', 'active');
-      
-      if (selectedYear) {
-        query = query.eq('exam_year', parseInt(selectedYear));
-      }
-      if (selectedExamForm) {
-        query = query.eq('exam_form', selectedExamForm);
-      }
-      
+      if (selectedYear)     query = query.eq('exam_year', parseInt(selectedYear));
+      if (selectedExamForm) query = query.eq('exam_form', selectedExamForm);
       const { count, error } = await query;
       if (error) throw error;
       return count || 0;
@@ -93,13 +107,19 @@ const ExamStart = () => {
     enabled: !!subjectId,
   });
 
-  // تحديث الوقت الافتراضي عند تحميل المادة
+  /* ── Side effects ── */
   useEffect(() => {
-    if (subject) {
-      setExamTime(subject.default_time_minutes || 30);
+    if (subject?.levels?.is_disabled) {
+      toast({ title: subject.levels.disabled_message || 'هذا القسم غير متاح حالياً', variant: 'destructive' });
+      navigate('/levels', { replace: true });
     }
+  }, [subject, navigate, toast]);
+
+  useEffect(() => {
+    if (subject) setExamTime(subject.default_time_minutes || 30);
   }, [subject]);
 
+  /* ── Submit ── */
   const handleStartExam = () => {
     if (!studentName.trim()) {
       toast({ title: 'تنبيه', description: 'يرجى إدخال اسمك الكامل للمتابعة', variant: 'destructive' });
@@ -117,31 +137,31 @@ const ExamStart = () => {
       toast({ title: 'نعتذر', description: 'لا توجد أسئلة متوفرة لهذا الاختيار حالياً', variant: 'destructive' });
       return;
     }
-
-    // تمرير كافة البيانات لصفحة الاختبار (Engine) - بدون حد للأسئلة
     navigate(`/exam/${subjectId}/start`, {
       state: {
         studentName,
-        examYear: parseInt(selectedYear),
-        examForm: selectedExamForm,
-        examTime: examTime,
-        questionsCount: questionCount, // جميع الأسئلة المتوفرة
-        subjectName: subject?.name,
-        levelName: subject?.levels?.name,
+        examYear:       parseInt(selectedYear),
+        examForm:       selectedExamForm,
+        examTime,
+        questionsCount: questionCount,
+        subjectName:    subject?.name,
+        levelName:      subject?.levels?.name,
       },
     });
   };
 
+  /* ─── Loading skeleton ─── */
   if (isLoading && !subject) {
     return (
       <MainLayout>
         <div className="container mx-auto px-6 py-24">
-          <div className="h-[500px] max-w-3xl mx-auto rounded-[3rem] bg-slate-100 animate-pulse" />
+          <div className="h-[560px] max-w-lg mx-auto rounded-[2.5rem] bg-slate-100 animate-pulse" />
         </div>
       </MainLayout>
     );
   }
 
+  /* ─── Not found ─── */
   if (!subject) {
     return (
       <MainLayout>
@@ -158,180 +178,231 @@ const ExamStart = () => {
     );
   }
 
+  /* ─── Main render ─── */
   return (
     <MainLayout>
       <section className="py-8 md:py-16 bg-slate-50/50 min-h-[calc(100vh-80px)]">
-        <div className="container mx-auto px-4 md:px-6 relative">
-          
+        <div className="container mx-auto px-4 md:px-6">
+
+          {/* Back button */}
           <button
             onClick={() => navigate(-1)}
-            className="group inline-flex items-center gap-2 text-slate-400 hover:text-primary mb-10 transition-all font-bold text-sm uppercase tracking-widest"
+            className="
+              mb-5 inline-flex items-center gap-1.5
+              text-xs font-black text-slate-500 uppercase tracking-wide
+              bg-white border border-slate-200 rounded-xl px-4 py-2
+              hover:border-primary hover:text-primary
+              transition-all duration-200
+            "
           >
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            <span>الرجوع للمواد</span>
+            <ChevronLeft className="w-4 h-4" />
+            العودة
           </button>
 
-          <div className="max-w-3xl mx-auto">
-            
-            <div className="bg-white rounded-[2rem] md:rounded-[3.5rem] border border-slate-200 shadow-2xl shadow-slate-200/60 overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-700">
-              
-              <div className="bg-slate-900 p-8 md:p-14 text-white text-center relative overflow-hidden">
-                <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_50%_120%,#3b82f6,transparent)]" />
-                <div className="relative z-10 flex flex-col items-center">
-                  <div className="w-16 h-16 md:w-20 md:h-20 rounded-[1.5rem] md:rounded-[2rem] bg-primary/20 backdrop-blur-xl border border-white/10 flex items-center justify-center mb-4 md:mb-6 shadow-2xl">
-                    <ShieldCheck className="w-8 h-8 md:w-10 md:h-10 text-primary" />
-                  </div>
-                  {subject.levels?.name && (
-                    <span className="inline-block px-3 py-1 md:px-4 md:py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] md:text-xs font-black uppercase tracking-[0.15em] md:tracking-[0.2em] text-primary/80 mb-3 md:mb-4">
-                      {subject.levels.name}
-                    </span>
-                  )}
-                  <h1 className="text-2xl md:text-4xl font-black mb-2 md:mb-4 tracking-tight leading-tight">
-                    تجهيز اختبار <br /> 
-                    <span className="text-primary">{subject.name}</span>
-                  </h1>
-                </div>
-              </div>
+          {/* Card */}
+          <div className="
+            max-w-lg mx-auto bg-white
+            rounded-[2.5rem] border border-slate-200
+            shadow-xl shadow-slate-200/60
+            overflow-hidden
+            animate-in fade-in slide-in-from-bottom-6 duration-500
+          ">
 
-              <div className="p-6 md:p-14 space-y-8 md:space-y-10">
-                
-                {/* بطاقات معلومات الاختبار */}
-                <div className="grid grid-cols-2 gap-3 md:gap-6">
-                  <div className="bg-slate-50 rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-6 text-center border border-slate-100 group hover:border-primary/20 hover:shadow-lg transition-all duration-300">
-                    <Target className="w-5 h-5 md:w-6 md:h-6 text-primary mx-auto mb-2 md:mb-3" />
-                    <p className="text-xl md:text-2xl font-black text-slate-800">{subject.passing_score}%</p>
-                    <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">درجة النجاح</p>
-                  </div>
-                  <div className="bg-slate-50 rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-6 text-center border border-slate-100 group hover:border-primary/20 hover:shadow-lg transition-all duration-300">
-                    <Clock className="w-5 h-5 md:w-6 md:h-6 text-primary mx-auto mb-2 md:mb-3" />
-                    <p className="text-xl md:text-2xl font-black text-slate-800">{examTime}</p>
-                    <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">الدقائق المتاحة</p>
-                  </div>
+            {/* ── Header ── */}
+            <div className="relative bg-slate-900 px-10 py-12 text-center overflow-hidden">
+              {/* grid texture */}
+              <div className="absolute inset-0 opacity-[0.07]"
+                style={{
+                  backgroundImage: 'linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)',
+                  backgroundSize: '28px 28px',
+                }} />
+              {/* bottom glow */}
+              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-72 h-28
+                bg-blue-500/30 blur-2xl rounded-full pointer-events-none" />
+
+              <div className="relative z-10 flex flex-col items-center">
+                {/* Shield icon */}
+                <div className="
+                  w-16 h-16 rounded-[1.25rem] mb-5
+                  bg-blue-500/15 border border-white/10
+                  flex items-center justify-center
+                  shadow-2xl backdrop-blur-sm
+                ">
+                  <ShieldCheck className="w-8 h-8 text-blue-400" />
                 </div>
 
-                <div className="space-y-8">
-                  
-                  {/* إدخال اسم الطالب */}
-                  <div className="space-y-3">
-                    <Label htmlFor="name" className="text-sm font-black text-slate-700 mr-2 uppercase tracking-wide">بيانات المختبر</Label>
-                    <div className="relative">
-                       <User className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-                       <Input
-                        id="name"
-                        placeholder="أدخل اسمك الكامل"
-                        value={studentName}
-                        onChange={(e) => setStudentName(e.target.value)}
-                        className="h-16 rounded-[1.5rem] pr-12 bg-slate-50 border-slate-100 text-lg font-bold"
-                      />
-                    </div>
-                  </div>
+                {/* Level badge */}
+                {subject.levels?.name && (
+                  <span className="
+                    inline-block mb-3 px-4 py-1.5 rounded-full
+                    bg-white/5 border border-white/10
+                    text-[10px] font-black uppercase tracking-[0.18em] text-blue-300
+                  ">
+                    {subject.levels.name}
+                  </span>
+                )}
 
-                  {/* اختيار السنة */}
-                  <div className="space-y-3">
-                    <Label className="text-sm font-black text-slate-700 mr-2 uppercase tracking-wide">نموذج سنة الاختبار</Label>
-                    <Select value={selectedYear} onValueChange={setSelectedYear}>
-                      <SelectTrigger className="h-16 rounded-[1.5rem] bg-slate-50 border-slate-100 font-bold px-6">
-                        <SelectValue placeholder="اختر السنة" />
-                      </SelectTrigger>
-                      <SelectContent className="z-[9999] bg-white border-slate-200 rounded-2xl shadow-2xl max-h-[300px] overflow-y-auto">
-                        {EXAM_YEARS.map((year) => (
-                          <SelectItem key={year} value={year.toString()} className="h-12 rounded-xl cursor-pointer hover:bg-slate-50">
-                            دورة عام {year}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* اختيار النموذج */}
-                  <div className="space-y-3">
-                    <Label className="text-sm font-black text-slate-700 mr-2 uppercase tracking-wide flex items-center gap-2">
-                      <FileText className="w-4 h-4" />
-                      نموذج الاختبار
-                    </Label>
-                    <Select value={selectedExamForm} onValueChange={setSelectedExamForm}>
-                      <SelectTrigger className="h-16 rounded-[1.5rem] bg-slate-50 border-slate-100 font-bold px-6">
-                        <SelectValue placeholder="اختر النموذج" />
-                      </SelectTrigger>
-                      <SelectContent className="z-[9999] bg-white border-slate-200 rounded-2xl shadow-2xl">
-                        {EXAM_FORMS.map((form) => (
-                          <SelectItem key={form.id} value={form.id} className="h-12 rounded-xl cursor-pointer hover:bg-slate-50">
-                            {form.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* عدد الأسئلة المتوفرة */}
-                  <div className="bg-slate-900 rounded-[1.5rem] p-5 flex items-center justify-between px-6 shadow-xl shadow-slate-200">
-                    <span className="text-slate-400 text-xs font-bold uppercase tracking-widest text-right">الأسئلة المتوفرة</span>
-                    <span className="text-white font-black text-lg">
-                      {countLoading ? '...' : questionCount}
-                    </span>
-                  </div>
-
-                  {/* شريط التحكم بالوقت (بناءً على شرط الإدارة) */}
-                  {subject.allow_time_modification && (
-                    <div className="space-y-6 pt-4 p-6 bg-slate-50/80 rounded-[2.5rem] border border-slate-100 animate-in zoom-in-95 duration-300">
-                      <div className="flex items-center justify-between px-2">
-                        <div className="space-y-1">
-                          <Label className="text-sm font-black text-slate-700 uppercase tracking-wide">تخصيص وقت الاختبار</Label>
-                          <p className="text-[10px] text-slate-400 font-bold tracking-tight text-right">اسحب الشريط لتحديد مدة المحاولة</p>
-                        </div>
-                        <div className="bg-primary text-white px-5 py-2 rounded-2xl text-sm font-black shadow-lg shadow-primary/20 flex items-center gap-2">
-                          <Clock className="w-4 h-4" />
-                          <span>{examTime} دقيقة</span>
-                        </div>
-                      </div>
-                      <Slider
-                        value={[examTime]}
-                        onValueChange={([value]) => setExamTime(value)}
-                        min={subject.min_time_minutes || 10}
-                        max={subject.max_time_minutes || 120}
-                        step={5}
-                        className="py-4"
-                      />
-                    </div>
-                  )}
-
-                  {/* قسم كلمة السر */}
-                  {subject.password && (
-                    <div className="space-y-3 p-6 bg-amber-50 rounded-[2rem] border border-amber-100">
-                      <Label htmlFor="password" className="text-sm font-black text-amber-700 flex items-center gap-2">
-                        <Lock className="w-4 h-4" />
-                        هذا الاختبار محمي بكلمة مرور
-                      </Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        placeholder="أدخل كلمة السر"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="h-14 rounded-2xl bg-white border-amber-200 text-center font-black tracking-[0.5em]"
-                      />
-                    </div>
-                  )}
-
-                  <Button
-                    onClick={handleStartExam}
-                    disabled={!studentName.trim() || !selectedYear || questionCount === 0}
-                    className="w-full h-16 md:h-20 text-lg md:text-xl font-black rounded-[1.5rem] md:rounded-[2rem] bg-primary hover:bg-blue-600 text-white shadow-2xl shadow-primary/30 hover:shadow-primary/50 transition-all duration-300 gap-3 md:gap-4 group active:scale-[0.98]"
-                  >
-                    <span>ابدأ الاختبار الآن</span>
-                    <Play className="w-5 h-5 md:w-6 md:h-6 fill-current group-hover:scale-110 transition-transform" />
-                  </Button>
-                </div>
-              </div>
-
-              <div className="p-6 md:p-8 bg-slate-50 border-t border-slate-100 text-center flex items-center justify-center gap-2 rounded-b-[3.5rem]">
-                 <Info className="w-4 h-4 text-slate-400 shrink-0" />
-                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest text-center">
-                   بالضغط على ابدأ، سيتم تفعيل المؤقت الزمني تلقائياً.
-                 </p>
+                <h1 className="text-3xl font-black text-white tracking-tight leading-snug">
+                  تجهيز اختبار <br />
+                  <span className="text-blue-400">{subject.name}</span>
+                </h1>
               </div>
             </div>
-          </div>
+
+            {/* ── Body ── */}
+            <div className="px-8 md:px-10 py-8 space-y-6">
+
+              {/* Info cards */}
+              <div className="grid grid-cols-2 gap-4">
+                <InfoCard
+                  icon={<Target className="w-5 h-5" />}
+                  value={`${subject.passing_score}%`}
+                  label="درجة النجاح"
+                />
+                <InfoCard
+                  icon={<Clock className="w-5 h-5" />}
+                  value={examTime}
+                  label="الدقائق المتاحة"
+                />
+              </div>
+
+              {/* Student name */}
+              <div className="space-y-2">
+                <FieldLabel>بيانات المختبر</FieldLabel>
+                <div className="relative">
+                  <User className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  <Input
+                    placeholder="أدخل اسمك الكامل"
+                    value={studentName}
+                    onChange={(e) => setStudentName(e.target.value)}
+                    className="h-14 rounded-[1rem] pr-11 bg-slate-50 border-slate-200 font-bold text-base
+                      focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Year selector */}
+              <div className="space-y-2">
+                <FieldLabel>نموذج سنة الاختبار</FieldLabel>
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <SelectTrigger className="h-14 rounded-[1rem] bg-slate-50 border-slate-200 font-bold px-5
+                    focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all">
+                    <SelectValue placeholder="اختر السنة" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[9999] bg-white border-slate-200 rounded-2xl shadow-2xl max-h-[280px]">
+                    {EXAM_YEARS.map((year) => (
+                      <SelectItem key={year} value={year.toString()} className="h-11 rounded-xl font-bold cursor-pointer">
+                        دورة عام {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Form selector */}
+              <div className="space-y-2">
+                <FieldLabel>
+                  <span className="inline-flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5" />
+                    نموذج الاختبار
+                  </span>
+                </FieldLabel>
+                <Select value={selectedExamForm} onValueChange={setSelectedExamForm}>
+                  <SelectTrigger className="h-14 rounded-[1rem] bg-slate-50 border-slate-200 font-bold px-5
+                    focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all">
+                    <SelectValue placeholder="اختر النموذج" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[9999] bg-white border-slate-200 rounded-2xl shadow-2xl">
+                    {EXAM_FORMS.map((form) => (
+                      <SelectItem key={form.id} value={form.id} className="h-11 rounded-xl font-bold cursor-pointer">
+                        {form.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Available questions */}
+              <div className="flex items-center justify-between bg-slate-900 rounded-[1rem] px-6 py-4">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">الأسئلة المتوفرة</span>
+                <span className="text-white font-black text-lg">
+                  {countLoading ? (
+                    <span className="inline-block w-8 h-5 bg-slate-700 rounded animate-pulse" />
+                  ) : questionCount}
+                </span>
+              </div>
+
+              {/* Time slider (conditional) */}
+              {subject.allow_time_modification && (
+                <div className="space-y-4 p-5 bg-slate-50 border border-slate-100 rounded-[1.5rem]
+                  animate-in zoom-in-95 duration-300">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-black text-slate-700 uppercase tracking-wide">تخصيص وقت الاختبار</p>
+                      <p className="text-[10px] text-slate-400 font-medium mt-0.5">اسحب الشريط لتحديد مدة المحاولة</p>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-primary text-white px-4 py-1.5 rounded-xl text-sm font-black shadow-md shadow-primary/25">
+                      <Clock className="w-3.5 h-3.5" />
+                      {examTime} دقيقة
+                    </div>
+                  </div>
+                  <Slider
+                    value={[examTime]}
+                    onValueChange={([value]) => setExamTime(value)}
+                    min={subject.min_time_minutes || 10}
+                    max={subject.max_time_minutes || 120}
+                    step={5}
+                    className="py-2"
+                  />
+                </div>
+              )}
+
+              {/* Password (conditional) */}
+              {subject.password && (
+                <div className="space-y-3 p-5 bg-amber-50 border border-amber-100 rounded-[1.5rem]">
+                  <label className="flex items-center gap-2 text-xs font-black text-amber-700">
+                    <Lock className="w-3.5 h-3.5" />
+                    هذا الاختبار محمي بكلمة مرور
+                  </label>
+                  <Input
+                    type="password"
+                    placeholder="أدخل كلمة السر"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-13 rounded-[1rem] bg-white border-amber-200 text-center font-black tracking-[0.4em]
+                      focus:border-amber-400 focus:ring-2 focus:ring-amber-100 transition-all"
+                  />
+                </div>
+              )}
+
+              {/* CTA Button */}
+              <Button
+                onClick={handleStartExam}
+                disabled={!studentName.trim() || !selectedYear || questionCount === 0}
+                className="
+                  w-full h-16 text-base font-black rounded-[1.25rem]
+                  bg-primary hover:bg-blue-600 text-white
+                  shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40
+                  hover:-translate-y-0.5 active:scale-[0.98]
+                  transition-all duration-200
+                  gap-3 group
+                "
+              >
+                <span>ابدأ الاختبار الآن</span>
+                <Play className="w-5 h-5 fill-current group-hover:scale-110 transition-transform" />
+              </Button>
+
+            </div>{/* /body */}
+
+            {/* ── Footer ── */}
+            <div className="flex items-center justify-center gap-2 px-8 py-4 bg-slate-50 border-t border-slate-100">
+              <Info className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">
+                بالضغط على ابدأ، سيتم تفعيل المؤقت الزمني تلقائياً
+              </p>
+            </div>
+
+          </div>{/* /card */}
         </div>
       </section>
     </MainLayout>
