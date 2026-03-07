@@ -1,120 +1,227 @@
+/**
+ * Alnasser Tech Digital Solutions
+ * Component: LevelsPreview — Version 3.0 (World-Class)
+ */
+
 import { Link } from 'react-router-dom';
-import { ArrowLeft, BookOpen, GraduationCap, ChevronLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ArrowLeft, BookOpen, GraduationCap, ChevronLeft, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Level } from '@/types/database';
 import { useCachedQuery } from '@/hooks/useCachedQuery';
 import { cn } from '@/lib/utils';
 
-const levelColors = [
-  'from-blue-600 via-blue-500 to-indigo-400',
-  'from-emerald-600 via-emerald-500 to-teal-400',
-  'from-amber-600 via-amber-500 to-orange-400',
-  'from-rose-600 via-rose-500 to-pink-400',
+const LEVEL_CONFIG = [
+  {
+    gradient: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)',
+    glow:     'rgba(59,130,246,0.3)',
+    bg:       'rgba(59,130,246,0.06)',
+    border:   'rgba(59,130,246,0.2)',
+    label:    'المستوى الأول',
+    tag:      'مبتدئ',
+  },
+  {
+    gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+    glow:     'rgba(16,185,129,0.3)',
+    bg:       'rgba(16,185,129,0.06)',
+    border:   'rgba(16,185,129,0.2)',
+    label:    'المستوى الثاني',
+    tag:      'متوسط',
+  },
+  {
+    gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+    glow:     'rgba(245,158,11,0.3)',
+    bg:       'rgba(245,158,11,0.06)',
+    border:   'rgba(245,158,11,0.2)',
+    label:    'المستوى الثالث',
+    tag:      'متقدم',
+  },
+  {
+    gradient: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+    glow:     'rgba(239,68,68,0.3)',
+    bg:       'rgba(239,68,68,0.06)',
+    border:   'rgba(239,68,68,0.2)',
+    label:    'المستوى الرابع',
+    tag:      'احترافي',
+  },
 ];
 
 export function LevelsPreview() {
   const { data: levels = [] } = useCachedQuery<Level[]>(
     ['levels'],
     async () => {
-      const { data, error } = await supabase
-        .from('levels')
-        .select('*')
-        .order('order_index');
+      const { data, error } = await supabase.from('levels').select('*').order('order_index');
       if (error) throw error;
       return data as Level[];
     }
   );
 
   return (
-    <section className="py-24 relative overflow-hidden bg-slate-50/50" id="levels">
-      {/* لمسات خلفية ناعمة */}
-      <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:32px_32px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-30 pointer-events-none" />
+    <section className="py-24 md:py-32 relative overflow-hidden bg-background" id="levels">
 
-      <div className="container mx-auto px-6 relative z-10">
-        
-        {/* Section Header - تصميم أكثر فخامة */}
-        <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest animate-fade-in">
-            <GraduationCap className="w-4 h-4" />
+      {/* خلفية نقطية */}
+      <div className="absolute inset-0 opacity-[0.035] pointer-events-none"
+        style={{
+          backgroundImage: 'radial-gradient(circle, hsl(var(--foreground)) 1px, transparent 1px)',
+          backgroundSize: '32px 32px',
+        }} />
+
+      {/* توهجات خلفية */}
+      <div className="absolute top-1/3 -right-32 w-96 h-96 pointer-events-none"
+        style={{ background: 'radial-gradient(circle, hsl(var(--primary)/0.06), transparent 70%)', filter: 'blur(60px)' }} />
+      <div className="absolute bottom-1/3 -left-32 w-80 h-80 pointer-events-none"
+        style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.05), transparent 70%)', filter: 'blur(60px)' }} />
+
+      <div className="container mx-auto px-4 md:px-6 relative z-10">
+
+        {/* Header */}
+        <div className="text-center max-w-3xl mx-auto mb-16 md:mb-20">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-5 text-xs font-black uppercase tracking-widest"
+            style={{
+              background: 'hsl(var(--primary)/0.1)',
+              border: '1px solid hsl(var(--primary)/0.2)',
+              color: 'hsl(var(--primary))',
+            }}>
+            <GraduationCap className="w-3.5 h-3.5" />
             مسار التعلم الذكي
           </div>
-          <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">
-            استكشف <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-600">المستويات الدراسية</span>
+          <h2 className="font-cairo font-black text-foreground tracking-tight leading-tight mb-4"
+            style={{ fontSize: 'clamp(2rem, 4.5vw, 3.2rem)' }}>
+            استكشف{' '}
+            <span style={{
+              background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(199 89% 50%))',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+            }}>
+              المستويات الدراسية
+            </span>
           </h2>
-          <p className="text-slate-600 text-lg md:text-xl leading-relaxed">
-            تم تصميم كل مستوى بعناية ليأخذك من الأساسيات إلى الاحتراف القانوني عبر منهجية اختبارات عالمية.
+          <p className="text-muted-foreground text-lg leading-relaxed">
+            كل مستوى مصمم بعناية ليأخذك من الأساسيات إلى الاحتراف القانوني عبر منهجية اختبارات عالمية.
           </p>
         </div>
 
-        {/* Levels Grid - متجاوب تماماً مع الجوال */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
-          {levels.map((level, index) => (
-            <Link
-              key={level.id}
-              to={`/levels/${level.id}`}
-              className="group relative"
-            >
-              {/* Card - تأثيرات زجاجية وتحويم متطورة */}
-              <div className="relative bg-white rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 h-full flex flex-col overflow-hidden group-hover:-translate-y-3">
-                
-                {/* Header Gradient - نمط شبكي مع تدرج */}
-                <div className={cn(
-                  "h-40 bg-gradient-to-br relative overflow-hidden",
-                  levelColors[index] || levelColors[0]
-                )}>
-                  {/* تأثير الشبكة داخل الجريدينت */}
-                  <div className="absolute inset-0 opacity-20 bg-[linear-gradient(30deg,#fff_12%,transparent_12.5%,transparent_87%,#fff_87.5%,#fff_100%),linear-gradient(150deg,#fff_12%,transparent_12.5%,transparent_87%,#fff_87.5%,#fff_100%),linear-gradient(30deg,#fff_12%,transparent_12.5%,transparent_87%,#fff_87.5%,#fff_100%),linear-gradient(150deg,#fff_12%,transparent_12.5%,transparent_87%,#fff_87.5%,#fff_100%),linear-gradient(60deg,#fff_25%,transparent_25.5%,transparent_75%,#fff_75%,#fff_100%),linear-gradient(60deg,#fff_25%,transparent_25.5%,transparent_75%,#fff_75%,#fff_100%)] bg-[length:20px_35px]" />
-                  
-                  {/* الرقم - تصميم عائم */}
-                  <div className="absolute top-6 right-6">
-                    <div className="relative w-14 h-14 flex items-center justify-center">
-                      <div className="absolute inset-0 bg-white/20 backdrop-blur-md rounded-2xl rotate-12 group-hover:rotate-0 transition-transform duration-500" />
-                      <span className="relative text-2xl font-black text-white">{index + 1}</span>
+        {/* Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6 mb-14">
+          {levels.map((level, i) => {
+            const cfg = LEVEL_CONFIG[i] || LEVEL_CONFIG[0];
+            return (
+              <Link
+                key={level.id}
+                to={`/levels/${level.id}`}
+                className="group relative block"
+                style={{ animation: `fadeSlideUp 0.65s ${i * 0.08}s cubic-bezier(0.16,1,0.3,1) both` }}
+              >
+                <div
+                  className="relative h-full flex flex-col rounded-3xl border overflow-hidden transition-all duration-500 group-hover:-translate-y-2"
+                  style={{
+                    background: 'hsl(var(--card))',
+                    borderColor: 'hsl(var(--border))',
+                  }}
+                  onMouseEnter={e => {
+                    const el = e.currentTarget as HTMLElement;
+                    el.style.borderColor = cfg.border;
+                    el.style.boxShadow = `0 16px 60px ${cfg.glow}`;
+                  }}
+                  onMouseLeave={e => {
+                    const el = e.currentTarget as HTMLElement;
+                    el.style.borderColor = 'hsl(var(--border))';
+                    el.style.boxShadow = 'none';
+                  }}
+                >
+                  {/* Header الملوّن */}
+                  <div className="relative h-44 overflow-hidden" style={{ background: cfg.gradient }}>
+
+                    {/* نسيج داخلي */}
+                    <div className="absolute inset-0 opacity-[0.15]"
+                      style={{
+                        backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.5) 1px, transparent 1px)',
+                        backgroundSize: '20px 20px',
+                      }} />
+
+                    {/* رقم المستوى */}
+                    <div className="absolute top-5 right-5 w-14 h-14 flex items-center justify-center">
+                      <div className="absolute inset-0 bg-white/20 backdrop-blur-sm rounded-2xl rotate-6 group-hover:rotate-0 transition-transform duration-500" />
+                      <span className="relative font-cairo font-black text-3xl text-white drop-shadow-md">{i + 1}</span>
                     </div>
+
+                    {/* شارة المستوى */}
+                    <div className="absolute bottom-4 right-5 flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black text-white uppercase tracking-wider"
+                      style={{ background: 'rgba(0,0,0,0.2)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.2)' }}>
+                      <Sparkles className="w-2.5 h-2.5" />
+                      {cfg.tag}
+                    </div>
+
+                    {/* توهج داخلي عند hover */}
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                      style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.12), transparent)' }} />
                   </div>
 
-                  {/* شارة المستوى */}
-                  <div className="absolute bottom-4 left-6 px-3 py-1 rounded-full bg-black/10 backdrop-blur-sm border border-white/20 text-[10px] font-bold text-white uppercase tracking-wider">
-                    Level {index + 1}
-                  </div>
-                </div>
+                  {/* Content */}
+                  <div className="flex-1 flex flex-col p-6">
+                    <div className="mb-1">
+                      <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">{cfg.label}</span>
+                    </div>
+                    <h3 className="font-black text-lg text-foreground mb-2 transition-colors duration-300 group-hover:text-primary">
+                      {level.name}
+                    </h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed line-clamp-2 mb-5 flex-1">
+                      {level.description}
+                    </p>
 
-                {/* Content Area */}
-                <div className="p-8 flex-1 flex flex-col">
-                  <h3 className="font-black text-xl text-slate-800 mb-3 group-hover:text-primary transition-colors duration-300">
-                    {level.name}
-                  </h3>
-                  <p className="text-slate-500 text-sm leading-relaxed mb-6 line-clamp-3">
-                    {level.description}
-                  </p>
-                  
-                  {/* Action Button - يظهر كجزء من البطاقة */}
-                  <div className="mt-auto pt-4 flex items-center justify-between border-t border-slate-100">
-                    <div className="flex items-center gap-2 text-primary font-bold text-sm uppercase tracking-tight">
-                      <BookOpen className="w-4 h-4" />
-                      <span>عرض المواد</span>
-                    </div>
-                    <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all duration-300">
-                      <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+                    {/* Footer */}
+                    <div className="flex items-center justify-between pt-4 border-t border-border/60">
+                      <div className="flex items-center gap-1.5 text-sm font-bold" style={{ color: 'hsl(var(--primary))' }}>
+                        <BookOpen className="w-4 h-4" />
+                        عرض المواد
+                      </div>
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 group-hover:text-white group-hover:scale-110"
+                        style={{ background: cfg.bg }}
+                        onMouseEnter={() => {}}
+                      >
+                        <ChevronLeft className="w-4 h-4" style={{ color: 'hsl(var(--primary))' }} />
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
 
-        {/* CTA - زر عرض الجميع بتصميم مكمل للهيدر */}
+        {/* CTA */}
         <div className="text-center">
           <Link to="/levels">
-            <Button size="lg" className="rounded-full px-10 h-14 bg-slate-900 hover:bg-primary text-white font-bold text-lg shadow-xl shadow-slate-200 hover:shadow-primary/30 transition-all duration-300 group">
+            <button
+              className="group inline-flex items-center gap-3 px-8 py-4 rounded-2xl font-black text-base transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+              style={{
+                background: 'hsl(var(--foreground))',
+                color: 'hsl(var(--background))',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 40px hsl(var(--primary)/0.3)';
+                (e.currentTarget as HTMLElement).style.background = 'hsl(var(--primary))';
+                (e.currentTarget as HTMLElement).style.color = 'white';
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 20px rgba(0,0,0,0.15)';
+                (e.currentTarget as HTMLElement).style.background = 'hsl(var(--foreground))';
+                (e.currentTarget as HTMLElement).style.color = 'hsl(var(--background))';
+              }}
+            >
               تصفح كافة الأقسام
-              <ArrowLeft className="mr-3 w-5 h-5 rotate-180 group-hover:-translate-x-2 transition-transform" />
-            </Button>
+              <ArrowLeft className="w-4 h-4 rotate-180 group-hover:-translate-x-1 transition-transform" />
+            </button>
           </Link>
         </div>
       </div>
+
+      <style>{`
+        @keyframes fadeSlideUp {
+          from { opacity: 0; transform: translateY(28px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </section>
   );
 }
