@@ -1,12 +1,11 @@
 /* ---------------------------------------------------------
-  Project: Alnaser Legal Platform (منصة الناصر)
-  Description: Global Styles & Tailwind CSS Configuration
-  Developed by: Mueen Al-Nasser (أ. معين الناصر)
-  Version: 1.0.0
+  Project: Alnasser Legal Platform (منصة الناصر)
+  Global Styles — Version 2.0 (World-Class Upgrade)
+  Developed by: Mueen Al-Nasser
   ---------------------------------------------------------
 */
 
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=Tajawal:wght@300;400;500;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -14,113 +13,343 @@
 
 @layer base {
   :root {
-    /* ألوان واجهة الناصر الاحترافية - Light Mode */
-    --background: 210 20% 98%;
-    --foreground: 222 47% 11%;
+    /* ── ألوان واجهة الناصر — Light Mode ── */
+    --background:        210 20% 98%;
+    --foreground:        222 47% 11%;
+    --card:              0 0% 100%;
+    --card-foreground:   222 47% 11%;
+    --popover:           0 0% 100%;
+    --popover-foreground:222 47% 11%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --primary:           217 91% 57%;
+    --primary-foreground:0 0% 100%;
 
-    --primary: 217 91% 60%; /* اللون الأزرق الملكي المميز */
-    --primary-foreground: 0 0% 100%;
+    --secondary:         160 84% 39%;
+    --secondary-foreground:0 0% 100%;
 
-    --secondary: 160 84% 39%;
-    --secondary-foreground: 0 0% 100%;
+    --muted:             214 32% 95%;
+    --muted-foreground:  215 20% 50%;
 
-    --border: 214 32% 91%;
-    --radius: 0.85rem; /* زوايا دائرية أكثر حداثة */
+    --accent:            214 32% 95%;
+    --accent-foreground: 222 47% 11%;
 
-    /* ألوان المستويات الدراسية */
-    --level-1: 217 91% 60%;
+    --destructive:       0 84% 60%;
+    --destructive-foreground:0 0% 100%;
+
+    --success:           160 84% 39%;
+    --success-foreground:0 0% 100%;
+
+    --border:            214 32% 91%;
+    --input:             214 32% 91%;
+    --ring:              217 91% 57%;
+    --radius:            0.9rem;
+
+    /* ── ألوان المستويات ── */
+    --level-1: 217 91% 57%;
     --level-2: 160 84% 39%;
     --level-3: 38 92% 50%;
     --level-4: 0 84% 60%;
 
-    /* تدرجات لونية خاصة بمنصة الناصر */
-    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(199 89% 48%) 100%);
-    --gradient-hero: linear-gradient(135deg, hsl(217 91% 60% / 0.1) 0%, hsl(160 84% 39% / 0.1) 100%);
+    /* ── تدرجات مخصصة ── */
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 57%) 0%, hsl(199 89% 48%) 100%);
+    --gradient-hero:    linear-gradient(135deg, hsl(217 91% 57% / 0.08) 0%, hsl(160 84% 39% / 0.06) 100%);
+    --gradient-gold:    linear-gradient(135deg, hsl(38 92% 55%) 0%, hsl(45 96% 65%) 100%);
+
+    /* ── ظلال مخصصة ── */
+    --shadow-card:  0 2px 16px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04);
+    --shadow-hover: 0 12px 40px rgba(59,130,246,0.14), 0 4px 16px rgba(0,0,0,0.08);
+    --shadow-glow:  0 0 60px rgba(59,130,246,0.2);
+    --shadow-deep:  0 24px 64px rgba(0,0,0,0.12);
   }
 
   .dark {
-    /* إعدادات الوضع الليلي (Dark Mode) المتكاملة */
-    --background: 222 47% 8%;
-    --foreground: 210 40% 98%;
+    /* ── Dark Mode ── */
+    --background:        222 47% 7%;
+    --foreground:        210 40% 96%;
+    --card:              222 47% 10%;
+    --card-foreground:   210 40% 96%;
+    --popover:           222 47% 10%;
+    --popover-foreground:210 40% 96%;
 
-    --card: 222 47% 11%;
-    --card-foreground: 210 40% 98%;
+    --primary:           217 91% 63%;
+    --primary-foreground:222 47% 7%;
 
-    --primary: 217 91% 65%;
-    --primary-foreground: 222 47% 8%;
+    --secondary:         160 70% 45%;
+    --secondary-foreground:222 47% 7%;
 
-    --secondary: 160 70% 45%;
-    --secondary-foreground: 222 47% 8%;
+    --muted:             217 33% 14%;
+    --muted-foreground:  215 20% 58%;
 
-    --border: 217 33% 20%;
-    --input: 217 33% 17%;
-    --ring: 217 91% 65%;
+    --accent:            217 33% 16%;
+    --accent-foreground: 210 40% 96%;
 
-    --muted: 217 33% 15%;
-    --muted-foreground: 215 20% 65%;
+    --destructive:       0 62% 55%;
+    --destructive-foreground:210 40% 96%;
 
-    --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 98%;
+    --success:           160 70% 45%;
+    --success-foreground:222 47% 7%;
 
-    --destructive: 0 62% 55%;
-    --destructive-foreground: 210 40% 98%;
+    --border:            217 33% 18%;
+    --input:             217 33% 16%;
+    --ring:              217 91% 63%;
 
-    --success: 160 70% 45%;
-    --success-foreground: 222 47% 8%;
-
-    /* المستويات */
     --level-1: 217 91% 65%;
-    --level-2: 160 70% 45%;
-    --level-3: 38 85% 55%;
-    --level-4: 0 75% 60%;
+    --level-2: 160 70% 48%;
+    --level-3: 38 85% 58%;
+    --level-4: 0 75% 62%;
 
-    /* تدرجات الوضع الليلي */
-    --gradient-primary: linear-gradient(135deg, hsl(217 91% 65%) 0%, hsl(199 80% 55%) 100%);
-    --gradient-hero: linear-gradient(135deg, hsl(217 91% 65% / 0.15) 0%, hsl(160 70% 45% / 0.1) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 63%) 0%, hsl(199 80% 55%) 100%);
+    --gradient-hero:    linear-gradient(135deg, hsl(217 91% 63% / 0.12) 0%, hsl(160 70% 45% / 0.08) 100%);
+
+    --shadow-card:  0 2px 16px rgba(0,0,0,0.3), 0 1px 4px rgba(0,0,0,0.2);
+    --shadow-hover: 0 12px 40px rgba(59,130,246,0.2), 0 4px 16px rgba(0,0,0,0.3);
+    --shadow-glow:  0 0 60px rgba(59,130,246,0.25);
+    --shadow-deep:  0 24px 64px rgba(0,0,0,0.4);
   }
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
+  * { @apply border-border; }
 
   html {
-    direction: rtl; /* تفعيل التوجه من اليمين لليسار كأساس للمنصة */
+    direction: rtl;
     scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
   body {
-    @apply bg-background text-foreground font-cairo antialiased;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Cairo', sans-serif;
+    font-feature-settings: 'kern' 1, 'liga' 1;
   }
 
-  /* تنسيقات العناوين القانونية */
   h1, h2, h3, h4, h5, h6 {
-    @apply font-cairo font-bold tracking-tight;
+    font-family: 'Cairo', sans-serif;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+
+  /* تحسين التمرير */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(var(--primary) / 0.5); }
+
+  /* تحديد النص */
+  ::selection {
+    background: hsl(var(--primary) / 0.2);
+    color: hsl(var(--primary));
+  }
+}
+
+@layer components {
+
+  /* ── تدرجات نص ── */
+  .text-gradient-primary {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .text-gradient-gold {
+    background: var(--gradient-gold);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ── خلفيات ── */
+  .gradient-primary { background: var(--gradient-primary); }
+  .gradient-hero    { background: var(--gradient-hero); }
+
+  /* ── زجاج احترافي ── */
+  .glass {
+    background: hsl(var(--card) / 0.7);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid hsl(var(--border) / 0.6);
+  }
+  .glass-dark {
+    background: rgba(10, 14, 30, 0.6);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  /* ── بطاقات ── */
+  .card-base {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: calc(var(--radius) * 1.5);
+    box-shadow: var(--shadow-card);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .card-hover {
+    @apply card-base;
+    cursor: pointer;
+  }
+  .card-hover:hover {
+    box-shadow: var(--shadow-hover);
+    border-color: hsl(var(--primary) / 0.25);
+    transform: translateY(-3px);
+  }
+
+  /* ── أزرار مخصصة ── */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.85rem 2rem;
+    border-radius: calc(var(--radius) * 1.5);
+    background: var(--gradient-primary);
+    color: white;
+    font-family: 'Cairo', sans-serif;
+    font-weight: 800;
+    font-size: 1rem;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 24px hsl(var(--primary) / 0.35), 0 2px 8px rgba(0,0,0,0.15);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 40px hsl(var(--primary) / 0.45), 0 4px 16px rgba(0,0,0,0.2);
+  }
+  .btn-primary:active { transform: scale(0.97); }
+
+  /* ── شارات / Badge ── */
+  .badge-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.9rem;
+    border-radius: 99px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    background: hsl(var(--primary) / 0.1);
+    color: hsl(var(--primary));
+    border: 1px solid hsl(var(--primary) / 0.25);
   }
 }
 
 @layer utilities {
-  /* تأثير الزجاج - Glassmorphism */
-  .glass {
-    @apply bg-card/80 backdrop-blur-lg border border-border/50;
-  }
 
-  /* تفاعل البطاقات عند مرور الماوس */
-  .card-hover {
-    @apply transition-all duration-300 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-2;
-  }
-
-  /* حركات الظهور الاحترافية */
+  /* ── حركات الظهور ── */
   .animate-fade-in {
-    animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .animate-slide-up {
+    animation: slideUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .animate-slide-down {
+    animation: slideDown 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .animate-scale-in {
+    animation: scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+  .animate-blur-in {
+    animation: blurIn 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(15px); }
-    to { opacity: 1; transform: translateY(0); }
+  /* ── تأثيرات بصرية ── */
+  .glow-primary {
+    box-shadow: var(--shadow-glow);
   }
+  .glow-text {
+    text-shadow: 0 0 40px hsl(var(--primary) / 0.5);
+  }
+  .shadow-card  { box-shadow: var(--shadow-card); }
+  .shadow-hover { box-shadow: var(--shadow-hover); }
+  .shadow-deep  { box-shadow: var(--shadow-deep); }
+
+  /* ── نسيج خلفي ── */
+  .bg-dots {
+    background-image: radial-gradient(circle, hsl(var(--foreground) / 0.08) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  .bg-grid {
+    background-image:
+      linear-gradient(hsl(var(--border)) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* ── فواصل موجية ── */
+  .wave-divider {
+    position: relative;
+  }
+  .wave-divider::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: hsl(var(--background));
+    clip-path: ellipse(55% 100% at 50% 100%);
+  }
+}
+
+/* ═══════════════════════════════════════
+   KEYFRAMES
+═══════════════════════════════════════ */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.88); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes blurIn {
+  from { opacity: 0; filter: blur(10px); transform: scale(1.03); }
+  to   { opacity: 1; filter: blur(0); transform: scale(1); }
+}
+@keyframes shimmer {
+  0%   { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 20px hsl(var(--primary) / 0.3); }
+  50%       { box-shadow: 0 0 50px hsl(var(--primary) / 0.6); }
+}
+@keyframes spinSlow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── أنيميشن utilities ── */
+.animate-float      { animation: float 3.5s ease-in-out infinite; }
+.animate-pulse-glow { animation: pulseGlow 2.5s ease-in-out infinite; }
+.animate-spin-slow  { animation: spinSlow 12s linear infinite; }
+.animate-shimmer    {
+  position: relative;
+  overflow: hidden;
+}
+.animate-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.15) 50%, transparent 70%);
+  animation: shimmer 2.2s ease-in-out infinite;
 }
