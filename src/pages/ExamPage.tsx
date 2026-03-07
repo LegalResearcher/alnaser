@@ -3,12 +3,12 @@
  * Project: Alnaser Legal Platform
  * Component: Exam Engine (Active Quiz)
  * Developed by: Mueen Al-Nasser
- * Version: 2.1 (Full Cleanup: Start & End Symbols + Exam Forms + Hide Empty)
+ * Version: 2.2 (Instant Answer Feedback: Green/Red Colors)
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { Clock, ChevronLeft, ChevronRight, Flag, AlertTriangle, CheckCircle2, HelpCircle } from 'lucide-react';
+import { Clock, ChevronLeft, ChevronRight, Flag, AlertTriangle, CheckCircle2, HelpCircle, XCircle } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -44,13 +44,8 @@ const cleanOptionText = (text: string | null | undefined): string => {
   if (!text) return '';
   
   return text
-    // 1. تنظيف البداية من الرموز (+، -، *) والأرقام والأقواس
     .replace(/^[\+\-\*\s\(\)\d\.\-\/]+/, '') 
-    
-    // 2. تنظيف النهاية من الرموز والبادئات الزائدة مثل (1 -) أو (+ 3)
     .replace(/[\s\(\)\d\+\-\.\/]+$/, '') 
-    
-    // 3. إزالة أي مسافات زائدة من الطرفين
     .trim();
 };
 
@@ -94,7 +89,6 @@ const ExamPage = () => {
       const { data, error } = await query;
       if (error) throw error;
       
-      // خلط الأسئلة وإرجاعها بالكامل دون حد الـ 20
       const shuffled = (data as Question[]).sort(() => Math.random() - 0.5);
       return shuffled;
     },
@@ -200,6 +194,64 @@ const ExamPage = () => {
     return optionText && optionText.trim().length > 0;
   });
 
+  // --- منطق الألوان الفورية ---
+  const selectedAnswer = answers[currentQuestion.id];
+  const hasAnswered = !!selectedAnswer;
+  const isAnswerCorrect = selectedAnswer === currentQuestion.correct_option;
+
+  const getOptionStyle = (option: string) => {
+    const isSelected = selectedAnswer === option;
+    const isCorrectOption = currentQuestion.correct_option === option;
+
+    // لم يختر بعد — الشكل الافتراضي
+    if (!hasAnswered) {
+      return isSelected
+        ? "border-primary bg-primary/[0.03] shadow-lg"
+        : "border-slate-100 bg-slate-50 hover:border-primary/20";
+    }
+
+    // اختار الإجابة الصحيحة
+    if (isCorrectOption) {
+      return "border-emerald-500 bg-emerald-50 shadow-lg";
+    }
+
+    // اختار هذا الخيار لكنه خاطئ
+    if (isSelected && !isCorrectOption) {
+      return "border-rose-500 bg-rose-50 shadow-lg";
+    }
+
+    // خيارات أخرى لم يختارها
+    return "border-slate-100 bg-slate-50 opacity-50";
+  };
+
+  const getOptionBadgeStyle = (option: string) => {
+    const isSelected = selectedAnswer === option;
+    const isCorrectOption = currentQuestion.correct_option === option;
+
+    if (!hasAnswered) {
+      return isSelected
+        ? "bg-primary text-white"
+        : "bg-white text-slate-400 border border-slate-200";
+    }
+
+    if (isCorrectOption) return "bg-emerald-500 text-white";
+    if (isSelected && !isCorrectOption) return "bg-rose-500 text-white";
+    return "bg-white text-slate-300 border border-slate-200";
+  };
+
+  const getOptionTextStyle = (option: string) => {
+    const isSelected = selectedAnswer === option;
+    const isCorrectOption = currentQuestion.correct_option === option;
+
+    if (!hasAnswered) {
+      return isSelected ? "text-primary" : "text-slate-600";
+    }
+
+    if (isCorrectOption) return "text-emerald-700 font-black";
+    if (isSelected && !isCorrectOption) return "text-rose-700 font-black";
+    return "text-slate-400";
+  };
+
   return (
     <MainLayout>
       <section className="py-4 md:py-8 bg-slate-50/50 min-h-[calc(100vh-80px)] font-cairo text-right" dir="rtl">
@@ -240,31 +292,73 @@ const ExamPage = () => {
                     const optionKey = `option_${option.toLowerCase()}` as keyof Question;
                     const rawOptionText = currentQuestion[optionKey] as string;
                     const optionText = cleanOptionText(rawOptionText);
-                    const isSelected = answers[currentQuestion.id] === option;
+                    const isCorrectOption = currentQuestion.correct_option === option;
+                    const isSelectedOption = selectedAnswer === option;
 
                     return (
                       <button
                         key={option}
-                        onClick={() => setAnswers({...answers, [currentQuestion.id]: option})}
+                        onClick={() => {
+                          // لا تسمح بتغيير الإجابة بعد الاختيار
+                          if (!hasAnswered) {
+                            setAnswers({ ...answers, [currentQuestion.id]: option });
+                          }
+                        }}
+                        disabled={hasAnswered}
                         className={cn(
-                          "w-full text-right p-4 md:p-6 rounded-2xl md:rounded-3xl border-2 transition-all flex items-center gap-3 md:gap-5 active:scale-[0.98]",
-                          isSelected ? "border-primary bg-primary/[0.03] shadow-lg" : "border-slate-100 bg-slate-50 hover:border-primary/20"
+                          "w-full text-right p-4 md:p-6 rounded-2xl md:rounded-3xl border-2 transition-all duration-300 flex items-center gap-3 md:gap-5 active:scale-[0.98]",
+                          getOptionStyle(option),
+                          hasAnswered ? "cursor-default" : "cursor-pointer"
                         )}
                       >
                         <div className={cn(
-                          "w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center font-black text-base md:text-lg shadow-sm shrink-0",
-                          isSelected ? "bg-primary text-white" : "bg-white text-slate-400 border border-slate-200"
+                          "w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center font-black text-base md:text-lg shadow-sm shrink-0 transition-all duration-300",
+                          getOptionBadgeStyle(option)
                         )}>
                           {option}
                         </div>
-                        <span className={cn("flex-1 text-sm md:text-lg font-bold text-right", isSelected ? "text-primary" : "text-slate-600")}>
+                        <span className={cn(
+                          "flex-1 text-sm md:text-lg font-bold text-right transition-all duration-300",
+                          getOptionTextStyle(option)
+                        )}>
                           {optionText}
                         </span>
-                        {isSelected && <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6 text-primary shrink-0" />}
+                        {/* أيقونة الصح أو الخطأ */}
+                        {hasAnswered && isCorrectOption && (
+                          <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6 text-emerald-500 shrink-0" />
+                        )}
+                        {hasAnswered && isSelectedOption && !isCorrectOption && (
+                          <XCircle className="w-5 h-5 md:w-6 md:h-6 text-rose-500 shrink-0" />
+                        )}
+                        {!hasAnswered && isSelectedOption && (
+                          <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6 text-primary shrink-0" />
+                        )}
                       </button>
                     );
                   })}
                 </div>
+
+                {/* رسالة فورية بعد الاختيار */}
+                {hasAnswered && (
+                  <div className={cn(
+                    "mt-5 md:mt-8 p-4 rounded-2xl flex items-center gap-3 font-black text-sm md:text-base animate-in fade-in slide-in-from-bottom-3 duration-300",
+                    isAnswerCorrect
+                      ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
+                      : "bg-rose-50 border border-rose-200 text-rose-700"
+                  )}>
+                    {isAnswerCorrect ? (
+                      <CheckCircle2 className="w-5 h-5 shrink-0" />
+                    ) : (
+                      <XCircle className="w-5 h-5 shrink-0" />
+                    )}
+                    <span>
+                      {isAnswerCorrect
+                        ? "إجابة صحيحة! 🎉"
+                        : `إجابة خاطئة — الإجابة الصحيحة هي: ${currentQuestion.correct_option}`
+                      }
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 
