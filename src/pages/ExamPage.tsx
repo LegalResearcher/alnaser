@@ -3,15 +3,14 @@
  * Project: Alnaser Legal Platform
  * Component: Exam Engine (Active Quiz)
  * Developed by: Mueen Al-Nasser
- * Version: 2.2 (Instant Answer Feedback: Green/Red Colors)
+ * Version: 2.3 (Full UX Enhancement: Confetti + Shake + Score + Circular Timer + Slide + Next-After-Answer)
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { Clock, ChevronLeft, ChevronRight, Flag, AlertTriangle, CheckCircle2, HelpCircle, XCircle } from 'lucide-react';
+import { Clock, ChevronLeft, ChevronRight, Flag, AlertTriangle, CheckCircle2, XCircle, Star } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Question } from '@/types/database';
@@ -28,7 +27,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-// تعريف واجهة البيانات القادمة من صفحة البداية
 interface ExamState {
   studentName: string;
   examYear: number;
@@ -39,14 +37,112 @@ interface ExamState {
   levelName?: string;
 }
 
-// دالة تنظيف نص الخيار من البادئات والرموز النهائية (مثل +، -، والأرقام بين أقواس)
 const cleanOptionText = (text: string | null | undefined): string => {
   if (!text) return '';
-  
   return text
-    .replace(/^[\+\-\*\s\(\)\d\.\-\/]+/, '') 
-    .replace(/[\s\(\)\d\+\-\.\/]+$/, '') 
+    .replace(/^[\+\-\*\s\(\)\d\.\-\/]+/, '')
+    .replace(/[\s\(\)\d\+\-\.\/]+$/, '')
     .trim();
+};
+
+// كونفيتي بدون مكتبة خارجية
+const Confetti = ({ active }: { active: boolean }) => {
+  if (!active) return null;
+  const pieces = Array.from({ length: 32 }, (_, i) => i);
+  const colors = ['#10b981', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4', '#f97316'];
+  return (
+    <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+      {pieces.map((i) => (
+        <div
+          key={i}
+          style={{
+            position: 'absolute',
+            left: `${10 + Math.random() * 80}%`,
+            top: '-10px',
+            width: `${6 + Math.random() * 6}px`,
+            height: `${6 + Math.random() * 6}px`,
+            borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+            backgroundColor: colors[i % colors.length],
+            animation: `confettiFall ${0.9 + Math.random() * 1}s ease-in ${Math.random() * 0.4}s forwards`,
+            transform: `rotate(${Math.random() * 360}deg)`,
+            opacity: 0,
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
+// CSS animations مُحقونة في head
+const GlobalStyles = () => (
+  <style>{`
+    @keyframes confettiFall {
+      0%   { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
+      100% { transform: translateY(100vh) rotate(720deg) scale(0.5); opacity: 0; }
+    }
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      15%  { transform: translateX(-10px); }
+      30%  { transform: translateX(10px); }
+      45%  { transform: translateX(-7px); }
+      60%  { transform: translateX(7px); }
+      75%  { transform: translateX(-4px); }
+      90%  { transform: translateX(4px); }
+    }
+    @keyframes slideInRight {
+      from { opacity: 0; transform: translateX(50px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes slideInLeft {
+      from { opacity: 0; transform: translateX(-50px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes scoreFloat {
+      0%   { opacity: 0; transform: translateY(4px) scale(0.6); }
+      40%  { opacity: 1; transform: translateY(-16px) scale(1.3); }
+      100% { opacity: 0; transform: translateY(-32px) scale(1); }
+    }
+    @keyframes glowPulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.5); }
+      50%     { box-shadow: 0 0 0 10px rgba(16,185,129,0); }
+    }
+    @keyframes zoomIn {
+      from { opacity: 0; transform: scale(0.85); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    .anim-shake        { animation: shake 0.5s ease-in-out; }
+    .anim-slide-right  { animation: slideInRight 0.32s ease-out; }
+    .anim-slide-left   { animation: slideInLeft 0.32s ease-out; }
+    .anim-score-float  { animation: scoreFloat 0.9s ease-out forwards; }
+    .anim-glow         { animation: glowPulse 0.7s ease-out; }
+    .anim-zoom-in      { animation: zoomIn 0.25s ease-out; }
+  `}</style>
+);
+
+// مؤقت دائري
+const CircularTimer = ({ timeLeft, totalTime, isWarning }: { timeLeft: number; totalTime: number; isWarning: boolean }) => {
+  const radius = 28;
+  const circ = 2 * Math.PI * radius;
+  const offset = circ * (1 - timeLeft / totalTime);
+  const color = isWarning ? '#ef4444' : timeLeft / totalTime > 0.5 ? '#10b981' : '#f59e0b';
+  const mins = Math.floor(timeLeft / 60);
+  const secs = timeLeft % 60;
+  return (
+    <div className="relative flex items-center justify-center w-20 h-20 md:w-24 md:h-24 shrink-0">
+      <svg className="absolute inset-0 -rotate-90" viewBox="0 0 72 72" width="100%" height="100%">
+        <circle cx="36" cy="36" r={radius} fill="none" stroke="#e2e8f0" strokeWidth="5" />
+        <circle cx="36" cy="36" r={radius} fill="none" stroke={color} strokeWidth="5"
+          strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset}
+          style={{ transition: 'stroke-dashoffset 1s linear, stroke 0.5s' }} />
+      </svg>
+      <div className={cn("flex flex-col items-center z-10 gap-0.5", isWarning && "animate-pulse")}>
+        <Clock className={cn("w-3 h-3", isWarning ? "text-rose-500" : "text-slate-400")} />
+        <span className={cn("font-black text-xs md:text-sm tabular-nums leading-none", isWarning ? "text-rose-600" : "text-slate-700")} dir="ltr">
+          {String(mins).padStart(2,'0')}:{String(secs).padStart(2,'0')}
+        </span>
+      </div>
+    </div>
+  );
 };
 
 const ExamPage = () => {
@@ -54,43 +150,34 @@ const ExamPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const state = location.state as ExamState;
+  const totalTime = (state?.examTime || 30) * 60;
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [timeLeft, setTimeLeft] = useState((state?.examTime || 30) * 60);
+  const [timeLeft, setTimeLeft] = useState(totalTime);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [showReviewDialog, setShowReviewDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [liveScore, setLiveScore] = useState(0);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [shakeCard, setShakeCard] = useState(false);
+  const [slideDir, setSlideDir] = useState<'right' | 'left'>('right');
+  const [animKey, setAnimKey] = useState(0);
+  const [showScoreFloat, setShowScoreFloat] = useState(false);
 
-  // حماية من الدخول المباشر بدون بيانات
   useEffect(() => {
-    if (!state?.studentName) {
-      navigate(`/exam/${subjectId}`);
-    }
+    if (!state?.studentName) navigate(`/exam/${subjectId}`);
   }, [state, subjectId, navigate]);
 
-  // جلب الأسئلة من قاعدة البيانات مع دعم النموذج وإلغاء القيود
   const { data: questions = [], isLoading } = useQuery({
     queryKey: ['exam-questions', subjectId, state?.examYear, state?.examForm, state?.questionsCount],
     queryFn: async () => {
-      let query = supabase
-        .from('questions')
-        .select('*')
-        .eq('subject_id', subjectId)
-        .eq('status', 'active');
-      
-      if (state.examYear) {
-        query = query.eq('exam_year', state.examYear);
-      }
-      if (state.examForm && state.examForm !== 'Mixed') {
-        query = query.eq('exam_form', state.examForm);
-      }
-      
+      let query = supabase.from('questions').select('*').eq('subject_id', subjectId).eq('status', 'active');
+      if (state.examYear) query = query.eq('exam_year', state.examYear);
+      if (state.examForm && state.examForm !== 'Mixed') query = query.eq('exam_form', state.examForm);
       const { data, error } = await query;
       if (error) throw error;
-      
-      const shuffled = (data as Question[]).sort(() => Math.random() - 0.5);
-      return shuffled;
+      return (data as Question[]).sort(() => Math.random() - 0.5);
     },
     enabled: !!subjectId && !!state?.examYear,
   });
@@ -105,77 +192,42 @@ const ExamPage = () => {
     { enabled: !!subjectId }
   );
 
-  // وظيفة تسليم الاختبار وحساب النتيجة
   const handleSubmit = useCallback(async () => {
     if (isSubmitting || !questions.length) return;
     setIsSubmitting(true);
-
-    let score = 0;
-    questions.forEach((q) => {
-      if (answers[q.id] === q.correct_option) score++;
-    });
-
+    let finalScore = 0;
+    questions.forEach((q) => { if (answers[q.id] === q.correct_option) finalScore++; });
     const totalQuestions = questions.length;
-    const scorePercentage = Math.round((score / totalQuestions) * 100);
-    const passed = scorePercentage >= (subject?.passing_score || 60);
-    const timeTaken = (state?.examTime || 30) * 60 - timeLeft;
-
+    const passed = Math.round((finalScore / totalQuestions) * 100) >= (subject?.passing_score || 60);
+    const timeTaken = totalTime - timeLeft;
     try {
       await supabase.from('exam_results').insert({
-        subject_id: subjectId,
-        student_name: state.studentName,
-        score,
-        total_questions: totalQuestions,
-        passing_score: subject?.passing_score || 60,
-        passed,
-        exam_year: state.examYear,
-        time_taken_seconds: timeTaken,
-        answers,
+        subject_id: subjectId, student_name: state.studentName, score: finalScore,
+        total_questions: totalQuestions, passing_score: subject?.passing_score || 60,
+        passed, exam_year: state.examYear, time_taken_seconds: timeTaken, answers,
       });
-    } catch (e) {
-      console.error("Database Save Error:", e);
-    }
-
+    } catch (e) { console.error(e); }
     navigate(`/exam/${subjectId}/result`, {
       state: {
-        studentName: state.studentName,
-        score,
-        totalQuestions,
-        passingScore: subject?.passing_score || 60,
-        passed,
-        timeTaken,
-        questions,
-        answers,
-        subjectName: state.subjectName || subject?.name,
-        levelName: state.levelName,
-        examYear: state.examYear
+        studentName: state.studentName, score: finalScore, totalQuestions,
+        passingScore: subject?.passing_score || 60, passed, timeTaken,
+        questions, answers, subjectName: state.subjectName || subject?.name,
+        levelName: state.levelName, examYear: state.examYear,
       },
     });
-  }, [answers, questions, subject, state, subjectId, timeLeft, navigate, isSubmitting]);
+  }, [answers, questions, subject, state, subjectId, timeLeft, navigate, isSubmitting, totalTime]);
 
   useEffect(() => {
-    if (timeLeft <= 0) {
-      handleSubmit();
-      return;
-    }
-    const timer = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
-    return () => clearInterval(timer);
+    if (timeLeft <= 0) { handleSubmit(); return; }
+    const t = setInterval(() => setTimeLeft(p => p - 1), 1000);
+    return () => clearInterval(t);
   }, [timeLeft, handleSubmit]);
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
 
   if (isLoading) return (
     <MainLayout>
-      <div className="container mx-auto px-6 py-24 text-center font-bold text-slate-400 animate-pulse">
-        جاري تحضير أسئلة الاختبار...
-      </div>
+      <div className="container mx-auto px-6 py-24 text-center font-bold text-slate-400 animate-pulse">جاري تحضير أسئلة الاختبار...</div>
     </MainLayout>
   );
-
   if (!questions.length) return (
     <MainLayout>
       <div className="container mx-auto px-6 py-24 text-center font-bold">عذراً، لا توجد أسئلة متاحة لهذا النموذج حالياً.</div>
@@ -184,216 +236,260 @@ const ExamPage = () => {
 
   const currentQuestion = questions[currentIndex];
   const answeredCount = Object.keys(answers).length;
-  const progress = (answeredCount / questions.length) * 100;
+  const progressPct = (answeredCount / questions.length) * 100;
   const isTimeWarning = timeLeft < 60;
-
-  // تحضير الخيارات المتاحة (إخفاء الفارغة لأسئلة الصح والخطأ والمتعدد)
-  const availableOptions = ['A', 'B', 'C', 'D'].filter(option => {
-    const optionKey = `option_${option.toLowerCase()}` as keyof Question;
-    const optionText = currentQuestion[optionKey] as string;
-    return optionText && optionText.trim().length > 0;
-  });
-
-  // --- منطق الألوان الفورية ---
   const selectedAnswer = answers[currentQuestion.id];
   const hasAnswered = !!selectedAnswer;
   const isAnswerCorrect = selectedAnswer === currentQuestion.correct_option;
+  const progressColor = progressPct < 33 ? '#ef4444' : progressPct < 66 ? '#f59e0b' : '#10b981';
 
-  const getOptionStyle = (option: string) => {
-    const isSelected = selectedAnswer === option;
-    const isCorrectOption = currentQuestion.correct_option === option;
+  const availableOptions = ['A', 'B', 'C', 'D'].filter(opt => {
+    const k = `option_${opt.toLowerCase()}` as keyof Question;
+    const v = currentQuestion[k] as string;
+    return v && v.trim().length > 0;
+  });
 
-    // لم يختر بعد — الشكل الافتراضي
-    if (!hasAnswered) {
-      return isSelected
-        ? "border-primary bg-primary/[0.03] shadow-lg"
-        : "border-slate-100 bg-slate-50 hover:border-primary/20";
+  const handleAnswer = (option: string) => {
+    if (hasAnswered) return;
+    setAnswers({ ...answers, [currentQuestion.id]: option });
+    if (option === currentQuestion.correct_option) {
+      setLiveScore(s => s + 1);
+      setShowConfetti(true);
+      setShowScoreFloat(true);
+      setTimeout(() => setShowConfetti(false), 2200);
+      setTimeout(() => setShowScoreFloat(false), 900);
+    } else {
+      setShakeCard(true);
+      setTimeout(() => setShakeCard(false), 520);
     }
-
-    // اختار الإجابة الصحيحة
-    if (isCorrectOption) {
-      return "border-emerald-500 bg-emerald-50 shadow-lg";
-    }
-
-    // اختار هذا الخيار لكنه خاطئ
-    if (isSelected && !isCorrectOption) {
-      return "border-rose-500 bg-rose-50 shadow-lg";
-    }
-
-    // خيارات أخرى لم يختارها
-    return "border-slate-100 bg-slate-50 opacity-50";
   };
 
-  const getOptionBadgeStyle = (option: string) => {
-    const isSelected = selectedAnswer === option;
-    const isCorrectOption = currentQuestion.correct_option === option;
+  const goTo = (index: number) => {
+    setSlideDir(index > currentIndex ? 'left' : 'right');
+    setAnimKey(k => k + 1);
+    setCurrentIndex(index);
+  };
+  const goNext = () => goTo(Math.min(questions.length - 1, currentIndex + 1));
+  const goPrev = () => goTo(Math.max(0, currentIndex - 1));
 
-    if (!hasAnswered) {
-      return isSelected
-        ? "bg-primary text-white"
-        : "bg-white text-slate-400 border border-slate-200";
-    }
-
-    if (isCorrectOption) return "bg-emerald-500 text-white";
-    if (isSelected && !isCorrectOption) return "bg-rose-500 text-white";
-    return "bg-white text-slate-300 border border-slate-200";
+  const getOptionStyle = (opt: string) => {
+    const isSel = selectedAnswer === opt;
+    const isCorr = currentQuestion.correct_option === opt;
+    if (!hasAnswered) return isSel ? "border-primary bg-primary/5 shadow-lg scale-[1.01]" : "border-slate-100 bg-slate-50 hover:border-primary/30 hover:bg-white hover:scale-[1.005]";
+    if (isCorr) return "border-emerald-500 bg-emerald-50 shadow-lg anim-glow";
+    if (isSel && !isCorr) return "border-rose-500 bg-rose-50 shadow-md";
+    return "border-slate-100 bg-slate-50 opacity-40";
   };
 
-  const getOptionTextStyle = (option: string) => {
-    const isSelected = selectedAnswer === option;
-    const isCorrectOption = currentQuestion.correct_option === option;
-
-    if (!hasAnswered) {
-      return isSelected ? "text-primary" : "text-slate-600";
-    }
-
-    if (isCorrectOption) return "text-emerald-700 font-black";
-    if (isSelected && !isCorrectOption) return "text-rose-700 font-black";
-    return "text-slate-400";
+  const getBadgeStyle = (opt: string) => {
+    const isSel = selectedAnswer === opt;
+    const isCorr = currentQuestion.correct_option === opt;
+    if (!hasAnswered) return isSel ? "bg-primary text-white shadow-primary/40 shadow-lg" : "bg-white text-slate-400 border border-slate-200";
+    if (isCorr) return "bg-emerald-500 text-white";
+    if (isSel && !isCorr) return "bg-rose-500 text-white";
+    return "bg-slate-100 text-slate-300";
   };
+
+  const getTextStyle = (opt: string) => {
+    const isSel = selectedAnswer === opt;
+    const isCorr = currentQuestion.correct_option === opt;
+    if (!hasAnswered) return isSel ? "text-primary font-black" : "text-slate-600 font-bold";
+    if (isCorr) return "text-emerald-700 font-black";
+    if (isSel && !isCorr) return "text-rose-700 font-black";
+    return "text-slate-400 font-medium";
+  };
+
+  // نطاق النقاط المرئية
+  const dotStart = Math.max(0, currentIndex - 3);
+  const dotEnd = Math.min(questions.length, currentIndex + 4);
 
   return (
     <MainLayout>
-      <section className="py-4 md:py-8 bg-slate-50/50 min-h-[calc(100vh-80px)] font-cairo text-right" dir="rtl">
+      <GlobalStyles />
+      <Confetti active={showConfetti} />
+
+      <section className="py-4 md:py-8 bg-gradient-to-b from-slate-50 to-white min-h-[calc(100vh-80px)] font-cairo text-right" dir="rtl">
         <div className="container mx-auto px-3 md:px-6">
           <div className="max-w-4xl mx-auto">
-            
-            {/* Header: التقدم والوقت */}
-            <div className="sticky top-16 md:top-20 z-40 bg-white/80 backdrop-blur-xl rounded-2xl md:rounded-[2.5rem] border border-slate-200 p-2.5 md:p-5 mb-4 md:mb-8 shadow-xl flex items-center justify-between gap-2 md:gap-4">
-              <div className="flex flex-col gap-1.5 md:gap-2 flex-1 max-w-[55%] md:max-w-[60%]">
+
+            {/* ── Header ── */}
+            <div className="sticky top-16 md:top-20 z-40 bg-white/90 backdrop-blur-xl rounded-2xl md:rounded-[2.5rem] border border-slate-200/80 p-3 md:p-5 mb-4 md:mb-8 shadow-xl flex items-center justify-between gap-3">
+
+              <div className="flex flex-col gap-2 flex-1 min-w-0">
+                {/* أرقام + نقاط حية */}
                 <div className="flex items-center justify-between text-[10px] md:text-xs font-black text-slate-400">
                   <span>السؤال {currentIndex + 1} / {questions.length}</span>
-                  <span className="text-primary">{Math.round(progress)}%</span>
+                  <div className="flex items-center gap-1 relative">
+                    <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                    <span className="text-amber-500 font-black">{liveScore} نقطة</span>
+                    {showScoreFloat && (
+                      <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-emerald-500 font-black text-sm anim-score-float select-none">+1</span>
+                    )}
+                  </div>
                 </div>
-                <Progress value={progress} className="h-2 md:h-3 rounded-full" />
+
+                {/* شريط تقدم ملوّن */}
+                <div className="h-2.5 md:h-3 rounded-full bg-slate-100 overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${progressPct}%`, backgroundColor: progressColor }} />
+                </div>
+
+                {/* مؤشر الأسئلة الصغير */}
+                <div className="flex gap-[3px] overflow-hidden">
+                  {questions.map((q, i) => (
+                    <div key={q.id} className={cn(
+                      "h-1 flex-1 rounded-full transition-all duration-500",
+                      i === currentIndex ? "bg-primary" :
+                      answers[q.id] ? (answers[q.id] === q.correct_option ? "bg-emerald-400" : "bg-rose-400") :
+                      "bg-slate-200"
+                    )} />
+                  ))}
+                </div>
               </div>
-              
-              <div className={cn(
-                "flex items-center gap-2 md:gap-3 font-black text-base md:text-2xl px-3 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl",
-                isTimeWarning ? "bg-rose-500 text-white animate-pulse" : "bg-slate-900 text-white"
-              )}>
-                <Clock className="w-4 h-4 md:w-6 md:h-6" />
-                <span dir="ltr">{formatTime(timeLeft)}</span>
-              </div>
+
+              {/* مؤقت دائري */}
+              <CircularTimer timeLeft={timeLeft} totalTime={totalTime} isWarning={isTimeWarning} />
             </div>
 
-            {/* بطاقة السؤال */}
+            {/* ── بطاقة السؤال ── */}
             {currentQuestion && (
-              <div className="bg-white rounded-[2rem] md:rounded-[3.5rem] border border-slate-200 shadow-2xl p-5 md:p-14 mb-4 md:mb-8">
-                <div className="inline-flex items-center gap-2 px-3 md:px-4 py-1 md:py-1.5 rounded-full bg-slate-100 text-slate-500 text-[9px] md:text-[10px] font-black tracking-widest mb-5 md:mb-8">
-                  اختبار عام {state.examYear} {state.examForm === 'Parallel' ? '- موازي' : ''}
+              <div
+                key={animKey}
+                className={cn(
+                  "bg-white rounded-[2rem] md:rounded-[3.5rem] border border-slate-100 shadow-2xl shadow-slate-200/60 p-5 md:p-14 mb-4 md:mb-6",
+                  slideDir === 'left' ? "anim-slide-left" : "anim-slide-right",
+                  shakeCard && "anim-shake"
+                )}
+              >
+                {/* رأس البطاقة */}
+                <div className="flex items-center gap-3 mb-5 md:mb-8 flex-wrap">
+                  <div className="w-11 h-11 md:w-14 md:h-14 rounded-2xl bg-gradient-to-br from-primary to-blue-600 text-white flex items-center justify-center font-black text-lg md:text-xl shadow-lg shadow-primary/30 shrink-0">
+                    {currentIndex + 1}
+                  </div>
+                  <span className="inline-flex items-center px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 text-[9px] md:text-[10px] font-black tracking-widest">
+                    اختبار عام {state.examYear} {state.examForm === 'Parallel' ? '· موازي' : ''}
+                  </span>
                 </div>
-                <h2 className="text-lg md:text-3xl font-black text-slate-800 mb-6 md:mb-12 leading-relaxed text-right">
+
+                <h2 className="text-base md:text-2xl font-black text-slate-800 mb-7 md:mb-10 leading-relaxed text-right">
                   {currentQuestion.question_text}
                 </h2>
 
+                {/* الخيارات */}
                 <div className="grid grid-cols-1 gap-3 md:gap-4">
-                  {availableOptions.map((option) => {
-                    const optionKey = `option_${option.toLowerCase()}` as keyof Question;
-                    const rawOptionText = currentQuestion[optionKey] as string;
-                    const optionText = cleanOptionText(rawOptionText);
-                    const isCorrectOption = currentQuestion.correct_option === option;
-                    const isSelectedOption = selectedAnswer === option;
-
+                  {availableOptions.map((opt) => {
+                    const k = `option_${opt.toLowerCase()}` as keyof Question;
+                    const text = cleanOptionText(currentQuestion[k] as string);
+                    const isCorr = currentQuestion.correct_option === opt;
+                    const isSel = selectedAnswer === opt;
                     return (
                       <button
-                        key={option}
-                        onClick={() => {
-                          // لا تسمح بتغيير الإجابة بعد الاختيار
-                          if (!hasAnswered) {
-                            setAnswers({ ...answers, [currentQuestion.id]: option });
-                          }
-                        }}
+                        key={opt}
+                        onClick={() => handleAnswer(opt)}
                         disabled={hasAnswered}
                         className={cn(
-                          "w-full text-right p-4 md:p-6 rounded-2xl md:rounded-3xl border-2 transition-all duration-300 flex items-center gap-3 md:gap-5 active:scale-[0.98]",
-                          getOptionStyle(option),
-                          hasAnswered ? "cursor-default" : "cursor-pointer"
+                          "w-full text-right p-4 md:p-5 rounded-2xl md:rounded-3xl border-2 transition-all duration-300 flex items-center gap-3 md:gap-5",
+                          getOptionStyle(opt),
+                          !hasAnswered && "cursor-pointer active:scale-[0.98]",
+                          hasAnswered && "cursor-default"
                         )}
                       >
                         <div className={cn(
-                          "w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center font-black text-base md:text-lg shadow-sm shrink-0 transition-all duration-300",
-                          getOptionBadgeStyle(option)
+                          "w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center font-black text-base md:text-lg shrink-0 transition-all duration-300",
+                          getBadgeStyle(opt)
                         )}>
-                          {option}
+                          {opt}
                         </div>
-                        <span className={cn(
-                          "flex-1 text-sm md:text-lg font-bold text-right transition-all duration-300",
-                          getOptionTextStyle(option)
-                        )}>
-                          {optionText}
+                        <span className={cn("flex-1 text-sm md:text-base text-right transition-all duration-300", getTextStyle(opt))}>
+                          {text}
                         </span>
-                        {/* أيقونة الصح أو الخطأ */}
-                        {hasAnswered && isCorrectOption && (
-                          <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6 text-emerald-500 shrink-0" />
-                        )}
-                        {hasAnswered && isSelectedOption && !isCorrectOption && (
-                          <XCircle className="w-5 h-5 md:w-6 md:h-6 text-rose-500 shrink-0" />
-                        )}
-                        {!hasAnswered && isSelectedOption && (
-                          <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6 text-primary shrink-0" />
-                        )}
+                        {hasAnswered && isCorr && <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6 text-emerald-500 shrink-0" />}
+                        {hasAnswered && isSel && !isCorr && <XCircle className="w-5 h-5 md:w-6 md:h-6 text-rose-500 shrink-0" />}
+                        {!hasAnswered && isSel && <CheckCircle2 className="w-5 h-5 md:w-6 md:h-6 text-primary shrink-0" />}
                       </button>
                     );
                   })}
                 </div>
 
-                {/* رسالة فورية بعد الاختيار */}
+                {/* رسالة + زر التالي بعد الإجابة */}
                 {hasAnswered && (
-                  <div className={cn(
-                    "mt-5 md:mt-8 p-4 rounded-2xl flex items-center gap-3 font-black text-sm md:text-base animate-in fade-in slide-in-from-bottom-3 duration-300",
-                    isAnswerCorrect
-                      ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
-                      : "bg-rose-50 border border-rose-200 text-rose-700"
-                  )}>
-                    {isAnswerCorrect ? (
-                      <CheckCircle2 className="w-5 h-5 shrink-0" />
-                    ) : (
-                      <XCircle className="w-5 h-5 shrink-0" />
-                    )}
-                    <span>
+                  <div className="mt-5 md:mt-8 anim-zoom-in">
+                    <div className={cn(
+                      "p-4 md:p-5 rounded-2xl flex items-center gap-3 font-black text-sm md:text-base mb-4",
+                      isAnswerCorrect
+                        ? "bg-emerald-50 border-2 border-emerald-200 text-emerald-700"
+                        : "bg-rose-50 border-2 border-rose-200 text-rose-700"
+                    )}>
                       {isAnswerCorrect
-                        ? "إجابة صحيحة! 🎉"
-                        : `إجابة خاطئة — الإجابة الصحيحة هي: ${currentQuestion.correct_option}`
+                        ? <CheckCircle2 className="w-5 h-5 shrink-0" />
+                        : <XCircle className="w-5 h-5 shrink-0" />
                       }
-                    </span>
+                      <span>
+                        {isAnswerCorrect
+                          ? "إجابة صحيحة! 🎉"
+                          : `إجابة خاطئة — الصحيحة: ${currentQuestion.correct_option}`}
+                      </span>
+                    </div>
+
+                    {/* زر السؤال التالي / التسليم */}
+                    {currentIndex < questions.length - 1 ? (
+                      <Button
+                        onClick={goNext}
+                        className="w-full h-12 md:h-14 rounded-2xl bg-gradient-to-l from-primary to-blue-600 text-white font-black text-base shadow-lg shadow-primary/30 hover:shadow-primary/50 transition-all active:scale-[0.98]"
+                      >
+                        السؤال التالي <ChevronLeft className="mr-2 w-5 h-5" />
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => setShowSubmitDialog(true)}
+                        className="w-full h-12 md:h-14 rounded-2xl bg-slate-900 text-white font-black text-base shadow-lg transition-all active:scale-[0.98]"
+                      >
+                        <Flag className="w-5 h-5 ml-2" /> تسليم الاختبار
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
             )}
 
-            {/* أزرار التنقل */}
+            {/* ── أزرار التنقل الحر ── */}
             <div className="flex justify-between items-center gap-2 md:gap-4">
-              <Button
-                variant="outline"
-                onClick={() => setCurrentIndex(prev => Math.max(0, prev - 1))}
-                disabled={currentIndex === 0}
-                className="rounded-xl md:rounded-2xl h-12 md:h-14 px-4 md:px-8 border-slate-200 font-bold text-sm md:text-base active:scale-95"
-              >
-                <ChevronRight className="ml-1 md:ml-2 w-4 h-4 md:w-5 md:h-5" /> السابق
+              <Button variant="outline" onClick={goPrev} disabled={currentIndex === 0}
+                className="rounded-xl md:rounded-2xl h-12 md:h-14 px-4 md:px-8 border-slate-200 font-bold text-sm active:scale-95">
+                <ChevronRight className="ml-1 w-4 h-4" /> السابق
               </Button>
 
+              {/* نقاط التنقل */}
+              <div className="flex gap-2 items-center">
+                {questions.slice(dotStart, dotEnd).map((_, i) => {
+                  const ri = dotStart + i;
+                  return (
+                    <button key={ri} onClick={() => goTo(ri)}
+                      className={cn("rounded-full transition-all duration-200",
+                        ri === currentIndex ? "w-6 h-3 bg-primary" : "w-3 h-3 bg-slate-300 hover:bg-primary/50"
+                      )} />
+                  );
+                })}
+              </div>
+
               {currentIndex === questions.length - 1 ? (
-                <Button
-                  onClick={() => setShowSubmitDialog(true)}
-                  className="rounded-xl md:rounded-2xl h-12 md:h-14 px-5 md:px-10 bg-slate-900 text-white font-black text-sm md:text-base active:scale-95"
-                >
-                  <Flag className="w-4 h-4 md:w-5 md:h-5 ml-1 md:ml-2" /> تسليم
+                <Button onClick={() => setShowSubmitDialog(true)}
+                  className="rounded-xl md:rounded-2xl h-12 md:h-14 px-5 md:px-10 bg-slate-900 text-white font-black text-sm active:scale-95">
+                  <Flag className="w-4 h-4 ml-1" /> تسليم
                 </Button>
               ) : (
-                <Button
-                  onClick={() => setCurrentIndex(prev => Math.min(questions.length - 1, prev + 1))}
-                  className="rounded-xl md:rounded-2xl h-12 md:h-14 px-5 md:px-10 bg-primary text-white font-black text-sm md:text-base active:scale-95"
-                >
-                  التالي <ChevronLeft className="mr-1 md:mr-2 w-4 h-4 md:w-5 md:h-5" />
+                <Button onClick={goNext}
+                  className="rounded-xl md:rounded-2xl h-12 md:h-14 px-5 md:px-10 bg-primary text-white font-black text-sm active:scale-95">
+                  التالي <ChevronLeft className="mr-1 w-4 h-4" />
                 </Button>
               )}
             </div>
+
           </div>
         </div>
       </section>
 
-      {/* حوار تأكيد التسليم */}
+      {/* ── حوار التسليم ── */}
       <AlertDialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
         <AlertDialogContent className="rounded-[2.5rem] p-8 md:p-12 text-right" dir="rtl">
           <AlertDialogHeader>
@@ -402,85 +498,52 @@ const ExamPage = () => {
             </div>
             <AlertDialogTitle className="text-3xl font-black text-center">هل أنت جاهز للنتيجة؟</AlertDialogTitle>
             <AlertDialogDescription className="text-center text-lg text-slate-500 mt-4 leading-relaxed">
-              {answeredCount < questions.length ? (
-                <span className="text-rose-500 font-bold">انتبه! لم تجب على جميع الأسئلة.</span>
-              ) : (
-                <span className="text-green-600 font-bold">رائع! لقد أكملت جميع الإجابات.</span>
-              )}
-              <br />بمجرد التأكيد، سيتم تصحيح اختبارك وإصدار النتيجة فوراً ولا يمكنك الرجوع لتعديل الإجابات.
+              {answeredCount < questions.length
+                ? <span className="text-rose-500 font-bold">انتبه! لم تجب على جميع الأسئلة.</span>
+                : <span className="text-green-600 font-bold">رائع! لقد أكملت جميع الإجابات.</span>}
+              <br />بمجرد التأكيد، سيتم تصحيح اختبارك وإصدار النتيجة فوراً.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex flex-col sm:flex-row gap-4 mt-8">
-             <AlertDialogCancel 
-               onClick={() => { setShowSubmitDialog(false); setShowReviewDialog(true); }}
-               className="flex-1 h-14 rounded-2xl font-bold"
-             >
-               مراجعة الأسئلة
-             </AlertDialogCancel>
-             <AlertDialogAction onClick={handleSubmit} className="flex-1 h-14 rounded-2xl bg-primary text-white font-black shadow-lg shadow-primary/20">
-              تأكيد وتسليم
-            </AlertDialogAction>
+            <AlertDialogCancel onClick={() => { setShowSubmitDialog(false); setShowReviewDialog(true); }}
+              className="flex-1 h-14 rounded-2xl font-bold">مراجعة الأسئلة</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSubmit}
+              className="flex-1 h-14 rounded-2xl bg-primary text-white font-black shadow-lg shadow-primary/20">تأكيد وتسليم</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* حوار مراجعة الأسئلة */}
+      {/* ── حوار المراجعة ── */}
       <AlertDialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
         <AlertDialogContent className="rounded-[2.5rem] p-6 md:p-8 max-w-3xl max-h-[90vh] overflow-hidden text-right" dir="rtl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-2xl font-black text-center mb-4">مراجعة الأسئلة</AlertDialogTitle>
-            <AlertDialogDescription className="text-center text-sm text-slate-500">
-              اضغط على رقم السؤال للانتقال إليه وتعديل إجابتك
-            </AlertDialogDescription>
+            <AlertDialogDescription className="text-center text-sm text-slate-500">اضغط على رقم السؤال للانتقال إليه</AlertDialogDescription>
           </AlertDialogHeader>
-          
-          <div className="my-4 max-h-[50vh] overflow-y-auto p-2 scrollbar-thin">
+          <div className="my-4 max-h-[50vh] overflow-y-auto p-2">
             <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 gap-3">
-              {questions.map((q, index) => {
-                const isAnswered = !!answers[q.id];
-                return (
-                  <button
-                    key={q.id}
-                    onClick={() => {
-                      setCurrentIndex(index);
-                      setShowReviewDialog(false);
-                    }}
-                    className={cn(
-                      "w-12 h-12 rounded-xl font-black text-lg transition-all border-2 flex items-center justify-center",
-                      isAnswered 
-                        ? "bg-emerald-50 border-emerald-400 text-emerald-700" 
-                        : "bg-rose-50 border-rose-300 text-rose-600",
-                      currentIndex === index && "ring-4 ring-primary ring-offset-2 scale-110 z-10"
-                    )}
-                  >
-                    {index + 1}
-                  </button>
-                );
-              })}
+              {questions.map((q, index) => (
+                <button key={q.id}
+                  onClick={() => { goTo(index); setShowReviewDialog(false); }}
+                  className={cn(
+                    "w-12 h-12 rounded-xl font-black text-base transition-all border-2 flex items-center justify-center",
+                    answers[q.id] ? "bg-emerald-50 border-emerald-400 text-emerald-700" : "bg-rose-50 border-rose-300 text-rose-600",
+                    currentIndex === index && "ring-4 ring-primary ring-offset-2 scale-110 z-10"
+                  )}>
+                  {index + 1}
+                </button>
+              ))}
             </div>
           </div>
-
           <div className="flex justify-between items-center text-sm font-bold text-slate-600 my-4 px-2 bg-slate-50 py-3 rounded-2xl">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-emerald-400 rounded"></div>
-              <span>تمت الإجابة ({answeredCount})</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-rose-300 rounded"></div>
-              <span>بانتظار الإجابة ({questions.length - answeredCount})</span>
-            </div>
+            <div className="flex items-center gap-2"><div className="w-4 h-4 bg-emerald-400 rounded" /><span>تمت الإجابة ({answeredCount})</span></div>
+            <div className="flex items-center gap-2"><div className="w-4 h-4 bg-rose-300 rounded" /><span>بانتظار الإجابة ({questions.length - answeredCount})</span></div>
           </div>
-
           <AlertDialogFooter className="flex flex-col sm:flex-row gap-3 mt-4">
-            <AlertDialogCancel className="flex-1 h-12 rounded-xl font-bold border-slate-200">
-              متابعة المراجعة
-            </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => { setShowReviewDialog(false); setShowSubmitDialog(true); }}
-              className="flex-1 h-12 rounded-xl bg-slate-900 text-white font-black"
-            >
-              <Flag className="w-4 h-4 ml-2" />
-              تسليم النهائي
+            <AlertDialogCancel className="flex-1 h-12 rounded-xl font-bold border-slate-200">متابعة المراجعة</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setShowReviewDialog(false); setShowSubmitDialog(true); }}
+              className="flex-1 h-12 rounded-xl bg-slate-900 text-white font-black">
+              <Flag className="w-4 h-4 ml-2" /> تسليم النهائي
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
