@@ -1,124 +1,166 @@
+/**
+ * Alnasser Tech Digital Solutions
+ * Component: StatsSection — Version 3.0 (World-Class)
+ */
+
 import { BookOpen, Users, Award, Target, TrendingUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCachedQuery } from '@/hooks/useCachedQuery';
-import { cn } from '@/lib/utils';
+import { useEffect, useRef, useState } from 'react';
 
 interface Stats {
   questionsCount: number;
-  subjectsCount: number;
-  examsCount: number;
-  passRate: number;
+  subjectsCount:  number;
+  examsCount:     number;
+  passRate:       number;
+}
+
+// عداد متحرك مع IntersectionObserver
+function Counter({ target, suffix = '' }: { target: number; suffix?: string }) {
+  const [val, setVal]      = useState(0);
+  const ref                = useRef<HTMLSpanElement>(null);
+  const started            = useRef(false);
+
+  useEffect(() => {
+    const obs = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting || started.current) return;
+      started.current = true;
+      const steps = 55;
+      const dur   = 1600;
+      let curr    = 0;
+      const inc   = target / steps;
+      const t     = setInterval(() => {
+        curr += inc;
+        if (curr >= target) { setVal(target); clearInterval(t); }
+        else setVal(Math.floor(curr));
+      }, dur / steps);
+    }, { threshold: 0.4 });
+    if (ref.current) obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, [target]);
+
+  return <span ref={ref}>{val.toLocaleString('ar-EG')}{suffix}</span>;
 }
 
 export function StatsSection() {
   const { data: stats } = useCachedQuery<Stats>(
     ['site-stats'],
     async () => {
-      const [questionsRes, subjectsRes, examsRes] = await Promise.all([
+      const [qRes, sRes, eRes] = await Promise.all([
         supabase.from('questions').select('id', { count: 'exact', head: true }).eq('status', 'active'),
         supabase.from('subjects').select('id', { count: 'exact', head: true }),
         supabase.from('exam_results').select('id, passed', { count: 'exact' }),
       ]);
-
-      const questionsCount = questionsRes.count || 0;
-      const subjectsCount = subjectsRes.count || 0;
-      const examsData = examsRes.data || [];
-      const examsCount = examsRes.count || 0;
-      
-      const passedCount = examsData.filter(e => e.passed).length;
-      const passRate = examsCount > 0 ? Math.round((passedCount / examsCount) * 100) : 85;
-
-      return { questionsCount, subjectsCount, examsCount, passRate };
+      const examsData  = eRes.data || [];
+      const examsCount = eRes.count || 0;
+      const passed     = examsData.filter(e => e.passed).length;
+      return {
+        questionsCount: qRes.count  || 0,
+        subjectsCount:  sRes.count  || 0,
+        examsCount,
+        passRate: examsCount > 0 ? Math.round((passed / examsCount) * 100) : 85,
+      };
     }
   );
 
-  const displayStats = [
-    { 
-      icon: BookOpen, 
-      value: stats ? stats.questionsCount : 1000, 
-      label: 'سؤال قانوني', 
-      suffix: '+',
-      color: 'from-blue-600 to-indigo-600'
-    },
-    { 
-      icon: Users, 
-      value: stats ? stats.examsCount : 5000, 
-      label: 'باحث ومختبر', 
-      suffix: '+',
-      color: 'from-purple-600 to-blue-600'
-    },
-    { 
-      icon: Award, 
-      value: stats ? stats.subjectsCount : 43, 
-      label: 'مادة تعليمية', 
-      suffix: '',
-      color: 'from-emerald-600 to-teal-600'
-    },
-    { 
-      icon: Target, 
-      value: stats ? stats.passRate : 85, 
-      label: 'نسبة النجاح', 
-      suffix: '%',
-      color: 'from-orange-600 to-amber-600'
-    },
+  const items = [
+    { icon: BookOpen, value: stats?.questionsCount ?? 5000, suffix: '+', label: 'سؤال قانوني',   sub: 'مراجع ومحدَّث باستمرار',    color: 'from-blue-500 to-indigo-500',   glow: 'rgba(59,130,246,0.35)' },
+    { icon: Users,    value: stats?.examsCount      ?? 500,  suffix: '+', label: 'باحث ومختبر',   sub: 'سجّلوا نتائجهم على المنصة', color: 'from-violet-500 to-purple-600', glow: 'rgba(139,92,246,0.35)' },
+    { icon: Award,    value: stats?.subjectsCount   ?? 43,   suffix: '',  label: 'مادة تعليمية', sub: 'في كل فروع القانون',          color: 'from-emerald-500 to-teal-500',  glow: 'rgba(16,185,129,0.35)' },
+    { icon: Target,   value: stats?.passRate        ?? 85,   suffix: '%', label: 'نسبة النجاح',  sub: 'متوسط الطلاب على المنصة',    color: 'from-orange-500 to-amber-500',  glow: 'rgba(249,115,22,0.35)' },
   ];
 
   return (
-    <section className="relative py-20 overflow-hidden bg-[#0a0f1d]">
-      {/* لمسة فنية خلفية - توهج ضوئي */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.08),transparent_70%)] pointer-events-none" />
-      
-      <div className="container mx-auto px-6 relative z-10">
-        {/* Header صغير للقسم يعزز المظهر الاحترافي */}
-        <div className="flex flex-col items-center mb-16 text-center">
-          <div className="flex items-center gap-2 px-4 py-1 rounded-full bg-white/5 border border-white/10 text-primary text-[10px] font-black uppercase tracking-[0.3em] mb-4">
+    <section className="relative py-20 md:py-28 overflow-hidden" style={{ background: 'linear-gradient(180deg, #050d1f 0%, #080f20 50%, #060c1a 100%)' }}>
+
+      {/* نسيج نقطي */}
+      <div className="absolute inset-0 opacity-[0.12] pointer-events-none"
+        style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.4) 1px, transparent 1px)', backgroundSize: '28px 28px' }} />
+
+      {/* توهج مركزي */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse, rgba(59,130,246,0.08) 0%, transparent 70%)', filter: 'blur(40px)' }} />
+
+      <div className="container mx-auto px-4 md:px-6 relative z-10">
+
+        {/* Header */}
+        <div className="flex flex-col items-center mb-14 md:mb-20 text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-5 text-[10px] font-black uppercase tracking-[0.25em]"
+            style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)', color: 'hsl(217 91% 75%)' }}>
             <TrendingUp className="w-3 h-3" />
             إحصائيات المنصة الحية
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           </div>
-          <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
-            نحن ننمو <span className="text-primary">بثقتكم</span> كل يوم
+          <h2 className="font-cairo font-black text-white leading-tight"
+            style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)' }}>
+            نحن ننمو{' '}
+            <span style={{
+              background: 'linear-gradient(135deg, hsl(217 91% 70%), hsl(160 84% 55%))',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+            }}>
+              بثقتكم
+            </span>
+            {' '}كل يوم
           </h2>
         </div>
 
-        {/* Grid الإحصائيات - متجاوب تماماً */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-10">
-          {displayStats.map((stat, index) => (
+        {/* Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 max-w-5xl mx-auto">
+          {items.map((item, i) => (
             <div
-              key={index}
-              className="relative group animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out"
-              style={{ animationDelay: `${index * 150}ms` }}
+              key={i}
+              className="group relative flex flex-col items-center text-center p-6 md:p-8 rounded-2xl md:rounded-3xl transition-all duration-500 cursor-default"
+              style={{
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                backdropFilter: 'blur(12px)',
+                animation: `fadeSlideUp 0.7s ${i * 0.1}s cubic-bezier(0.16,1,0.3,1) both`,
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.07)';
+                (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.15)';
+                (e.currentTarget as HTMLElement).style.transform = 'translateY(-6px)';
+                (e.currentTarget as HTMLElement).style.boxShadow = `0 20px 60px ${item.glow}`;
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)';
+                (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.08)';
+                (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
+                (e.currentTarget as HTMLElement).style.boxShadow = 'none';
+              }}
             >
-              <div className="flex flex-col items-center p-8 rounded-[2.5rem] bg-white/5 border border-white/10 backdrop-blur-md transition-all duration-500 hover:bg-white/10 hover:border-primary/30 hover:-translate-y-2">
-                
-                {/* أيقونة بتصميم "Layered Glass" */}
-                <div className={cn(
-                  "relative w-16 h-16 rounded-2xl bg-gradient-to-tr flex items-center justify-center mb-6 shadow-2xl group-hover:scale-110 transition-transform duration-500",
-                  stat.color
-                )}>
-                  <div className="absolute inset-0 rounded-2xl bg-white/20 blur-[2px]" />
-                  <stat.icon className="relative w-8 h-8 text-white z-10" />
-                </div>
-
-                {/* القيمة العددية */}
-                <div className="flex items-baseline gap-1 mb-2">
-                  <span className="text-4xl md:text-5xl font-black text-white tracking-tighter">
-                    {stat.value}
-                  </span>
-                  <span className="text-xl font-bold text-primary">{stat.suffix}</span>
-                </div>
-
-                {/* النص التوضيحي */}
-                <p className="text-slate-400 font-bold text-sm md:text-base uppercase tracking-wide group-hover:text-slate-200 transition-colors">
-                  {stat.label}
-                </p>
-
-                {/* خط تزييني سفلي يظهر عند التحويم */}
-                <div className="absolute bottom-4 w-8 h-1 bg-primary rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              {/* أيقونة */}
+              <div className={`w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-gradient-to-br ${item.color} flex items-center justify-center mb-5 shadow-xl transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`}
+                style={{ boxShadow: `0 8px 32px ${item.glow}` }}>
+                <item.icon className="w-7 h-7 md:w-8 md:h-8 text-white" />
               </div>
+
+              {/* رقم */}
+              <div className="font-cairo font-black leading-none mb-1.5 tabular-nums"
+                style={{
+                  fontSize: 'clamp(2rem, 5vw, 3rem)',
+                  background: 'linear-gradient(135deg, #fff 60%, rgba(255,255,255,0.6))',
+                  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+                }}>
+                <Counter target={item.value} suffix={item.suffix} />
+              </div>
+
+              <p className="font-bold text-sm md:text-base text-white/80 mb-1">{item.label}</p>
+              <p className="text-[10px] md:text-xs text-white/35 leading-relaxed">{item.sub}</p>
+
+              {/* خط تزييني */}
+              <div className={`mt-4 h-0.5 w-0 group-hover:w-12 rounded-full bg-gradient-to-r ${item.color} transition-all duration-500`} />
             </div>
           ))}
         </div>
       </div>
+
+      <style>{`
+        @keyframes fadeSlideUp {
+          from { opacity: 0; transform: translateY(24px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </section>
   );
 }
