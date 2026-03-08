@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useCachedQuery } from '@/hooks/useCachedQuery';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
+import { ExamStartSEO } from '@/components/seo/SEOHead';
 
 const EXAM_FORMS = [
   { id: 'General',  name: 'نموذج العام' },
