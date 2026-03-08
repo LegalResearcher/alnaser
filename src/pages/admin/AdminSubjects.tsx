@@ -12,6 +12,7 @@ import { Level, Subject } from '@/types/database';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { AdminSEO } from '@/components/seo/SEOHead';
 import {
   Dialog,
   DialogContent,
