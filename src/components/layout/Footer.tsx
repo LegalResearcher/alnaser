@@ -97,7 +97,7 @@ export function Footer() {
                 </div>
                 <div>
                   <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">الدعم الفني</p>
-                  <p className="text-sm font-bold text-slate-200">info@alnasser-tech.com</p>
+                  <a href="mailto:info@alnasser-tech.com" className="text-sm font-bold text-slate-200 hover:text-primary transition-colors">info@alnasser-tech.com</a>
                 </div>
               </div>
 

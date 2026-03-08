@@ -18,6 +18,7 @@ const Index = () => {
 
   return (
     <MainLayout>
+      <HomeSEO />
       {/* غلاف عام لإضافة لمسات جمالية خلفية للأقسام المتداخلة */}
       <div className="relative overflow-hidden bg-white">
         

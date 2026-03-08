@@ -421,6 +421,7 @@ const AdminQuestions = () => {
 
   return (
     <AdminLayout>
+      <AdminSEO pageName="إدارة الأسئلة" />
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 font-cairo">

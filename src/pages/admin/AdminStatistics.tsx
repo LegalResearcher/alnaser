@@ -81,6 +81,7 @@ const AdminStatistics = () => {
 
   return (
     <AdminLayout>
+      <AdminSEO pageName="الإحصائيات" />
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div>

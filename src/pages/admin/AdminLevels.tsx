@@ -265,6 +265,7 @@ const AdminLevels = () => {
 
   return (
     <AdminLayout>
+      <AdminSEO pageName="إدارة المستويات" />
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">

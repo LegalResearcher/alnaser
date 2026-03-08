@@ -241,6 +241,7 @@ const AdminSubjects = () => {
 
   return (
     <AdminLayout>
+      <AdminSEO pageName="إدارة المواد" />
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-3 sm:gap-4">

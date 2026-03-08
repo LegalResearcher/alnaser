@@ -66,7 +66,7 @@ export function Header() {
             <div className="relative overflow-hidden w-10 h-10 md:w-11 md:h-11 rounded-xl shadow-md group-hover:shadow-primary/30 group-hover:shadow-lg transition-all duration-500 ring-1 ring-border/50 group-hover:ring-primary/30">
               <img
                 src={logoImage}
-                alt="الباحث القانوني"
+                alt="شعار منصة الناصر — الباحث القانوني المتخصص"
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
               />
             </div>

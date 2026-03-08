@@ -182,6 +182,7 @@ const ExamStart = () => {
   /* ─── Main render ─── */
   return (
     <MainLayout>
+      <ExamStartSEO subjectName={subject?.name ?? ''} questionsCount={questionCount} />
       <section className="py-8 md:py-16 bg-slate-50/50 min-h-[calc(100vh-80px)]">
         <div className="container mx-auto px-4 md:px-6">
 

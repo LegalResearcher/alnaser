@@ -66,6 +66,7 @@ const AdminSettings = () => {
 
   return (
     <AdminLayout>
+      <AdminSEO pageName="الإعدادات" />
       <div className="space-y-4 sm:space-y-6 max-w-2xl">
         {/* Header */}
         <div>

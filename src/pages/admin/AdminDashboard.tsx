@@ -53,6 +53,7 @@ const AdminDashboard = () => {
 
   return (
     <AdminLayout>
+      <AdminSEO pageName="لوحة التحكم" />
       <div className="space-y-4 sm:space-y-6">
         {/* Page Header */}
         <div>

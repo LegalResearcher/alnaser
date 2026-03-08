@@ -83,6 +83,7 @@ const LevelSubjects = () => {
 
   return (
     <MainLayout>
+      <LevelSubjectsSEO levelName={level?.name ?? ''} levelNumber={Number(levelId)} subjectsCount={subjects?.length ?? 0} />
       <section className="py-8 md:py-24 bg-slate-50/30 min-h-[calc(100vh-80px)]">
         <div className="container mx-auto px-4 md:px-6">
           

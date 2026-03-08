@@ -41,6 +41,8 @@ const AdminLogin = () => {
   };
 
   return (
+    <>
+    <AdminSEO pageName="تسجيل الدخول" />
     <div className="min-h-screen flex items-center justify-center gradient-hero p-4 sm:p-6">
       <div className="w-full max-w-md">
         {/* Back to Home */}

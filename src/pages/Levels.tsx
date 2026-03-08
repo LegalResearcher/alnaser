@@ -73,6 +73,7 @@ const Levels = () => {
 
   return (
     <MainLayout>
+      <LevelsSEO />
       <section className="py-8 md:py-24 bg-slate-50/50 min-h-[calc(100vh-80px)]">
         <div className="container mx-auto px-4 md:px-6">
           
