@@ -1,9 +1,3 @@
-/**
- * Alnasser Tech Digital Solutions
- * Component: SEOHead — React Helmet لكل صفحة
- * يُضاف على كل صفحة لضمان عنوان ووصف مخصص
- */
-
 import { Helmet } from 'react-helmet-async';
 import { useLocation } from 'react-router-dom';
 
@@ -14,15 +8,10 @@ const DEFAULT_IMAGE = `${BASE_URL}/og-image.png`;
 interface SEOHeadProps {
   title: string;
   description: string;
-  /** مسار الصورة (اختياري) */
   image?: string;
-  /** نوع الصفحة لـ OG */
   type?: 'website' | 'article';
-  /** هل تُحجب من محركات البحث؟ (صفحات الإدارة) */
   noIndex?: boolean;
-  /** كلمات مفتاحية إضافية */
   keywords?: string;
-  /** بيانات Schema.org الهيكلية (JSON-LD) */
   schema?: object;
 }
 
@@ -41,18 +30,11 @@ export function SEOHead({
 
   return (
     <Helmet>
-      {/* ─── العنوان والوصف الأساسي ─── */}
       <title>{fullTitle}</title>
       <meta name="description" content={description} />
       {keywords && <meta name="keywords" content={keywords} />}
-
-      {/* ─── Canonical URL ─── */}
       <link rel="canonical" href={canonicalUrl} />
-
-      {/* ─── Robots ─── */}
       <meta name="robots" content={noIndex ? 'noindex, nofollow' : 'index, follow'} />
-
-      {/* ─── Open Graph ─── */}
       <meta property="og:type" content={type} />
       <meta property="og:site_name" content={SITE_NAME} />
       <meta property="og:url" content={canonicalUrl} />
@@ -63,15 +45,11 @@ export function SEOHead({
       <meta property="og:image:height" content="630" />
       <meta property="og:image:alt" content={title} />
       <meta property="og:locale" content="ar_YE" />
-
-      {/* ─── Twitter Card ─── */}
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:site" content="@AlnasserTech" />
       <meta name="twitter:title" content={fullTitle} />
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image" content={image} />
-
-      {/* ─── Schema.org JSON-LD ─── */}
       {schema && (
         <script type="application/ld+json">
           {JSON.stringify(schema)}
@@ -81,12 +59,6 @@ export function SEOHead({
   );
 }
 
-// ════════════════════════════════════════════════
-// SEO Configs جاهزة لكل صفحة في الموقع
-// استخدمها مباشرة في كل صفحة
-// ════════════════════════════════════════════════
-
-/** الصفحة الرئيسية */
 export const HomeSEO = () => (
   <SEOHead
     title="منصة الناصر | الباحث القانوني المتخصص"
@@ -101,10 +73,7 @@ export const HomeSEO = () => (
       logo: 'https://alnaser.vercel.app/icon-512.png',
       description: 'المنصة الأولى لتدريب وتأهيل الباحثين القانونيين في اليمن',
       foundingLocation: { '@type': 'Place', name: 'صنعاء، الجمهورية اليمنية' },
-      sameAs: [
-        'https://twitter.com/AlnasserTech',
-        'https://www.facebook.com/AlnasserTech',
-      ],
+      sameAs: ['https://twitter.com/AlnasserTech', 'https://www.facebook.com/AlnasserTech'],
       contactPoint: {
         '@type': 'ContactPoint',
         email: 'info@alnasser-tech.com',
@@ -121,7 +90,6 @@ export const HomeSEO = () => (
   />
 );
 
-/** صفحة المستويات */
 export const LevelsSEO = () => (
   <SEOHead
     title="المستويات الدراسية | منصة الناصر"
@@ -137,7 +105,6 @@ export const LevelsSEO = () => (
   />
 );
 
-/** صفحة المستوى الواحد (ديناميكي) */
 export const LevelSubjectsSEO = ({
   levelName,
   levelNumber,
@@ -155,17 +122,12 @@ export const LevelSubjectsSEO = ({
       '@context': 'https://schema.org',
       '@type': 'Course',
       name: levelName,
-      provider: {
-        '@type': 'Organization',
-        name: 'منصة الناصر',
-        url: 'https://alnaser.vercel.app',
-      },
+      provider: { '@type': 'Organization', name: 'منصة الناصر', url: 'https://alnaser.vercel.app' },
       educationalLevel: `المستوى ${levelNumber}`,
     }}
   />
 );
 
-/** صفحة بدء الاختبار (ديناميكي) */
 export const ExamStartSEO = ({
   subjectName,
   questionsCount,
@@ -183,23 +145,18 @@ export const ExamStartSEO = ({
       name: `اختبار ${subjectName}`,
       educationalUse: 'assessment',
       inLanguage: 'ar',
-      provider: {
-        '@type': 'Organization',
-        name: 'منصة الناصر',
-      },
+      provider: { '@type': 'Organization', name: 'منصة الناصر' },
     }}
   />
 );
 
-/** صفحة صفحة الخصوصية */
 export const PrivacySEO = () => (
   <SEOHead
     title="سياسة الخصوصية | منصة الناصر"
-    description="سياسة الخصوصية وحماية البيانات لمنصة الناصر — الباحث القانوني. نحن نحترم خصوصيتك ونلتزم بحماية بياناتك."
+    description="سياسة الخصوصية وحماية البيانات لمنصة الناصر — الباحث القانوني."
   />
 );
 
-/** صفحات الإدارة — مخفية من جوجل */
 export const AdminSEO = ({ pageName }: { pageName: string }) => (
   <SEOHead
     title={`${pageName} — لوحة التحكم`}
