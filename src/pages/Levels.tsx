@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Level } from '@/types/database';
 import { useCachedQuery } from '@/hooks/useCachedQuery';
 import { cn } from '@/lib/utils';
+import { LevelsSEO } from '@/components/seo/SEOHead';
 import {
   Dialog,
   DialogContent,
