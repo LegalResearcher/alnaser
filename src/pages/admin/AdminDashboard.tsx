@@ -3,6 +3,7 @@ import { BookOpen, Users, Target, TrendingUp, Clock, CheckCircle } from 'lucide-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AdminSEO } from '@/components/seo/SEOHead';
 
 const AdminDashboard = () => {
   const { data: stats, isLoading } = useQuery({
