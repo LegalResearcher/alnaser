@@ -11,6 +11,7 @@ import { useCachedQuery } from '@/hooks/useCachedQuery';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+import { LevelSubjectsSEO } from '@/components/seo/SEOHead';
 
 const LevelSubjects = () => {
   const { levelId } = useParams<{ levelId: string }>();
