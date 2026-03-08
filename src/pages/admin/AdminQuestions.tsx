@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Question, Subject, Level, EXAM_YEARS } from '@/types/database';
+import { AdminSEO } from '@/components/seo/SEOHead';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -420,6 +421,7 @@ const AdminQuestions = () => {
 
   return (
     <AdminLayout>
+      <AdminSEO pageName="إدارة الأسئلة" />
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 font-cairo">

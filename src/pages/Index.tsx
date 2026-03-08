@@ -1,4 +1,5 @@
 import { MainLayout } from '@/components/layout/MainLayout';
+import { HomeSEO } from '@/components/seo/SEOHead';
 import { HeroSection } from '@/components/home/HeroSection';
 import { StatsSection } from '@/components/home/StatsSection';
 import { LevelsPreview } from '@/components/home/LevelsPreview';
@@ -17,6 +18,7 @@ const Index = () => {
 
   return (
     <MainLayout>
+      <HomeSEO />
       {/* غلاف عام لإضافة لمسات جمالية خلفية للأقسام المتداخلة */}
       <div className="relative overflow-hidden bg-white">
         

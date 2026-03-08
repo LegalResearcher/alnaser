@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useCachedQuery } from '@/hooks/useCachedQuery';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
+import { ExamStartSEO } from '@/components/seo/SEOHead';
 
 const EXAM_FORMS = [
   { id: 'General',  name: 'نموذج العام' },
@@ -181,6 +182,7 @@ const ExamStart = () => {
   /* ─── Main render ─── */
   return (
     <MainLayout>
+      <ExamStartSEO subjectName={subject?.name ?? ''} questionsCount={questionCount} />
       <section className="py-8 md:py-16 bg-slate-50/50 min-h-[calc(100vh-80px)]">
         <div className="container mx-auto px-4 md:px-6">
 

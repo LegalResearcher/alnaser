@@ -31,14 +31,16 @@ export function Footer() {
             {/* أيقونات التواصل الاجتماعي */}
             <div className="flex items-center gap-4 pt-4">
               {[
-                { Icon: Twitter, href: "#" },
-                { Icon: Linkedin, href: "#" },
-                { Icon: Facebook, href: "#" },
-                { Icon: Instagram, href: "#" }
+                { Icon: Twitter, href: "https://twitter.com/AlnasserTech" },
+                { Icon: Linkedin, href: "https://www.linkedin.com/company/alnasser-tech" },
+                { Icon: Facebook, href: "https://www.facebook.com/AlnasserTech" },
+                { Icon: Instagram, href: "https://www.instagram.com/AlnasserTech" }
               ].map((social, index) => (
                 <a 
                   key={index} 
-                  href={social.href} 
+                  href={social.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-primary hover:text-white transition-all duration-300 group"
                 >
                   <social.Icon className="w-5 h-5 group-hover:scale-110 transition-transform" />
@@ -95,7 +97,7 @@ export function Footer() {
                 </div>
                 <div>
                   <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">الدعم الفني</p>
-                  <p className="text-sm font-bold text-slate-200">info@alnasser-tech.com</p>
+                  <a href="mailto:info@alnasser-tech.com" className="text-sm font-bold text-slate-200 hover:text-primary transition-colors">info@alnasser-tech.com</a>
                 </div>
               </div>
 

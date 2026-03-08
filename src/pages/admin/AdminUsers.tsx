@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { AdminSEO } from '@/components/seo/SEOHead';
 import {
   Dialog,
   DialogContent,
@@ -108,6 +109,7 @@ const AdminUsers = () => {
 
   return (
     <AdminLayout>
+      <AdminSEO pageName="إدارة المستخدمين" />
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">

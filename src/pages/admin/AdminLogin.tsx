@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { AdminSEO } from '@/components/seo/SEOHead';
 
 const AdminLogin = () => {
   const [email, setEmail] = useState('');
@@ -40,6 +41,8 @@ const AdminLogin = () => {
   };
 
   return (
+    <>
+    <AdminSEO pageName="تسجيل الدخول" />
     <div className="min-h-screen flex items-center justify-center gradient-hero p-4 sm:p-6">
       <div className="w-full max-w-md">
         {/* Back to Home */}
@@ -116,6 +119,7 @@ const AdminLogin = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

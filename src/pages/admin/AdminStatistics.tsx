@@ -3,6 +3,7 @@ import { BarChart3, TrendingUp, Users, BookOpen, Calendar } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AdminSEO } from '@/components/seo/SEOHead';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
@@ -80,6 +81,7 @@ const AdminStatistics = () => {
 
   return (
     <AdminLayout>
+      <AdminSEO pageName="الإحصائيات" />
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div>

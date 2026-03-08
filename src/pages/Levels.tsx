@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Level } from '@/types/database';
 import { useCachedQuery } from '@/hooks/useCachedQuery';
 import { cn } from '@/lib/utils';
+import { LevelsSEO } from '@/components/seo/SEOHead';
 import {
   Dialog,
   DialogContent,
@@ -72,6 +73,7 @@ const Levels = () => {
 
   return (
     <MainLayout>
+      <LevelsSEO />
       <section className="py-8 md:py-24 bg-slate-50/50 min-h-[calc(100vh-80px)]">
         <div className="container mx-auto px-4 md:px-6">
           

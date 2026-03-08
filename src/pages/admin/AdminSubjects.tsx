@@ -12,6 +12,7 @@ import { Level, Subject } from '@/types/database';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { AdminSEO } from '@/components/seo/SEOHead';
 import {
   Dialog,
   DialogContent,
@@ -240,6 +241,7 @@ const AdminSubjects = () => {
 
   return (
     <AdminLayout>
+      <AdminSEO pageName="إدارة المواد" />
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-3 sm:gap-4">
