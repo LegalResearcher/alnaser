@@ -92,11 +92,12 @@ export function HeroSection() {
 
       {/* نسيج نقطي خفيف */}
       <div
+        ref={dotGridRef}
         className="absolute inset-0 opacity-[0.18]"
         style={{
           backgroundImage: `radial-gradient(circle, rgba(255,255,255,0.35) 1px, transparent 1px)`,
           backgroundSize: '32px 32px',
-          transform: `translateY(${parallaxY * 0.3}px)`,
+          willChange: 'transform',
         }}
       />
 
