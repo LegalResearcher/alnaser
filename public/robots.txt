@@ -6,15 +6,13 @@ Allow: /
 Disallow: /admin/
 Disallow: /admin/login
 
-# السماح لبوتات التواصل الاجتماعي بالوصول لجميع الصفحات
+User-agent: Googlebot
+Allow: /
+
 User-agent: Twitterbot
 Allow: /
 
 User-agent: facebookexternalhit
 Allow: /
 
-User-agent: Googlebot
-Allow: /
-
-# خريطة الموقع
 Sitemap: https://alnaser.vercel.app/sitemap.xml

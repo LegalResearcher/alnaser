@@ -103,11 +103,13 @@ export function HeroSection() {
 
       {/* توهج أزرق علوي */}
       <div
-        className="absolute -top-40 left-1/2 -translate-x-1/2 w-[900px] h-[500px] rounded-full opacity-30 pointer-events-none"
+        ref={glowTopRef}
+        className="absolute -top-40 left-1/2 w-[900px] h-[500px] rounded-full opacity-30 pointer-events-none"
         style={{
           background: 'radial-gradient(ellipse, hsl(217 91% 60% / 0.5) 0%, transparent 70%)',
-          transform: `translateX(-50%) translateY(${parallaxY * 0.5}px)`,
+          transform: 'translateX(-50%)',
           filter: 'blur(60px)',
+          willChange: 'transform',
         }}
       />
 
