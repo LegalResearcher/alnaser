@@ -7,7 +7,7 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft, BookOpen, Users, Award, CheckCircle, Scale, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 // عداد متحرك
 function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: string }) {
