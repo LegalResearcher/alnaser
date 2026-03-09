@@ -212,7 +212,7 @@ const ExamResult = () => {
   };
 
   const getShareText = () =>
-    `${state.levelName||'منصة الناصر'} - نموذج ${state.examYear||2025}\n🎓 نتيجتي في ${state.subjectName||'اختبار'}\n📊 ${state.score}/${state.totalQuestions} (${scorePercentage}%)\n${state.passed?'✅ نجحت!':'❌ سأحاول مجدداً'}\n🔗 https://alnaser.vercel.app/`;
+    `${state.levelName||'منصة الناصر'} - نموذج ${state.examYear||2025}\n🎓 نتيجتي في ${state.subjectName||'اختبار'}\n📊 ${state.score}/${state.totalQuestions} (${scorePercentage}%)\n${state.passed?'✅ نجحت!':'❌ سأحاول مجدداً'}\n🔗 https://alnaseer.org/`;
 
   const handleShareWhatsApp = async () => {
     setIsShareLoading('whatsapp');
