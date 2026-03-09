@@ -1,74 +1,59 @@
-import { useLocation, Link } from "react-router-dom";
-import { useEffect } from "react";
-import { Home, Search, ArrowRight, Scale, AlertCircle, GraduationCap } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Home, Scale, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SEOHead } from "@/components/seo/SEOHead";
+import { MainLayout } from "@/components/layout/MainLayout";
 
 const NotFound = () => {
-  const location = useLocation();
-
-  useEffect(() => {
-    // الحفاظ على منطق التتبع الخاص بك لمراقبة الروابط المكسورة
-    console.error("🚀 404 Log [Alnaser Platform]:", location.pathname);
-  }, [location.pathname]);
-
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50/50 p-6 relative overflow-hidden">
-      
-      {/* لمسات خلفية فنية */}
-      <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-40">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-blue-500/5 rounded-full blur-[100px]" />
-      </div>
+    <MainLayout>
+      <SEOHead
+        title="الصفحة غير موجودة | منصة الناصر"
+        description="الصفحة التي تبحث عنها غير موجودة — منصة الناصر للباحث القانوني"
+        noIndex={true}
+      />
 
-      <div className="max-w-xl w-full text-center relative z-10">
-        
-        {/* أيقونة تعبيرية بتصميم "Layered" */}
-        <div className="relative w-32 h-32 mx-auto mb-10">
-          <div className="absolute inset-0 bg-primary/10 rounded-[2.5rem] rotate-12 animate-pulse" />
-          <div className="relative w-32 h-32 bg-white rounded-[2.5rem] shadow-xl border border-slate-100 flex items-center justify-center">
-            <Scale className="w-16 h-16 text-primary" />
-            <div className="absolute -top-2 -right-2 w-8 h-8 bg-rose-500 rounded-xl flex items-center justify-center border-4 border-white shadow-lg">
-               <AlertCircle className="w-4 h-4 text-white" />
+      <div className="flex min-h-[70vh] items-center justify-center p-6 relative overflow-hidden">
+        {/* خلفية فنية */}
+        <div className="absolute inset-0 pointer-events-none opacity-40">
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px]" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-blue-500/5 rounded-full blur-[100px]" />
+        </div>
+
+        <div className="max-w-xl w-full text-center relative z-10">
+          {/* أيقونة */}
+          <div className="relative w-32 h-32 mx-auto mb-10">
+            <div className="absolute inset-0 bg-primary/10 rounded-[2.5rem] rotate-12 animate-pulse" />
+            <div className="relative w-32 h-32 bg-card rounded-[2.5rem] shadow-xl border border-border flex items-center justify-center">
+              <Scale className="w-16 h-16 text-primary" />
+              <div className="absolute -top-2 -right-2 w-8 h-8 bg-destructive rounded-xl flex items-center justify-center border-4 border-background shadow-lg">
+                <AlertCircle className="w-4 h-4 text-destructive-foreground" />
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* محتوى الصفحة */}
-        <div className="space-y-4 mb-12">
-          <h1 className="text-8xl font-black text-slate-900 tracking-tighter opacity-10 select-none">404</h1>
-          <div className="relative -mt-16">
-            <h2 className="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight">
-              عذراً، تاه المسار <span className="text-primary">القانوني!</span>
-            </h2>
-            <p className="text-slate-500 text-lg font-medium max-w-sm mx-auto leading-relaxed">
-              يبدو أن الصفحة التي تبحث عنها قد تم نقلها أو أنها لم تعد موجودة في أرشيفنا.
-            </p>
+          {/* محتوى */}
+          <div className="space-y-4 mb-12">
+            <h1 className="text-8xl font-black text-foreground tracking-tighter opacity-10 select-none">404</h1>
+            <div className="relative -mt-16">
+              <h2 className="text-3xl md:text-4xl font-black text-foreground mb-4 tracking-tight">
+                الصفحة غير موجودة — <span className="text-primary">404</span>
+              </h2>
+              <p className="text-muted-foreground text-lg font-medium max-w-sm mx-auto leading-relaxed">
+                يبدو أن الصفحة التي تبحث عنها قد تم نقلها أو أنها لم تعد موجودة.
+              </p>
+            </div>
           </div>
-        </div>
 
-        {/* روابط المساعدة - توجيه المستخدم للاقسام الهامة */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md mx-auto">
-          <Link to="/" className="w-full">
-            <Button size="lg" className="w-full h-16 rounded-2xl bg-slate-900 hover:bg-primary text-white font-black shadow-xl shadow-slate-200 transition-all gap-3">
+          <Link to="/">
+            <Button size="lg" className="h-14 rounded-2xl px-8 font-black text-lg shadow-xl gap-3">
               <Home className="w-5 h-5" />
-              الرئيسية
+              العودة للرئيسية
             </Button>
           </Link>
-          <Link to="/levels" className="w-full">
-            <Button size="lg" variant="outline" className="w-full h-16 rounded-2xl border-slate-200 font-bold hover:bg-slate-50 hover:text-primary gap-3">
-              <GraduationCap className="w-5 h-5" />
-              المستويات
-            </Button>
-          </Link>
-        </div>
-
-        {/* Footer بسيط */}
-        <div className="mt-16 flex items-center justify-center gap-2 text-slate-400 font-bold text-[10px] uppercase tracking-widest">
-           <Search className="w-3.5 h-3.5" />
-           <span>نظام البحث الذكي مفعل لإرشادك</span>
         </div>
       </div>
-    </div>
+    </MainLayout>
   );
 };
 

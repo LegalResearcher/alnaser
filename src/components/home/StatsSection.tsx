@@ -67,7 +67,7 @@ export function StatsSection() {
     { icon: BookOpen, value: stats?.questionsCount ?? 5000, suffix: '+', label: 'سؤال قانوني',   sub: 'مراجع ومحدَّث باستمرار',    color: 'from-blue-500 to-indigo-500',   glow: 'rgba(59,130,246,0.35)' },
     { icon: Users,    value: stats?.examsCount      ?? 500,  suffix: '+', label: 'باحث ومختبر',   sub: 'سجّلوا نتائجهم على المنصة', color: 'from-violet-500 to-purple-600', glow: 'rgba(139,92,246,0.35)' },
     { icon: Award,    value: stats?.subjectsCount   ?? 43,   suffix: '',  label: 'مادة تعليمية', sub: 'في كل فروع القانون',          color: 'from-emerald-500 to-teal-500',  glow: 'rgba(16,185,129,0.35)' },
-    { icon: Target,   value: stats?.passRate        ?? 85,   suffix: '%', label: 'نسبة النجاح',  sub: 'متوسط الطلاب على المنصة',    color: 'from-orange-500 to-amber-500',  glow: 'rgba(249,115,22,0.35)' },
+    { icon: Target,   value: stats?.passRate        ?? 85,   suffix: '%', label: 'نسبة النجاح',  sub: 'بناءً على نتائج المنصة',    color: 'from-orange-500 to-amber-500',  glow: 'rgba(249,115,22,0.35)' },
   ];
 
   return (

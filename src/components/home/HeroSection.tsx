@@ -6,7 +6,6 @@
 
 import { Link } from 'react-router-dom';
 import { ArrowLeft, BookOpen, Users, Award, CheckCircle, Scale, ChevronDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { useEffect, useRef, useState } from 'react';
 
 // عداد متحرك
@@ -63,15 +62,22 @@ const FEATURES = [
 ];
 
 export function HeroSection() {
-  const [scrollY, setScrollY] = useState(0);
+  const dotGridRef = useRef<HTMLDivElement>(null);
+  const glowTopRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handler = () => setScrollY(window.scrollY);
-    window.addEventListener('scroll', handler, { passive: true });
-    return () => window.removeEventListener('scroll', handler);
+    const handleScroll = () => {
+      const y = window.scrollY;
+      if (dotGridRef.current) {
+        dotGridRef.current.style.transform = `translateY(${y * 0.075}px)`;
+      }
+      if (glowTopRef.current) {
+        glowTopRef.current.style.transform = `translateX(-50%) translateY(${y * 0.125}px)`;
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  const parallaxY = scrollY * 0.25;
 
   return (
     <section className="relative overflow-hidden min-h-[100svh] flex flex-col" dir="rtl">
@@ -85,21 +91,24 @@ export function HeroSection() {
 
       {/* نسيج نقطي خفيف */}
       <div
+        ref={dotGridRef}
         className="absolute inset-0 opacity-[0.18]"
         style={{
           backgroundImage: `radial-gradient(circle, rgba(255,255,255,0.35) 1px, transparent 1px)`,
           backgroundSize: '32px 32px',
-          transform: `translateY(${parallaxY * 0.3}px)`,
+          willChange: 'transform',
         }}
       />
 
       {/* توهج أزرق علوي */}
       <div
-        className="absolute -top-40 left-1/2 -translate-x-1/2 w-[900px] h-[500px] rounded-full opacity-30 pointer-events-none"
+        ref={glowTopRef}
+        className="absolute -top-40 left-1/2 w-[900px] h-[500px] rounded-full opacity-30 pointer-events-none"
         style={{
           background: 'radial-gradient(ellipse, hsl(217 91% 60% / 0.5) 0%, transparent 70%)',
-          transform: `translateX(-50%) translateY(${parallaxY * 0.5}px)`,
+          transform: 'translateX(-50%)',
           filter: 'blur(60px)',
+          willChange: 'transform',
         }}
       />
 
