@@ -1,7 +1,7 @@
 import { Helmet } from 'react-helmet-async';
 import { useLocation } from 'react-router-dom';
 
-const BASE_URL = 'https://alnaser.vercel.app';
+const BASE_URL = 'https://alnaseer.org';
 const SITE_NAME = 'منصة الناصر — الباحث القانوني';
 const DEFAULT_IMAGE = `${BASE_URL}/og-image.png`;
 
@@ -69,8 +69,8 @@ export const HomeSEO = () => (
       '@type': 'EducationalOrganization',
       name: 'منصة الناصر — الباحث القانوني',
       alternateName: 'Alnasser Legal Researcher',
-      url: 'https://alnaser.vercel.app/',
-      logo: 'https://alnaser.vercel.app/icon-512.png',
+      url: 'https://alnaseer.org/',
+      logo: 'https://alnaseer.org/icon-512.png',
       description: 'المنصة الأولى لتدريب وتأهيل الباحثين القانونيين في اليمن',
       foundingLocation: { '@type': 'Place', name: 'صنعاء، الجمهورية اليمنية' },
       sameAs: ['https://twitter.com/AlnasserTech', 'https://www.facebook.com/AlnasserTech'],
@@ -122,7 +122,7 @@ export const LevelSubjectsSEO = ({
       '@context': 'https://schema.org',
       '@type': 'Course',
       name: levelName,
-      provider: { '@type': 'Organization', name: 'منصة الناصر', url: 'https://alnaser.vercel.app' },
+      provider: { '@type': 'Organization', name: 'منصة الناصر', url: 'https://alnaseer.org' },
       educationalLevel: `المستوى ${levelNumber}`,
     }}
   />

@@ -13,7 +13,7 @@
  */
 
 const INDEXING_API_URL = 'https://indexing.googleapis.com/v3/urlNotifications:publish';
-const BASE_URL = 'https://alnaser.vercel.app';
+const BASE_URL = 'https://alnaseer.org';
 
 // أنواع الإشعارات
 type NotificationType = 'URL_UPDATED' | 'URL_DELETED';
