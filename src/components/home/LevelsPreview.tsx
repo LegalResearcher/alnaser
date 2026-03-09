@@ -17,7 +17,7 @@ const LEVEL_CONFIG = [
     bg:       'rgba(59,130,246,0.06)',
     border:   'rgba(59,130,246,0.2)',
     label:    'المستوى الأول',
-    tag:      'مبتدئ',
+    tag:      '.',
   },
   {
     gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
@@ -25,7 +25,7 @@ const LEVEL_CONFIG = [
     bg:       'rgba(16,185,129,0.06)',
     border:   'rgba(16,185,129,0.2)',
     label:    'المستوى الثاني',
-    tag:      'متوسط',
+    tag:      '.',
   },
   {
     gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
@@ -33,7 +33,7 @@ const LEVEL_CONFIG = [
     bg:       'rgba(245,158,11,0.06)',
     border:   'rgba(245,158,11,0.2)',
     label:    'المستوى الثالث',
-    tag:      'متقدم',
+    tag:      '.',
   },
   {
     gradient: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
@@ -41,7 +41,7 @@ const LEVEL_CONFIG = [
     bg:       'rgba(239,68,68,0.06)',
     border:   'rgba(239,68,68,0.2)',
     label:    'المستوى الرابع',
-    tag:      'احترافي',
+    tag:      '.',
   },
 ];
 
