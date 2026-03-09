@@ -1,7 +1,7 @@
 import { Helmet } from 'react-helmet-async';
 import { useLocation } from 'react-router-dom';
 
-const BASE_URL = 'https://alnaser.vercel.app';
+const BASE_URL = 'https://alnaseer.org';
 const SITE_NAME = 'منصة الناصر — الباحث القانوني';
 const DEFAULT_IMAGE = `${BASE_URL}/og-image.png`;
 
