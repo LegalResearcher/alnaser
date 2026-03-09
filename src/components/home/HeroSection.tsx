@@ -63,15 +63,22 @@ const FEATURES = [
 ];
 
 export function HeroSection() {
-  const [scrollY, setScrollY] = useState(0);
+  const dotGridRef = useRef<HTMLDivElement>(null);
+  const glowTopRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handler = () => setScrollY(window.scrollY);
-    window.addEventListener('scroll', handler, { passive: true });
-    return () => window.removeEventListener('scroll', handler);
+    const handleScroll = () => {
+      const y = window.scrollY;
+      if (dotGridRef.current) {
+        dotGridRef.current.style.transform = `translateY(${y * 0.075}px)`;
+      }
+      if (glowTopRef.current) {
+        glowTopRef.current.style.transform = `translateX(-50%) translateY(${y * 0.125}px)`;
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  const parallaxY = scrollY * 0.25;
 
   return (
     <section className="relative overflow-hidden min-h-[100svh] flex flex-col" dir="rtl">
