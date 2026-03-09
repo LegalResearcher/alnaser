@@ -15,4 +15,4 @@ Allow: /
 User-agent: facebookexternalhit
 Allow: /
 
-Sitemap: https://alnaser.vercel.app/sitemap.xml
+Sitemap: https://alnaseer.org/sitemap.xml

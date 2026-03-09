@@ -122,7 +122,7 @@ export const LevelSubjectsSEO = ({
       '@context': 'https://schema.org',
       '@type': 'Course',
       name: levelName,
-      provider: { '@type': 'Organization', name: 'منصة الناصر', url: 'https://alnaser.vercel.app' },
+      provider: { '@type': 'Organization', name: 'منصة الناصر', url: 'https://alnaseer.org' },
       educationalLevel: `المستوى ${levelNumber}`,
     }}
   />
