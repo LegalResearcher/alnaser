@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Brain, ChevronLeft, ChevronRight, Loader2,
   CheckCircle2, XCircle, BarChart3, Play,
-  TrendingUp, TrendingDown
+  TrendingUp, TrendingDown, GraduationCap
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,13 @@ import { Question } from '@/types/database';
 import { cn } from '@/lib/utils';
 
 const QUESTIONS_PER_SUBJECT = 2;
+
+interface Level {
+  id: string;
+  name: string;
+  color: string | null;
+  order_index: number;
+}
 
 interface SubjectSample {
   subjectId: string;
@@ -30,8 +37,10 @@ interface SubjectScore {
 
 const DiagnosticTest = () => {
   const navigate = useNavigate();
-  const [step, setStep] = useState<'name' | 'loading' | 'test' | 'result'>('name');
+  const [step, setStep] = useState<'name' | 'level' | 'loading' | 'test' | 'result'>('name');
   const [studentName, setStudentName] = useState('');
+  const [levels, setLevels] = useState<Level[]>([]);
+  const [selectedLevel, setSelectedLevel] = useState<Level | null>(null);
   const [_samples, setSamples] = useState<SubjectSample[]>([]);
   const [allQuestions, setAllQuestions] = useState<(Question & { subjectId: string; subjectName: string })[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -40,15 +49,28 @@ const DiagnosticTest = () => {
   const [hasAnswered, setHasAnswered] = useState(false);
   const [subjectScores, setSubjectScores] = useState<SubjectScore[]>([]);
 
-  const loadQuestions = useCallback(async () => {
+  const handleNameNext = useCallback(async () => {
+    if (!studentName.trim()) return;
+    const { data } = await supabase
+      .from('levels')
+      .select('id, name, color, order_index')
+      .eq('is_disabled', false)
+      .order('order_index');
+    setLevels((data as Level[]) || []);
+    setStep('level');
+  }, [studentName]);
+
+  const loadQuestions = useCallback(async (level: Level) => {
+    setSelectedLevel(level);
     setStep('loading');
     try {
       const { data: subjects } = await supabase
         .from('subjects')
         .select('id, name')
-        .limit(6);
+        .eq('level_id', level.id)
+        .limit(10);
 
-      if (!subjects || subjects.length === 0) { setStep('name'); return; }
+      if (!subjects || subjects.length === 0) { setStep('level'); return; }
 
       const samplesData: SubjectSample[] = [];
       for (const subj of subjects) {
@@ -64,7 +86,7 @@ const DiagnosticTest = () => {
         }
       }
 
-      if (samplesData.length === 0) { setStep('name'); return; }
+      if (samplesData.length === 0) { setStep('level'); return; }
 
       const flat = samplesData.flatMap(s =>
         s.questions.map(q => ({ ...q, subjectId: s.subjectId, subjectName: s.subjectName }))
@@ -72,7 +94,7 @@ const DiagnosticTest = () => {
       setSamples(samplesData);
       setAllQuestions(flat.sort(() => Math.random() - 0.5));
       setStep('test');
-    } catch { setStep('name'); }
+    } catch { setStep('level'); }
   }, []);
 
   const handleAnswer = (opt: string) => {
@@ -103,6 +125,7 @@ const DiagnosticTest = () => {
     }
   };
 
+  // ── الخطوة 1: الاسم ──
   if (step === 'name') return (
     <MainLayout>
       <section className="py-8 md:py-16 min-h-screen" dir="rtl">
@@ -117,7 +140,7 @@ const DiagnosticTest = () => {
               </div>
               <h1 className="text-3xl font-black text-foreground mb-3">الاختبار التشخيصي</h1>
               <div className="space-y-1 text-sm text-muted-foreground font-bold">
-                <p>أسئلة سريعة من جميع المواد</p>
+                <p>أسئلة سريعة من مواد المستوى الذي تختاره</p>
                 <p>تكشف نقاط قوتك وضعفك خلال دقائق</p>
               </div>
             </div>
@@ -126,11 +149,11 @@ const DiagnosticTest = () => {
                 placeholder="اسمك الكامل..."
                 value={studentName}
                 onChange={(e) => setStudentName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && studentName.trim() && loadQuestions()}
+                onKeyDown={e => e.key === 'Enter' && studentName.trim() && handleNameNext()}
                 className="h-13 rounded-xl font-bold bg-muted/30 border-border focus:border-violet-500 text-right"
               />
-              <Button onClick={loadQuestions} disabled={!studentName.trim()} className="w-full h-13 rounded-xl font-black bg-violet-600 hover:bg-violet-700 text-white">
-                <Play className="w-4 h-4 ml-2" /> ابدأ التشخيص
+              <Button onClick={handleNameNext} disabled={!studentName.trim()} className="w-full h-13 rounded-xl font-black bg-violet-600 hover:bg-violet-700 text-white">
+                التالي <ChevronRight className="w-4 h-4 mr-2" />
               </Button>
             </div>
           </div>
@@ -139,15 +162,60 @@ const DiagnosticTest = () => {
     </MainLayout>
   );
 
+  // ── الخطوة 2: اختيار المستوى ──
+  if (step === 'level') return (
+    <MainLayout>
+      <section className="py-8 md:py-16 min-h-screen" dir="rtl">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="max-w-lg mx-auto">
+            <button onClick={() => setStep('name')} className="mb-8 inline-flex items-center gap-1.5 text-xs font-black text-slate-500 hover:text-primary transition-colors">
+              <ChevronLeft className="w-4 h-4" /> رجوع
+            </button>
+            <div className="text-center mb-10">
+              <div className="w-20 h-20 bg-violet-100 rounded-3xl flex items-center justify-center mx-auto mb-4">
+                <GraduationCap className="w-10 h-10 text-violet-600" />
+              </div>
+              <h1 className="text-3xl font-black text-foreground mb-2">اختر مستواك</h1>
+              <p className="text-sm text-muted-foreground font-bold">
+                مرحباً <span className="text-violet-600">{studentName}</span>، حدد المستوى الذي تريد تشخيصه
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3">
+              {levels.map((level, i) => (
+                <button
+                  key={level.id}
+                  onClick={() => loadQuestions(level)}
+                  className="group w-full p-5 rounded-2xl border-2 border-border bg-card hover:border-violet-400 hover:bg-violet-50 transition-all duration-200 flex items-center gap-4 text-right active:scale-[0.98]"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-violet-100 group-hover:bg-violet-200 flex items-center justify-center font-black text-violet-700 text-xl transition-colors shrink-0">
+                    {i + 1}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-black text-foreground text-base">{level.name}</p>
+                    <p className="text-xs text-muted-foreground font-bold mt-0.5">أسئلة تشخيصية من جميع مواد هذا المستوى</p>
+                  </div>
+                  <ChevronLeft className="w-4 h-4 text-slate-300 group-hover:text-violet-500 transition-colors shrink-0" />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+    </MainLayout>
+  );
+
+  // ── تحميل ──
   if (step === 'loading') return (
     <MainLayout>
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-10 h-10 animate-spin text-violet-600" />
-        <span className="mr-3 font-black text-foreground">جاري تحضير الأسئلة...</span>
+        <span className="mr-3 font-black text-foreground">جاري تحضير أسئلة {selectedLevel?.name}...</span>
       </div>
     </MainLayout>
   );
 
+  // ── الاختبار ──
   if (step === 'test') {
     const q = allQuestions[currentIndex];
     const opts = ['A','B','C','D'] as const;
@@ -159,9 +227,12 @@ const DiagnosticTest = () => {
           <div className="container mx-auto px-4 md:px-6">
             <div className="max-w-3xl mx-auto">
 
-              <div className="flex items-center justify-between mb-4 text-sm font-black text-muted-foreground">
+              <div className="flex items-center justify-between mb-2 text-sm font-black text-muted-foreground">
                 <span>{currentIndex + 1} / {allQuestions.length}</span>
-                <span className="text-violet-600">{q.subjectName}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground font-bold">{selectedLevel?.name}</span>
+                  <span className="text-violet-600">{q.subjectName}</span>
+                </div>
               </div>
 
               <div className="h-2 rounded-full bg-muted mb-8 overflow-hidden">
@@ -204,7 +275,9 @@ const DiagnosticTest = () => {
 
               {hasAnswered && (
                 <Button onClick={handleNext} className="w-full h-13 rounded-2xl font-black bg-violet-600 hover:bg-violet-700 text-white">
-                  {currentIndex < allQuestions.length - 1 ? <><ChevronRight className="w-4 h-4 ml-1" /> التالي</> : <><BarChart3 className="w-4 h-4 ml-1" /> عرض النتائج</>}
+                  {currentIndex < allQuestions.length - 1
+                    ? <><ChevronRight className="w-4 h-4 ml-1" /> التالي</>
+                    : <><BarChart3 className="w-4 h-4 ml-1" /> عرض النتائج</>}
                 </Button>
               )}
             </div>
@@ -214,6 +287,7 @@ const DiagnosticTest = () => {
     );
   }
 
+  // ── النتيجة ──
   if (step === 'result') {
     const totalCorrect = allQuestions.filter(q => answers[q.id] === q.correct_option).length;
     const totalPct = Math.round((totalCorrect / allQuestions.length) * 100);
@@ -231,7 +305,8 @@ const DiagnosticTest = () => {
                   <BarChart3 className="w-8 h-8" />
                 </div>
                 <h1 className="text-2xl font-black mb-1">نتيجة التشخيص</h1>
-                <p className="text-white/70 font-bold text-sm mb-4">{studentName}</p>
+                <p className="text-white/70 font-bold text-sm">{studentName}</p>
+                <p className="text-white/50 font-bold text-xs mb-4">{selectedLevel?.name}</p>
                 <p className="text-5xl font-black mb-1">{totalPct}%</p>
                 <p className="text-white/60 text-sm font-bold">{totalCorrect} من {allQuestions.length} إجابة صحيحة</p>
               </div>
@@ -293,11 +368,22 @@ const DiagnosticTest = () => {
               )}
 
               <div className="grid grid-cols-2 gap-3 pt-2">
-                <Button onClick={() => navigate('/levels')} variant="outline" className="h-13 rounded-2xl font-black">
-                  ابدأ المذاكرة
+                <Button
+                  onClick={() => {
+                    setStep('level');
+                    setAllQuestions([]);
+                    setAnswers({});
+                    setCurrentIndex(0);
+                    setSelected(null);
+                    setHasAnswered(false);
+                  }}
+                  variant="outline"
+                  className="h-13 rounded-2xl font-black"
+                >
+                  تشخيص مستوى آخر
                 </Button>
-                <Button onClick={() => navigate('/progress')} className="h-13 rounded-2xl font-black bg-violet-600 hover:bg-violet-700">
-                  تقدمي الدراسي
+                <Button onClick={() => navigate('/levels')} className="h-13 rounded-2xl font-black bg-violet-600 hover:bg-violet-700">
+                  ابدأ المذاكرة
                 </Button>
               </div>
 
