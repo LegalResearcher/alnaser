@@ -28,6 +28,17 @@ export function Footer() {
               منصة تعليمية متطورة تابعة لـ <strong>الناصر تِك</strong>، نهدف من خلالها إلى تطويع الحلول الرقمية لخدمة المجتمع القانوني في اليمن والوطن العربي.
             </p>
 
+            {/* صاحب المنصة */}
+            <div className="inline-flex items-center gap-3 px-5 py-3 rounded-2xl border border-white/10 bg-white/[0.03]">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center font-black text-white text-lg shrink-0">
+                م
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-0.5">إعداد وتطوير</p>
+                <p className="text-white font-black text-base">أ. معين الناصر</p>
+              </div>
+            </div>
+
             {/* أيقونات التواصل الاجتماعي */}
             <div className="flex items-center gap-4 pt-4">
               {[
@@ -59,6 +70,7 @@ export function Footer() {
               {[
                 { to: "/", label: "الرئيسية" },
                 { to: "/levels", label: "المستويات" },
+                { to: "/about", label: "عن المنصة" },
                 { to: "/privacy", label: "الخصوصية" }
               ].map((link) => (
                 <li key={link.to}>
