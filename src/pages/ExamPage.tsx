@@ -175,8 +175,14 @@ const ExamPage = () => {
     queryKey: ['exam-questions', subjectId, state?.examYear, state?.examForm, state?.questionsCount],
     queryFn: async () => {
       let query = supabase.from('questions').select('*').eq('subject_id', subjectId).eq('status', 'active');
-      if (state.examYear) query = query.eq('exam_year', state.examYear);
-      if (state.examForm && state.examForm !== 'Mixed') query = query.eq('exam_form', state.examForm);
+      if (!state?.allQuestions) {
+        if (state?.isTrial) {
+          query = query.is('exam_year', null);
+        } else {
+          if (state.examYear) query = query.eq('exam_year', state.examYear);
+          if (state.examForm && state.examForm !== 'Mixed') query = query.eq('exam_form', state.examForm);
+        }
+      }
       const { data, error } = await query;
       if (error) throw error;
       return (data as Question[]).sort(() => Math.random() - 0.5);
