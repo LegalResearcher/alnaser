@@ -133,6 +133,22 @@ const ExamResult = () => {
 
   const scorePercentage = Math.round((state.score / state.totalQuestions) * 100);
 
+  const earnedPoints = (() => {
+    let pts = state.score * 10;
+    if (scorePercentage >= 90) pts += 50;
+    if (scorePercentage === 100) pts += 100;
+    if (state.timeTaken < 300) pts += 20;
+    return pts;
+  })();
+
+  const newBadges = (() => {
+    const b: { icon: string; label: string }[] = [];
+    if (scorePercentage === 100) b.push({ icon: '💯', label: 'إتقان تام!' });
+    else if (scorePercentage >= 90) b.push({ icon: '🏆', label: 'متفوق!' });
+    if (state.passed) b.push({ icon: '✅', label: 'ناجح' });
+    return b;
+  })();
+
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
     const sec = s % 60;
