@@ -49,9 +49,9 @@ export function Header() {
     <header className={cn(
       "sticky top-0 z-50 w-full transition-all duration-500",
       isScrolled
-        ? "bg-background/80 backdrop-blur-2xl border-b border-border/60 shadow-sm py-2"
+        ? "bg-background/90 backdrop-blur-2xl border-b border-border/60 shadow-sm py-2"
         : isHeroPage
-          ? "bg-transparent py-4"
+          ? "bg-slate-950/60 backdrop-blur-sm py-4"
           : "bg-background/95 backdrop-blur-xl border-b border-border/40 py-3"
     )}>
 
