@@ -152,7 +152,7 @@ export function HeroSection() {
 
             {/* BADGE */}
             <div
-              className="inline-flex items-center gap-2.5 mb-8 px-5 py-2.5 rounded-full border text-sm font-bold"
+              className="inline-flex items-center gap-2.5 mb-4 px-5 py-2.5 rounded-full border text-sm font-bold"
               style={{
                 background: 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(16,185,129,0.1))',
                 borderColor: 'rgba(59,130,246,0.3)',
@@ -163,6 +163,21 @@ export function HeroSection() {
               <Scale className="w-4 h-4" />
               <span>المنصة الأولى للباحث القانوني في اليمن</span>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            </div>
+
+            {/* اسم صاحب المنصة */}
+            <div
+              className="inline-flex items-center gap-2 mb-8 px-4 py-2 rounded-full text-xs font-black"
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: 'rgba(255,255,255,0.5)',
+                animation: 'fadeSlideDown 0.7s 0.1s cubic-bezier(0.16,1,0.3,1) both',
+              }}
+            >
+              <span>✍️</span>
+              <span>إعداد وتطوير: </span>
+              <span style={{ color: 'hsl(217 91% 75%)', fontWeight: 900 }}>أ. معين الناصر</span>
             </div>
 
             {/* HEADLINE */}
