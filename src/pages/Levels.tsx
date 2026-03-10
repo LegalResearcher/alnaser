@@ -76,16 +76,24 @@ const Levels = () => {
   const { data: questionCounts = {} } = useCachedQuery<Record<string, number>>(
     ['question-counts-by-level'],
     async () => {
-      const { data, error } = await supabase
-        .from('questions')
-        .select('subjects(level_id)')
-        .eq('status', 'active');
-      if (error) throw error;
+      const { data: subjects } = await supabase
+        .from('subjects')
+        .select('id, level_id');
+      if (!subjects) return {};
+
       const counts: Record<string, number> = {};
-      (data as any[]).forEach((q) => {
-        const levelId = q.subjects?.level_id;
-        if (levelId) counts[levelId] = (counts[levelId] || 0) + 1;
-      });
+      await Promise.all(
+        subjects.map(async (subj: { id: string; level_id: string }) => {
+          const { count } = await supabase
+            .from('questions')
+            .select('id', { count: 'exact', head: true })
+            .eq('subject_id', subj.id)
+            .eq('status', 'active');
+          if (count && subj.level_id) {
+            counts[subj.level_id] = (counts[subj.level_id] || 0) + count;
+          }
+        })
+      );
       return counts;
     }
   );
