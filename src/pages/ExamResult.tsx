@@ -7,7 +7,7 @@ import { useLocation, useNavigate, Link } from 'react-router-dom';
 import {
   CheckCircle, XCircle, Clock, Target,
   RotateCcw, Home, Share2, Eye, EyeOff,
-  Trophy, Medal, AlertCircle, ChevronDown, Sparkles, Zap, Download, Loader2, Star
+  Trophy, Medal, AlertCircle, ChevronDown, Sparkles, Zap, Download, Loader2, Star, Award
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
