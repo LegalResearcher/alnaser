@@ -27,6 +27,7 @@ const ExamResult    = lazy(() => import("./pages/ExamResult"));
 const Privacy          = lazy(() => import("./pages/Privacy")); // ← جديد
 const StudentProgress  = lazy(() => import("./pages/StudentProgress"));
 const DiagnosticTest   = lazy(() => import("./pages/DiagnosticTest"));
+const About            = lazy(() => import("./pages/About"));
 
 // صفحات الإدارة — Lazy Loading
 const AdminLogin            = lazy(() => import("./pages/admin/AdminLogin"));
@@ -80,7 +81,8 @@ const App = () => (
                     <Route path="/exam/:subjectId" element={<ExamStart />} />
                     <Route path="/exam/:subjectId/start"  element={<ExamPage />} />
                     <Route path="/exam/:subjectId/result" element={<ExamResult />} />
-                    <Route path="/privacy"        element={<Privacy />} /> {/* ← جديد */}
+                    <Route path="/about" element={<About />} />
+          <Route path="/privacy"        element={<Privacy />} /> {/* ← جديد */}
                     <Route path="/progress"       element={<StudentProgress />} />
                     <Route path="/diagnostic"     element={<DiagnosticTest />} />
 
