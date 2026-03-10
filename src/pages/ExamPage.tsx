@@ -244,6 +244,40 @@ const ExamPage = () => {
     </MainLayout>
   );
 
+  // دوال المشاركة
+  const getShareData = () => {
+    const url = `${window.location.origin}/exam/${subjectId}`;
+    const text = `📚 سؤال من ${state?.subjectName || 'اختبار قانوني'}\n\n${questions[currentIndex]?.question_text || ''}\n\nجرب إجابته على منصة الناصر القانونية:\n${url}`;
+    return { url, text };
+  };
+
+  const handleShareWhatsapp = () => {
+    const { text } = getShareData();
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    setShowShareMenu(false);
+  };
+
+  const handleShareTelegram = () => {
+    const { url } = getShareData();
+    window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(questions[currentIndex]?.question_text || '')}`, '_blank');
+    setShowShareMenu(false);
+  };
+
+  const handleShareTwitter = () => {
+    const { text } = getShareData();
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+    setShowShareMenu(false);
+  };
+
+  const handleCopyLink = () => {
+    const { url } = getShareData();
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+    setShowShareMenu(false);
+  };
+
   const currentQuestion = questions[currentIndex];
   const answeredCount = Object.keys(answers).length;
   const progressPct = (answeredCount / questions.length) * 100;
