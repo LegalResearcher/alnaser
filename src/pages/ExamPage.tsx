@@ -187,7 +187,7 @@ const ExamPage = () => {
       if (error) throw error;
       return (data as Question[]).sort(() => Math.random() - 0.5);
     },
-    enabled: !!subjectId && !!state?.examYear,
+    enabled: !!subjectId && (!!state?.examYear || !!state?.isTrial || !!state?.allQuestions),
   });
 
   const { data: subject } = useCachedQuery(
