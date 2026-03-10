@@ -224,6 +224,51 @@ export type Database = {
         }
         Relationships: []
       }
+      student_profiles: {
+        Row: {
+          badges: Json
+          best_score: number
+          created_at: string
+          current_streak: number
+          id: string
+          last_exam_date: string | null
+          longest_streak: number
+          student_name: string
+          total_correct: number
+          total_exams: number
+          total_questions_answered: number
+          updated_at: string
+        }
+        Insert: {
+          badges?: Json
+          best_score?: number
+          created_at?: string
+          current_streak?: number
+          id?: string
+          last_exam_date?: string | null
+          longest_streak?: number
+          student_name: string
+          total_correct?: number
+          total_exams?: number
+          total_questions_answered?: number
+          updated_at?: string
+        }
+        Update: {
+          badges?: Json
+          best_score?: number
+          created_at?: string
+          current_streak?: number
+          id?: string
+          last_exam_date?: string | null
+          longest_streak?: number
+          student_name?: string
+          total_correct?: number
+          total_exams?: number
+          total_questions_answered?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       subjects: {
         Row: {
           allow_time_modification: boolean
@@ -334,6 +379,15 @@ export type Database = {
       }
       is_admin_or_editor: { Args: { _user_id: string }; Returns: boolean }
       soft_delete_questions: { Args: { p_ids: string[] }; Returns: number }
+      update_student_profile: {
+        Args: {
+          p_passed: boolean
+          p_score: number
+          p_student_name: string
+          p_total_questions: number
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "editor"
