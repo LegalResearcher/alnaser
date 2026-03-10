@@ -4,7 +4,7 @@
  */
 
 import { Link } from 'react-router-dom';
-import { ArrowLeft, BookOpen, GraduationCap, ChevronLeft, Sparkles } from 'lucide-react';
+import { ArrowLeft, BookOpen, GraduationCap, ChevronLeft, Sparkles, Layers, HelpCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Level } from '@/types/database';
 import { useCachedQuery } from '@/hooks/useCachedQuery';
@@ -52,6 +52,43 @@ export function LevelsPreview() {
       const { data, error } = await supabase.from('levels').select('*').order('order_index');
       if (error) throw error;
       return data as Level[];
+    }
+  );
+
+  // جلب عدد المواد لكل مستوى
+  const { data: subjectCounts = {} } = useCachedQuery<Record<string, number>>(
+    ['subject-counts'],
+    async () => {
+      const { data, error } = await supabase.from('subjects').select('level_id');
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      data.forEach((s: { level_id: string }) => {
+        counts[s.level_id] = (counts[s.level_id] || 0) + 1;
+      });
+      return counts;
+    }
+  );
+
+  // جلب إجمالي عدد الأسئلة لكل مستوى
+  const { data: questionCounts = {} } = useCachedQuery<Record<string, number>>(
+    ['question-counts-by-level'],
+    async () => {
+      const { data: subjects } = await supabase.from('subjects').select('id, level_id');
+      if (!subjects) return {};
+      const counts: Record<string, number> = {};
+      await Promise.all(
+        subjects.map(async (subj: { id: string; level_id: string }) => {
+          const { count } = await supabase
+            .from('questions')
+            .select('id', { count: 'exact', head: true })
+            .eq('subject_id', subj.id)
+            .eq('status', 'active');
+          if (count && subj.level_id) {
+            counts[subj.level_id] = (counts[subj.level_id] || 0) + count;
+          }
+        })
+      );
+      return counts;
     }
   );
 
@@ -143,11 +180,18 @@ export function LevelsPreview() {
                       <span className="relative font-cairo font-black text-3xl text-white drop-shadow-md">{i + 1}</span>
                     </div>
 
-                    {/* شارة المستوى */}
-                    <div className="absolute bottom-4 right-5 flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black text-white uppercase tracking-wider"
-                      style={{ background: 'rgba(0,0,0,0.2)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.2)' }}>
-                      <Sparkles className="w-2.5 h-2.5" />
-                      {cfg.tag}
+                    {/* شارات المواد والأسئلة */}
+                    <div className="absolute top-4 left-4 flex flex-col gap-1.5">
+                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black text-white"
+                        style={{ background: 'rgba(0,0,0,0.2)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.2)' }}>
+                        <Layers className="w-3 h-3" />
+                        {subjectCounts[level.id] || 0} مادة
+                      </div>
+                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black text-white"
+                        style={{ background: 'rgba(0,0,0,0.2)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.2)' }}>
+                        <HelpCircle className="w-3 h-3" />
+                        {(questionCounts[level.id] || 0).toLocaleString('ar-EG')} سؤال
+                      </div>
                     </div>
 
                     {/* توهج داخلي عند hover */}
