@@ -687,6 +687,7 @@ const AdminQuestions = () => {
                     <SelectValue placeholder="اختر السنة" />
                   </SelectTrigger>
                   <SelectContent className="z-[10001] bg-white border border-slate-200 shadow-xl rounded-xl max-h-[200px] overflow-y-auto">
+                    <SelectItem value="trial" className="text-violet-600 font-black">🧪 تجريبي</SelectItem>
                     {EXAM_YEARS.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}
                   </SelectContent>
                 </Select>
