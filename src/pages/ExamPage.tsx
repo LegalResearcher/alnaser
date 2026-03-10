@@ -375,7 +375,7 @@ const ExamPage = () => {
                     {currentIndex + 1}
                   </div>
                   <span className="inline-flex items-center px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 text-[9px] md:text-[10px] font-black tracking-widest">
-                    اختبار عام {state.examYear} {state.examForm === 'Parallel' ? '· موازي' : ''}
+                    {state.isTrial ? '🧪 النموذج التجريبي' : state.allQuestions ? '📚 جميع الأسئلة' : `اختبار عام ${state.examYear} ${state.examForm === 'Parallel' ? '· موازي' : ''}`}
                   </span>
                 </div>
 
