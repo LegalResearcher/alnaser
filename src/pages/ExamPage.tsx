@@ -211,11 +211,47 @@ const ExamPage = () => {
     const passed = Math.round((finalScore / totalQuestions) * 100) >= (subject?.passing_score || 60);
     const timeTaken = totalTime - timeLeft;
     try {
+      const scorePercentage = Math.round((finalScore / totalQuestions) * 100);
       await supabase.from('exam_results').insert({
         subject_id: subjectId, student_name: state.studentName, score: finalScore,
         total_questions: totalQuestions, passing_score: subject?.passing_score || 60,
         passed, exam_year: state.isTrial ? null : (state.allQuestions ? null : state.examYear), time_taken_seconds: timeTaken, answers,
       });
+
+      // تحديث ملف الطالب الشخصي
+      await supabase.rpc('update_student_profile', {
+        p_student_name: state.studentName,
+        p_score: finalScore,
+        p_total_questions: totalQuestions,
+        p_passed: passed,
+      }).catch(() => {});
+
+      // منح الشارات المستحقة
+      try {
+        const { data: prof } = await supabase
+          .from('student_profiles')
+          .select('total_exams, best_score, badges, current_streak')
+          .eq('student_name', state.studentName)
+          .maybeSingle();
+        if (prof) {
+          const newBadges: string[] = [];
+          if (prof.total_exams === 1) newBadges.push('first_exam');
+          if (scorePercentage === 100) newBadges.push('perfect');
+          if (scorePercentage >= 90) newBadges.push('score_90');
+          if (prof.total_exams >= 10) newBadges.push('exams_10');
+          if (prof.total_exams >= 50) newBadges.push('exams_50');
+          if (prof.current_streak >= 3) newBadges.push('streak_3');
+          if (prof.current_streak >= 7) newBadges.push('streak_7');
+          if (newBadges.length > 0) {
+            const existing = (prof.badges as string[]) || [];
+            const merged = [...new Set([...existing, ...newBadges])];
+            await supabase
+              .from('student_profiles')
+              .update({ badges: merged })
+              .eq('student_name', state.studentName);
+          }
+        }
+      } catch { /* تجاهل أخطاء الشارات */ }
     } catch (e) { console.error(e); }
     navigate(`/exam/${subjectId}/result`, {
       state: {

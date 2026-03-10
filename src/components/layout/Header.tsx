@@ -12,10 +12,12 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import logoImage from '@/assets/logo.jpg';
 
 const navLinks = [
-  { href: '/',         label: 'الرئيسية' },
-  { href: '/levels',   label: 'المستويات' },
-  { href: '/#faq',     label: 'الأسئلة الشائعة' },
-  { href: '/#contact', label: 'تواصل معنا' },
+  { href: '/',           label: 'الرئيسية' },
+  { href: '/levels',     label: 'المستويات' },
+  { href: '/diagnostic', label: 'التشخيص' },
+  { href: '/progress',   label: 'تقدمي' },
+  { href: '/#faq',       label: 'الأسئلة الشائعة' },
+  { href: '/#contact',   label: 'تواصل معنا' },
 ];
 
 export function Header() {

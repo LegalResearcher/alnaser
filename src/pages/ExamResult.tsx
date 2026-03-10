@@ -12,6 +12,7 @@ import {
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate as useNav2 } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Question } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';

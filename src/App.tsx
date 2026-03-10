@@ -81,6 +81,8 @@ const App = () => (
                     <Route path="/exam/:subjectId/start"  element={<ExamPage />} />
                     <Route path="/exam/:subjectId/result" element={<ExamResult />} />
                     <Route path="/privacy"        element={<Privacy />} /> {/* ← جديد */}
+                    <Route path="/progress"       element={<StudentProgress />} />
+                    <Route path="/diagnostic"     element={<DiagnosticTest />} />
 
                     {/* ── صفحات الإدارة ── */}
                     <Route path="/admin/login"             element={<AdminLogin />} />

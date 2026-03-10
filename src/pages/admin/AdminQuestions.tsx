@@ -295,7 +295,11 @@ const AdminQuestions = () => {
     queryFn: async () => {
       let query = supabase.from('questions').select('*').eq('status', 'active').order('created_at', { ascending: false });
       if (selectedSubject) query = query.eq('subject_id', selectedSubject);
-      if (selectedYear) query = query.eq('exam_year', parseInt(selectedYear));
+      if (selectedYear === 'trial') {
+        query = query.is('exam_year', null);
+      } else if (selectedYear) {
+        query = query.eq('exam_year', parseInt(selectedYear));
+      }
       if (selectedExamForm) query = query.eq('exam_form', selectedExamForm);
       const { data } = await query;
       return data as Question[];
