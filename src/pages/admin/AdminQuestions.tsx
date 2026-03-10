@@ -347,7 +347,7 @@ const AdminQuestions = () => {
         option_c: data.option_c || "",
         option_d: data.option_d || "",
         correct_option: data.correct_option,
-        exam_year: data.exam_year ? parseInt(data.exam_year) : null,
+        exam_year: (data.exam_year && data.exam_year !== 'trial') ? parseInt(data.exam_year) : null,
         exam_form: data.exam_form || 'General',
         created_by: user?.id,
         status: 'active' as const

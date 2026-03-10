@@ -212,7 +212,7 @@ const ExamPage = () => {
       await supabase.from('exam_results').insert({
         subject_id: subjectId, student_name: state.studentName, score: finalScore,
         total_questions: totalQuestions, passing_score: subject?.passing_score || 60,
-        passed, exam_year: state.examYear, time_taken_seconds: timeTaken, answers,
+        passed, exam_year: state.isTrial ? null : (state.allQuestions ? null : state.examYear), time_taken_seconds: timeTaken, answers,
       });
     } catch (e) { console.error(e); }
     navigate(`/exam/${subjectId}/result`, {

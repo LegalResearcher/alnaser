@@ -340,6 +340,25 @@ const ExamStart = () => {
               </div>
               )}
 
+              {selectedYear === 'trial' && (
+                <div className="flex items-center gap-3 bg-violet-50 border border-violet-100 rounded-[1rem] px-4 py-3">
+                  <span className="text-2xl">🧪</span>
+                  <div>
+                    <p className="text-xs font-black text-violet-700">النموذج التجريبي</p>
+                    <p className="text-[10px] text-violet-500 font-bold">أسئلة تدريبية إضافية خارج دورات السنوات</p>
+                  </div>
+                </div>
+              )}
+              {selectedYear === 'all' && (
+                <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-[1rem] px-4 py-3">
+                  <span className="text-2xl">📚</span>
+                  <div>
+                    <p className="text-xs font-black text-emerald-700">جميع الأسئلة</p>
+                    <p className="text-[10px] text-emerald-500 font-bold">جميع أسئلة المادة من كل الدورات مخلوطة عشوائياً</p>
+                  </div>
+                </div>
+              )}
+
               {/* Available questions */}
               <div className="flex items-center justify-between bg-slate-900 rounded-[1rem] px-6 py-4">
                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">الأسئلة المتوفرة</span>
