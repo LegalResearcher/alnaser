@@ -164,6 +164,8 @@ const ExamPage = () => {
   const [showConfetti, setShowConfetti] = useState(false);
   const [shakeCard, setShakeCard] = useState(false);
   const [slideDir, setSlideDir] = useState<'right' | 'left'>('right');
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [animKey, setAnimKey] = useState(0);
   const [showScoreFloat, setShowScoreFloat] = useState(false);
 
