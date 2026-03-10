@@ -2,6 +2,7 @@ import { ReactNode, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Header } from './Header';
 import { Footer } from './Footer';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -16,6 +17,25 @@ export function MainLayout({ children }: MainLayoutProps) {
   // التأكد من صعود الصفحة للأعلى عند تغيير المسار (UX احترافي)
   useEffect(() => {
     window.scrollTo(0, 0);
+  }, [pathname]);
+
+  // تسجيل الزيارة عند كل تغيير في المسار
+  useEffect(() => {
+    const trackVisit = async () => {
+      try {
+        // معرف فريد للزائر محفوظ في localStorage
+        let visitorId = localStorage.getItem('visitor_id');
+        if (!visitorId) {
+          visitorId = crypto.randomUUID();
+          localStorage.setItem('visitor_id', visitorId);
+        }
+        await supabase.from('site_analytics').insert({
+          page_path: pathname,
+          visitor_id: visitorId,
+        });
+      } catch { /* تجاهل أخطاء التتبع */ }
+    };
+    trackVisit();
   }, [pathname]);
 
   return (
