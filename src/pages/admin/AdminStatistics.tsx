@@ -1,5 +1,5 @@
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { BarChart3, TrendingUp, Users, BookOpen, Calendar } from 'lucide-react';
+import { BarChart3, TrendingUp, Users, BookOpen, Calendar, Eye, Layers } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -57,6 +57,37 @@ const AdminStatistics = () => {
           { name: 'راسب', value: failed },
         ],
       };
+    },
+  });
+
+  // جلب زيارات كل مستوى من site_analytics
+  const { data: levelVisits, isLoading: levelsLoading } = useQuery({
+    queryKey: ['level-visits-stats'],
+    queryFn: async () => {
+      const { data: levels } = await supabase
+        .from('levels')
+        .select('id, name')
+        .order('order_index');
+
+      const { data: analytics } = await supabase
+        .from('site_analytics')
+        .select('page_path')
+        .like('page_path', '/levels/%');
+
+      const visitMap: Record<string, number> = {};
+      analytics?.forEach((row) => {
+        const parts = row.page_path.split('/');
+        const levelId = parts[2];
+        if (levelId) {
+          visitMap[levelId] = (visitMap[levelId] || 0) + 1;
+        }
+      });
+
+      return (levels || []).map((level) => ({
+        id: level.id,
+        name: level.name,
+        visits: visitMap[level.id] || 0,
+      })).sort((a, b) => b.visits - a.visits);
     },
   });
 
@@ -194,6 +225,54 @@ const AdminStatistics = () => {
               </ResponsiveContainer>
             </div>
           </div>
+        </div>
+
+        {/* زيارات المستويات */}
+        <div className="bg-card rounded-xl border p-4 sm:p-5">
+          <h3 className="font-bold mb-4 flex items-center gap-2 text-sm sm:text-base">
+            <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+            الزيارات الفعلية حسب المستوى
+          </h3>
+          {levelsLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-14 rounded-xl" />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {levelVisits?.map((level, index) => {
+                const maxVisits = Math.max(...(levelVisits.map(l => l.visits)), 1);
+                const percentage = Math.round((level.visits / maxVisits) * 100);
+                const colors = ['bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-purple-500', 'bg-pink-500', 'bg-indigo-500'];
+                const color = colors[index % colors.length];
+                return (
+                  <div key={level.id} className="flex items-center gap-3 sm:gap-4 p-3 rounded-xl bg-muted/40 hover:bg-muted/70 transition-colors">
+                    <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg ${color} flex items-center justify-center shrink-0`}>
+                      <Layers className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="font-semibold text-sm truncate">{level.name}</span>
+                        <span className="font-bold text-sm shrink-0 mr-2">
+                          {level.visits.toLocaleString('ar-SA')} زيارة
+                        </span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full ${color} transition-all duration-700`}
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {(!levelVisits || levelVisits.length === 0) && (
+                <p className="text-center text-muted-foreground text-sm py-8">لا توجد بيانات زيارات بعد</p>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </AdminLayout>
