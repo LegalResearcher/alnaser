@@ -212,7 +212,6 @@ const ExamPage = () => {
     const timeTaken = totalTime - timeLeft;
     try {
       const scorePercentage = Math.round((finalScore / totalQuestions) * 100);
-      const scorePercentage = Math.round((finalScore / totalQuestions) * 100);
       await supabase.from('exam_results').insert({
         subject_id: subjectId, student_name: state.studentName, score: finalScore,
         total_questions: totalQuestions, passing_score: subject?.passing_score || 60,
@@ -220,12 +219,14 @@ const ExamPage = () => {
       });
 
       // تحديث ملف الطالب الشخصي
-      await supabase.rpc('update_student_profile', {
-        p_student_name: state.studentName,
-        p_score: finalScore,
-        p_total_questions: totalQuestions,
-        p_passed: passed,
-      }).catch(() => {});
+      try {
+        await supabase.rpc('update_student_profile', {
+          p_student_name: state.studentName,
+          p_score: finalScore,
+          p_total_questions: totalQuestions,
+          p_passed: passed,
+        });
+      } catch { /* تجاهل */ }
 
       // منح الشارات المستحقة
       try {
