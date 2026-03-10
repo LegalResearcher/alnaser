@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, BookOpen, GraduationCap, Layers, Sparkles, ShieldOff } from 'lucide-react';
+import { ArrowLeft, BookOpen, GraduationCap, Layers, Sparkles, ShieldOff, HelpCircle } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { Level } from '@/types/database';
@@ -55,6 +55,7 @@ const Levels = () => {
   );
 
   // جلب عدد المواد لكل مستوى لزيادة المصداقية
+
   const { data: subjectCounts = {} } = useCachedQuery<Record<string, number>>(
     ['subject-counts'],
     async () => {
@@ -66,6 +67,24 @@ const Levels = () => {
       const counts: Record<string, number> = {};
       data.forEach((s: { level_id: string }) => {
         counts[s.level_id] = (counts[s.level_id] || 0) + 1;
+      });
+      return counts;
+    }
+  );
+
+  // جلب إجمالي عدد الأسئلة لكل مستوى
+  const { data: questionCounts = {} } = useCachedQuery<Record<string, number>>(
+    ['question-counts-by-level'],
+    async () => {
+      const { data, error } = await supabase
+        .from('questions')
+        .select('subjects(level_id)')
+        .eq('status', 'active');
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      (data as any[]).forEach((q) => {
+        const levelId = q.subjects?.level_id;
+        if (levelId) counts[levelId] = (counts[levelId] || 0) + 1;
       });
       return counts;
     }
@@ -144,11 +163,15 @@ const Levels = () => {
                           </div>
                         </div>
 
-                        {/* شارة عدد المواد */}
-                        <div className="absolute top-4 md:top-6 left-4 md:left-8">
+                        {/* شارة عدد المواد وعدد الأسئلة */}
+                        <div className="absolute top-4 md:top-6 left-4 md:left-8 flex flex-col gap-1.5">
                           <span className="bg-black/10 backdrop-blur-sm text-white text-[9px] md:text-[10px] font-black uppercase tracking-widest px-3 md:px-4 py-1 md:py-1.5 rounded-full border border-white/10 flex items-center gap-1.5 md:gap-2">
-                            <Layers className="w-3 h-3 md:w-3.5 md:h-3.5 text-primary" />
+                            <Layers className="w-3 h-3 md:w-3.5 md:h-3.5" />
                             {subjectCounts[level.id] || 0} مادة
+                          </span>
+                          <span className="bg-black/10 backdrop-blur-sm text-white text-[9px] md:text-[10px] font-black uppercase tracking-widest px-3 md:px-4 py-1 md:py-1.5 rounded-full border border-white/10 flex items-center gap-1.5 md:gap-2">
+                            <HelpCircle className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                            {(questionCounts[level.id] || 0).toLocaleString('ar-EG')} سؤال
                           </span>
                         </div>
                       </div>
