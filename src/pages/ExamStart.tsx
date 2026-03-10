@@ -99,8 +99,14 @@ const ExamStart = () => {
         .select('*', { count: 'exact', head: true })
         .eq('subject_id', subjectId)
         .eq('status', 'active');
-      if (selectedYear)     query = query.eq('exam_year', parseInt(selectedYear));
-      if (selectedExamForm) query = query.eq('exam_form', selectedExamForm);
+      if (selectedYear === 'trial') {
+        query = query.is('exam_year', null);
+      } else if (selectedYear === 'all') {
+        // جميع الأسئلة — لا فلتر
+      } else if (selectedYear) {
+        query = query.eq('exam_year', parseInt(selectedYear));
+        if (selectedExamForm && selectedExamForm !== 'Mixed') query = query.eq('exam_form', selectedExamForm);
+      }
       const { count, error } = await query;
       if (error) throw error;
       return count || 0;
