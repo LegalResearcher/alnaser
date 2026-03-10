@@ -242,7 +242,7 @@ export function HeroSection() {
                 </button>
               </Link>
 
-              <Link to="/#about">
+              <Link to="/about">
                 <button
                   className="inline-flex items-center gap-3 px-8 py-4 rounded-2xl font-bold text-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.97]"
                   style={{
