@@ -60,20 +60,20 @@ const LevelSubjects = () => {
   );
 
   // جلب عدد الأسئلة الفعلي لكل مادة
-  const { data: questionCounts = {} } = useQuery({
-    queryKey: ['question-counts', levelId, subjects.map(s => s.id)],
+  const { data: questionCounts = {}, isLoading: countsLoading } = useQuery({
+    queryKey: ['question-counts', levelId, subjects.map(s => s.id).join(',')],
     queryFn: async () => {
       const counts: Record<string, number> = {};
-      for (const subject of subjects) {
-        const { count, error } = await supabase
-          .from('questions')
-          .select('*', { count: 'exact', head: true })
-          .eq('subject_id', subject.id)
-          .eq('status', 'active');
-        if (!error) {
-          counts[subject.id] = count || 0;
-        }
-      }
+      await Promise.all(
+        subjects.map(async (subject) => {
+          const { count, error } = await supabase
+            .from('questions')
+            .select('id', { count: 'exact', head: true })
+            .eq('subject_id', subject.id)
+            .eq('status', 'active');
+          if (!error) counts[subject.id] = count || 0;
+        })
+      );
       return counts;
     },
     enabled: subjects.length > 0
@@ -177,7 +177,11 @@ const LevelSubjects = () => {
                           <Target className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary/70" />
                         </div>
                         <span className="text-[10px] md:text-[11px] font-black uppercase tracking-tighter">
-                          {questionCounts[subject.id] !== undefined ? questionCounts[subject.id] : subject.questions_per_exam} سؤال
+                          {countsLoading ? (
+                            <span className="inline-block w-8 h-3 bg-slate-200 animate-pulse rounded" />
+                          ) : (
+                            <>{questionCounts[subject.id] ?? 0} سؤال</>
+                          )}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 md:gap-3 text-slate-400 group-hover:text-slate-600 transition-colors">
