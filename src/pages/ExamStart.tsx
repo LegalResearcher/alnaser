@@ -147,12 +147,14 @@ const ExamStart = () => {
     navigate(`/exam/${subjectId}/start`, {
       state: {
         studentName,
-        examYear:       parseInt(selectedYear),
-        examForm:       selectedExamForm,
+        examYear:       (selectedYear === 'trial' || selectedYear === 'all') ? 0 : parseInt(selectedYear),
+        examForm:       selectedYear === 'trial' ? 'Trial' : selectedYear === 'all' ? 'All' : selectedExamForm,
         examTime,
         questionsCount: questionCount,
         subjectName:    subject?.name,
         levelName:      subject?.levels?.name,
+        isTrial:        selectedYear === 'trial',
+        allQuestions:   selectedYear === 'all',
       },
     });
   };
