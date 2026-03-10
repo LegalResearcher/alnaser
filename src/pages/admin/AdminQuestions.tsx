@@ -347,7 +347,7 @@ const AdminQuestions = () => {
         option_c: data.option_c || "",
         option_d: data.option_d || "",
         correct_option: data.correct_option,
-        exam_year: data.exam_year ? parseInt(data.exam_year) : null,
+        exam_year: (data.exam_year && data.exam_year !== 'trial') ? parseInt(data.exam_year) : null,
         exam_form: data.exam_form || 'General',
         created_by: user?.id,
         status: 'active' as const
@@ -687,6 +687,7 @@ const AdminQuestions = () => {
                     <SelectValue placeholder="اختر السنة" />
                   </SelectTrigger>
                   <SelectContent className="z-[10001] bg-white border border-slate-200 shadow-xl rounded-xl max-h-[200px] overflow-y-auto">
+                    <SelectItem value="trial" className="text-violet-600 font-black">🧪 تجريبي</SelectItem>
                     {EXAM_YEARS.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}
                   </SelectContent>
                 </Select>

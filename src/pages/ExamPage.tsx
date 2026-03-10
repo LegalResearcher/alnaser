@@ -31,6 +31,8 @@ interface ExamState {
   studentName: string;
   examYear: number;
   examForm?: string;
+  isTrial?: boolean;
+  allQuestions?: boolean;
   examTime: number;
   questionsCount: number;
   subjectName?: string;
@@ -173,13 +175,19 @@ const ExamPage = () => {
     queryKey: ['exam-questions', subjectId, state?.examYear, state?.examForm, state?.questionsCount],
     queryFn: async () => {
       let query = supabase.from('questions').select('*').eq('subject_id', subjectId).eq('status', 'active');
-      if (state.examYear) query = query.eq('exam_year', state.examYear);
-      if (state.examForm && state.examForm !== 'Mixed') query = query.eq('exam_form', state.examForm);
+      if (!state?.allQuestions) {
+        if (state?.isTrial) {
+          query = query.is('exam_year', null);
+        } else {
+          if (state.examYear) query = query.eq('exam_year', state.examYear);
+          if (state.examForm && state.examForm !== 'Mixed') query = query.eq('exam_form', state.examForm);
+        }
+      }
       const { data, error } = await query;
       if (error) throw error;
       return (data as Question[]).sort(() => Math.random() - 0.5);
     },
-    enabled: !!subjectId && !!state?.examYear,
+    enabled: !!subjectId && (!!state?.examYear || !!state?.isTrial || !!state?.allQuestions),
   });
 
   const { data: subject } = useCachedQuery(
@@ -204,7 +212,7 @@ const ExamPage = () => {
       await supabase.from('exam_results').insert({
         subject_id: subjectId, student_name: state.studentName, score: finalScore,
         total_questions: totalQuestions, passing_score: subject?.passing_score || 60,
-        passed, exam_year: state.examYear, time_taken_seconds: timeTaken, answers,
+        passed, exam_year: state.isTrial ? null : (state.allQuestions ? null : state.examYear), time_taken_seconds: timeTaken, answers,
       });
     } catch (e) { console.error(e); }
     navigate(`/exam/${subjectId}/result`, {
@@ -367,7 +375,7 @@ const ExamPage = () => {
                     {currentIndex + 1}
                   </div>
                   <span className="inline-flex items-center px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 text-[9px] md:text-[10px] font-black tracking-widest">
-                    اختبار عام {state.examYear} {state.examForm === 'Parallel' ? '· موازي' : ''}
+                    {state.isTrial ? '🧪 النموذج التجريبي' : state.allQuestions ? '📚 جميع الأسئلة' : `اختبار عام ${state.examYear} ${state.examForm === 'Parallel' ? '· موازي' : ''}`}
                   </span>
                 </div>
 

@@ -99,8 +99,14 @@ const ExamStart = () => {
         .select('*', { count: 'exact', head: true })
         .eq('subject_id', subjectId)
         .eq('status', 'active');
-      if (selectedYear)     query = query.eq('exam_year', parseInt(selectedYear));
-      if (selectedExamForm) query = query.eq('exam_form', selectedExamForm);
+      if (selectedYear === 'trial') {
+        query = query.is('exam_year', null);
+      } else if (selectedYear === 'all') {
+        // جميع الأسئلة — لا فلتر
+      } else if (selectedYear) {
+        query = query.eq('exam_year', parseInt(selectedYear));
+        if (selectedExamForm && selectedExamForm !== 'Mixed') query = query.eq('exam_form', selectedExamForm);
+      }
       const { count, error } = await query;
       if (error) throw error;
       return count || 0;
@@ -141,12 +147,14 @@ const ExamStart = () => {
     navigate(`/exam/${subjectId}/start`, {
       state: {
         studentName,
-        examYear:       parseInt(selectedYear),
-        examForm:       selectedExamForm,
+        examYear:       (selectedYear === 'trial' || selectedYear === 'all') ? 0 : parseInt(selectedYear),
+        examForm:       selectedYear === 'trial' ? 'Trial' : selectedYear === 'all' ? 'All' : selectedExamForm,
         examTime,
         questionsCount: questionCount,
         subjectName:    subject?.name,
         levelName:      subject?.levels?.name,
+        isTrial:        selectedYear === 'trial',
+        allQuestions:   selectedYear === 'all',
       },
     });
   };
@@ -292,16 +300,23 @@ const ExamStart = () => {
                     <SelectValue placeholder="اختر السنة" />
                   </SelectTrigger>
                   <SelectContent className="z-[9999] bg-white border-slate-200 rounded-2xl shadow-2xl max-h-[280px]">
+                    <SelectItem value="trial" className="h-11 rounded-xl font-bold cursor-pointer text-violet-600">
+                      🧪 النموذج التجريبي
+                    </SelectItem>
                     {EXAM_YEARS.map((year) => (
                       <SelectItem key={year} value={year.toString()} className="h-11 rounded-xl font-bold cursor-pointer">
                         دورة عام {year}
                       </SelectItem>
                     ))}
+                    <SelectItem value="all" className="h-11 rounded-xl font-bold cursor-pointer text-emerald-600">
+                      📚 الكل
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Form selector */}
+              {/* Form selector — يُخفى في التجريبي والكل */}
+              {selectedYear !== 'trial' && selectedYear !== 'all' && (
               <div className="space-y-2">
                 <FieldLabel>
                   <span className="inline-flex items-center gap-1.5">
@@ -323,6 +338,26 @@ const ExamStart = () => {
                   </SelectContent>
                 </Select>
               </div>
+              )}
+
+              {selectedYear === 'trial' && (
+                <div className="flex items-center gap-3 bg-violet-50 border border-violet-100 rounded-[1rem] px-4 py-3">
+                  <span className="text-2xl">🧪</span>
+                  <div>
+                    <p className="text-xs font-black text-violet-700">النموذج التجريبي</p>
+                    <p className="text-[10px] text-violet-500 font-bold">أسئلة تدريبية إضافية خارج دورات السنوات</p>
+                  </div>
+                </div>
+              )}
+              {selectedYear === 'all' && (
+                <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-[1rem] px-4 py-3">
+                  <span className="text-2xl">📚</span>
+                  <div>
+                    <p className="text-xs font-black text-emerald-700">جميع الأسئلة</p>
+                    <p className="text-[10px] text-emerald-500 font-bold">جميع أسئلة المادة من كل الدورات مخلوطة عشوائياً</p>
+                  </div>
+                </div>
+              )}
 
               {/* Available questions */}
               <div className="flex items-center justify-between bg-slate-900 rounded-[1rem] px-6 py-4">
