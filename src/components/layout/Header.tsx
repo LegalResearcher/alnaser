@@ -4,8 +4,8 @@
  */
 
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, ArrowLeft, Scale } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Menu, X, ArrowLeft, Scale, Download, Smartphone, CheckCircle } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -42,6 +42,44 @@ export function Header() {
 
   // إغلاق القائمة عند تغيير المسار
   useEffect(() => { setIsMenuOpen(false); }, [location.pathname]);
+
+
+  // ── منطق تثبيت PWA ──
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled]       = useState(false);
+  const [isInstalling, setIsInstalling]     = useState(false);
+
+  useEffect(() => {
+    // هل التطبيق مثبّت مسبقاً؟
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstalled(true);
+    }
+
+    // التقط حدث التثبيت قبل أن يُظهره المتصفح
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+
+    // عند اكتمال التثبيت
+    window.addEventListener('appinstalled', () => {
+      setIsInstalled(true);
+      setDeferredPrompt(null);
+    });
+
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!deferredPrompt) return;
+    setIsInstalling(true);
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') setIsInstalled(true);
+    setDeferredPrompt(null);
+    setIsInstalling(false);
+  };
 
   const isHeroPage = location.pathname === '/';
 
@@ -177,13 +215,44 @@ export function Header() {
                   </Link>
                 );
               })}
-              <div className="pt-3 mt-1 border-t border-border">
+              <div className="pt-3 mt-1 border-t border-border space-y-2">
                 <Link to="/levels" onClick={() => setIsMenuOpen(false)}>
                   <Button className="w-full h-12 rounded-2xl font-bold shadow-lg shadow-primary/20"
                     style={{ background: 'linear-gradient(135deg, hsl(217 91% 55%), hsl(199 89% 48%))' }}>
                     ابدأ الاختبار الآن
                   </Button>
                 </Link>
+              {/* زر تحميل التطبيق */}
+              {!isInstalled && (
+                <button
+                  onClick={() => { handleInstall(); setIsMenuOpen(false); }}
+                  disabled={!deferredPrompt || isInstalling}
+                  className="w-full mt-2 h-12 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all duration-300 border-2 border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 active:scale-95 disabled:opacity-50"
+                >
+                  {isInstalling ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                      جاري التثبيت...
+                    </>
+                  ) : !deferredPrompt ? (
+                    <>
+                      <Smartphone className="w-4 h-4" />
+                      افتح في المتصفح → القائمة → تثبيت
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4" />
+                      تحميل التطبيق
+                    </>
+                  )}
+                </button>
+              )}
+              {isInstalled && (
+                <div className="w-full mt-2 h-12 rounded-2xl font-bold flex items-center justify-center gap-2 bg-emerald-50 text-emerald-600 border-2 border-emerald-200">
+                  <CheckCircle className="w-4 h-4" />
+                  التطبيق مثبّت ✅
+                </div>
+              )}
               </div>
             </div>
           </nav>
