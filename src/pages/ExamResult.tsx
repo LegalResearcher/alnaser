@@ -383,6 +383,41 @@ const ExamResult = () => {
               </div>
             </div>
 
+            {/* بطاقة النقاط والشارات */}
+            <div className="bg-card rounded-3xl border border-border overflow-hidden">
+              <div className="p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Zap className="w-5 h-5 text-amber-500" />
+                  <h3 className="font-black text-foreground">مكاسب هذا الاختبار</h3>
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-black text-primary">+{earnedPoints}</span>
+                  <span className="text-muted-foreground font-bold text-sm">نقطة</span>
+                </div>
+              </div>
+              {newBadges.length > 0 && (
+                <div className="flex gap-2 px-5 pb-4">
+                  {newBadges.map((badge, i) => (
+                    <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs font-black">
+                      {badge.icon} {badge.label}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="px-5 pb-5 flex items-center gap-2">
+                <Award className="w-4 h-4 text-muted-foreground" />
+                <p className="text-xs text-muted-foreground font-bold">
+                  اعرض شاراتك الكاملة في{' '}
+                  <button
+                    onClick={() => navigate('/progress')}
+                    className="text-primary font-black hover:underline"
+                  >
+                    صفحة تقدمي
+                  </button>
+                </p>
+              </div>
+            </div>
+
             {/* ── قسم مراجعة الإجابات ── */}
             {showReview && (
               <div className="space-y-4 animate-in slide-in-from-bottom-4 fade-in duration-400">
