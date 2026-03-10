@@ -31,6 +31,8 @@ interface ExamState {
   studentName: string;
   examYear: number;
   examForm?: string;
+  isTrial?: boolean;
+  allQuestions?: boolean;
   examTime: number;
   questionsCount: number;
   subjectName?: string;
