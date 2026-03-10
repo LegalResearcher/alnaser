@@ -1,5 +1,5 @@
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { BarChart3, TrendingUp, Users, BookOpen, Calendar, Eye, Layers } from 'lucide-react';
+import { BarChart3, TrendingUp, Users, BookOpen, Calendar, Eye, Layers, XCircle, CheckCircle2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -18,12 +18,19 @@ const AdminStatistics = () => {
         supabase.from('subjects').select('id, name'),
       ]);
 
-      // Calculate exams per subject
       const subjectMap = new Map(subjects.data?.map(s => [s.id, s.name]) || []);
       const examsBySubject: Record<string, number> = {};
+      const passedBySubject: Record<string, number> = {};
+      const failedBySubject: Record<string, number> = {};
+
       results.data?.forEach((r: any) => {
         const name = subjectMap.get(r.subject_id) || 'غير معروف';
         examsBySubject[name] = (examsBySubject[name] || 0) + 1;
+        if (r.passed) {
+          passedBySubject[name] = (passedBySubject[name] || 0) + 1;
+        } else {
+          failedBySubject[name] = (failedBySubject[name] || 0) + 1;
+        }
       });
 
       const subjectData = Object.entries(examsBySubject)
@@ -31,7 +38,18 @@ const AdminStatistics = () => {
         .sort((a, b) => b.count - a.count)
         .slice(0, 6);
 
-      // Calculate daily exams
+      // أكثر المواد رسوباً (top 5)
+      const topFailed = Object.entries(failedBySubject)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+      // أكثر المواد نجاحاً (top 5)
+      const topPassed = Object.entries(passedBySubject)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
       const dailyExams: Record<string, number> = {};
       results.data?.forEach((r: any) => {
         const date = new Date(r.created_at).toLocaleDateString('ar-SA');
@@ -42,7 +60,6 @@ const AdminStatistics = () => {
         .slice(-7)
         .map(([date, count]) => ({ date, count }));
 
-      // Pass/Fail ratio
       const passed = results.data?.filter((r: any) => r.passed).length || 0;
       const failed = (results.data?.length || 0) - passed;
 
@@ -52,6 +69,8 @@ const AdminStatistics = () => {
         passRate: results.data?.length ? Math.round((passed / results.data.length) * 100) : 0,
         subjectData,
         dailyData,
+        topFailed,
+        topPassed,
         passFailData: [
           { name: 'ناجح', value: passed },
           { name: 'راسب', value: failed },
@@ -224,6 +243,90 @@ const AdminStatistics = () => {
                 </BarChart>
               </ResponsiveContainer>
             </div>
+          </div>
+        </div>
+
+        {/* أكثر المواد رسوباً ونجاحاً */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+
+          {/* أكثر المواد رسوباً */}
+          <div className="bg-card rounded-xl border p-4 sm:p-5">
+            <h3 className="font-bold mb-4 flex items-center gap-2 text-sm sm:text-base">
+              <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />
+              أكثر المواد رسوباً
+            </h3>
+            {isLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 rounded-xl" />)}
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {stats?.topFailed && stats.topFailed.length > 0 ? stats.topFailed.map((item, index) => {
+                  const maxCount = Math.max(...stats.topFailed.map(x => x.count), 1);
+                  const pct = Math.round((item.count / maxCount) * 100);
+                  return (
+                    <div key={item.name} className="p-3 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center shrink-0">
+                            {index + 1}
+                          </span>
+                          <span className="font-semibold text-sm truncate">{item.name}</span>
+                        </div>
+                        <span className="font-black text-sm text-red-600 shrink-0 mr-2">
+                          {item.count} راسب
+                        </span>
+                      </div>
+                      <div className="w-full bg-red-100 dark:bg-red-900/30 rounded-full h-1.5">
+                        <div className="h-1.5 rounded-full bg-red-500 transition-all duration-700" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <p className="text-center text-muted-foreground text-sm py-6">لا توجد بيانات رسوب بعد</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* أكثر المواد نجاحاً */}
+          <div className="bg-card rounded-xl border p-4 sm:p-5">
+            <h3 className="font-bold mb-4 flex items-center gap-2 text-sm sm:text-base">
+              <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" />
+              أكثر المواد نجاحاً
+            </h3>
+            {isLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 rounded-xl" />)}
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {stats?.topPassed && stats.topPassed.length > 0 ? stats.topPassed.map((item, index) => {
+                  const maxCount = Math.max(...stats.topPassed.map(x => x.count), 1);
+                  const pct = Math.round((item.count / maxCount) * 100);
+                  return (
+                    <div key={item.name} className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="w-5 h-5 rounded-full bg-emerald-500 text-white text-[10px] font-black flex items-center justify-center shrink-0">
+                            {index + 1}
+                          </span>
+                          <span className="font-semibold text-sm truncate">{item.name}</span>
+                        </div>
+                        <span className="font-black text-sm text-emerald-600 shrink-0 mr-2">
+                          {item.count} ناجح
+                        </span>
+                      </div>
+                      <div className="w-full bg-emerald-100 dark:bg-emerald-900/30 rounded-full h-1.5">
+                        <div className="h-1.5 rounded-full bg-emerald-500 transition-all duration-700" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <p className="text-center text-muted-foreground text-sm py-6">لا توجد بيانات نجاح بعد</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
