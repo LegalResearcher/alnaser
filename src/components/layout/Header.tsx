@@ -16,6 +16,7 @@ const navLinks = [
   { href: '/levels',     label: 'المستويات' },
   { href: '/diagnostic', label: 'التشخيص' },
   { href: '/progress',   label: 'تقدمي' },
+  { href: '/about',      label: 'عن المنصة' },
   { href: '/#faq',       label: 'الأسئلة الشائعة' },
   { href: '/#contact',   label: 'تواصل معنا' },
 ];
