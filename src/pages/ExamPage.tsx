@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { Clock, ChevronLeft, ChevronRight, Flag, AlertTriangle, CheckCircle2, XCircle, Star } from 'lucide-react';
+import { Clock, ChevronLeft, ChevronRight, Flag, AlertTriangle, CheckCircle2, XCircle, Star, Share2, Check } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
