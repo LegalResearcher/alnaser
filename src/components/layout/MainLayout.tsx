@@ -19,7 +19,7 @@ export function MainLayout({ children }: MainLayoutProps) {
     window.scrollTo(0, 0);
   }, [pathname]);
 
-  // تسجيل الزيارة عند كل تغيير في المسار
+  // تسجيل الزيارة عند كل تغيير في المسار (مع منع التكرار لنفس الصفحة خلال 30 دقيقة)
   useEffect(() => {
     const trackVisit = async () => {
       try {
@@ -29,10 +29,24 @@ export function MainLayout({ children }: MainLayoutProps) {
           visitorId = crypto.randomUUID();
           localStorage.setItem('visitor_id', visitorId);
         }
+
+        // منع تسجيل نفس الصفحة أكثر من مرة خلال 30 دقيقة
+        const cacheKey = `visit_${pathname}`;
+        const lastVisit = localStorage.getItem(cacheKey);
+        const now = Date.now();
+        const THIRTY_MINUTES = 30 * 60 * 1000;
+
+        if (lastVisit && now - parseInt(lastVisit) < THIRTY_MINUTES) {
+          return; // نفس الزائر زار هذه الصفحة مؤخراً — تجاهل
+        }
+
+        // تسجيل الزيارة وحفظ الوقت
         await supabase.from('site_analytics').insert({
           page_path: pathname,
           visitor_id: visitorId,
         });
+        localStorage.setItem(cacheKey, now.toString());
+
       } catch { /* تجاهل أخطاء التتبع */ }
     };
     trackVisit();
