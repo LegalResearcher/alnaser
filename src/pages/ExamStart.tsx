@@ -315,7 +315,8 @@ const ExamStart = () => {
                 </Select>
               </div>
 
-              {/* Form selector */}
+              {/* Form selector — يُخفى في التجريبي والكل */}
+              {selectedYear !== 'trial' && selectedYear !== 'all' && (
               <div className="space-y-2">
                 <FieldLabel>
                   <span className="inline-flex items-center gap-1.5">
@@ -337,6 +338,7 @@ const ExamStart = () => {
                   </SelectContent>
                 </Select>
               </div>
+              )}
 
               {/* Available questions */}
               <div className="flex items-center justify-between bg-slate-900 rounded-[1rem] px-6 py-4">
