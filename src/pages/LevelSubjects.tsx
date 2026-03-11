@@ -35,17 +35,7 @@ const LevelSubjects = () => {
     { enabled: !!levelId }
   );
 
-  // تسجيل زيارة المستوى في الإحصائيات
-  useEffect(() => {
-    if (level && !level.is_disabled) {
-      const visitorId = localStorage.getItem('visitor_id') || crypto.randomUUID();
-      localStorage.setItem('visitor_id', visitorId);
-      supabase.from('site_analytics').insert({
-        page_path: `/level/${level.name}`,
-        visitor_id: visitorId,
-      }).then(() => {});
-    }
-  }, [level]);
+  // تسجيل الزيارة يتم تلقائياً عبر MainLayout — لا حاجة لتسجيل مكرر هنا
 
   // إعادة توجيه إذا كان المستوى معطلاً
   useEffect(() => {
