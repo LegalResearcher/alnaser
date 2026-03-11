@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Question } from '@/types/database';
 import { cn } from '@/lib/utils';
 
-const QUESTIONS_PER_SUBJECT = 2;
+const QUESTIONS_PER_SUBJECT = 3;
 
 interface Level {
   id: string;
