@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, ArrowRight, Clock, Target, User, 
-  Lock, BookOpen, Layers, Sparkles, ChevronLeft 
+  Lock, BookOpen, Layers, Sparkles, ChevronLeft, Settings2 
 } from 'lucide-react';
+import SubjectSettingsModal from '@/components/SubjectSettingsModal';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { Level, Subject } from '@/types/database';
@@ -17,6 +18,7 @@ const LevelSubjects = () => {
   const { levelId } = useParams<{ levelId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [settingsSubject, setSettingsSubject] = useState<(Subject & { levelName?: string }) | null>(null);
 
   // جلب بيانات المستوى الحالي
   const { data: level, isLoading: levelLoading } = useCachedQuery<Level | null>(
@@ -137,86 +139,100 @@ const LevelSubjects = () => {
               </div>
             ) : (
               subjects.map((subject) => (
-                <Link
-                  key={subject.id}
-                  to={`/exam/${subject.id}`}
-                  className="group relative"
-                >
-                  {/* Subject Card */}
-                  <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 p-5 md:p-8 shadow-sm hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 h-full flex flex-col group-hover:-translate-y-2 relative overflow-hidden active:scale-[0.98]">
-                    
-                    {/* خلفية تزيينية خفيفة */}
-                    <div className="absolute -top-10 -right-10 w-24 md:w-32 h-24 md:h-32 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors" />
+                <div key={subject.id} className="group relative">
+                  <button
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSettingsSubject({ ...subject, levelName: level?.name }); }}
+                    className="absolute top-4 left-4 z-20 w-9 h-9 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center hover:bg-primary hover:text-white hover:border-primary transition-all duration-200 opacity-0 group-hover:opacity-100"
+                    title="إعدادات المادة"
+                  >
+                    <Settings2 className="w-4 h-4" />
+                  </button>
+                  <Link
+                    to={`/exam/${subject.id}`}
+                    className="block"
+                  >
+                    {/* Subject Card */}
+                    <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 p-5 md:p-8 shadow-sm hover:shadow-2xl hover:shadow-primary/10 transition-all duration-500 h-full flex flex-col group-hover:-translate-y-2 relative overflow-hidden active:scale-[0.98]">
+                      
+                      {/* خلفية تزيينية خفيفة */}
+                      <div className="absolute -top-10 -right-10 w-24 md:w-32 h-24 md:h-32 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors" />
 
-                    <div className="flex items-start justify-between mb-5 md:mb-8 relative z-10">
-                      <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shadow-lg shadow-primary/20 transition-transform group-hover:rotate-12">
-                        <BookOpen className="w-6 h-6 md:w-7 md:h-7 text-white" />
-                      </div>
-                      {subject.password && (
-                        <div className="bg-amber-50 text-amber-600 px-3 md:px-4 py-1 md:py-1.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest border border-amber-100 flex items-center gap-1.5 md:gap-2">
-                          <Lock className="w-2.5 h-2.5 md:w-3 md:h-3" />
-                          دخول خاص
+                      <div className="flex items-start justify-between mb-5 md:mb-8 relative z-10">
+                        <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shadow-lg shadow-primary/20 transition-transform group-hover:rotate-12">
+                          <BookOpen className="w-6 h-6 md:w-7 md:h-7 text-white" />
                         </div>
-                      )}
-                    </div>
-                    
-                    <h3 className="font-black text-xl md:text-2xl text-slate-800 mb-2 md:mb-3 group-hover:text-primary transition-colors leading-tight">
-                      {subject.name}
-                    </h3>
-                    
-                    {subject.description && (
-                      <p className="text-slate-500 text-xs md:text-sm mb-5 md:mb-8 line-clamp-2 leading-relaxed font-medium">
-                        {subject.description}
-                      </p>
-                    )}
-                    
-                    {/* Metadata Grid */}
-                    <div className="mt-auto pt-4 md:pt-6 border-t border-slate-50 grid grid-cols-2 gap-y-3 md:gap-y-4 gap-x-2 relative z-10">
-                      <div className="flex items-center gap-2 md:gap-3 text-slate-400 group-hover:text-slate-600 transition-colors">
-                        <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-slate-50 flex items-center justify-center">
-                          <Target className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary/70" />
-                        </div>
-                        <span className="text-[10px] md:text-[11px] font-black uppercase tracking-tighter">
-                          {countsLoading ? (
-                            <span className="inline-block w-8 h-3 bg-slate-200 animate-pulse rounded" />
-                          ) : (
-                            <>{questionCounts[subject.id] ?? 0} سؤال</>
-                          )}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 md:gap-3 text-slate-400 group-hover:text-slate-600 transition-colors">
-                        <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-slate-50 flex items-center justify-center">
-                          <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary/70" />
-                        </div>
-                        <span className="text-[10px] md:text-[11px] font-black uppercase tracking-tighter">{subject.default_time_minutes} دقيقة</span>
-                      </div>
-                      {subject.author_name && (
-                        <div className="col-span-2 flex items-center gap-2 md:gap-3 text-slate-400 group-hover:text-slate-600 transition-colors">
-                          <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-slate-50 flex items-center justify-center">
-                            <User className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary/70" />
+                        {subject.password && (
+                          <div className="bg-amber-50 text-amber-600 px-3 md:px-4 py-1 md:py-1.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest border border-amber-100 flex items-center gap-1.5 md:gap-2">
+                            <Lock className="w-2.5 h-2.5 md:w-3 md:h-3" />
+                            دخول خاص
                           </div>
-                          <span className="text-[10px] md:text-[11px] font-black uppercase tracking-tighter truncate">{subject.author_name}</span>
-                        </div>
+                        )}
+                      </div>
+                      
+                      <h3 className="font-black text-xl md:text-2xl text-slate-800 mb-2 md:mb-3 group-hover:text-primary transition-colors leading-tight">
+                        {subject.name}
+                      </h3>
+                      
+                      {subject.description && (
+                        <p className="text-slate-500 text-xs md:text-sm mb-5 md:mb-8 line-clamp-2 leading-relaxed font-medium">
+                          {subject.description}
+                        </p>
                       )}
-                    </div>
-                    
-                    {/* Action Button */}
-                    <div className="flex items-center justify-between mt-5 md:mt-8 text-primary font-black text-[10px] md:text-xs uppercase tracking-[0.15em] md:tracking-[0.2em]">
-                      <div className="flex items-center gap-1.5 md:gap-2">
-                        <Sparkles className="w-3.5 h-3.5 md:w-4 md:h-4 animate-pulse" />
-                        <span>ابدأ الاختبار</span>
+                      
+                      {/* Metadata Grid */}
+                      <div className="mt-auto pt-4 md:pt-6 border-t border-slate-50 grid grid-cols-2 gap-y-3 md:gap-y-4 gap-x-2 relative z-10">
+                        <div className="flex items-center gap-2 md:gap-3 text-slate-400 group-hover:text-slate-600 transition-colors">
+                          <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-slate-50 flex items-center justify-center">
+                            <Target className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary/70" />
+                          </div>
+                          <span className="text-[10px] md:text-[11px] font-black uppercase tracking-tighter">
+                            {countsLoading ? (
+                              <span className="inline-block w-8 h-3 bg-slate-200 animate-pulse rounded" />
+                            ) : (
+                              <>{questionCounts[subject.id] ?? 0} سؤال</>
+                            )}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 md:gap-3 text-slate-400 group-hover:text-slate-600 transition-colors">
+                          <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-slate-50 flex items-center justify-center">
+                            <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary/70" />
+                          </div>
+                          <span className="text-[10px] md:text-[11px] font-black uppercase tracking-tighter">{subject.default_time_minutes} دقيقة</span>
+                        </div>
+                        {subject.author_name && (
+                          <div className="col-span-2 flex items-center gap-2 md:gap-3 text-slate-400 group-hover:text-slate-600 transition-colors">
+                            <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-slate-50 flex items-center justify-center">
+                              <User className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary/70" />
+                            </div>
+                            <span className="text-[10px] md:text-[11px] font-black uppercase tracking-tighter truncate">{subject.author_name}</span>
+                          </div>
+                        )}
                       </div>
-                      <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
-                        <ChevronLeft className="w-4 h-4 md:w-5 md:h-5 group-hover:-translate-x-1 transition-transform" />
+                      
+                      {/* Action Button */}
+                      <div className="flex items-center justify-between mt-5 md:mt-8 text-primary font-black text-[10px] md:text-xs uppercase tracking-[0.15em] md:tracking-[0.2em]">
+                        <div className="flex items-center gap-1.5 md:gap-2">
+                          <Sparkles className="w-3.5 h-3.5 md:w-4 md:h-4 animate-pulse" />
+                          <span>ابدأ الاختبار</span>
+                        </div>
+                        <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+                          <ChevronLeft className="w-4 h-4 md:w-5 md:h-5 group-hover:-translate-x-1 transition-transform" />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Link>
+                  </Link>
+                </div>
               ))
             )}
           </div>
         </div>
       </section>
+      {settingsSubject && (
+        <SubjectSettingsModal
+          subject={settingsSubject}
+          onClose={() => setSettingsSubject(null)}
+        />
+      )}
     </MainLayout>
   );
 };

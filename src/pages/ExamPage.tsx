@@ -37,6 +37,9 @@ interface ExamState {
   questionsCount: number;
   subjectName?: string;
   levelName?: string;
+  challengeMode?: boolean;
+  challengeSessionId?: string;
+  forcedQuestionIds?: string[];
 }
 
 const cleanOptionText = (text: string | null | undefined): string => {
@@ -174,8 +177,14 @@ const ExamPage = () => {
   }, [state, subjectId, navigate]);
 
   const { data: questions = [], isLoading } = useQuery({
-    queryKey: ['exam-questions', subjectId, state?.examYear, state?.examForm, state?.questionsCount],
+    queryKey: ['exam-questions', subjectId, state?.examYear, state?.examForm, state?.questionsCount, state?.forcedQuestionIds?.join(',')],
     queryFn: async () => {
+      // إذا كانت أسئلة محددة (مبارزة)
+      if (state?.forcedQuestionIds?.length) {
+        const { data, error } = await supabase.from('questions').select('*').in('id', state.forcedQuestionIds).eq('status', 'active');
+        if (error) throw error;
+        return (data as Question[]).sort(() => Math.random() - 0.5);
+      }
       let query = supabase.from('questions').select('*').eq('subject_id', subjectId).eq('status', 'active');
       if (!state?.allQuestions) {
         if (state?.isTrial) {
@@ -189,7 +198,7 @@ const ExamPage = () => {
       if (error) throw error;
       return (data as Question[]).sort(() => Math.random() - 0.5);
     },
-    enabled: !!subjectId && (!!state?.examYear || !!state?.isTrial || !!state?.allQuestions),
+    enabled: !!subjectId && (!!state?.examYear || !!state?.isTrial || !!state?.allQuestions || !!state?.forcedQuestionIds?.length),
   });
 
   const { data: subject } = useCachedQuery(

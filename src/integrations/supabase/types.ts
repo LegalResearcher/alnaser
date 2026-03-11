@@ -14,6 +14,97 @@ export type Database = {
   }
   public: {
     Tables: {
+      challenge_results: {
+        Row: {
+          challenger_name: string
+          created_at: string
+          id: string
+          percentage: number
+          score: number
+          session_id: string
+          time_seconds: number | null
+          total_questions: number
+        }
+        Insert: {
+          challenger_name: string
+          created_at?: string
+          id?: string
+          percentage: number
+          score: number
+          session_id: string
+          time_seconds?: number | null
+          total_questions: number
+        }
+        Update: {
+          challenger_name?: string
+          created_at?: string
+          id?: string
+          percentage?: number
+          score?: number
+          session_id?: string
+          time_seconds?: number | null
+          total_questions?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_results_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "challenge_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      challenge_sessions: {
+        Row: {
+          created_at: string
+          creator_name: string
+          creator_percentage: number | null
+          creator_score: number | null
+          creator_time_seconds: number | null
+          exam_form: string | null
+          exam_year: number | null
+          expires_at: string
+          id: string
+          question_ids: Json
+          subject_id: string
+        }
+        Insert: {
+          created_at?: string
+          creator_name: string
+          creator_percentage?: number | null
+          creator_score?: number | null
+          creator_time_seconds?: number | null
+          exam_form?: string | null
+          exam_year?: number | null
+          expires_at?: string
+          id?: string
+          question_ids: Json
+          subject_id: string
+        }
+        Update: {
+          created_at?: string
+          creator_name?: string
+          creator_percentage?: number | null
+          creator_score?: number | null
+          creator_time_seconds?: number | null
+          exam_form?: string | null
+          exam_year?: number | null
+          expires_at?: string
+          id?: string
+          question_ids?: Json
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_sessions_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deletion_requests: {
         Row: {
           created_at: string
@@ -58,12 +149,14 @@ export type Database = {
       exam_results: {
         Row: {
           answers: Json | null
+          challenge_session_id: string | null
           created_at: string
           exam_year: number | null
           id: string
           passed: boolean
           passing_score: number
           score: number
+          score_percentage: number | null
           student_name: string
           subject_id: string
           time_taken_seconds: number | null
@@ -71,12 +164,14 @@ export type Database = {
         }
         Insert: {
           answers?: Json | null
+          challenge_session_id?: string | null
           created_at?: string
           exam_year?: number | null
           id?: string
           passed: boolean
           passing_score: number
           score: number
+          score_percentage?: number | null
           student_name: string
           subject_id: string
           time_taken_seconds?: number | null
@@ -84,12 +179,14 @@ export type Database = {
         }
         Update: {
           answers?: Json | null
+          challenge_session_id?: string | null
           created_at?: string
           exam_year?: number | null
           id?: string
           passed?: boolean
           passing_score?: number
           score?: number
+          score_percentage?: number | null
           student_name?: string
           subject_id?: string
           time_taken_seconds?: number | null
@@ -140,6 +237,47 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      question_stats: {
+        Row: {
+          correct_answers: number
+          option_a_count: number
+          option_b_count: number
+          option_c_count: number
+          option_d_count: number
+          question_id: string
+          total_answers: number
+          updated_at: string
+        }
+        Insert: {
+          correct_answers?: number
+          option_a_count?: number
+          option_b_count?: number
+          option_c_count?: number
+          option_d_count?: number
+          question_id: string
+          total_answers?: number
+          updated_at?: string
+        }
+        Update: {
+          correct_answers?: number
+          option_a_count?: number
+          option_b_count?: number
+          option_c_count?: number
+          option_d_count?: number
+          question_id?: string
+          total_answers?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_stats_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: true
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       questions: {
         Row: {
@@ -378,6 +516,14 @@ export type Database = {
         Returns: boolean
       }
       is_admin_or_editor: { Args: { _user_id: string }; Returns: boolean }
+      record_question_answer: {
+        Args: {
+          p_is_correct: boolean
+          p_question_id: string
+          p_selected_option: string
+        }
+        Returns: undefined
+      }
       soft_delete_questions: { Args: { p_ids: string[] }; Returns: number }
       update_student_profile: {
         Args: {
