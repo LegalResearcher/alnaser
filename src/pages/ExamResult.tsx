@@ -7,11 +7,14 @@ import { useLocation, useNavigate, Link } from 'react-router-dom';
 import {
   CheckCircle, XCircle, Clock, Target,
   RotateCcw, Home, Share2, Eye, EyeOff,
-  Trophy, Medal, AlertCircle, ChevronDown, Sparkles, Zap, Download, Loader2, Star, Award
+  Trophy, Medal, AlertCircle, ChevronDown, Sparkles, Zap, Download, Loader2, Star, Award,
+  Swords, Users, TrendingUp, Crown, Copy, Check
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { useState, useRef, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { Question } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
@@ -29,6 +32,10 @@ interface ResultState {
   subjectName?:   string;
   levelName?:     string;
   examYear?:      number;
+  scorePercentage?:    number;
+  challengeMode?:      boolean;
+  challengeSessionId?: string;
+  subjectId?:          string;
 }
 
 // دائرة النسبة المئوية
@@ -106,6 +113,53 @@ const ExamResult = () => {
   const [isShareLoading, setIsShareLoading]   = useState<'whatsapp' | 'twitter' | null>(null);
   const [showConfetti, setShowConfetti]       = useState(false);
   const resultCardRef = useRef<HTMLDivElement>(null);
+  const [isCreatingChallenge, setIsCreatingChallenge] = useState(false);
+  const [challengeLink, setChallengeLink] = useState<string | null>(null);
+  const [copiedChallenge, setCopiedChallenge] = useState(false);
+
+  const { data: comparisonData } = useQuery({
+    queryKey: ['result-comparison', state?.subjectId, state?.scorePercentage],
+    queryFn: async () => {
+      if (!state?.subjectId) return null;
+      const { data } = await supabase.from('exam_results').select('score_percentage').eq('subject_id', state.subjectId).not('score_percentage', 'is', null).order('created_at', { ascending: false }).limit(200);
+      if (!data || data.length < 3) return null;
+      const scores = data.map(r => r.score_percentage as number).filter(Boolean);
+      const myPct = state.scorePercentage ?? Math.round((state.score / state.totalQuestions) * 100);
+      const betterThan = scores.filter(s => s < myPct).length;
+      const rank = Math.round((betterThan / scores.length) * 100);
+      const avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+      return { rank, avg, total: scores.length, myPct };
+    },
+    enabled: !!state?.subjectId,
+  });
+
+  const handleCreateChallenge = async () => {
+    if (!state?.subjectId || !state?.questions?.length) return;
+    setIsCreatingChallenge(true);
+    try {
+      const myPct = state.scorePercentage ?? Math.round((state.score / state.totalQuestions) * 100);
+      const { data, error } = await supabase.from('challenge_sessions').insert({
+        subject_id: state.subjectId,
+        creator_name: state.studentName,
+        creator_score: state.score,
+        creator_percentage: myPct,
+        creator_time_seconds: state.timeTaken,
+        question_ids: state.questions.map(q => q.id),
+        exam_year: state.examYear || null,
+        exam_form: null,
+      }).select('id').single();
+      if (error || !data) throw error;
+      const link = `${window.location.origin}/challenge/${data.id}`;
+      setChallengeLink(link);
+      toast({ title: 'تم إنشاء التحدي!', description: 'الرابط جاهز للمشاركة' });
+    } catch { toast({ title: 'خطأ في إنشاء التحدي', variant: 'destructive' }); }
+    setIsCreatingChallenge(false);
+  };
+
+  const handleCopyChallengeLink = () => {
+    if (!challengeLink) return;
+    navigator.clipboard.writeText(challengeLink).then(() => { setCopiedChallenge(true); setTimeout(() => setCopiedChallenge(false), 2500); });
+  };
 
   useEffect(() => {
     if (state?.passed) {
@@ -417,6 +471,108 @@ const ExamResult = () => {
                 </p>
               </div>
             </div>
+
+            {/* بطاقة مقارنة الأداء */}
+            {comparisonData && (
+              <div className="bg-card rounded-3xl border border-border shadow-lg p-6 animate-in slide-in-from-bottom-4 fade-in duration-500">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center dark:bg-blue-950"><TrendingUp className="w-5 h-5 text-blue-600" /></div>
+                  <div>
+                    <h3 className="font-black text-foreground text-base">مقارنة أداءك مع الآخرين</h3>
+                    <p className="text-[11px] text-muted-foreground font-bold">من {comparisonData.total} مشارك في هذه المادة</p>
+                  </div>
+                </div>
+                <div className="relative mb-4">
+                  <div className="h-4 bg-gradient-to-l from-emerald-100 via-amber-100 to-rose-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-l from-emerald-500 to-blue-500 rounded-full transition-all duration-1000" style={{ width: `${comparisonData.rank}%` }} />
+                  </div>
+                  <div className="absolute -top-1 w-6 h-6 rounded-full bg-white border-2 border-primary shadow-lg flex items-center justify-center transition-all duration-1000"
+                    style={{ right: `${comparisonData.rank}%`, transform: 'translateX(50%)' }}>
+                    <Star className="w-3 h-3 text-primary fill-primary" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { icon: Crown, label: 'أفضل من', value: `${comparisonData.rank}%`, color: comparisonData.rank >= 70 ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950' : comparisonData.rank >= 40 ? 'text-amber-600 bg-amber-50 dark:bg-amber-950' : 'text-rose-600 bg-rose-50 dark:bg-rose-950' },
+                    { icon: Users, label: 'متوسط الجميع', value: `${comparisonData.avg}%`, color: 'text-blue-600 bg-blue-50 dark:bg-blue-950' },
+                    { icon: Target, label: 'نتيجتك', value: `${comparisonData.myPct}%`, color: state.passed ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950' : 'text-rose-600 bg-rose-50 dark:bg-rose-950' },
+                  ].map((item, i) => (
+                    <div key={i} className={cn('rounded-2xl p-3 text-center', item.color)}>
+                      <item.icon className="w-4 h-4 mx-auto mb-1.5 opacity-80" />
+                      <p className="font-black text-lg leading-none">{item.value}</p>
+                      <p className="text-[9px] font-black uppercase tracking-wide opacity-70 mt-1">{item.label}</p>
+                    </div>
+                  ))}
+                </div>
+                {comparisonData.rank >= 80 && (
+                  <div className="mt-3 flex items-center gap-2 bg-yellow-50 border border-yellow-100 rounded-2xl px-4 py-2 dark:bg-yellow-950 dark:border-yellow-900">
+                    <Crown className="w-4 h-4 text-yellow-500 shrink-0" />
+                    <p className="text-xs font-black text-yellow-700 dark:text-yellow-300">أنت من أفضل 20% في هذه المادة! 🏆</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* بطاقة المبارزة */}
+            {!state?.challengeMode && state?.subjectId && (
+              <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 to-blue-950 rounded-3xl p-6 shadow-2xl animate-in slide-in-from-bottom-4 fade-in duration-600">
+                <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.5) 1px, transparent 1px)', backgroundSize: '18px 18px' }} />
+                <div className="relative z-10">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center"><Swords className="w-6 h-6 text-blue-300" /></div>
+                    <div><h3 className="font-black text-white text-base">تحدَّ أصدقاءك!</h3><p className="text-white/50 text-xs font-bold">أرسل نفس الأسئلة لمن تريد</p></div>
+                  </div>
+                  {!challengeLink ? (
+                    <button onClick={handleCreateChallenge} disabled={isCreatingChallenge}
+                      className="w-full h-12 rounded-2xl bg-white/10 border border-white/20 text-white font-black text-sm hover:bg-white/20 transition-all flex items-center justify-center gap-2 active:scale-[0.98]">
+                      {isCreatingChallenge ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الإنشاء...</> : <><Swords className="w-4 h-4" /> إنشاء تحدي بنفس الأسئلة</>}
+                    </button>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs text-white/70 font-mono break-all">{challengeLink}</div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button onClick={handleCopyChallengeLink}
+                          className={cn('h-11 rounded-xl text-sm font-black flex items-center justify-center gap-2 transition-all',
+                            copiedChallenge ? 'bg-emerald-500/20 border border-emerald-400/30 text-emerald-300' : 'bg-white/10 border border-white/20 text-white hover:bg-white/20')}>
+                          {copiedChallenge ? <><Check className="w-4 h-4" /> تم النسخ!</> : <><Copy className="w-4 h-4" /> نسخ الرابط</>}
+                        </button>
+                        <button onClick={() => { const text = `تحداني ${state.studentName} في ${state.subjectName}!
+نتيجته: ${state.scorePercentage ?? scorePercentage}%
+هل تستطيع التفوق عليه؟ 🔥
+${challengeLink}`; window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank'); }}
+                          className="h-11 rounded-xl bg-green-500/20 border border-green-400/30 text-green-300 text-sm font-black flex items-center justify-center gap-2 hover:bg-green-500/30 transition-all">
+                          واتساب
+                        </button>
+                        <button onClick={() => { const text = `تحداني ${state.studentName} في ${state.subjectName}!
+نتيجته: ${state.scorePercentage ?? scorePercentage}%
+هل تستطيع التفوق عليه؟ 🔥
+${challengeLink}`; window.open(`https://t.me/share/url?url=${encodeURIComponent(challengeLink!)}&text=${encodeURIComponent(text)}`, '_blank'); }}
+                          className="h-11 rounded-xl bg-blue-500/20 border border-blue-400/30 text-blue-300 text-sm font-black flex items-center justify-center gap-2 hover:bg-blue-500/30 transition-all">
+                          تيليجرام
+                        </button>
+                        <button onClick={() => { const text = `تحداني ${state.studentName} في ${state.subjectName}!
+نتيجته: ${state.scorePercentage ?? scorePercentage}%
+هل تستطيع التفوق عليه؟ 🔥
+${challengeLink}`; window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(challengeLink!)}&quote=${encodeURIComponent(text)}`, '_blank'); }}
+                          className="h-11 rounded-xl bg-blue-700/20 border border-blue-600/30 text-blue-200 text-sm font-black flex items-center justify-center gap-2 hover:bg-blue-700/30 transition-all">
+                          فيسبوك
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* نتيجة المبارزة */}
+            {state?.challengeMode && state?.challengeSessionId && (
+              <div className="bg-blue-50 border border-blue-200 rounded-3xl p-5 dark:bg-blue-950 dark:border-blue-900">
+                <div className="flex items-center gap-3 mb-3"><Swords className="w-5 h-5 text-blue-600" /><h3 className="font-black text-blue-800 dark:text-blue-200">انتهت المبارزة!</h3></div>
+                <Button onClick={() => navigate(`/challenge/${state.challengeSessionId}`)} className="w-full h-11 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-sm gap-2">
+                  <Trophy className="w-4 h-4" /> عرض لوحة المتسابقين
+                </Button>
+              </div>
+            )}
 
             {/* ── قسم مراجعة الإجابات ── */}
             {showReview && (
