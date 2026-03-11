@@ -211,6 +211,15 @@ const ExamPage = () => {
     { enabled: !!subjectId }
   );
 
+  const { data: currentQuestionStats } = useQuery({
+    queryKey: ['question-stats', questions[currentIndex]?.id, !!answers[questions[currentIndex]?.id]],
+    queryFn: async () => {
+      const { data } = await supabase.from('question_stats').select('*').eq('question_id', questions[currentIndex]!.id).maybeSingle();
+      return data;
+    },
+    enabled: !!questions[currentIndex]?.id && !!answers[questions[currentIndex]?.id],
+  });
+
   const handleSubmit = useCallback(async () => {
     if (isSubmitting || !questions.length) return;
     setIsSubmitting(true);
@@ -221,11 +230,38 @@ const ExamPage = () => {
     const timeTaken = totalTime - timeLeft;
     try {
       const scorePercentage = Math.round((finalScore / totalQuestions) * 100);
-      await supabase.from('exam_results').insert({
+        await supabase.from('exam_results').insert({
         subject_id: subjectId, student_name: state.studentName, score: finalScore,
         total_questions: totalQuestions, passing_score: subject?.passing_score || 60,
-        passed, exam_year: state.isTrial ? null : (state.allQuestions ? null : state.examYear), time_taken_seconds: timeTaken, answers,
+        passed, exam_year: state.isTrial ? null : (state.allQuestions ? null : state.examYear),
+        time_taken_seconds: timeTaken, answers,
+        score_percentage: scorePercentage,
+        challenge_session_id: state.challengeSessionId || null,
       });
+
+      // تسجيل إحصائيات الأسئلة
+      const statsPromises = questions.map(q => {
+        const selected = answers[q.id];
+        if (!selected) return Promise.resolve();
+        return supabase.rpc('record_question_answer', {
+          p_question_id: q.id,
+          p_selected_option: selected,
+          p_is_correct: selected === q.correct_option,
+        });
+      });
+      await Promise.allSettled(statsPromises);
+
+      // تسجيل نتيجة المبارزة
+      if (state.challengeMode && state.challengeSessionId) {
+        await supabase.from('challenge_results').insert({
+          session_id: state.challengeSessionId,
+          challenger_name: state.studentName,
+          score: finalScore,
+          total_questions: totalQuestions,
+          percentage: scorePercentage,
+          time_seconds: timeTaken,
+        });
+      }
 
       // تحديث ملف الطالب الشخصي
       try {
@@ -270,6 +306,10 @@ const ExamPage = () => {
         passingScore: subject?.passing_score || 60, passed, timeTaken,
         questions, answers, subjectName: state.subjectName || subject?.name,
         levelName: state.levelName, examYear: state.examYear,
+        scorePercentage,
+        challengeMode: state.challengeMode,
+        challengeSessionId: state.challengeSessionId,
+        subjectId,
       },
     });
   }, [answers, questions, subject, state, subjectId, timeLeft, navigate, isSubmitting, totalTime]);
@@ -570,6 +610,59 @@ const ExamPage = () => {
                           : `إجابة خاطئة — الصحيحة: ${currentQuestion.correct_option}`}
                       </span>
                     </div>
+
+                    {/* إحصائيات المستخدمين */}
+                    {currentQuestionStats && (currentQuestionStats as any).total_answers >= 5 && (
+                      <div className="mb-4 bg-slate-50 border border-slate-100 rounded-2xl p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                            إحصائيات المستخدمين — {(currentQuestionStats as any).total_answers} إجابة
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="text-[10px] font-black text-emerald-600 w-8 text-left">
+                            {Math.round(((currentQuestionStats as any).correct_answers / (currentQuestionStats as any).total_answers) * 100)}%
+                          </span>
+                          <div className="flex-1 h-2.5 bg-rose-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-400 rounded-full transition-all duration-700"
+                              style={{ width: `${Math.round(((currentQuestionStats as any).correct_answers / (currentQuestionStats as any).total_answers) * 100)}%` }} />
+                          </div>
+                          <span className="text-[10px] font-black text-rose-500 w-8">
+                            {Math.round((((currentQuestionStats as any).total_answers - (currentQuestionStats as any).correct_answers) / (currentQuestionStats as any).total_answers) * 100)}%
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {(['A','B','C','D'] as const).map(opt => {
+                            const countKey = `option_${opt.toLowerCase()}_count`;
+                            const count = ((currentQuestionStats as any)[countKey] as number) || 0;
+                            const pct = Math.round((count / (currentQuestionStats as any).total_answers) * 100);
+                            const currentQ = questions[currentIndex];
+                            const isCorr = currentQ?.correct_option === opt;
+                            const isSel = answers[currentQ?.id] === opt;
+                            return (
+                              <div key={opt} className={cn('rounded-xl p-2 text-center border',
+                                isCorr ? 'bg-emerald-50 border-emerald-200' :
+                                isSel && !isCorr ? 'bg-rose-50 border-rose-200' : 'bg-white border-slate-100')}>
+                                <div className={cn('text-[10px] font-black mb-1',
+                                  isCorr ? 'text-emerald-600' : isSel && !isCorr ? 'text-rose-500' : 'text-slate-400')}>{opt}</div>
+                                <div className="h-8 bg-slate-100 rounded-lg overflow-hidden flex items-end mb-1">
+                                  <div className={cn('w-full rounded-lg transition-all duration-700',
+                                    isCorr ? 'bg-emerald-400' : isSel && !isCorr ? 'bg-rose-400' : 'bg-slate-300')}
+                                    style={{ height: `${Math.max(pct, 4)}%` }} />
+                                </div>
+                                <div className={cn('text-[10px] font-black', isCorr ? 'text-emerald-600' : 'text-slate-500')}>{pct}%</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {(() => {
+                          const errPct = Math.round((((currentQuestionStats as any).total_answers - (currentQuestionStats as any).correct_answers) / (currentQuestionStats as any).total_answers) * 100);
+                          if (errPct >= 60) return <p className="text-[10px] text-amber-600 font-bold mt-2 bg-amber-50 px-3 py-1.5 rounded-xl">⚠️ {errPct}% من المستخدمين أخطأوا في هذا السؤال — سؤال صعب!</p>;
+                          if (errPct <= 20) return <p className="text-[10px] text-emerald-600 font-bold mt-2 bg-emerald-50 px-3 py-1.5 rounded-xl">✅ {100 - errPct}% من المستخدمين أجابوا بشكل صحيح</p>;
+                          return null;
+                        })()}
+                      </div>
+                    )}
 
                     {/* زر السؤال التالي / التسليم */}
                     {currentIndex < questions.length - 1 ? (
