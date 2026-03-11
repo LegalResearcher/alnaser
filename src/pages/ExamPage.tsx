@@ -325,6 +325,9 @@ const ExamPage = () => {
   const isAnswerCorrect = selectedAnswer === currentQuestion.correct_option;
   const progressColor = progressPct < 33 ? '#ef4444' : progressPct < 66 ? '#f59e0b' : '#10b981';
 
+  // خريطة تحويل الحروف الإنجليزية إلى عربية
+  const optionLabels: Record<string, string> = { A: 'أ', B: 'ب', C: 'ج', D: 'د' };
+
   const availableOptions = ['A', 'B', 'C', 'D'].filter(opt => {
     const k = `option_${opt.toLowerCase()}` as keyof Question;
     const v = currentQuestion[k] as string;
@@ -504,7 +507,7 @@ const ExamPage = () => {
                 </h2>
 
                 {/* الخيارات */}
-                <div className="grid grid-cols-1 gap-3 md:gap-4">
+                <div className="grid grid-cols-1 gap-3 md:gap-4" onCopy={e => e.preventDefault()} onContextMenu={e => e.preventDefault()} style={{userSelect:"none",WebkitUserSelect:"none"}}>
                   {availableOptions.map((opt) => {
                     const k = `option_${opt.toLowerCase()}` as keyof Question;
                     const text = cleanOptionText(currentQuestion[k] as string);
@@ -526,7 +529,7 @@ const ExamPage = () => {
                           "w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center font-black text-base md:text-lg shrink-0 transition-all duration-300",
                           getBadgeStyle(opt)
                         )}>
-                          {opt}
+                          {optionLabels[opt] ?? opt}
                         </div>
                         <span className={cn("flex-1 text-sm md:text-base text-right transition-all duration-300", getTextStyle(opt))}>
                           {text}
