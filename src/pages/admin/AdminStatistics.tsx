@@ -1,5 +1,5 @@
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { BarChart3, TrendingUp, Users, BookOpen, Calendar, Eye, Layers, XCircle, CheckCircle2 } from 'lucide-react';
+import { BarChart3, TrendingUp, Users, BookOpen, Calendar, Eye, Layers, XCircle, CheckCircle2, Clock } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -69,6 +69,17 @@ const AdminStatistics = () => {
       const passed = results.data?.filter((r: any) => r.passed).length || 0;
       const failed = (results.data?.length || 0) - passed;
 
+      // آخر 10 اختبارات مرتبة حسب التاريخ
+      const recentExams = [...(results.data || [])]
+        .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 10)
+        .map((r: any) => ({
+          name: subjectMap.get(r.subject_id) || 'غير معروف',
+          passed: r.passed,
+          date: new Date(r.created_at).toLocaleDateString('ar-SA'),
+          time: new Date(r.created_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
+        }));
+
       return {
         totalVisits: analytics.count || 0,
         totalExams: results.data?.length || 0,
@@ -77,6 +88,7 @@ const AdminStatistics = () => {
         dailyData,
         topFailed,
         topPassed,
+        recentExams,
         passFailData: [
           { name: 'ناجح', value: passed },
           { name: 'راسب', value: failed },
@@ -334,6 +346,38 @@ const AdminStatistics = () => {
               </div>
             )}
           </div>
+        </div>
+
+        {/* آخر الاختبارات */}
+        <div className="bg-card rounded-xl border p-4 sm:p-5">
+          <h3 className="font-bold mb-4 flex items-center gap-2 text-sm sm:text-base">
+            <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+            آخر الاختبارات
+          </h3>
+          {isLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 rounded-xl" />)}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {stats?.recentExams && stats.recentExams.length > 0 ? stats.recentExams.map((exam, i) => (
+                <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-muted/40 hover:bg-muted/70 transition-colors gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${exam.passed ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                    <span className="font-semibold text-sm truncate">{exam.name}</span>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className={`text-xs font-black px-2 py-0.5 rounded-full ${exam.passed ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400' : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400'}`}>
+                      {exam.passed ? 'ناجح' : 'راسب'}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{exam.date} {exam.time}</span>
+                  </div>
+                </div>
+              )) : (
+                <p className="text-center text-muted-foreground text-sm py-6">لا توجد اختبارات بعد</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* زيارات المستويات */}
