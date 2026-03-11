@@ -424,10 +424,10 @@ const ExamPage = () => {
   const getBadgeStyle = (opt: string) => {
     const isSel = selectedAnswer === opt;
     const isCorr = currentQuestion.correct_option === opt;
-    if (!hasAnswered) return isSel ? "bg-primary text-white shadow-primary/40 shadow-lg" : "bg-white dark:bg-slate-600 text-slate-400 dark:text-slate-300 border border-slate-200 dark:border-slate-500";
+    if (!hasAnswered) return isSel ? "bg-primary text-white shadow-primary/40 shadow-lg" : "bg-white dark:bg-slate-600 text-slate-500 dark:text-white border border-slate-200 dark:border-slate-500";
     if (isCorr) return "bg-emerald-500 text-white";
     if (isSel && !isCorr) return "bg-rose-500 text-white";
-    return "bg-slate-100 dark:bg-muted text-slate-300";
+    return "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-300";
   };
 
   const getTextStyle = (opt: string) => {
