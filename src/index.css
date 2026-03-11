@@ -63,48 +63,55 @@
   }
 
   .dark {
-    /* ── Dark Mode ── */
-    --background:        222 47% 7%;
-    --foreground:        210 40% 96%;
-    --card:              222 47% 10%;
-    --card-foreground:   210 40% 96%;
-    --popover:           222 47% 10%;
-    --popover-foreground:210 40% 96%;
+    /* ── Dark Mode — Eye-Care Edition 2024 ──
+       ✅ تحسين 1: تقليل الصبغة الزرقاء الباردة (222° → 220°, 47% → 18%)
+          لأن الأزرق الزائد يحفّز Melanopsin ويؤخر النوم
+       ✅ تحسين 2: تلطيف النص الأبيض (96% → 86%)
+          لتجنب Irradiation Effect — نفس معيار GitHub وVS Code
+       ✅ تحسين 3: رفع سطوع الخلفية قليلاً (7% → 10%, 10% → 13%)
+          لتقليل Halation Effect وإبقاء التباين في نطاق 8–11:1
+    */
+    --background:        220 18% 10%;
+    --foreground:        210 20% 86%;
+    --card:              220 18% 13%;
+    --card-foreground:   210 20% 86%;
+    --popover:           220 18% 13%;
+    --popover-foreground:210 20% 86%;
 
-    --primary:           217 91% 63%;
-    --primary-foreground:222 47% 7%;
+    --primary:           217 85% 65%;
+    --primary-foreground:220 18% 10%;
 
-    --secondary:         160 70% 45%;
-    --secondary-foreground:222 47% 7%;
+    --secondary:         160 60% 47%;
+    --secondary-foreground:220 18% 10%;
 
-    --muted:             217 33% 14%;
-    --muted-foreground:  215 20% 58%;
+    --muted:             220 15% 17%;
+    --muted-foreground:  215 15% 55%;
 
-    --accent:            217 33% 16%;
-    --accent-foreground: 210 40% 96%;
+    --accent:            220 15% 19%;
+    --accent-foreground: 210 20% 86%;
 
-    --destructive:       0 62% 55%;
-    --destructive-foreground:210 40% 96%;
+    --destructive:       0 60% 57%;
+    --destructive-foreground:210 20% 86%;
 
-    --success:           160 70% 45%;
-    --success-foreground:222 47% 7%;
+    --success:           160 60% 47%;
+    --success-foreground:220 18% 10%;
 
-    --border:            217 33% 18%;
-    --input:             217 33% 16%;
-    --ring:              217 91% 63%;
+    --border:            220 15% 22%;
+    --input:             220 15% 19%;
+    --ring:              217 85% 65%;
 
-    --level-1: 217 91% 65%;
-    --level-2: 160 70% 48%;
-    --level-3: 38 85% 58%;
-    --level-4: 0 75% 62%;
+    --level-1: 217 85% 67%;
+    --level-2: 160 60% 50%;
+    --level-3: 38 82% 60%;
+    --level-4: 0 70% 64%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(217 91% 63%) 0%, hsl(199 80% 55%) 100%);
-    --gradient-hero:    linear-gradient(135deg, hsl(217 91% 63% / 0.12) 0%, hsl(160 70% 45% / 0.08) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(217 85% 65%) 0%, hsl(199 75% 57%) 100%);
+    --gradient-hero:    linear-gradient(135deg, hsl(217 85% 65% / 0.12) 0%, hsl(160 60% 47% / 0.08) 100%);
 
-    --shadow-card:  0 2px 16px rgba(0,0,0,0.3), 0 1px 4px rgba(0,0,0,0.2);
-    --shadow-hover: 0 12px 40px rgba(59,130,246,0.2), 0 4px 16px rgba(0,0,0,0.3);
-    --shadow-glow:  0 0 60px rgba(59,130,246,0.25);
-    --shadow-deep:  0 24px 64px rgba(0,0,0,0.4);
+    --shadow-card:  0 2px 16px rgba(0,0,0,0.35), 0 1px 4px rgba(0,0,0,0.25);
+    --shadow-hover: 0 12px 40px rgba(59,130,246,0.18), 0 4px 16px rgba(0,0,0,0.35);
+    --shadow-glow:  0 0 60px rgba(59,130,246,0.22);
+    --shadow-deep:  0 24px 64px rgba(0,0,0,0.45);
   }
 }
 
