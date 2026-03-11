@@ -114,7 +114,7 @@ export function Footer() {
         {/* سطر الحقوق الرسمي والنهائي */}
         <div className="border-t border-white/5 mt-16 pt-8 flex flex-col items-center gap-6">
           <div className="flex flex-col items-center gap-3 text-center">
-             <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white dark:bg-card/5 border border-white/5 text-sm">
+             <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-800 dark:bg-card/5 border border-white/5 text-sm">
                 <Code2 className="w-4 h-4 text-primary" />
                 <span className="text-slate-400 dark:text-muted-foreground font-medium">تطوير وتشغيل:</span>
                 <span className="text-white font-black italic">الناصر تِك Alnasser Tech</span>
