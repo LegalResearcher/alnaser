@@ -317,6 +317,12 @@ const ExamPage = () => {
         challengeMode: state.challengeMode,
         challengeSessionId: state.challengeSessionId,
         subjectId,
+        // بيانات إضافية لإعادة الاختبار مباشرة
+        examForm:      state.examForm,
+        isTrial:       state.isTrial,
+        allQuestions:  state.allQuestions,
+        examTime:      state.examTime,
+        questionsCount: state.questionsCount,
       },
     });
   }, [answers, questions, subject, state, subjectId, timeLeft, navigate, isSubmitting, totalTime]);
