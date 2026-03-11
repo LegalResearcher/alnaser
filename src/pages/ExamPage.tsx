@@ -228,40 +228,46 @@ const ExamPage = () => {
     const totalQuestions = questions.length;
     const passed = Math.round((finalScore / totalQuestions) * 100) >= (subject?.passing_score || 60);
     const timeTaken = totalTime - timeLeft;
+    const scorePercentage = Math.round((finalScore / totalQuestions) * 100);
     try {
-      const scorePercentage = Math.round((finalScore / totalQuestions) * 100);
-        await supabase.from('exam_results').insert({
+      // insert أساسي بدون أعمدة قد تكون غير موجودة
+      const insertPayload: Record<string, unknown> = {
         subject_id: subjectId, student_name: state.studentName, score: finalScore,
         total_questions: totalQuestions, passing_score: subject?.passing_score || 60,
         passed, exam_year: state.isTrial ? null : (state.allQuestions ? null : state.examYear),
         time_taken_seconds: timeTaken, answers,
-        score_percentage: scorePercentage,
-        challenge_session_id: state.challengeSessionId || null,
-      });
+      };
+      // إضافة الأعمدة الجديدة بشكل آمن (تُتجاهل إن لم تكن موجودة)
+      try { Object.assign(insertPayload, { score_percentage: scorePercentage, challenge_session_id: state.challengeSessionId || null }); } catch { /* ignore */ }
+      await supabase.from('exam_results').insert(insertPayload);
 
-      // تسجيل إحصائيات الأسئلة
-      const statsPromises = questions.map(q => {
-        const selected = answers[q.id];
-        if (!selected) return Promise.resolve();
-        return supabase.rpc('record_question_answer', {
-          p_question_id: q.id,
-          p_selected_option: selected,
-          p_is_correct: selected === q.correct_option,
+      // تسجيل إحصائيات الأسئلة (لا تعطل التسليم)
+      try {
+        const statsPromises = questions.map(q => {
+          const selected = answers[q.id];
+          if (!selected) return Promise.resolve();
+          return supabase.rpc('record_question_answer', {
+            p_question_id: q.id,
+            p_selected_option: selected,
+            p_is_correct: selected === q.correct_option,
+          });
         });
-      });
-      await Promise.allSettled(statsPromises);
+        await Promise.allSettled(statsPromises);
+      } catch { /* ignore */ }
 
-      // تسجيل نتيجة المبارزة
-      if (state.challengeMode && state.challengeSessionId) {
-        await supabase.from('challenge_results').insert({
-          session_id: state.challengeSessionId,
-          challenger_name: state.studentName,
-          score: finalScore,
-          total_questions: totalQuestions,
-          percentage: scorePercentage,
-          time_seconds: timeTaken,
-        });
-      }
+      // تسجيل نتيجة المبارزة (لا تعطل التسليم)
+      try {
+        if (state.challengeMode && state.challengeSessionId) {
+          await supabase.from('challenge_results').insert({
+            session_id: state.challengeSessionId,
+            challenger_name: state.studentName,
+            score: finalScore,
+            total_questions: totalQuestions,
+            percentage: scorePercentage,
+            time_seconds: timeTaken,
+          });
+        }
+      } catch { /* ignore */ }
 
       // تحديث ملف الطالب الشخصي
       try {
