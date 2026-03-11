@@ -98,8 +98,8 @@ export function Footer() {
                   <MapPin className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-[10px] text-slate-500 dark:text-muted-foreground font-black uppercase tracking-widest mb-1">الموقع الجغرافي</p>
-                  <p className="text-sm font-bold text-slate-200">الجمهورية اليمنية، صنعاء</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest mb-1">الموقع الجغرافي</p>
+                  <p className="text-sm font-bold text-slate-800 dark:text-slate-200">الجمهورية اليمنية، صنعاء</p>
                 </div>
               </div>
               
@@ -108,14 +108,14 @@ export function Footer() {
                   <Mail className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-[10px] text-slate-500 dark:text-muted-foreground font-black uppercase tracking-widest mb-1">الدعم الفني</p>
-                  <a href="mailto:info@alnasser-tech.com" className="text-sm font-bold text-slate-200 hover:text-primary transition-colors">info@alnasser-tech.com</a>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest mb-1">الدعم الفني</p>
+                  <a href="mailto:info@alnasser-tech.com" className="text-sm font-bold text-slate-800 dark:text-slate-200 hover:text-primary transition-colors">info@alnasser-tech.com</a>
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-white/5 flex items-center gap-3">
+              <div className="pt-4 border-t border-white/10 flex items-center gap-3">
                  <ShieldCheck className="w-5 h-5 text-emerald-500" />
-                 <span className="text-[10px] text-slate-500 dark:text-muted-foreground font-black uppercase tracking-widest">موثق ومعتمد رقمياً</span>
+                 <span className="text-[10px] text-slate-600 dark:text-slate-400 font-black uppercase tracking-widest">موثق ومعتمد رقمياً</span>
               </div>
             </div>
           </div>
