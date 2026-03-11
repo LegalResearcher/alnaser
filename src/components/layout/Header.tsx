@@ -158,7 +158,9 @@ export function Header() {
 
           {/* ══ Actions ══ */}
           <div className="flex items-center gap-2">
-            <ThemeToggle />
+            <div className={isHeroPage ? "[&_button]:bg-white/10 [&_button]:text-white [&_button:hover]:bg-white/20" : ""}>
+              <ThemeToggle />
+            </div>
 
             {/* زر القائمة — دائري بسيط بدون خلفية ثقيلة */}
             <button
