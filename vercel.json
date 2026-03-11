@@ -40,5 +40,10 @@
         }
       ]
     }
-  ]
+  ],
+  "functions": {
+    "api/og.ts": {
+      "runtime": "edge"
+    }
+  }
 }
