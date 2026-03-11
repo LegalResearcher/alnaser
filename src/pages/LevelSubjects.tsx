@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, ArrowRight, Clock, Target, User, 
-  Lock, BookOpen, Layers, Sparkles, ChevronLeft 
+  Lock, BookOpen, Layers, Sparkles, ChevronLeft, Settings2 
 } from 'lucide-react';
+import SubjectSettingsModal from '@/components/SubjectSettingsModal';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { Level, Subject } from '@/types/database';
