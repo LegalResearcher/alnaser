@@ -6,7 +6,7 @@
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import {
   CheckCircle, XCircle, Clock, Target,
-  RotateCcw, Home, Share2, Eye, EyeOff,
+  RotateCcw, Home, Share2, Eye, EyeOff, ArrowLeft,
   Trophy, Medal, AlertCircle, ChevronDown, Sparkles, Zap, Download, Loader2, Star, Award,
   Swords, Users, TrendingUp, Crown, Copy, Check
 } from 'lucide-react';
@@ -116,6 +116,27 @@ const ExamResult = () => {
   const [isCreatingChallenge, setIsCreatingChallenge] = useState(false);
   const [challengeLink, setChallengeLink] = useState<string | null>(null);
   const [copiedChallenge, setCopiedChallenge] = useState(false);
+  const [levelId, setLevelId] = useState<string | null>(null);
+  const [nextSubject, setNextSubject] = useState<{ id: string; name: string } | null>(null);
+
+  // جلب level_id والمادة التالية
+  useEffect(() => {
+    if (!state?.subjectId) return;
+    supabase.from('subjects').select('level_id, order_index').eq('id', state.subjectId).maybeSingle()
+      .then(({ data: cur }) => {
+        if (!cur?.level_id) return;
+        setLevelId(cur.level_id);
+        // جلب المادة التالية في نفس المستوى
+        supabase.from('subjects')
+          .select('id, name')
+          .eq('level_id', cur.level_id)
+          .gt('order_index', cur.order_index)
+          .order('order_index')
+          .limit(1)
+          .maybeSingle()
+          .then(({ data: next }) => { if (next) setNextSubject(next); });
+      });
+  }, [state?.subjectId]);
 
   const { data: comparisonData } = useQuery({
     queryKey: ['result-comparison', state?.subjectId, state?.scorePercentage],
@@ -655,16 +676,42 @@ ${challengeLink}`; window.open(`https://www.facebook.com/sharer/sharer.php?u=${e
 
             {/* ── أزرار التنقل ── */}
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
-              <Link to="/levels" className="flex-1">
-                <Button variant="ghost" className="w-full h-13 rounded-xl gap-2 font-bold text-muted-foreground hover:text-foreground">
-                  <Home className="w-4 h-4" /> العودة للمستويات
-                </Button>
-              </Link>
-              <Button size="lg" onClick={() => navigate(-2)}
+              <Button variant="ghost" className="flex-1 w-full h-13 rounded-xl gap-2 font-bold text-muted-foreground hover:text-foreground"
+                onClick={() => navigate(levelId ? `/levels/${levelId}` : '/levels')}>
+                <Home className="w-4 h-4" /> العودة لقائمة المواد
+              </Button>
+              <Button size="lg" onClick={() => {
+                  if (state?.subjectId) {
+                    navigate(`/exam/${state.subjectId}/start`, { replace: true, 
+                      state: {
+                        studentName:    state.studentName,
+                        examYear:       state.examYear || 0,
+                        examForm:       state.examYear ? undefined : 'All',
+                        examTime:       Math.ceil((state.timeTaken || 1800) / 60) || 30,
+                        questionsCount: state.totalQuestions,
+                        subjectName:    state.subjectName,
+                        levelName:      state.levelName,
+                        allQuestions:   !state.examYear,
+                      },
+                    });
+                  } else {
+                    navigate(-2);
+                  }
+                }}
                 className="flex-1 h-13 rounded-xl font-bold shadow-lg shadow-primary/20 gap-2 hover:shadow-primary/30 active:scale-[0.98]">
-                <RotateCcw className="w-4 h-4" /> محاولة اختبار جديد
+                <RotateCcw className="w-4 h-4" /> إعادة المحاولة من جديد
               </Button>
             </div>
+
+            {/* ── زر الاختبار التالي ── */}
+            {nextSubject && (
+              <Button
+                onClick={() => navigate(`/exam/${nextSubject.id}`)}
+                className="w-full h-13 rounded-xl font-bold gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20 active:scale-[0.98]">
+                <ArrowLeft className="w-4 h-4" />
+                الذهاب للاختبار التالي — {nextSubject.name}
+              </Button>
+            )}
 
           </div>
         </div>
