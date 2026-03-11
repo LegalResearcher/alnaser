@@ -86,6 +86,7 @@ const App = () => (
           <Route path="/privacy"        element={<Privacy />} /> {/* ← جديد */}
                     <Route path="/progress"       element={<StudentProgress />} />
                     <Route path="/diagnostic"     element={<DiagnosticTest />} />
+                    <Route path="/challenge/:sessionId" element={<ChallengePage />} />
 
                     {/* ── صفحات الإدارة ── */}
                     <Route path="/admin/login"             element={<AdminLogin />} />
