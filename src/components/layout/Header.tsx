@@ -208,7 +208,7 @@ export function Header() {
                       "px-5 py-3.5 rounded-2xl text-sm font-bold transition-all duration-200",
                       isActive
                         ? "bg-primary/10 text-primary border-r-[3px] border-primary"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        : "text-foreground/80 hover:bg-muted hover:text-foreground"
                     )}
                   >
                     {link.label}
