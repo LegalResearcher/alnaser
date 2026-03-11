@@ -227,6 +227,12 @@ const LevelSubjects = () => {
           </div>
         </div>
       </section>
+      {settingsSubject && (
+        <SubjectSettingsModal
+          subject={settingsSubject}
+          onClose={() => setSettingsSubject(null)}
+        />
+      )}
     </MainLayout>
   );
 };
