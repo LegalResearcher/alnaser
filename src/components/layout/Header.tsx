@@ -184,7 +184,7 @@ export function Header() {
               className={cn(
                 "md:hidden w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200",
                 isHeroPage && !isScrolled
-                  ? "bg-white dark:bg-card/10 text-white hover:bg-white dark:bg-card/20"
+                  ? "bg-white/20 text-white hover:bg-white/30"
                   : "bg-muted hover:bg-muted/80 text-foreground"
               )}
             >
