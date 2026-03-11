@@ -131,7 +131,7 @@ export function Header() {
           <nav className={cn(
             "hidden md:flex items-center p-1 rounded-full border backdrop-blur-sm transition-all duration-300",
             isHeroPage && !isScrolled
-              ? "bg-white/8 border-white/15"
+              ? "bg-white dark:bg-card/8 border-white/15"
               : "bg-muted/60 border-border/60"
           )}>
             {navLinks.map((link) => {
@@ -184,7 +184,7 @@ export function Header() {
               className={cn(
                 "md:hidden w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200",
                 isHeroPage && !isScrolled
-                  ? "bg-white/10 text-white hover:bg-white/20"
+                  ? "bg-white dark:bg-card/10 text-white hover:bg-white dark:bg-card/20"
                   : "bg-muted hover:bg-muted/80 text-foreground"
               )}
             >
