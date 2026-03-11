@@ -89,7 +89,7 @@ export function Header() {
       isScrolled
         ? "bg-background/95 backdrop-blur-2xl border-b border-border/60 shadow-sm py-2"
         : isHeroPage
-          ? "bg-transparent py-4"
+          ? "bg-gradient-to-b from-slate-950 to-slate-950/0 py-4"
           : "bg-background/95 backdrop-blur-xl border-b border-border/40 py-3"
     )}>
 
