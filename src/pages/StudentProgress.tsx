@@ -79,7 +79,7 @@ const StudentProgress = () => {
         <div className="container mx-auto px-4 md:px-6">
           <div className="max-w-2xl mx-auto">
 
-            <button onClick={() => navigate(-1)} className="mb-6 inline-flex items-center gap-1.5 text-xs font-black text-slate-500 hover:text-primary transition-colors">
+            <button onClick={() => navigate(-1)} className="mb-6 inline-flex items-center gap-1.5 text-xs font-black text-slate-500 dark:text-muted-foreground hover:text-primary transition-colors">
               <ChevronLeft className="w-4 h-4" /> رجوع
             </button>
 
@@ -123,7 +123,7 @@ const StudentProgress = () => {
 
                 <div className="bg-gradient-to-br from-violet-600 to-indigo-700 rounded-3xl p-6 text-white">
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center text-3xl">
+                    <div className="w-16 h-16 bg-white dark:bg-card/20 rounded-2xl flex items-center justify-center text-3xl">
                       🎓
                     </div>
                     <div>
