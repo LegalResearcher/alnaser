@@ -1,11 +1,11 @@
 /**
  * Alnasser Tech Digital Solutions
- * Component: Header — Version 3.0 (World-Class)
+ * Component: Header — Version 4.0 (World-Class)
  */
 
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, ArrowLeft, Scale, Download, Smartphone, CheckCircle } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { X, Download, Smartphone, CheckCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -22,52 +22,34 @@ const navLinks = [
 ];
 
 export function Header() {
-  const [isMenuOpen, setIsMenuOpen]   = useState(false);
-  const [isScrolled, setIsScrolled]   = useState(false);
+  const [isMenuOpen, setIsMenuOpen]         = useState(false);
+  const [isScrolled, setIsScrolled]         = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
   const location = useLocation();
 
   useEffect(() => {
     const handleScroll = () => {
       const y = window.scrollY;
-      setIsScrolled(y > 20);
-
-      // شريط تقدم القراءة
-      const docH   = document.documentElement.scrollHeight - window.innerHeight;
+      setIsScrolled(y > 30);
+      const docH = document.documentElement.scrollHeight - window.innerHeight;
       setScrollProgress(docH > 0 ? Math.min((y / docH) * 100, 100) : 0);
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // إغلاق القائمة عند تغيير المسار
   useEffect(() => { setIsMenuOpen(false); }, [location.pathname]);
 
-
-  // ── منطق تثبيت PWA ──
+  // ── منطق PWA ──
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled]       = useState(false);
   const [isInstalling, setIsInstalling]     = useState(false);
 
   useEffect(() => {
-    // هل التطبيق مثبّت مسبقاً؟
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstalled(true);
-    }
-
-    // التقط حدث التثبيت قبل أن يُظهره المتصفح
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
+    if (window.matchMedia('(display-mode: standalone)').matches) setIsInstalled(true);
+    const handler = (e: Event) => { e.preventDefault(); setDeferredPrompt(e); };
     window.addEventListener('beforeinstallprompt', handler);
-
-    // عند اكتمال التثبيت
-    window.addEventListener('appinstalled', () => {
-      setIsInstalled(true);
-      setDeferredPrompt(null);
-    });
-
+    window.addEventListener('appinstalled', () => { setIsInstalled(true); setDeferredPrompt(null); });
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
@@ -81,58 +63,71 @@ export function Header() {
     setIsInstalling(false);
   };
 
-  const isHeroPage = location.pathname === '/';
+  const isHeroPage  = location.pathname === '/';
+  // هل الهيدر على خلفية فاتحة؟
+  const isLightBg   = !isHeroPage || isScrolled;
 
   return (
     <header className={cn(
       "sticky top-0 z-50 w-full transition-all duration-500",
       isScrolled
-        ? "bg-background/95 backdrop-blur-2xl border-b border-border/60 shadow-sm py-2"
+        ? "bg-slate-950/96 backdrop-blur-2xl border-b border-white/8 shadow-xl shadow-black/25 py-2"
         : isHeroPage
-          ? "bg-gradient-to-b from-slate-950 to-slate-950/0 py-4"
+          ? "bg-gradient-to-b from-slate-950/90 via-slate-950/40 to-transparent py-4"
           : "bg-background/95 backdrop-blur-xl border-b border-border/40 py-3"
     )}>
 
       {/* شريط تقدم القراءة */}
       <div
-        className="absolute bottom-0 right-0 h-[2px] bg-gradient-to-l from-primary via-blue-400 to-transparent transition-all duration-150 pointer-events-none"
-        style={{ width: `${scrollProgress}%` }}
+        className="absolute bottom-0 right-0 h-[2px] pointer-events-none transition-all duration-150"
+        style={{
+          width: `${scrollProgress}%`,
+          background: 'linear-gradient(to left, hsl(217 91% 60%), hsl(199 89% 55%), transparent)',
+        }}
       />
 
-      <div className="container mx-auto px-4 md:px-6">
+      <div className="container mx-auto px-5 md:px-8">
         <div className="flex items-center justify-between h-14">
 
-          {/* ── Logo ── */}
+          {/* ══ Logo ══ */}
           <Link to="/" className="flex items-center gap-3 group shrink-0">
-            <div className="relative overflow-hidden w-10 h-10 md:w-11 md:h-11 rounded-xl shadow-md group-hover:shadow-primary/30 group-hover:shadow-lg transition-all duration-500 ring-1 ring-border/50 group-hover:ring-primary/30">
+            {/* الشعار — حواف دائرية ناعمة */}
+            <div className={cn(
+              "relative overflow-hidden w-10 h-10 rounded-2xl transition-all duration-300 group-hover:scale-105",
+              isLightBg
+                ? "shadow-md ring-1 ring-border/40 group-hover:ring-primary/30 group-hover:shadow-primary/20"
+                : "shadow-lg ring-1 ring-white/20 group-hover:ring-white/40"
+            )}>
               <img
                 src={logoImage}
-                alt="شعار منصة الناصر — الباحث القانوني المتخصص"
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                alt="شعار منصة الناصر"
+                className="w-full h-full object-cover"
               />
             </div>
-            <div className="flex flex-col leading-none">
+
+            {/* النص */}
+            <div className="flex flex-col leading-none gap-[3px]">
               <span className={cn(
-                "text-base md:text-lg font-black tracking-tight transition-colors duration-300",
-                isHeroPage && !isScrolled ? "text-white" : "text-foreground"
+                "text-[17px] font-black tracking-tight transition-colors duration-300",
+                isLightBg ? "text-foreground" : "text-white"
               )}>
                 الباحث <span className="text-primary">القانوني</span>
               </span>
               <span className={cn(
-                "text-[9px] font-bold uppercase tracking-[0.2em] mt-0.5 transition-colors duration-300",
-                isHeroPage && !isScrolled ? "text-white/50" : "text-muted-foreground/70"
+                "text-[8px] font-bold tracking-[0.28em] uppercase transition-colors duration-300",
+                isLightBg ? "text-muted-foreground/50" : "text-white/35"
               )}>
-                Legal Researcher
+                منصة الناصر
               </span>
             </div>
           </Link>
 
-          {/* ── Desktop Nav ── */}
+          {/* ══ Desktop Nav ══ */}
           <nav className={cn(
-            "hidden md:flex items-center p-1 rounded-full border backdrop-blur-sm transition-all duration-300",
-            isHeroPage && !isScrolled
-              ? "bg-white dark:bg-card/8 border-white/15"
-              : "bg-muted/60 border-border/60"
+            "hidden md:flex items-center p-1.5 rounded-full border backdrop-blur-md transition-all duration-300",
+            isLightBg
+              ? "bg-muted/70 border-border/50"
+              : "bg-white/8 border-white/10"
           )}>
             {navLinks.map((link) => {
               const isActive = location.pathname === link.href;
@@ -141,16 +136,19 @@ export function Header() {
                   key={link.href}
                   to={link.href}
                   className={cn(
-                    "relative px-5 py-2 rounded-full text-sm font-bold transition-all duration-300",
+                    "relative px-4 py-2 rounded-full text-sm font-bold transition-all duration-200",
                     isActive
-                      ? "text-primary-foreground"
-                      : isHeroPage && !isScrolled
-                        ? "text-white/70 hover:text-white"
-                        : "text-muted-foreground hover:text-foreground"
+                      ? "text-white"
+                      : isLightBg
+                        ? "text-muted-foreground hover:text-foreground"
+                        : "text-white/60 hover:text-white"
                   )}
                 >
                   {isActive && (
-                    <span className="absolute inset-0 bg-primary rounded-full -z-10 shadow-lg shadow-primary/25 animate-in fade-in zoom-in-90 duration-200" />
+                    <span
+                      className="absolute inset-0 rounded-full -z-10"
+                      style={{ background: 'linear-gradient(135deg, hsl(217 91% 55%), hsl(199 89% 48%))' }}
+                    />
                   )}
                   {link.label}
                 </Link>
@@ -158,45 +156,42 @@ export function Header() {
             })}
           </nav>
 
-          {/* ── Actions ── */}
+          {/* ══ Actions ══ */}
           <div className="flex items-center gap-2">
             <ThemeToggle />
 
-            <Link to="/levels" className="hidden sm:block">
-              <button className={cn(
-                "group relative flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-sm text-white overflow-hidden transition-all duration-300 hover:scale-[1.03] active:scale-[0.97]",
-              )}
-              style={{
-                background: 'linear-gradient(135deg, hsl(217 91% 55%), hsl(199 89% 48%))',
-                boxShadow: '0 4px 20px rgba(59,130,246,0.35)',
-              }}>
-                <span className="relative z-10">ابدأ رحلتك</span>
-                <ArrowLeft className="w-4 h-4 relative z-10 rotate-180 group-hover:-translate-x-0.5 transition-transform duration-200" />
-                {/* shimmer on hover */}
-                <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                  style={{ background: 'linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.18) 50%, transparent 70%)' }} />
-              </button>
-            </Link>
-
-            {/* Mobile Menu Button */}
+            {/* زر القائمة — دائري بسيط بدون خلفية ثقيلة */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
+              aria-label="فتح القائمة"
               className={cn(
-                "md:hidden w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200",
-                isHeroPage && !isScrolled
-                  ? "bg-white/15 text-white hover:bg-white/25 border border-white/20"
-                  : "bg-muted hover:bg-muted/80 text-foreground"
+                "md:hidden w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90",
+                isLightBg
+                  ? "text-foreground hover:bg-muted"
+                  : "text-white hover:bg-white/10"
               )}
             >
-              {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {isMenuOpen ? (
+                <X className="w-[22px] h-[22px]" />
+              ) : (
+                /* همبرغر مخصص — خطان بأطوال مختلفة = أناقة */
+                <span className="flex flex-col gap-[6px] items-end">
+                  <span className={cn("block h-[2px] w-[22px] rounded-full transition-colors",
+                    isLightBg ? "bg-foreground" : "bg-white")} />
+                  <span className={cn("block h-[2px] w-[14px] rounded-full transition-colors",
+                    isLightBg ? "bg-foreground/50" : "bg-white/50")} />
+                </span>
+              )}
             </button>
           </div>
         </div>
 
-        {/* ── Mobile Menu ── */}
+        {/* ══ Mobile Menu ══ */}
         {isMenuOpen && (
-          <nav className="md:hidden mt-3 p-4 rounded-3xl border border-slate-200 dark:border-border bg-white dark:bg-card shadow-2xl shadow-black/15 animate-in slide-in-from-top-3 fade-in duration-250">
-            <div className="flex flex-col gap-1">
+          <nav className="md:hidden mt-2 mb-1 rounded-2xl overflow-hidden border border-slate-100 dark:border-white/8 bg-white dark:bg-slate-900 shadow-2xl shadow-black/20 animate-in slide-in-from-top-2 fade-in duration-200">
+
+            {/* الروابط */}
+            <div className="p-2 pb-1">
               {navLinks.map((link) => {
                 const isActive = location.pathname === link.href;
                 return (
@@ -205,55 +200,52 @@ export function Header() {
                     to={link.href}
                     onClick={() => setIsMenuOpen(false)}
                     className={cn(
-                      "px-5 py-4 rounded-2xl text-base font-semibold transition-all duration-200",
+                      "flex items-center justify-between px-4 py-3.5 rounded-xl text-[15px] font-semibold transition-all duration-150",
                       isActive
-                        ? "bg-slate-100 dark:bg-muted text-slate-900 dark:text-foreground font-extrabold"
-                        : "text-slate-700 dark:text-foreground/80 hover:bg-slate-100 dark:hover:bg-muted hover:text-slate-900 dark:hover:text-foreground"
+                        ? "text-primary bg-primary/6 dark:bg-primary/12"
+                        : "text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5"
                     )}
                   >
                     {link.label}
+                    {isActive && <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
                   </Link>
                 );
               })}
-              <div className="pt-3 mt-2 border-t border-slate-200 dark:border-border space-y-2">
-                <Link to="/levels" onClick={() => setIsMenuOpen(false)}>
-                  <Button className="w-full h-12 rounded-2xl font-bold shadow-lg shadow-primary/20"
-                    style={{ background: 'linear-gradient(135deg, hsl(217 91% 55%), hsl(199 89% 48%))' }}>
-                    ابدأ الاختبار الآن
-                  </Button>
-                </Link>
-              {/* زر تحميل التطبيق */}
+            </div>
+
+            {/* أزرار الإجراء */}
+            <div className="px-3 pb-3 pt-2 space-y-2 border-t border-slate-100 dark:border-white/6">
+              <Link to="/levels" onClick={() => setIsMenuOpen(false)}>
+                <Button
+                  className="w-full h-11 rounded-xl font-bold text-white text-[15px] active:scale-[0.98] transition-transform"
+                  style={{ background: 'linear-gradient(135deg, hsl(217 91% 55%), hsl(199 89% 48%))' }}
+                >
+                  ابدأ الاختبار الآن
+                </Button>
+              </Link>
+
               {!isInstalled && (
                 <button
                   onClick={() => { handleInstall(); setIsMenuOpen(false); }}
                   disabled={!deferredPrompt || isInstalling}
-                  className="w-full mt-2 h-12 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all duration-300 border-2 border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 active:scale-95 disabled:opacity-50"
+                  className="w-full h-11 rounded-xl text-[14px] font-medium flex items-center justify-center gap-2 border border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 disabled:opacity-40 transition-all active:scale-[0.98]"
                 >
                   {isInstalling ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                      جاري التثبيت...
-                    </>
+                    <><div className="w-4 h-4 border-2 border-slate-300 border-t-primary rounded-full animate-spin" />جاري التثبيت...</>
                   ) : !deferredPrompt ? (
-                    <>
-                      <Smartphone className="w-4 h-4" />
-                      افتح في المتصفح → القائمة → تثبيت
-                    </>
+                    <><Smartphone className="w-4 h-4" />افتح القائمة ← تثبيت</>
                   ) : (
-                    <>
-                      <Download className="w-4 h-4" />
-                      تحميل التطبيق
-                    </>
+                    <><Download className="w-4 h-4" />تحميل التطبيق</>
                   )}
                 </button>
               )}
+
               {isInstalled && (
-                <div className="w-full mt-2 h-12 rounded-2xl font-bold flex items-center justify-center gap-2 bg-emerald-50 text-emerald-600 border-2 border-emerald-200">
+                <div className="w-full h-11 rounded-xl text-[14px] font-semibold flex items-center justify-center gap-2 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/20">
                   <CheckCircle className="w-4 h-4" />
-                  التطبيق مثبّت ✅
+                  التطبيق مثبّت
                 </div>
               )}
-              </div>
             </div>
           </nav>
         )}
