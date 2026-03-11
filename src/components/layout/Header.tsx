@@ -65,7 +65,7 @@ export function Header() {
 
   const isHeroPage  = location.pathname === '/';
   // هل الهيدر على خلفية فاتحة؟
-  const isLightBg   = !isHeroPage || isScrolled;
+  const isLightBg   = (!isHeroPage || isScrolled) && !(isHeroPage && !isScrolled);
 
   return (
     <header className={cn(
