@@ -12,10 +12,11 @@ const AdminStatistics = () => {
   const { data: stats, isLoading } = useQuery({
     queryKey: ['statistics'],
     queryFn: async () => {
+      // إصلاح: جلب العدد الكامل بدون حد الـ 1000 الافتراضي
       const [analytics, results, subjects] = await Promise.all([
-        supabase.from('site_analytics').select('id', { count: 'exact' }),
-        supabase.from('exam_results').select('id, passed, subject_id, created_at'),
-        supabase.from('subjects').select('id, name'),
+        supabase.from('site_analytics').select('id', { count: 'exact', head: true }),
+        supabase.from('exam_results').select('id, passed, subject_id, created_at').limit(10000),
+        supabase.from('subjects').select('id, name').limit(1000),
       ]);
 
       const subjectMap = new Map(subjects.data?.map(s => [s.id, s.name]) || []);
@@ -50,15 +51,20 @@ const AdminStatistics = () => {
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
 
-      const dailyExams: Record<string, number> = {};
+      // إصلاح: ترتيب التواريخ قبل slice لضمان أحدث 7 أيام فعلاً
+      const dailyExams: Record<string, { label: string; count: number }> = {};
       results.data?.forEach((r: any) => {
-        const date = new Date(r.created_at).toLocaleDateString('ar-SA');
-        dailyExams[date] = (dailyExams[date] || 0) + 1;
+        const d = new Date(r.created_at);
+        const key = d.toISOString().split('T')[0]; // YYYY-MM-DD للترتيب الصحيح
+        const label = d.toLocaleDateString('ar-SA');
+        if (!dailyExams[key]) dailyExams[key] = { label, count: 0 };
+        dailyExams[key].count += 1;
       });
 
       const dailyData = Object.entries(dailyExams)
+        .sort(([a], [b]) => a.localeCompare(b)) // ترتيب تصاعدي حسب التاريخ
         .slice(-7)
-        .map(([date, count]) => ({ date, count }));
+        .map(([, val]) => ({ date: val.label, count: val.count }));
 
       const passed = results.data?.filter((r: any) => r.passed).length || 0;
       const failed = (results.data?.length || 0) - passed;
@@ -90,7 +96,7 @@ const AdminStatistics = () => {
 
       const { data: analytics } = await supabase
         .from('site_analytics')
-        .select('page_path')
+        .select('page_path').limit(50000)
         .like('page_path', '/levels/%');
 
       const visitMap: Record<string, number> = {};
