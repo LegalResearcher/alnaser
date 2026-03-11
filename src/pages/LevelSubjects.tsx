@@ -18,6 +18,7 @@ const LevelSubjects = () => {
   const { levelId } = useParams<{ levelId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [settingsSubject, setSettingsSubject] = useState<(Subject & { levelName?: string }) | null>(null);
 
   // جلب بيانات المستوى الحالي
   const { data: level, isLoading: levelLoading } = useCachedQuery<Level | null>(
