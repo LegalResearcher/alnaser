@@ -135,14 +135,14 @@ const CircularTimer = ({ timeLeft, totalTime, isWarning }: { timeLeft: number; t
   return (
     <div className="relative flex items-center justify-center w-20 h-20 md:w-24 md:h-24 shrink-0">
       <svg className="absolute inset-0 -rotate-90" viewBox="0 0 72 72" width="100%" height="100%">
-        <circle cx="36" cy="36" r={radius} fill="none" stroke="#e2e8f0" strokeWidth="5" />
+        <circle cx="36" cy="36" r={radius} fill="none" stroke="currentColor" className="text-slate-200 dark:text-slate-600 dark:text-foreground/70" strokeWidth="5" />
         <circle cx="36" cy="36" r={radius} fill="none" stroke={color} strokeWidth="5"
           strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset}
           style={{ transition: 'stroke-dashoffset 1s linear, stroke 0.5s' }} />
       </svg>
       <div className={cn("flex flex-col items-center z-10 gap-0.5", isWarning && "animate-pulse")}>
-        <Clock className={cn("w-3 h-3", isWarning ? "text-rose-500" : "text-slate-400")} />
-        <span className={cn("font-black text-xs md:text-sm tabular-nums leading-none", isWarning ? "text-rose-600" : "text-slate-700")} dir="ltr">
+        <Clock className={cn("w-3 h-3", isWarning ? "text-rose-500" : "text-slate-400 dark:text-slate-400 dark:text-muted-foreground")} />
+        <span className={cn("font-black text-xs md:text-sm tabular-nums leading-none", isWarning ? "text-rose-600" : "text-slate-700 dark:text-slate-200")} dir="ltr">
           {String(mins).padStart(2,'0')}:{String(secs).padStart(2,'0')}
         </span>
       </div>
@@ -328,12 +328,12 @@ const ExamPage = () => {
 
   if (isLoading) return (
     <MainLayout>
-      <div className="container mx-auto px-6 py-24 text-center font-bold text-slate-400 animate-pulse">جاري تحضير أسئلة الاختبار...</div>
+      <div className="container mx-auto px-6 py-24 text-center font-bold text-slate-400 dark:text-slate-500 dark:text-muted-foreground animate-pulse">جاري تحضير أسئلة الاختبار...</div>
     </MainLayout>
   );
   if (!questions.length) return (
     <MainLayout>
-      <div className="container mx-auto px-6 py-24 text-center font-bold">عذراً، لا توجد أسئلة متاحة لهذا النموذج حالياً.</div>
+      <div className="container mx-auto px-6 py-24 text-center font-bold dark:text-slate-200">عذراً، لا توجد أسئلة متاحة لهذا النموذج حالياً.</div>
     </MainLayout>
   );
 
@@ -415,28 +415,28 @@ const ExamPage = () => {
   const getOptionStyle = (opt: string) => {
     const isSel = selectedAnswer === opt;
     const isCorr = currentQuestion.correct_option === opt;
-    if (!hasAnswered) return isSel ? "border-primary bg-primary/5 shadow-lg scale-[1.01]" : "border-slate-100 bg-slate-50 hover:border-primary/30 hover:bg-white hover:scale-[1.005]";
+    if (!hasAnswered) return isSel ? "border-primary bg-primary/5 shadow-lg scale-[1.01]" : "border-slate-100 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 hover:border-primary/30 hover:bg-white dark:hover:bg-slate-600 hover:scale-[1.005]";
     if (isCorr) return "border-emerald-500 bg-emerald-50 shadow-lg anim-glow";
     if (isSel && !isCorr) return "border-rose-500 bg-rose-50 shadow-md";
-    return "border-slate-100 bg-slate-50 opacity-40";
+    return "border-slate-100 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 opacity-40";
   };
 
   const getBadgeStyle = (opt: string) => {
     const isSel = selectedAnswer === opt;
     const isCorr = currentQuestion.correct_option === opt;
-    if (!hasAnswered) return isSel ? "bg-primary text-white shadow-primary/40 shadow-lg" : "bg-white text-slate-400 border border-slate-200";
+    if (!hasAnswered) return isSel ? "bg-primary text-white shadow-primary/40 shadow-lg" : "bg-white dark:bg-slate-600 text-slate-400 dark:text-slate-300 border border-slate-200 dark:border-slate-500";
     if (isCorr) return "bg-emerald-500 text-white";
     if (isSel && !isCorr) return "bg-rose-500 text-white";
-    return "bg-slate-100 text-slate-300";
+    return "bg-slate-100 dark:bg-muted text-slate-300";
   };
 
   const getTextStyle = (opt: string) => {
     const isSel = selectedAnswer === opt;
     const isCorr = currentQuestion.correct_option === opt;
-    if (!hasAnswered) return isSel ? "text-primary font-black" : "text-slate-600 font-bold";
+    if (!hasAnswered) return isSel ? "text-primary font-black" : "text-slate-600 dark:text-slate-300 font-bold";
     if (isCorr) return "text-emerald-700 font-black";
     if (isSel && !isCorr) return "text-rose-700 font-black";
-    return "text-slate-400 font-medium";
+    return "text-slate-400 dark:text-muted-foreground font-medium";
   };
 
   // نطاق النقاط المرئية
@@ -448,16 +448,16 @@ const ExamPage = () => {
       <GlobalStyles />
       <Confetti active={showConfetti} />
 
-      <section className="py-4 md:py-8 bg-gradient-to-b from-slate-50 to-white min-h-[calc(100vh-80px)] font-cairo text-right" dir="rtl">
+      <section className="py-4 md:py-8 bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 min-h-[calc(100vh-80px)] font-cairo text-right" dir="rtl">
         <div className="container mx-auto px-3 md:px-6">
           <div className="max-w-4xl mx-auto">
 
             {/* ── Header ── */}
-            <div className="sticky top-16 md:top-20 z-40 bg-white/90 backdrop-blur-xl rounded-2xl md:rounded-[2.5rem] border border-slate-200/80 p-3 md:p-5 mb-4 md:mb-8 shadow-xl flex items-center justify-between gap-3">
+            <div className="sticky top-16 md:top-20 z-40 bg-white dark:bg-card/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-2xl md:rounded-[2.5rem] border border-slate-200 dark:border-border/80 dark:border-slate-700/80 p-3 md:p-5 mb-4 md:mb-8 shadow-xl flex items-center justify-between gap-3">
 
               <div className="flex flex-col gap-2 flex-1 min-w-0">
                 {/* أرقام + نقاط حية */}
-                <div className="flex items-center justify-between text-[10px] md:text-xs font-black text-slate-400">
+                <div className="flex items-center justify-between text-[10px] md:text-xs font-black text-slate-400 dark:text-muted-foreground">
                   <span>السؤال {currentIndex + 1} / {questions.length}</span>
                   <div className="flex items-center gap-1 relative">
                     <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
@@ -469,7 +469,7 @@ const ExamPage = () => {
                 </div>
 
                 {/* شريط تقدم ملوّن */}
-                <div className="h-2.5 md:h-3 rounded-full bg-slate-100 overflow-hidden">
+                <div className="h-2.5 md:h-3 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
                   <div className="h-full rounded-full transition-all duration-700"
                     style={{ width: `${progressPct}%`, backgroundColor: progressColor }} />
                 </div>
@@ -496,7 +496,7 @@ const ExamPage = () => {
               <div
                 key={animKey}
                 className={cn(
-                  "bg-white rounded-[2rem] md:rounded-[3.5rem] border border-slate-100 shadow-2xl shadow-slate-200/60 p-5 md:p-14 mb-4 md:mb-6",
+                  "bg-white dark:bg-slate-800 rounded-[2rem] md:rounded-[3.5rem] border border-slate-100 dark:border-slate-700 shadow-2xl shadow-slate-200/60 dark:shadow-slate-900/60 p-5 md:p-14 mb-4 md:mb-6",
                   slideDir === 'left' ? "anim-slide-left" : "anim-slide-right",
                   shakeCard && "anim-shake"
                 )}
@@ -506,7 +506,7 @@ const ExamPage = () => {
                   <div className="w-11 h-11 md:w-14 md:h-14 rounded-2xl bg-gradient-to-br from-primary to-blue-600 text-white flex items-center justify-center font-black text-lg md:text-xl shadow-lg shadow-primary/30 shrink-0">
                     {currentIndex + 1}
                   </div>
-                  <span className="inline-flex items-center px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 text-[9px] md:text-[10px] font-black tracking-widest">
+                  <span className="inline-flex items-center px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-[9px] md:text-[10px] font-black tracking-widest">
                     {state.isTrial ? '🧪 النموذج التجريبي' : state.allQuestions ? '📚 جميع الأسئلة' : `اختبار عام ${state.examYear} ${state.examForm === 'Parallel' ? '· موازي' : ''}`}
                   </span>
 
@@ -518,7 +518,7 @@ const ExamPage = () => {
                         "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] md:text-[10px] font-black border transition-all duration-200",
                         showShareMenu
                           ? "bg-primary border-primary text-white"
-                          : "bg-white border-slate-200 text-slate-500 hover:border-primary hover:text-primary hover:bg-primary/5"
+                          : "bg-white dark:bg-card border-slate-200 dark:border-border text-slate-500 dark:text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/5"
                       )}
                     >
                       <Share2 className="w-3 h-3" /> مشاركة
@@ -526,29 +526,29 @@ const ExamPage = () => {
                     {showShareMenu && (
                       <>
                         <div className="fixed inset-0 z-40" onClick={() => setShowShareMenu(false)} />
-                        <div className="absolute left-0 top-full mt-2 z-50 bg-white rounded-2xl border border-slate-100 shadow-2xl shadow-slate-200/60 overflow-hidden min-w-[160px] animate-in fade-in zoom-in-95 duration-150">
-                          <button onClick={handleShareWhatsapp} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black text-slate-700 hover:bg-green-50 hover:text-green-700 transition-colors text-right">
+                        <div className="absolute left-0 top-full mt-2 z-50 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-2xl shadow-slate-200/60 overflow-hidden min-w-[160px] animate-in fade-in zoom-in-95 duration-150">
+                          <button onClick={handleShareWhatsapp} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black text-slate-700 dark:text-slate-200 hover:bg-green-50 dark:hover:bg-green-950 hover:text-green-700 transition-colors text-right">
                             <svg className="w-4 h-4 text-green-500 shrink-0" viewBox="0 0 24 24" fill="currentColor">
                               <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
                             </svg>
                             واتساب
                           </button>
-                          <button onClick={handleShareTelegram} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors text-right border-t border-slate-50">
+                          <button onClick={handleShareTelegram} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black text-slate-700 dark:text-foreground/90 hover:bg-blue-50 hover:text-blue-700 transition-colors text-right border-t border-slate-50">
                             <svg className="w-4 h-4 text-blue-500 shrink-0" viewBox="0 0 24 24" fill="currentColor">
                               <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-1.97 9.289c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.48 14.697l-2.95-.924c-.64-.203-.654-.64.136-.953l11.57-4.461c.537-.194 1.006.131.326.889z"/>
                             </svg>
                             تيليجرام
                           </button>
-                          <button onClick={handleShareTwitter} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors text-right border-t border-slate-50">
-                            <svg className="w-4 h-4 text-slate-800 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                          <button onClick={handleShareTwitter} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black text-slate-700 dark:text-foreground/90 hover:bg-slate-50 dark:bg-muted hover:text-slate-900 dark:text-foreground transition-colors text-right border-t border-slate-50">
+                            <svg className="w-4 h-4 text-slate-800 dark:text-foreground shrink-0" viewBox="0 0 24 24" fill="currentColor">
                               <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
                             </svg>
                             تويتر (X)
                           </button>
-                          <button onClick={handleCopyLink} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black text-slate-700 hover:bg-slate-50 transition-colors text-right border-t border-slate-50">
+                          <button onClick={handleCopyLink} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black text-slate-700 dark:text-foreground/90 hover:bg-slate-50 dark:bg-muted transition-colors text-right border-t border-slate-50">
                             {copied
                               ? <><Check className="w-4 h-4 text-emerald-500 shrink-0" /><span className="text-emerald-600">تم النسخ!</span></>
-                              : <><svg className="w-4 h-4 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>نسخ الرابط</>
+                              : <><svg className="w-4 h-4 text-slate-400 dark:text-muted-foreground shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>نسخ الرابط</>
                             }
                           </button>
                         </div>
@@ -557,7 +557,7 @@ const ExamPage = () => {
                   </div>
                 </div>
 
-                <h2 className="text-base md:text-2xl font-black text-slate-800 mb-7 md:mb-10 leading-relaxed text-right">
+                <h2 className="text-base md:text-2xl font-black text-slate-800 dark:text-slate-100 mb-7 md:mb-10 leading-relaxed text-right">
                   {currentQuestion.question_text}
                 </h2>
 
@@ -619,14 +619,14 @@ const ExamPage = () => {
 
                     {/* إحصائيات المستخدمين */}
                     {currentQuestionStats && (currentQuestionStats as any).total_answers >= 5 && (
-                      <div className="mb-4 bg-slate-50 border border-slate-100 rounded-2xl p-4">
+                      <div className="mb-4 bg-slate-50 dark:bg-slate-700 border border-slate-100 dark:border-slate-600 rounded-2xl p-4">
                         <div className="flex items-center gap-2 mb-3">
-                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                          <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 dark:text-muted-foreground uppercase tracking-widest">
                             إحصائيات المستخدمين — {(currentQuestionStats as any).total_answers} إجابة
                           </span>
                         </div>
                         <div className="flex items-center gap-2 mb-3">
-                          <span className="text-[10px] font-black text-emerald-600 w-8 text-left">
+                          <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 w-8 text-left">
                             {Math.round(((currentQuestionStats as any).correct_answers / (currentQuestionStats as any).total_answers) * 100)}%
                           </span>
                           <div className="flex-1 h-2.5 bg-rose-100 rounded-full overflow-hidden">
@@ -648,15 +648,15 @@ const ExamPage = () => {
                             return (
                               <div key={opt} className={cn('rounded-xl p-2 text-center border',
                                 isCorr ? 'bg-emerald-50 border-emerald-200' :
-                                isSel && !isCorr ? 'bg-rose-50 border-rose-200' : 'bg-white border-slate-100')}>
+                                isSel && !isCorr ? 'bg-rose-50 border-rose-200' : 'bg-white dark:bg-card border-slate-100 dark:border-border')}>
                                 <div className={cn('text-[10px] font-black mb-1',
-                                  isCorr ? 'text-emerald-600' : isSel && !isCorr ? 'text-rose-500' : 'text-slate-400')}>{opt}</div>
-                                <div className="h-8 bg-slate-100 rounded-lg overflow-hidden flex items-end mb-1">
+                                  isCorr ? 'text-emerald-600' : isSel && !isCorr ? 'text-rose-500' : 'text-slate-400 dark:text-muted-foreground')}>{opt}</div>
+                                <div className="h-8 bg-slate-100 dark:bg-muted rounded-lg overflow-hidden flex items-end mb-1">
                                   <div className={cn('w-full rounded-lg transition-all duration-700',
                                     isCorr ? 'bg-emerald-400' : isSel && !isCorr ? 'bg-rose-400' : 'bg-slate-300')}
                                     style={{ height: `${Math.max(pct, 4)}%` }} />
                                 </div>
-                                <div className={cn('text-[10px] font-black', isCorr ? 'text-emerald-600' : 'text-slate-500')}>{pct}%</div>
+                                <div className={cn('text-[10px] font-black', isCorr ? 'text-emerald-600' : 'text-slate-500 dark:text-muted-foreground')}>{pct}%</div>
                               </div>
                             );
                           })}
@@ -694,7 +694,7 @@ const ExamPage = () => {
             {/* ── أزرار التنقل الحر ── */}
             <div className="flex justify-between items-center gap-2 md:gap-4">
               <Button variant="outline" onClick={goPrev} disabled={currentIndex === 0}
-                className="rounded-xl md:rounded-2xl h-12 md:h-14 px-4 md:px-8 border-slate-200 font-bold text-sm active:scale-95">
+                className="rounded-xl md:rounded-2xl h-12 md:h-14 px-4 md:px-8 border-slate-200 dark:border-slate-600 dark:text-slate-200 dark:bg-slate-800 font-bold text-sm active:scale-95">
                 <ChevronRight className="ml-1 w-4 h-4" /> السابق
               </Button>
 
@@ -705,7 +705,7 @@ const ExamPage = () => {
                   return (
                     <button key={ri} onClick={() => goTo(ri)}
                       className={cn("rounded-full transition-all duration-200",
-                        ri === currentIndex ? "w-6 h-3 bg-primary" : "w-3 h-3 bg-slate-300 hover:bg-primary/50"
+                        ri === currentIndex ? "w-6 h-3 bg-primary" : "w-3 h-3 bg-slate-300 dark:bg-slate-600 hover:bg-primary/50"
                       )} />
                   );
                 })}
@@ -736,7 +736,7 @@ const ExamPage = () => {
               <AlertTriangle className="w-10 h-10 text-amber-600" />
             </div>
             <AlertDialogTitle className="text-3xl font-black text-center">هل أنت جاهز للنتيجة؟</AlertDialogTitle>
-            <AlertDialogDescription className="text-center text-lg text-slate-500 mt-4 leading-relaxed">
+            <AlertDialogDescription className="text-center text-lg text-slate-500 dark:text-muted-foreground mt-4 leading-relaxed">
               {answeredCount < questions.length
                 ? <span className="text-rose-500 font-bold">انتبه! لم تجب على جميع الأسئلة.</span>
                 : <span className="text-green-600 font-bold">رائع! لقد أكملت جميع الإجابات.</span>}
@@ -757,7 +757,7 @@ const ExamPage = () => {
         <AlertDialogContent className="rounded-[2.5rem] p-6 md:p-8 max-w-3xl max-h-[90vh] overflow-hidden text-right" dir="rtl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-2xl font-black text-center mb-4">مراجعة الأسئلة</AlertDialogTitle>
-            <AlertDialogDescription className="text-center text-sm text-slate-500">اضغط على رقم السؤال للانتقال إليه</AlertDialogDescription>
+            <AlertDialogDescription className="text-center text-sm text-slate-500 dark:text-muted-foreground">اضغط على رقم السؤال للانتقال إليه</AlertDialogDescription>
           </AlertDialogHeader>
           <div className="my-4 max-h-[50vh] overflow-y-auto p-2">
             <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 gap-3">
@@ -766,7 +766,7 @@ const ExamPage = () => {
                   onClick={() => { goTo(index); setShowReviewDialog(false); }}
                   className={cn(
                     "w-12 h-12 rounded-xl font-black text-base transition-all border-2 flex items-center justify-center",
-                    answers[q.id] ? "bg-emerald-50 border-emerald-400 text-emerald-700" : "bg-rose-50 border-rose-300 text-rose-600",
+                    answers[q.id] ? "bg-emerald-50 border-emerald-400 text-emerald-700" : "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-700 text-rose-600 dark:text-rose-400",
                     currentIndex === index && "ring-4 ring-primary ring-offset-2 scale-110 z-10"
                   )}>
                   {index + 1}
@@ -774,12 +774,12 @@ const ExamPage = () => {
               ))}
             </div>
           </div>
-          <div className="flex justify-between items-center text-sm font-bold text-slate-600 my-4 px-2 bg-slate-50 py-3 rounded-2xl">
+          <div className="flex justify-between items-center text-sm font-bold text-slate-600 dark:text-foreground/70 my-4 px-2 bg-slate-50 dark:bg-muted py-3 rounded-2xl">
             <div className="flex items-center gap-2"><div className="w-4 h-4 bg-emerald-400 rounded" /><span>تمت الإجابة ({answeredCount})</span></div>
             <div className="flex items-center gap-2"><div className="w-4 h-4 bg-rose-300 rounded" /><span>بانتظار الإجابة ({questions.length - answeredCount})</span></div>
           </div>
           <AlertDialogFooter className="flex flex-col sm:flex-row gap-3 mt-4">
-            <AlertDialogCancel className="flex-1 h-12 rounded-xl font-bold border-slate-200">متابعة المراجعة</AlertDialogCancel>
+            <AlertDialogCancel className="flex-1 h-12 rounded-xl font-bold border-slate-200 dark:border-border">متابعة المراجعة</AlertDialogCancel>
             <AlertDialogAction onClick={() => { setShowReviewDialog(false); setShowSubmitDialog(true); }}
               className="flex-1 h-12 rounded-xl bg-slate-900 text-white font-black">
               <Flag className="w-4 h-4 ml-2" /> تسليم النهائي
