@@ -28,6 +28,7 @@ const Privacy          = lazy(() => import("./pages/Privacy")); // ← جديد
 const StudentProgress  = lazy(() => import("./pages/StudentProgress"));
 const DiagnosticTest   = lazy(() => import("./pages/DiagnosticTest"));
 const About            = lazy(() => import("./pages/About"));
+const ChallengePage    = lazy(() => import("./pages/ChallengePage"));
 
 // صفحات الإدارة — Lazy Loading
 const AdminLogin            = lazy(() => import("./pages/admin/AdminLogin"));
