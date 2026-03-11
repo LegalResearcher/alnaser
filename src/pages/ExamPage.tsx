@@ -44,9 +44,10 @@ interface ExamState {
 
 const cleanOptionText = (text: string | null | undefined): string => {
   if (!text) return '';
+  // نحذف فقط بادئات الترقيم مثل "أ-" أو "1." أو "A)" وليس الأرقام الجزء من النص
   return text
-    .replace(/^[\+\-\*\s\(\)\d\.\-\/]+/, '')
-    .replace(/[\s\(\)\d\+\-\.\/]+$/, '')
+    .replace(/^[\s]*[A-Dأبجد][\.\-\)]\s*/, '')  // حذف بادئات الترقيم فقط
+    .replace(/^[\s]*\d+[\.\-\)]\s*/, '')          // حذف أرقام الترقيم فقط مثل "1."
     .trim();
 };
 
