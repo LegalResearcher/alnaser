@@ -103,7 +103,7 @@ const Levels = () => {
   return (
     <MainLayout>
       <LevelsSEO />
-      <section className="py-8 md:py-24 bg-slate-50/50 min-h-[calc(100vh-80px)]">
+      <section className="py-8 md:py-24 bg-slate-50 dark:bg-muted/50 min-h-[calc(100vh-80px)]">
         <div className="container mx-auto px-4 md:px-6">
           
           {/* Header - تصميم فخم ومركزي */}
@@ -112,10 +112,10 @@ const Levels = () => {
               <GraduationCap className="w-3.5 h-3.5 md:w-4 md:h-4" />
               المسار الأكاديمي القانوني
             </div>
-            <h1 className="text-3xl md:text-6xl font-black text-slate-900 tracking-tight">
+            <h1 className="text-3xl md:text-6xl font-black text-slate-900 dark:text-foreground tracking-tight">
               اختر <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-600">مستواك الدراسي</span>
             </h1>
-            <p className="text-slate-500 text-base md:text-xl font-medium px-4">
+            <p className="text-slate-500 dark:text-muted-foreground text-base md:text-xl font-medium px-4">
               حدد المرحلة التعليمية التي تنتمي إليها للوصول إلى بنك الأسئلة المخصص لك.
             </p>
           </div>
@@ -124,7 +124,7 @@ const Levels = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8 max-w-5xl mx-auto">
             {levelsLoading && levels.length === 0 ? (
               Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-56 md:h-72 rounded-[2rem] md:rounded-[3rem] bg-white border border-slate-100 animate-pulse shadow-sm" />
+                <div key={i} className="h-56 md:h-72 rounded-[2rem] md:rounded-[3rem] bg-white dark:bg-card border border-slate-100 dark:border-border animate-pulse shadow-sm" />
               ))
             ) : (
               levels.map((level, index) => {
@@ -144,7 +144,7 @@ const Levels = () => {
                   <CardWrapper key={level.id} {...(cardProps as any)}>
                     {/* Card Main Container */}
                     <div className={cn(
-                      "bg-white rounded-[2rem] md:rounded-[3rem] border border-slate-100 overflow-hidden transition-all duration-500 flex flex-col h-full shadow-sm active:scale-[0.98]",
+                      "bg-white dark:bg-card rounded-[2rem] md:rounded-[3rem] border border-slate-100 dark:border-border overflow-hidden transition-all duration-500 flex flex-col h-full shadow-sm active:scale-[0.98]",
                       isDisabled
                         ? 'opacity-60 grayscale-[30%]'
                         : 'hover:-translate-y-2 md:hover:-translate-y-3 hover:shadow-2xl',
@@ -181,7 +181,7 @@ const Levels = () => {
                         
                         {/* الرقم العائم */}
                         <div className="absolute bottom-4 md:bottom-6 right-4 md:right-8">
-                          <div className="w-14 h-14 md:w-20 md:h-20 rounded-[1.25rem] md:rounded-[2rem] bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center rotate-12 group-hover:rotate-0 transition-transform duration-500 shadow-2xl">
+                          <div className="w-14 h-14 md:w-20 md:h-20 rounded-[1.25rem] md:rounded-[2rem] bg-white dark:bg-card/20 backdrop-blur-md border border-white/30 flex items-center justify-center rotate-12 group-hover:rotate-0 transition-transform duration-500 shadow-2xl">
                             <span className="text-3xl md:text-5xl font-black text-white">{index + 1}</span>
                           </div>
                         </div>
@@ -205,7 +205,7 @@ const Levels = () => {
                            <Sparkles className={cn("w-4 h-4 md:w-5 md:h-5", isDisabled ? 'text-gray-400' : levelColors[index]?.icon)} />
                            <h2 className={cn(
                              "font-black text-xl md:text-2xl tracking-tight",
-                             isDisabled ? 'text-slate-400' : 'text-slate-800 group-hover:text-primary transition-colors'
+                             isDisabled ? 'text-slate-400 dark:text-muted-foreground' : 'text-slate-800 dark:text-foreground group-hover:text-primary transition-colors'
                            )}>
                             {level.name}
                           </h2>
@@ -216,7 +216,7 @@ const Levels = () => {
                           )}
                         </div>
                         
-                        <p className="text-slate-500 font-medium leading-relaxed mb-6 md:mb-8 line-clamp-2 text-sm md:text-base">
+                        <p className="text-slate-500 dark:text-muted-foreground font-medium leading-relaxed mb-6 md:mb-8 line-clamp-2 text-sm md:text-base">
                           {level.description}
                         </p>
                         
@@ -233,7 +233,7 @@ const Levels = () => {
                             "w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all duration-300",
                             isDisabled
                               ? 'bg-gray-100 text-gray-400'
-                              : 'bg-slate-50 group-hover:bg-primary group-hover:text-white'
+                              : 'bg-slate-50 dark:bg-muted group-hover:bg-primary group-hover:text-white'
                           )}>
                             <ArrowLeft className="w-4 h-4 md:w-5 md:h-5 group-hover:-translate-x-1 transition-transform" />
                           </div>
