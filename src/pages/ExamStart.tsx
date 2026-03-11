@@ -68,7 +68,7 @@ const ExamStart = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [studentName,      setStudentName]      = useState('');
+  const [studentName,      setStudentName]      = useState(() => localStorage.getItem('alnaseer_student_name') || '');
   const [password,         setPassword]         = useState('');
   const [selectedYear,     setSelectedYear]     = useState<string>('');
   const [selectedExamForm, setSelectedExamForm] = useState<string>('General');
@@ -284,7 +284,7 @@ const ExamStart = () => {
                   <Input
                     placeholder="أدخل اسمك الكامل"
                     value={studentName}
-                    onChange={(e) => setStudentName(e.target.value)}
+                    onChange={(e) => { const v = e.target.value; setStudentName(v); localStorage.setItem('alnaseer_student_name', v); }}
                     className="h-14 rounded-[1rem] pr-11 bg-slate-50 dark:bg-muted border-slate-200 dark:border-border font-bold text-base
                       focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
                   />
