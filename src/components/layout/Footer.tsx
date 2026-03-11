@@ -24,17 +24,17 @@ export function Footer() {
               </div>
             </div>
             
-            <p className="text-slate-400 leading-relaxed text-lg max-w-md">
+            <p className="text-slate-400 dark:text-muted-foreground leading-relaxed text-lg max-w-md">
               منصة تعليمية متطورة تابعة لـ <strong>الناصر تِك</strong>، نهدف من خلالها إلى تطويع الحلول الرقمية لخدمة المجتمع القانوني في اليمن والوطن العربي.
             </p>
 
             {/* صاحب المنصة */}
-            <div className="inline-flex items-center gap-3 px-5 py-3 rounded-2xl border border-white/10 bg-white/[0.03]">
+            <div className="inline-flex items-center gap-3 px-5 py-3 rounded-2xl border border-white/10 bg-white dark:bg-card/[0.03]">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center font-black text-white text-lg shrink-0">
                 م
               </div>
               <div>
-                <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-0.5">إعداد وتطوير</p>
+                <p className="text-[10px] text-slate-500 dark:text-muted-foreground font-black uppercase tracking-widest mb-0.5">إعداد وتطوير</p>
                 <p className="text-white font-black text-base">أ. معين الناصر</p>
               </div>
             </div>
@@ -52,7 +52,7 @@ export function Footer() {
                   href={social.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-primary hover:text-white transition-all duration-300 group"
+                  className="w-10 h-10 rounded-xl bg-white dark:bg-card/5 border border-white/10 flex items-center justify-center hover:bg-primary hover:text-white transition-all duration-300 group"
                 >
                   <social.Icon className="w-5 h-5 group-hover:scale-110 transition-transform" />
                 </a>
@@ -76,7 +76,7 @@ export function Footer() {
                 <li key={link.to}>
                   <Link 
                     to={link.to} 
-                    className="flex items-center group text-slate-400 hover:text-primary transition-colors"
+                    className="flex items-center group text-slate-400 dark:text-muted-foreground hover:text-primary transition-colors"
                   >
                     <div className="w-1.5 h-1.5 rounded-full bg-slate-700 ml-3 group-hover:w-4 group-hover:bg-primary transition-all" />
                     {link.label}
@@ -92,13 +92,13 @@ export function Footer() {
               المقر والاتصال
               <span className="absolute -bottom-2 right-0 w-8 h-1 bg-primary rounded-full" />
             </h4>
-            <div className="bg-white/[0.03] backdrop-blur-sm rounded-[2rem] p-8 border border-white/5 space-y-6">
+            <div className="bg-white dark:bg-card/[0.03] backdrop-blur-sm rounded-[2rem] p-8 border border-white/5 space-y-6">
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
                   <MapPin className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">الموقع الجغرافي</p>
+                  <p className="text-[10px] text-slate-500 dark:text-muted-foreground font-black uppercase tracking-widest mb-1">الموقع الجغرافي</p>
                   <p className="text-sm font-bold text-slate-200">الجمهورية اليمنية، صنعاء</p>
                 </div>
               </div>
@@ -108,14 +108,14 @@ export function Footer() {
                   <Mail className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">الدعم الفني</p>
+                  <p className="text-[10px] text-slate-500 dark:text-muted-foreground font-black uppercase tracking-widest mb-1">الدعم الفني</p>
                   <a href="mailto:info@alnasser-tech.com" className="text-sm font-bold text-slate-200 hover:text-primary transition-colors">info@alnasser-tech.com</a>
                 </div>
               </div>
 
               <div className="pt-4 border-t border-white/5 flex items-center gap-3">
                  <ShieldCheck className="w-5 h-5 text-emerald-500" />
-                 <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">موثق ومعتمد رقمياً</span>
+                 <span className="text-[10px] text-slate-500 dark:text-muted-foreground font-black uppercase tracking-widest">موثق ومعتمد رقمياً</span>
               </div>
             </div>
           </div>
@@ -124,18 +124,18 @@ export function Footer() {
         {/* سطر الحقوق الرسمي والنهائي */}
         <div className="border-t border-white/5 mt-16 pt-8 flex flex-col items-center gap-6">
           <div className="flex flex-col items-center gap-3 text-center">
-             <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/5 text-sm">
+             <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white dark:bg-card/5 border border-white/5 text-sm">
                 <Code2 className="w-4 h-4 text-primary" />
-                <span className="text-slate-400 font-medium">تطوير وتشغيل:</span>
+                <span className="text-slate-400 dark:text-muted-foreground font-medium">تطوير وتشغيل:</span>
                 <span className="text-white font-black italic">الناصر تِك Alnasser Tech</span>
              </div>
              
-             <p className="text-slate-500 text-sm leading-relaxed">
+             <p className="text-slate-500 dark:text-muted-foreground text-sm leading-relaxed">
                © {currentYear} <span className="text-slate-300 font-bold">الناصر تِك للحلول الرقمية (Alnasser Tech Digital Solutions)</span>. جميع الحقوق محفوظة.
              </p>
           </div>
           
-          <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600">
+          <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 dark:text-foreground/70">
              <span>صنعاء</span>
              <span className="w-1 h-1 rounded-full bg-slate-800" />
              <span>الجمهورية اليمنية</span>
