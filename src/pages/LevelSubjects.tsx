@@ -35,6 +35,18 @@ const LevelSubjects = () => {
     { enabled: !!levelId }
   );
 
+  // تسجيل زيارة المستوى في الإحصائيات
+  useEffect(() => {
+    if (level && !level.is_disabled) {
+      const visitorId = localStorage.getItem('visitor_id') || crypto.randomUUID();
+      localStorage.setItem('visitor_id', visitorId);
+      supabase.from('site_analytics').insert({
+        page_path: `/level/${level.name}`,
+        visitor_id: visitorId,
+      }).then(() => {});
+    }
+  }, [level]);
+
   // إعادة توجيه إذا كان المستوى معطلاً
   useEffect(() => {
     if (level && level.is_disabled) {
