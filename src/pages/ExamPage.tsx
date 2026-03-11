@@ -37,6 +37,9 @@ interface ExamState {
   questionsCount: number;
   subjectName?: string;
   levelName?: string;
+  challengeMode?: boolean;
+  challengeSessionId?: string;
+  forcedQuestionIds?: string[];
 }
 
 const cleanOptionText = (text: string | null | undefined): string => {
