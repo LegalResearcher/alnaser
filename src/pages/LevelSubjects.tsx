@@ -142,7 +142,7 @@ const LevelSubjects = () => {
                 <div key={subject.id} className="group relative">
                   <button
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSettingsSubject({ ...subject, levelName: level?.name }); }}
-                    className="absolute top-4 left-4 z-20 w-9 h-9 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center hover:bg-primary hover:text-white hover:border-primary transition-all duration-200 opacity-0 group-hover:opacity-100"
+                    className="absolute top-4 left-4 z-20 w-9 h-9 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center hover:bg-primary hover:text-white hover:border-primary transition-all duration-200 opacity-100"
                     title="إعدادات المادة"
                   >
                     <Settings2 className="w-4 h-4" />
