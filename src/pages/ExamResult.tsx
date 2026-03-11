@@ -680,36 +680,20 @@ ${challengeLink}`; window.open(`https://www.facebook.com/sharer/sharer.php?u=${e
                 onClick={() => navigate(levelId ? `/levels/${levelId}` : '/levels')}>
                 <Home className="w-4 h-4" /> العودة لقائمة المواد
               </Button>
-              <Button size="lg" onClick={() => {
-                  if (state?.subjectId) {
-                    navigate(`/exam/${state.subjectId}/start`, { replace: true, 
-                      state: {
-                        studentName:    state.studentName,
-                        examYear:       state.examYear || 0,
-                        examForm:       state.examYear ? undefined : 'All',
-                        examTime:       Math.ceil((state.timeTaken || 1800) / 60) || 30,
-                        questionsCount: state.totalQuestions,
-                        subjectName:    state.subjectName,
-                        levelName:      state.levelName,
-                        allQuestions:   !state.examYear,
-                      },
-                    });
-                  } else {
-                    navigate(-2);
-                  }
-                }}
+              <Button size="lg"
+                onClick={() => navigate(state?.subjectId ? `/exam/${state.subjectId}` : '/levels')}
                 className="flex-1 h-13 rounded-xl font-bold shadow-lg shadow-primary/20 gap-2 hover:shadow-primary/30 active:scale-[0.98]">
                 <RotateCcw className="w-4 h-4" /> إعادة المحاولة من جديد
               </Button>
             </div>
 
             {/* ── زر الاختبار التالي ── */}
-            {nextSubject && (
+            {state?.subjectId && (
               <Button
-                onClick={() => navigate(`/exam/${nextSubject.id}`)}
+                onClick={() => navigate(`/exam/${state.subjectId}`)}
                 className="w-full h-13 rounded-xl font-bold gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20 active:scale-[0.98]">
                 <ArrowLeft className="w-4 h-4" />
-                الذهاب للاختبار التالي — {nextSubject.name}
+                الذهاب للاختبار التالي
               </Button>
             )}
 
