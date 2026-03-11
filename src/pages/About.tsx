@@ -4,7 +4,7 @@
  */
 
 import { MainLayout } from '@/components/layout/MainLayout';
-import { Scale, BookOpen, Target, Users, Award, Code2, MapPin, GraduationCap } from 'lucide-react';
+import { Scale, BookOpen, Target, Users, Award, Code2, MapPin, GraduationCap, Phone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const About = () => {
@@ -43,7 +43,7 @@ const About = () => {
               </div>
               <p className="text-white/60 text-xs font-black uppercase tracking-[0.3em] mb-2">إعداد وتطوير</p>
               <h2 className="text-3xl md:text-4xl font-black mb-2">أ. معين الناصر</h2>
-              <p className="text-white/70 font-bold text-sm mb-6">مؤسس منصة الباحث القانوني — الرئيس التنفيذي لشركة الناصر تِك للحلول الرقمية</p>
+              <p className="text-white/70 font-bold text-sm mb-6">مؤسس منصة الباحث القانوني</p>
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 text-sm font-bold">
                 ⚖️ مجهود شخصي لخدمة طلاب الشريعة والقانون
               </div>
@@ -59,7 +59,8 @@ const About = () => {
               <h3 className="text-xl font-black text-slate-900">نبذة تعريفية</h3>
             </div>
             <p className="text-slate-600 leading-relaxed text-base">
-              أ. معين الناصر، مؤسس منصة الباحث القانوني والرئيس التنفيذي لشركة الناصر تِك للحلول الرقمية، متخصص في تطوير المواقع الإلكترونية والمنصات التعليمية الرقمية. أسس منصة الباحث القانوني كمبادرة شخصية لخدمة طلاب الشريعة والقانون في اليمن، وتزويدهم بأدوات تعليمية تفاعلية مطابقة لنماذج الاختبارات الرسمية من عام 2020 إلى 2025، سعياً لرفع المستوى الأكاديمي والمهني للباحثين القانونيين وتمكينهم من الاستعداد الأمثل لاختباراتهم في أي وقت ومن أي مكان.
+              أ. معين الناصر، مؤسس منصة الباحث القانوني.
+              أسس منصة الباحث القانوني كمبادرة شخصية لخدمة طلاب الشريعة والقانون في اليمن، وتزويدهم بأدوات تعليمية تفاعلية مطابقة لنماذج الاختبارات الرسمية من عام 2020 إلى 2025، سعياً لرفع المستوى الأكاديمي والمهني للباحثين القانونيين وتمكينهم من الاستعداد الأمثل لاختباراتهم في أي وقت ومن أي مكان.
             </p>
           </div>
 
@@ -109,7 +110,10 @@ const About = () => {
                 <MapPin className="w-5 h-5 text-primary shrink-0" />
                 <span className="font-bold text-sm">الجمهورية اليمنية، صنعاء</span>
               </div>
-
+              <div className="flex items-center gap-3 text-slate-600">
+                <Phone className="w-5 h-5 text-primary shrink-0" />
+                <a href="tel:+96777276209" className="font-bold text-sm hover:text-primary transition-colors" dir="ltr">+967 77 276 209</a>
+              </div>
             </div>
           </div>
 
