@@ -20,7 +20,7 @@ const Index = () => {
     <MainLayout>
       <HomeSEO />
       {/* غلاف عام لإضافة لمسات جمالية خلفية للأقسام المتداخلة */}
-      <div className="relative overflow-hidden bg-white">
+      <div className="relative overflow-hidden bg-white dark:bg-card">
         
         {/* Hero Section: المدخل البصري الأول */}
         <div className="relative z-10">
@@ -43,7 +43,7 @@ const Index = () => {
         </section>
 
         {/* FAQ Section: الإجابة على استفسارات الباحثين */}
-        <section className="bg-slate-50/50 border-y border-slate-100">
+        <section className="bg-slate-50 dark:bg-muted/50 border-y border-slate-100 dark:border-border">
           <FAQSection />
         </section>
 
