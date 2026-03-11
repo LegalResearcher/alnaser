@@ -1,4 +1,4 @@
-import { Scale, MapPin, Facebook, Twitter, Linkedin, Instagram, Code2, ShieldCheck } from 'lucide-react';
+import { Scale, MapPin, Facebook, Twitter, Linkedin, Instagram, Code2, ShieldCheck, Send } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export function Footer() {
@@ -45,7 +45,8 @@ export function Footer() {
                 { Icon: Twitter, href: "https://twitter.com/AlnasserTech" },
                 { Icon: Linkedin, href: "https://www.linkedin.com/company/alnasser-tech" },
                 { Icon: Facebook, href: "https://www.facebook.com/AlnasserTech" },
-                { Icon: Instagram, href: "https://www.instagram.com/AlnasserTech" }
+                { Icon: Instagram, href: "https://www.instagram.com/AlnasserTech" },
+                { Icon: Send, href: "https://t.me/muen2025" }
               ].map((social, index) => (
                 <a 
                   key={index} 
