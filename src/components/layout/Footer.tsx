@@ -1,4 +1,4 @@
-import { Scale, Mail, Phone, MapPin, Facebook, Twitter, Linkedin, Instagram, Code2, ShieldCheck, Globe } from 'lucide-react';
+import { Scale, MapPin, Facebook, Twitter, Linkedin, Instagram, Code2, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export function Footer() {
@@ -25,12 +25,12 @@ export function Footer() {
             </div>
             
             <p className="text-slate-400 dark:text-muted-foreground leading-relaxed text-lg max-w-md">
-              منصة تعليمية متطورة تابعة لـ <strong>الناصر تِك</strong>، نهدف من خلالها إلى تطويع الحلول الرقمية لخدمة المجتمع القانوني في اليمن والوطن العربي.
+              منصة تعليمية متطورة تابعة لـ <strong>الناصر تِك</strong>، نهدف من خلالها إلى تطويع الحلول الرقمية لخدمة طلاب الشريعة والقانون في اليمن.
             </p>
 
             {/* صاحب المنصة */}
-            <div className="inline-flex items-center gap-3 px-5 py-3 rounded-2xl border border-white/10 bg-white dark:bg-card/[0.03]">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center font-black text-white text-lg shrink-0">
+            <div className="inline-flex items-center gap-3 px-5 py-3 rounded-2xl border border-white/10 bg-white/5">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center font-black text-white text-xl shrink-0 font-cairo">
                 م
               </div>
               <div>
@@ -103,16 +103,6 @@ export function Footer() {
                 </div>
               </div>
               
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                  <Mail className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest mb-1">الدعم الفني</p>
-                  <a href="mailto:info@alnasser-tech.com" className="text-sm font-bold text-slate-800 dark:text-slate-200 hover:text-primary transition-colors">info@alnasser-tech.com</a>
-                </div>
-              </div>
-
               <div className="pt-4 border-t border-white/10 flex items-center gap-3">
                  <ShieldCheck className="w-5 h-5 text-emerald-500" />
                  <span className="text-[10px] text-slate-600 dark:text-slate-400 font-black uppercase tracking-widest">موثق ومعتمد رقمياً</span>
