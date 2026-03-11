@@ -80,7 +80,7 @@ const About = () => {
           {/* ── ما يميز المنصة ── */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             {[
-              { icon: BookOpen, title: '+5000 سؤال', desc: 'مراجع ومحدَّث باستمرار في جميع فروع القانون', color: 'bg-blue-50 text-blue-600' },
+              { icon: BookOpen, title: '+10000 سؤال', desc: 'مراجع ومحدَّث باستمرار في جميع فروع القانون', color: 'bg-blue-50 text-blue-600' },
               { icon: GraduationCap, title: '4 مستويات دراسية', desc: 'تغطي جميع مواد الشريعة والقانون', color: 'bg-emerald-50 text-emerald-600' },
               { icon: Award, title: 'نظام شارات وإنجازات', desc: 'يحفّزك على الاستمرار والتطور المستمر', color: 'bg-amber-50 text-amber-600' },
               { icon: Users, title: 'مجاني للجميع', desc: 'متاح لجميع طلاب الشريعة والقانون بدون أي رسوم', color: 'bg-violet-50 text-violet-600' },
