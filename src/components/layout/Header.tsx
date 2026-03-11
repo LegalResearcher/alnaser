@@ -87,9 +87,9 @@ export function Header() {
     <header className={cn(
       "sticky top-0 z-50 w-full transition-all duration-500",
       isScrolled
-        ? "bg-background/90 backdrop-blur-2xl border-b border-border/60 shadow-sm py-2"
+        ? "bg-background/95 backdrop-blur-2xl border-b border-border/60 shadow-sm py-2"
         : isHeroPage
-          ? "bg-slate-950/60 backdrop-blur-sm py-4"
+          ? "bg-transparent py-4"
           : "bg-background/95 backdrop-blur-xl border-b border-border/40 py-3"
     )}>
 
@@ -184,7 +184,7 @@ export function Header() {
               className={cn(
                 "md:hidden w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200",
                 isHeroPage && !isScrolled
-                  ? "bg-white/20 text-white hover:bg-white/30"
+                  ? "bg-white/15 text-white hover:bg-white/25 border border-white/20"
                   : "bg-muted hover:bg-muted/80 text-foreground"
               )}
             >
