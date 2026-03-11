@@ -186,7 +186,7 @@ export function LevelsPreview() {
 
                     {/* رقم المستوى */}
                     <div className="absolute top-5 right-5 w-14 h-14 flex items-center justify-center">
-                      <div className="absolute inset-0 bg-white/20 backdrop-blur-sm rounded-2xl rotate-6 group-hover:rotate-0 transition-transform duration-500" />
+                      <div className="absolute inset-0 bg-white dark:bg-card/20 backdrop-blur-sm rounded-2xl rotate-6 group-hover:rotate-0 transition-transform duration-500" />
                       <span className="relative font-cairo font-black text-3xl text-white drop-shadow-md">{i + 1}</span>
                     </div>
 
