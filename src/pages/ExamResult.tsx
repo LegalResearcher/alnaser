@@ -344,7 +344,7 @@ const ExamResult = () => {
                     style={{ background:'rgba(255,255,255,0.1)', color:'rgba(255,255,255,0.7)', border:'1px solid rgba(255,255,255,0.15)' }}>
                     {state.levelName}
                   </span>
-                  <span className="w-1 h-1 rounded-full bg-white/30" />
+                  <span className="w-1 h-1 rounded-full bg-white dark:bg-card/30" />
                   <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest"
                     style={{ background:'rgba(255,255,255,0.1)', color:'rgba(255,255,255,0.7)', border:'1px solid rgba(255,255,255,0.15)' }}>
                     {state.subjectName}
@@ -486,7 +486,7 @@ const ExamResult = () => {
                   <div className="h-4 bg-gradient-to-l from-emerald-100 via-amber-100 to-rose-100 rounded-full overflow-hidden">
                     <div className="h-full bg-gradient-to-l from-emerald-500 to-blue-500 rounded-full transition-all duration-1000" style={{ width: `${comparisonData.rank}%` }} />
                   </div>
-                  <div className="absolute -top-1 w-6 h-6 rounded-full bg-white border-2 border-primary shadow-lg flex items-center justify-center transition-all duration-1000"
+                  <div className="absolute -top-1 w-6 h-6 rounded-full bg-white dark:bg-card border-2 border-primary shadow-lg flex items-center justify-center transition-all duration-1000"
                     style={{ right: `${comparisonData.rank}%`, transform: 'translateX(50%)' }}>
                     <Star className="w-3 h-3 text-primary fill-primary" />
                   </div>
@@ -519,21 +519,21 @@ const ExamResult = () => {
                 <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.5) 1px, transparent 1px)', backgroundSize: '18px 18px' }} />
                 <div className="relative z-10">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center"><Swords className="w-6 h-6 text-blue-300" /></div>
+                    <div className="w-12 h-12 rounded-2xl bg-white dark:bg-card/10 border border-white/20 flex items-center justify-center"><Swords className="w-6 h-6 text-blue-300" /></div>
                     <div><h3 className="font-black text-white text-base">تحدَّ أصدقاءك!</h3><p className="text-white/50 text-xs font-bold">أرسل نفس الأسئلة لمن تريد</p></div>
                   </div>
                   {!challengeLink ? (
                     <button onClick={handleCreateChallenge} disabled={isCreatingChallenge}
-                      className="w-full h-12 rounded-2xl bg-white/10 border border-white/20 text-white font-black text-sm hover:bg-white/20 transition-all flex items-center justify-center gap-2 active:scale-[0.98]">
+                      className="w-full h-12 rounded-2xl bg-white dark:bg-card/10 border border-white/20 text-white font-black text-sm hover:bg-white dark:bg-card/20 transition-all flex items-center justify-center gap-2 active:scale-[0.98]">
                       {isCreatingChallenge ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الإنشاء...</> : <><Swords className="w-4 h-4" /> إنشاء تحدي بنفس الأسئلة</>}
                     </button>
                   ) : (
                     <div className="space-y-3">
-                      <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs text-white/70 font-mono break-all">{challengeLink}</div>
+                      <div className="bg-white dark:bg-card/5 border border-white/10 rounded-xl px-4 py-3 text-xs text-white/70 font-mono break-all">{challengeLink}</div>
                       <div className="grid grid-cols-2 gap-2">
                         <button onClick={handleCopyChallengeLink}
                           className={cn('h-11 rounded-xl text-sm font-black flex items-center justify-center gap-2 transition-all',
-                            copiedChallenge ? 'bg-emerald-500/20 border border-emerald-400/30 text-emerald-300' : 'bg-white/10 border border-white/20 text-white hover:bg-white/20')}>
+                            copiedChallenge ? 'bg-emerald-500/20 border border-emerald-400/30 text-emerald-300' : 'bg-white dark:bg-card/10 border border-white/20 text-white hover:bg-white dark:bg-card/20')}>
                           {copiedChallenge ? <><Check className="w-4 h-4" /> تم النسخ!</> : <><Copy className="w-4 h-4" /> نسخ الرابط</>}
                         </button>
                         <button onClick={() => { const text = `تحداني ${state.studentName} في ${state.subjectName}!
