@@ -131,7 +131,7 @@ const DiagnosticTest = () => {
       <section className="py-8 md:py-16 min-h-screen" dir="rtl">
         <div className="container mx-auto px-4 md:px-6">
           <div className="max-w-lg mx-auto">
-            <button onClick={() => navigate('/levels')} className="mb-8 inline-flex items-center gap-1.5 text-xs font-black text-slate-500 hover:text-primary transition-colors">
+            <button onClick={() => navigate('/levels')} className="mb-8 inline-flex items-center gap-1.5 text-xs font-black text-slate-500 dark:text-muted-foreground hover:text-primary transition-colors">
               <ChevronLeft className="w-4 h-4" /> رجوع
             </button>
             <div className="text-center mb-10">
@@ -168,7 +168,7 @@ const DiagnosticTest = () => {
       <section className="py-8 md:py-16 min-h-screen" dir="rtl">
         <div className="container mx-auto px-4 md:px-6">
           <div className="max-w-lg mx-auto">
-            <button onClick={() => setStep('name')} className="mb-8 inline-flex items-center gap-1.5 text-xs font-black text-slate-500 hover:text-primary transition-colors">
+            <button onClick={() => setStep('name')} className="mb-8 inline-flex items-center gap-1.5 text-xs font-black text-slate-500 dark:text-muted-foreground hover:text-primary transition-colors">
               <ChevronLeft className="w-4 h-4" /> رجوع
             </button>
             <div className="text-center mb-10">
@@ -301,7 +301,7 @@ const DiagnosticTest = () => {
             <div className="max-w-2xl mx-auto space-y-5">
 
               <div className="bg-gradient-to-br from-violet-600 to-indigo-800 rounded-3xl p-8 text-center text-white">
-                <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-white dark:bg-card/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <BarChart3 className="w-8 h-8" />
                 </div>
                 <h1 className="text-2xl font-black mb-1">نتيجة التشخيص</h1>
@@ -319,7 +319,7 @@ const DiagnosticTest = () => {
                   </div>
                   <div className="space-y-2">
                     {weakSubjects.map(s => (
-                      <div key={s.subjectId} className="flex items-center justify-between bg-white rounded-xl p-3">
+                      <div key={s.subjectId} className="flex items-center justify-between bg-white dark:bg-card rounded-xl p-3">
                         <span className="font-bold text-sm text-foreground">{s.subjectName}</span>
                         <div className="flex items-center gap-2">
                           <div className="w-20 h-2 rounded-full bg-rose-100 overflow-hidden">
@@ -341,7 +341,7 @@ const DiagnosticTest = () => {
                   </div>
                   <div className="space-y-2">
                     {strongSubjects.map(s => (
-                      <div key={s.subjectId} className="flex items-center justify-between bg-white rounded-xl p-3">
+                      <div key={s.subjectId} className="flex items-center justify-between bg-white dark:bg-card rounded-xl p-3">
                         <span className="font-bold text-sm text-foreground">{s.subjectName}</span>
                         <div className="flex items-center gap-2">
                           <div className="w-20 h-2 rounded-full bg-emerald-100 overflow-hidden">
