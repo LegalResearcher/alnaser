@@ -40,20 +40,20 @@ function InfoCard({ icon, value, label }: { icon: React.ReactNode; value: string
   return (
     <div className="
       flex flex-col items-center gap-2 p-5
-      bg-slate-50 border border-slate-100 rounded-[1.5rem]
+      bg-slate-50 dark:bg-muted border border-slate-100 dark:border-border rounded-[1.5rem]
       hover:border-blue-200 hover:shadow-md hover:shadow-blue-50
       transition-all duration-300 cursor-default
     ">
       <span className="text-primary">{icon}</span>
-      <p className="text-2xl font-black text-slate-800 leading-none">{value}</p>
-      <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.15em]">{label}</p>
+      <p className="text-2xl font-black text-slate-800 dark:text-foreground leading-none">{value}</p>
+      <p className="text-[9px] font-black text-slate-400 dark:text-muted-foreground uppercase tracking-[0.15em]">{label}</p>
     </div>
   );
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <Label className="text-[11px] font-black text-slate-700 uppercase tracking-[0.12em]">
+    <Label className="text-[11px] font-black text-slate-700 dark:text-foreground/90 uppercase tracking-[0.12em]">
       {children}
     </Label>
   );
@@ -164,7 +164,7 @@ const ExamStart = () => {
     return (
       <MainLayout>
         <div className="container mx-auto px-6 py-24">
-          <div className="h-[560px] max-w-lg mx-auto rounded-[2.5rem] bg-slate-100 animate-pulse" />
+          <div className="h-[560px] max-w-lg mx-auto rounded-[2.5rem] bg-slate-100 dark:bg-muted animate-pulse" />
         </div>
       </MainLayout>
     );
@@ -175,10 +175,10 @@ const ExamStart = () => {
     return (
       <MainLayout>
         <div className="container mx-auto px-6 py-24 text-center">
-          <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Info className="w-10 h-10 text-slate-400" />
+          <div className="w-20 h-20 bg-slate-100 dark:bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
+            <Info className="w-10 h-10 text-slate-400 dark:text-muted-foreground" />
           </div>
-          <p className="text-slate-500 text-xl font-bold">عذراً، المادة المطلوبة غير متوفرة</p>
+          <p className="text-slate-500 dark:text-muted-foreground text-xl font-bold">عذراً، المادة المطلوبة غير متوفرة</p>
           <Link to="/levels">
             <Button variant="outline" className="mt-6 rounded-2xl h-12 px-8">العودة للمستويات</Button>
           </Link>
@@ -191,7 +191,7 @@ const ExamStart = () => {
   return (
     <MainLayout>
       <ExamStartSEO subjectName={subject?.name ?? ''} questionsCount={questionCount} />
-      <section className="py-8 md:py-16 bg-slate-50/50 min-h-[calc(100vh-80px)]">
+      <section className="py-8 md:py-16 bg-slate-50 dark:bg-muted/50 min-h-[calc(100vh-80px)]">
         <div className="container mx-auto px-4 md:px-6">
 
           {/* Back button */}
@@ -199,8 +199,8 @@ const ExamStart = () => {
             onClick={() => navigate(-1)}
             className="
               mb-5 inline-flex items-center gap-1.5
-              text-xs font-black text-slate-500 uppercase tracking-wide
-              bg-white border border-slate-200 rounded-xl px-4 py-2
+              text-xs font-black text-slate-500 dark:text-muted-foreground uppercase tracking-wide
+              bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl px-4 py-2
               hover:border-primary hover:text-primary
               transition-all duration-200
             "
@@ -211,8 +211,8 @@ const ExamStart = () => {
 
           {/* Card */}
           <div className="
-            max-w-lg mx-auto bg-white
-            rounded-[2.5rem] border border-slate-200
+            max-w-lg mx-auto bg-white dark:bg-card
+            rounded-[2.5rem] border border-slate-200 dark:border-border
             shadow-xl shadow-slate-200/60
             overflow-hidden
             animate-in fade-in slide-in-from-bottom-6 duration-500
@@ -245,7 +245,7 @@ const ExamStart = () => {
                 {subject.levels?.name && (
                   <span className="
                     inline-block mb-3 px-4 py-1.5 rounded-full
-                    bg-white/5 border border-white/10
+                    bg-white dark:bg-card/5 border border-white/10
                     text-[10px] font-black uppercase tracking-[0.18em] text-blue-300
                   ">
                     {subject.levels.name}
@@ -280,12 +280,12 @@ const ExamStart = () => {
               <div className="space-y-2">
                 <FieldLabel>بيانات المختبر</FieldLabel>
                 <div className="relative">
-                  <User className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  <User className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-muted-foreground pointer-events-none" />
                   <Input
                     placeholder="أدخل اسمك الكامل"
                     value={studentName}
                     onChange={(e) => setStudentName(e.target.value)}
-                    className="h-14 rounded-[1rem] pr-11 bg-slate-50 border-slate-200 font-bold text-base
+                    className="h-14 rounded-[1rem] pr-11 bg-slate-50 dark:bg-muted border-slate-200 dark:border-border font-bold text-base
                       focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
                   />
                 </div>
@@ -295,11 +295,11 @@ const ExamStart = () => {
               <div className="space-y-2">
                 <FieldLabel>نموذج سنة الاختبار</FieldLabel>
                 <Select value={selectedYear} onValueChange={setSelectedYear}>
-                  <SelectTrigger className="h-14 rounded-[1rem] bg-slate-50 border-slate-200 font-bold px-5
+                  <SelectTrigger className="h-14 rounded-[1rem] bg-slate-50 dark:bg-muted border-slate-200 dark:border-border font-bold px-5
                     focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all">
                     <SelectValue placeholder="اختر السنة" />
                   </SelectTrigger>
-                  <SelectContent className="z-[9999] bg-white border-slate-200 rounded-2xl shadow-2xl max-h-[280px]">
+                  <SelectContent className="z-[9999] bg-white dark:bg-card border-slate-200 dark:border-border rounded-2xl shadow-2xl max-h-[280px]">
                     <SelectItem value="trial" className="h-11 rounded-xl font-bold cursor-pointer text-violet-600">
                       🧪 النموذج التجريبي
                     </SelectItem>
@@ -325,11 +325,11 @@ const ExamStart = () => {
                   </span>
                 </FieldLabel>
                 <Select value={selectedExamForm} onValueChange={setSelectedExamForm}>
-                  <SelectTrigger className="h-14 rounded-[1rem] bg-slate-50 border-slate-200 font-bold px-5
+                  <SelectTrigger className="h-14 rounded-[1rem] bg-slate-50 dark:bg-muted border-slate-200 dark:border-border font-bold px-5
                     focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all">
                     <SelectValue placeholder="اختر النموذج" />
                   </SelectTrigger>
-                  <SelectContent className="z-[9999] bg-white border-slate-200 rounded-2xl shadow-2xl">
+                  <SelectContent className="z-[9999] bg-white dark:bg-card border-slate-200 dark:border-border rounded-2xl shadow-2xl">
                     {EXAM_FORMS.map((form) => (
                       <SelectItem key={form.id} value={form.id} className="h-11 rounded-xl font-bold cursor-pointer">
                         {form.name}
@@ -361,7 +361,7 @@ const ExamStart = () => {
 
               {/* Available questions */}
               <div className="flex items-center justify-between bg-slate-900 rounded-[1rem] px-6 py-4">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">الأسئلة المتوفرة</span>
+                <span className="text-[10px] font-black text-slate-500 dark:text-muted-foreground uppercase tracking-widest">الأسئلة المتوفرة</span>
                 <span className="text-white font-black text-lg">
                   {countLoading ? (
                     <span className="inline-block w-8 h-5 bg-slate-700 rounded animate-pulse" />
@@ -371,12 +371,12 @@ const ExamStart = () => {
 
               {/* Time slider (conditional) */}
               {subject.allow_time_modification && (
-                <div className="space-y-4 p-5 bg-slate-50 border border-slate-100 rounded-[1.5rem]
+                <div className="space-y-4 p-5 bg-slate-50 dark:bg-muted border border-slate-100 dark:border-border rounded-[1.5rem]
                   animate-in zoom-in-95 duration-300">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-black text-slate-700 uppercase tracking-wide">تخصيص وقت الاختبار</p>
-                      <p className="text-[10px] text-slate-400 font-medium mt-0.5">اسحب الشريط لتحديد مدة المحاولة</p>
+                      <p className="text-xs font-black text-slate-700 dark:text-foreground/90 uppercase tracking-wide">تخصيص وقت الاختبار</p>
+                      <p className="text-[10px] text-slate-400 dark:text-muted-foreground font-medium mt-0.5">اسحب الشريط لتحديد مدة المحاولة</p>
                     </div>
                     <div className="flex items-center gap-1.5 bg-primary text-white px-4 py-1.5 rounded-xl text-sm font-black shadow-md shadow-primary/25">
                       <Clock className="w-3.5 h-3.5" />
@@ -406,7 +406,7 @@ const ExamStart = () => {
                     placeholder="أدخل كلمة السر"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="h-13 rounded-[1rem] bg-white border-amber-200 text-center font-black tracking-[0.4em]
+                    className="h-13 rounded-[1rem] bg-white dark:bg-card border-amber-200 text-center font-black tracking-[0.4em]
                       focus:border-amber-400 focus:ring-2 focus:ring-amber-100 transition-all"
                   />
                 </div>
@@ -432,9 +432,9 @@ const ExamStart = () => {
             </div>{/* /body */}
 
             {/* ── Footer ── */}
-            <div className="flex items-center justify-center gap-2 px-8 py-4 bg-slate-50 border-t border-slate-100">
-              <Info className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">
+            <div className="flex items-center justify-center gap-2 px-8 py-4 bg-slate-50 dark:bg-muted border-t border-slate-100 dark:border-border">
+              <Info className="w-3.5 h-3.5 text-slate-400 dark:text-muted-foreground shrink-0" />
+              <p className="text-[9px] font-black text-slate-400 dark:text-muted-foreground uppercase tracking-widest text-center">
                 بالضغط على ابدأ، سيتم تفعيل المؤقت الزمني تلقائياً
               </p>
             </div>
