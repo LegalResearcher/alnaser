@@ -195,7 +195,7 @@ export function Header() {
 
         {/* ── Mobile Menu ── */}
         {isMenuOpen && (
-          <nav className="md:hidden mt-3 p-3 rounded-3xl border border-border bg-background/98 backdrop-blur-2xl shadow-2xl shadow-black/10 animate-in slide-in-from-top-3 fade-in duration-250">
+          <nav className="md:hidden mt-3 p-4 rounded-3xl border border-slate-200 dark:border-border bg-white dark:bg-card shadow-2xl shadow-black/15 animate-in slide-in-from-top-3 fade-in duration-250">
             <div className="flex flex-col gap-1">
               {navLinks.map((link) => {
                 const isActive = location.pathname === link.href;
@@ -205,17 +205,17 @@ export function Header() {
                     to={link.href}
                     onClick={() => setIsMenuOpen(false)}
                     className={cn(
-                      "px-5 py-3.5 rounded-2xl text-sm font-bold transition-all duration-200",
+                      "px-5 py-4 rounded-2xl text-base font-semibold transition-all duration-200",
                       isActive
-                        ? "bg-primary/10 text-primary border-r-[3px] border-primary"
-                        : "text-foreground/80 hover:bg-muted hover:text-foreground"
+                        ? "bg-slate-100 dark:bg-muted text-slate-900 dark:text-foreground font-extrabold"
+                        : "text-slate-700 dark:text-foreground/80 hover:bg-slate-100 dark:hover:bg-muted hover:text-slate-900 dark:hover:text-foreground"
                     )}
                   >
                     {link.label}
                   </Link>
                 );
               })}
-              <div className="pt-3 mt-1 border-t border-border space-y-2">
+              <div className="pt-3 mt-2 border-t border-slate-200 dark:border-border space-y-2">
                 <Link to="/levels" onClick={() => setIsMenuOpen(false)}>
                   <Button className="w-full h-12 rounded-2xl font-bold shadow-lg shadow-primary/20"
                     style={{ background: 'linear-gradient(135deg, hsl(217 91% 55%), hsl(199 89% 48%))' }}>
