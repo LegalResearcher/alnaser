@@ -506,9 +506,11 @@ const AdminQuestions = () => {
               </Button>
             )}
             <div className="h-8 w-px bg-slate-200 mx-2 hidden md:block"></div>
-            <Button variant="outline" size="sm" onClick={() => setIsFileUploadOpen(true)} disabled={!selectedSubject} className="gap-2 border-primary/20 bg-primary/5 text-primary font-bold shadow-sm">
-              <ScanLine className="w-4 h-4" /> استيراد PDF/JSON/نص
-            </Button>
+            {isAdmin && (
+              <Button variant="outline" size="sm" onClick={() => setIsFileUploadOpen(true)} disabled={!selectedSubject} className="gap-2 border-primary/20 bg-primary/5 text-primary font-bold shadow-sm">
+                <ScanLine className="w-4 h-4" /> استيراد PDF/JSON/نص
+              </Button>
+            )}
             <Button size="sm" onClick={() => { setEditingQuestion(null); setFormData({question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', hint: '', exam_year: '', exam_form: 'General'}); setIsDialogOpen(true); }} disabled={!selectedSubject} className="gradient-primary text-white gap-2 shadow-lg">
               <Plus className="w-4 h-4" /> إضافة سؤال
             </Button>
