@@ -2,8 +2,13 @@ import { useState, useRef } from 'react';
 import { 
   Upload, FileCode, AlertCircle, CheckCircle2, 
   Settings2, Code2, ListOrdered, Table as TableIcon, 
-  FileSearch, Database, Loader2, Sparkles, ChevronLeft
+  FileSearch, Database, Loader2, Sparkles, ChevronLeft,
+  FileText
 } from 'lucide-react';
+import * as pdfjsLib from 'pdfjs-dist';
+import Tesseract from 'tesseract.js';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -36,6 +41,58 @@ interface ParsedQuestion {
   exam_year?: number;
 }
 
+// --- المحرك الذكي الشامل (نفس منطق لصق النص) ---
+const parseSanaaLegalContent = (text: string) => {
+  const cleanText = text.replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/_/g, '');
+  const lines = cleanText.split('\n');
+  const results: ParsedQuestion[] = [];
+  let current: any = null;
+
+  lines.forEach(line => {
+    const t = line.trim();
+    if (!t || t.length < 2) return;
+
+    const hasOptionIndicators =
+      t.includes('+') || t.includes('-') ||
+      t.startsWith('1)') || t.startsWith('2)') || t.startsWith('3)') || t.startsWith('4)') ||
+      t.startsWith('١)') || t.startsWith('٢)') || t.startsWith('٣)') || t.startsWith('٤)');
+
+    const isTrueFalse = t.includes('العبارة صحيحة') || t.includes('العبارة خاطئة');
+    const isOption = (hasOptionIndicators || isTrueFalse) && (t.match(/[\d١٢٣٤]/) || t.startsWith('+') || t.startsWith('-'));
+
+    if (isOption) {
+      if (!current) return;
+      const isCorrect = t.includes('+');
+      let cleanVal = t.replace(/^[\(\s\d١٢٣٤\)\.\-\+]+/, '').replace(/[\+\-]$/, '').trim();
+      if (t.includes('العبارة صحيحة')) cleanVal = 'العبارة صحيحة';
+      else if (t.includes('العبارة خاطئة')) cleanVal = 'العبارة خاطئة';
+      if (cleanVal) {
+        current.count++;
+        const letters = ['A', 'B', 'C', 'D'] as const;
+        const letter = letters[current.count - 1];
+        if (letter) {
+          current[`option_${letter.toLowerCase()}`] = cleanVal;
+          if (isCorrect) current.correct_option = letter;
+        }
+      }
+    } else {
+      if (current && current.count > 0) { results.push(current); current = null; }
+      if (!current) {
+        current = {
+          question_text: t.replace(/^[\(\s\d١٢٣٤\)]+/, '').trim(),
+          option_a: '', option_b: '', option_c: '', option_d: '',
+          correct_option: 'A' as const, count: 0
+        };
+      } else {
+        current.question_text += ' ' + t.replace(/^[\(\s\d١٢٣٤\)]+/, '').trim();
+      }
+    }
+  });
+
+  if (current && current.count > 0) results.push(current);
+  return results;
+};
+
 export const HtmlImportDialog = ({ open, onOpenChange, subjectId }: HtmlImportDialogProps) => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -63,7 +120,65 @@ export const HtmlImportDialog = ({ open, onOpenChange, subjectId }: HtmlImportDi
     onOpenChange(false);
   };
 
-  const parseHtmlFile = async (file: File) => {
+  // --- استخراج النص من PDF ---
+  const processPDF = async (file: File): Promise<string> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let fullText = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      if (textContent.items.length > 0) {
+        const items: any[] = textContent.items;
+        items.sort((a, b) => (b.transform[5] - a.transform[5]) || (a.transform[4] - b.transform[4]));
+        let lastY = -1;
+        items.forEach(it => {
+          if (lastY !== -1 && Math.abs(it.transform[5] - lastY) > 5) fullText += '\n';
+          fullText += it.str + ' ';
+          lastY = it.transform[5];
+        });
+        fullText += '\n';
+      } else {
+        const viewport = page.getViewport({ scale: 2 });
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        await page.render({ canvasContext: context!, viewport, canvas } as any).promise;
+        const { data: { text } } = await Tesseract.recognize(canvas, 'ara');
+        fullText += text + '\n';
+      }
+    }
+    return fullText;
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+      setIsProcessing(true);
+      setErrors([]);
+      try {
+        const text = await processPDF(file);
+        const questions = parseSanaaLegalContent(text);
+        if (questions.length > 0) {
+          setParsedQuestions(questions);
+          setErrors([]);
+          setStep('preview');
+        } else {
+          setErrors(['لم يتم العثور على أسئلة في ملف PDF. تأكد من أن الصيغة تطابق صيغة لصق النص.']);
+          setStep('preview');
+        }
+      } catch (err) {
+        setErrors(['حدث خطأ أثناء قراءة ملف PDF.']);
+      } finally {
+        setIsProcessing(false);
+      }
+    } else {
+      parseHtmlFile(file);
+    }
+  };
     setIsProcessing(true);
     setErrors([]);
 
@@ -332,11 +447,6 @@ export const HtmlImportDialog = ({ open, onOpenChange, subjectId }: HtmlImportDi
 
   const cleanQuestionText = (text: string): string => text.replace(/^\d+[\.\)\-\s]+/, '').replace(/\s+/g, ' ').trim();
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) parseHtmlFile(file);
-  };
-
   const importQuestions = async () => {
     if (parsedQuestions.length === 0 || !subjectId) return;
     
@@ -397,10 +507,10 @@ export const HtmlImportDialog = ({ open, onOpenChange, subjectId }: HtmlImportDi
               <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center backdrop-blur-md border border-primary/30">
                 <FileCode className="w-6 h-6 text-primary" />
               </div>
-              <DialogTitle className="text-2xl font-black tracking-tight">الاستيراد الذكي من HTML</DialogTitle>
+              <DialogTitle className="text-2xl font-black tracking-tight">الاستيراد الذكي من PDF / HTML</DialogTitle>
             </div>
             <DialogDescription className="text-slate-400 text-sm font-medium">
-              محرك تحليل المستويات؛ استخرج الأسئلة من أي صفحة ويب أو ملف HTML محلي بسهولة.
+              محرك تحليل متطور؛ استخرج الأسئلة من ملفات PDF أو HTML بنفس دقة لصق النص مباشرةً.
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -436,19 +546,19 @@ export const HtmlImportDialog = ({ open, onOpenChange, subjectId }: HtmlImportDi
                 <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
                   {isProcessing ? <Loader2 className="w-10 h-10 text-primary animate-spin" /> : <Upload className="w-10 h-10 text-slate-400 group-hover:text-primary" />}
                 </div>
-                <h4 className="text-lg font-black text-slate-800 mb-2">ارفع ملف الـ HTML الخاص بك</h4>
-                <p className="text-slate-500 text-sm mb-6">سنتكفل نحن بتحليل الهيكل واستخراج الأسئلة</p>
-                <input ref={fileInputRef} type="file" accept=".html,.htm" onChange={handleFileChange} className="hidden" />
-                <Button variant="secondary" className="rounded-2xl px-8 font-bold">اختيار ملف من الجهاز</Button>
+                <h4 className="text-lg font-black text-slate-800 mb-2">ارفع ملف PDF أو HTML</h4>
+                <p className="text-slate-500 text-sm mb-6">سنستخرج الأسئلة تلقائياً بنفس دقة لصق النص</p>
+                <input ref={fileInputRef} type="file" accept=".html,.htm,.pdf" onChange={handleFileChange} className="hidden" />
+                <Button variant="secondary" className="rounded-2xl px-8 font-bold">اختيار ملف PDF أو HTML</Button>
               </div>
 
               {/* Supported Patterns Visual Guide */}
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { icon: Settings2, text: 'عناصر Div/Section' },
+                  { icon: FileText, text: 'ملفات PDF' },
                   { icon: TableIcon, text: 'جداول البيانات' },
                   { icon: ListOrdered, text: 'قوائم مرقمة' },
-                  { icon: FileCode, text: 'نصوص برمجية' },
+                  { icon: FileCode, text: 'ملفات HTML' },
                 ].map((item, idx) => (
                   <div key={idx} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
                     <item.icon className="w-4 h-4 text-primary opacity-60" />
