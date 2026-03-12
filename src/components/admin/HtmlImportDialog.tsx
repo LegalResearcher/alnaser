@@ -199,6 +199,96 @@ export const HtmlImportDialog = ({ open, onOpenChange, subjectId }: HtmlImportDi
 
   const parseFromText = (text: string): ParsedQuestion[] => {
     const questions: ParsedQuestion[] = [];
+    const lines = text.split('
+');
+    let i = 0;
+
+    while (i < lines.length) {
+      const line = lines[i].trim();
+
+      // ── صيغة PDF: السؤال يبدأ برقم) مثل: 1) نص السؤال
+      // والخيارات: 1) - نص أو 1) + نص (+ تعني الصحيحة)
+      const qMatchPdf = line.match(/^(d+))s*[-–]?s*(.+)/);
+      if (
+        qMatchPdf &&
+        i + 4 < lines.length &&
+        /^1)s*[+-–]/.test(lines[i+1]?.trim()) &&
+        /^2)s*[+-–]/.test(lines[i+2]?.trim()) &&
+        /^3)s*[+-–]/.test(lines[i+3]?.trim()) &&
+        /^4)s*[+-–]/.test(lines[i+4]?.trim())
+      ) {
+        const questionText = qMatchPdf[2].trim();
+        const rawOpts = [
+          lines[i+1].trim(),
+          lines[i+2].trim(),
+          lines[i+3].trim(),
+          lines[i+4].trim(),
+        ];
+        let correctOption: 'A' | 'B' | 'C' | 'D' = 'A';
+        const cleanedOpts = rawOpts.map((opt, idx) => {
+          const m = opt.match(/^d+)s*([+-–])s*(.+)/);
+          if (!m) return opt.trim();
+          if (m[1] === '+') correctOption = (['A', 'B', 'C', 'D'] as const)[idx];
+          return m[2].trim();
+        });
+        if (cleanedOpts.every(o => o.length > 0)) {
+          questions.push({
+            question_text: questionText,
+            option_a: cleanedOpts[0],
+            option_b: cleanedOpts[1],
+            option_c: cleanedOpts[2],
+            option_d: cleanedOpts[3],
+            correct_option: correctOption,
+          });
+          i += 5;
+          continue;
+        }
+      }
+
+      // ── الصيغة اليدوية: السؤال بدون رقم، خيارات 1) نص +
+      if (line && !/^d+)/.test(line)) {
+        if (
+          i + 4 < lines.length &&
+          /^1)/.test(lines[i+1]?.trim()) &&
+          /^2)/.test(lines[i+2]?.trim()) &&
+          /^3)/.test(lines[i+3]?.trim()) &&
+          /^4)/.test(lines[i+4]?.trim())
+        ) {
+          const rawOpts = [
+            lines[i+1].trim().replace(/^1)s*/, ''),
+            lines[i+2].trim().replace(/^2)s*/, ''),
+            lines[i+3].trim().replace(/^3)s*/, ''),
+            lines[i+4].trim().replace(/^4)s*/, ''),
+          ];
+          let correctOption: 'A' | 'B' | 'C' | 'D' = 'A';
+          const cleanedOpts = rawOpts.map((opt, idx) => {
+            if (opt.trimEnd().endsWith('+')) {
+              correctOption = (['A', 'B', 'C', 'D'] as const)[idx];
+              return opt.trimEnd().slice(0, -1).trim();
+            }
+            return opt.trim();
+          });
+          if (cleanedOpts.every(o => o.length > 0)) {
+            questions.push({
+              question_text: line,
+              option_a: cleanedOpts[0],
+              option_b: cleanedOpts[1],
+              option_c: cleanedOpts[2],
+              option_d: cleanedOpts[3],
+              correct_option: correctOption,
+            });
+            i += 5;
+            continue;
+          }
+        }
+      }
+
+      i++;
+    }
+
+    if (questions.length > 0) return questions;
+
+    // ── الصيغة القديمة: أ، ب، ج، د
     const questionPattern = /(\d+[\.\)\-\s]+[^\n]+)\s*\n?\s*[أاآ][\.\)\-\s]+([^\n]+)\s*\n?\s*[ب][\.\)\-\s]+([^\n]+)\s*\n?\s*[ج][\.\)\-\s]+([^\n]+)\s*\n?\s*[د][\.\)\-\s]+([^\n]+)/g;
     let match;
     while ((match = questionPattern.exec(text)) !== null) {
