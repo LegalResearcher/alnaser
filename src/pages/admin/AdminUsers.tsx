@@ -54,7 +54,7 @@ const AdminUsers = () => {
       const { data, error } = await supabase.functions.invoke('create-editor', {
         body: { email, password },
       });
-      if (error) throw error;
+      if (error) throw new Error(error.message);
       if (data?.error) throw new Error(data.error);
     },
     onSuccess: () => {
