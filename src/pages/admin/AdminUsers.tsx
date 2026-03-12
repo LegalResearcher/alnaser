@@ -51,20 +51,11 @@ const AdminUsers = () => {
 
   const addEditorMutation = useMutation({
     mutationFn: async ({ email, password }: { email: string; password: string }) => {
-      // Create user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
+      const { data, error } = await supabase.functions.invoke('create-editor', {
+        body: { email, password },
       });
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('Failed to create user');
-
-      // Add editor role
-      const { error: roleError } = await supabase.from('user_roles').insert({
-        user_id: authData.user.id,
-        role: 'editor',
-      });
-      if (roleError) throw roleError;
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['editors'] });
