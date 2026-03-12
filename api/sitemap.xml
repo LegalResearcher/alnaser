@@ -1,0 +1,368 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset
+  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+    http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+
+  <!-- الصفحة الرئيسية -->
+  <url>
+    <loc>https://alnaseer.org/</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- صفحة المستويات -->
+  <url>
+    <loc>https://alnaseer.org/levels</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- عن المنصة -->
+  <url>
+    <loc>https://alnaseer.org/about</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- المستويات الأربعة -->
+  <!-- المستوى الأول -->
+  <url>
+    <loc>https://alnaseer.org/levels/d0cac71f-362b-4ca5-8039-2510a3f9b454</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- المستوى الثاني -->
+  <url>
+    <loc>https://alnaseer.org/levels/07adb3e0-447a-4b94-817b-6c929287e9e3</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- المستوى الثالث -->
+  <url>
+    <loc>https://alnaseer.org/levels/dd034367-ae62-4ea1-9e43-2e5cbe9f5489</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- المستوى الرابع -->
+  <url>
+    <loc>https://alnaseer.org/levels/ff627248-0c04-4ae7-bbce-f4c5130ae003</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- صفحات المواد -->
+  <!-- المستوى الثاني — القانون الاداري -->
+  <url>
+    <loc>https://alnaseer.org/exam/b55f63d4-15c1-4a92-8df1-40e247b4ca9f</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الثاني — القانون المدني -->
+  <url>
+    <loc>https://alnaseer.org/exam/83ffd7f4-2eeb-4912-93fa-78f0eba8586d</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الثاني — اللغة العربية -->
+  <url>
+    <loc>https://alnaseer.org/exam/b802046a-f921-4b84-98f2-9b22e74c51e6</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الثاني — الادارة المحلية -->
+  <url>
+    <loc>https://alnaseer.org/exam/66ffcae5-cf9e-4fba-9485-79f4836bfdc5</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الثاني — نقود وبنوك -->
+  <url>
+    <loc>https://alnaseer.org/exam/efdafb03-1365-41ef-aab4-791c91cc91c4</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الثاني — احكام اسرة -->
+  <url>
+    <loc>https://alnaseer.org/exam/98d15790-7bf4-4d46-adef-949619856072</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الثاني — منظمات وحقوق -->
+  <url>
+    <loc>https://alnaseer.org/exam/1d11b518-d4b9-4d06-8320-f335ff140cae</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الثاني — عقوبات -->
+  <url>
+    <loc>https://alnaseer.org/exam/0116acf2-fec8-412b-8962-cab20caff5d0</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الثاني — ثقافة اسلامية -->
+  <url>
+    <loc>https://alnaseer.org/exam/40600ce8-dc9c-474a-ac5c-209c03cb6fe6</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الأول — اصول الفقه -->
+  <url>
+    <loc>https://alnaseer.org/exam/2bf1feae-2478-4a3f-992e-1fd7b5b4daae</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الأول — علم الاجرام والعقاب -->
+  <url>
+    <loc>https://alnaseer.org/exam/8d4e69ec-7f8a-4d55-8992-a3314280a6d3</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الأول — النظم السياسية -->
+  <url>
+    <loc>https://alnaseer.org/exam/3e74c0a6-28a9-48e1-b07d-599bdca4c323</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الأول — تاريخ القانون وفلسفته -->
+  <url>
+    <loc>https://alnaseer.org/exam/31817818-25ec-43eb-b9d5-40be136b4948</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الأول — مبادئ الاقتصاد والاقتصاد الاسلامي -->
+  <url>
+    <loc>https://alnaseer.org/exam/8e0d9de9-8aa8-4be3-9e2b-571543f319d4</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الأول — الثقافة الوطنية -->
+  <url>
+    <loc>https://alnaseer.org/exam/a1196dc2-d1fd-4b04-ab80-9bc1483cf4ae</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الأول — فقه العبادات -->
+  <url>
+    <loc>https://alnaseer.org/exam/5296d1a7-931a-411a-a2bd-66a52f01e4c1</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الأول — حاسوب -->
+  <url>
+    <loc>https://alnaseer.org/exam/739e8677-bbff-4e8a-9d8e-0511e04aadde</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الأول — مدخل الفقه -->
+  <url>
+    <loc>https://alnaseer.org/exam/fe767112-56f2-44e6-a974-4f94c5c417a3</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الأول — الصراع العربي -->
+  <url>
+    <loc>https://alnaseer.org/exam/1212d4e9-7341-406e-8278-53771aba2e38</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الأول — اللغة العربية -->
+  <url>
+    <loc>https://alnaseer.org/exam/487935b8-4e86-4cbf-bfbe-1316e22c3423</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الأول — قانون مدني -->
+  <url>
+    <loc>https://alnaseer.org/exam/814c60ac-1b8a-4e8a-b325-4a5ea2d88e3d</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الثالث — القضاء الاداري -->
+  <url>
+    <loc>https://alnaseer.org/exam/96940cdb-b723-4655-b842-46472aa918ca</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الثالث — قانون مدني -->
+  <url>
+    <loc>https://alnaseer.org/exam/3b162fc3-2166-4e42-8b28-831676738cb9</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الثالث — قانون العمل -->
+  <url>
+    <loc>https://alnaseer.org/exam/e1df7c83-a844-4204-ad19-49579b943176</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الثالث — القانون التجاري -->
+  <url>
+    <loc>https://alnaseer.org/exam/6762a4a7-3206-4929-9649-402c2dfd9685</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الثالث — قانون المرافعات -->
+  <url>
+    <loc>https://alnaseer.org/exam/e55ca73c-6791-424f-a79f-61ae880c7a82</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الثالث — مواريث -->
+  <url>
+    <loc>https://alnaseer.org/exam/5a437f66-6667-4a79-8b35-381f8ac90433</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الثالث — تشريع جنائي -->
+  <url>
+    <loc>https://alnaseer.org/exam/f8fbd310-6bdc-4cac-80fd-978bb019df3d</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الثالث — فقه السيرة -->
+  <url>
+    <loc>https://alnaseer.org/exam/8969bb6e-c487-4aa7-aa0b-acb741a79558</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الثالث — البحري والجوي -->
+  <url>
+    <loc>https://alnaseer.org/exam/b8928525-6443-4106-be44-ff73620f678f</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الرابع — القانون التجاري -->
+  <url>
+    <loc>https://alnaseer.org/exam/b2b2c1c6-0d06-40b0-a706-056af7391c20</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الرابع — التنفيذ الجبري -->
+  <url>
+    <loc>https://alnaseer.org/exam/f4415910-f0bb-47b4-8b6a-6b8127d9d902</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الرابع — أصول الفقه -->
+  <url>
+    <loc>https://alnaseer.org/exam/f5e5d39a-8d71-425d-a073-d7192d8aa2ac</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الرابع — القضاء والإثبات الشرعي -->
+  <url>
+    <loc>https://alnaseer.org/exam/99d6e2f9-5bc3-43b4-ad42-4d25bed3e656</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الرابع — القانون الدولي الخاص - الجنسية -->
+  <url>
+    <loc>https://alnaseer.org/exam/6556e38f-d2c4-43fc-8797-c96a8f18edd8</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الرابع — تفسير الآيات وأحاديث الأحكام -->
+  <url>
+    <loc>https://alnaseer.org/exam/970d0881-4d54-4550-8840-664c2ea31ccc</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الرابع — الوصية والوقف الشرعي -->
+  <url>
+    <loc>https://alnaseer.org/exam/e42dbe4d-dacf-45a6-8001-11ef3d2e43f8</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الرابع — تنازع القوانين والاختصاص القضائي الدولي -->
+  <url>
+    <loc>https://alnaseer.org/exam/27dedf04-63d4-40be-82d9-bda9666ae6fd</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الرابع — المالية العامة والتشريع الضريبي -->
+  <url>
+    <loc>https://alnaseer.org/exam/df7e399c-06a2-4a10-95d6-6a13318656f9</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الرابع — قانون الإجراءات الجزائية -->
+  <url>
+    <loc>https://alnaseer.org/exam/ce047082-80c1-4198-a48f-0588b52fd346</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الرابع — القانون المدني -->
+  <url>
+    <loc>https://alnaseer.org/exam/ceecc387-4c9e-4086-9ffa-38128630776b</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الرابع — اللغة العربية -->
+  <url>
+    <loc>https://alnaseer.org/exam/dbec4bac-a06e-4bc6-98e6-99f2a2f4e095</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- المستوى الرابع — مناهج البحث -->
+  <url>
+    <loc>https://alnaseer.org/exam/20ba484d-524a-45c2-9d42-e6bd66dbcb3b</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+</urlset>
