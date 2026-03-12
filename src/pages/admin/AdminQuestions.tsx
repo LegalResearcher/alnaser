@@ -328,13 +328,27 @@ const AdminQuestions = () => {
         status: 'active' as const
       }));
 
+      // المحرر: إرسال طلب إضافة بدلاً من الحفظ المباشر
+      if (isEditor && !isAdmin) {
+        const { error } = await supabase.from('deletion_requests').insert({
+          request_type: 'add',
+          requested_by: user.id,
+          status: 'pending',
+          reason: 'طلب إضافة أسئلة من المحرر',
+          question_data: { questions: formatted, subject_id: selectedSubject, exam_year: selectedYear ? parseInt(selectedYear) : null, exam_form: importExamForm },
+        });
+        if (error) throw error;
+        return null;
+      }
+
       const { data, error } = await supabase.from('questions').insert(formatted).select();
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['questions'] });
-      toast({ title: '✅ تم الحفظ بنجاح', description: `تمت إضافة ${previewQuestions.length} سؤال.` });
+      queryClient.invalidateQueries({ queryKey: ['deletion-requests'] });
+      toast({ title: (isEditor && !isAdmin) ? 'تم إرسال طلب الإضافة للمسؤل ✅' : '✅ تم الحفظ بنجاح', description: (isEditor && !isAdmin) ? 'سيتم مراجعته والموافقة عليه' : `تمت إضافة ${previewQuestions.length} سؤال.` });
       setIsPreviewOpen(false); setPreviewQuestions([]);
     },
     onError: (err: any) => toast({ title: 'خطأ', description: err.message, variant: 'destructive' })
