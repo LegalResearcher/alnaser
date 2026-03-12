@@ -21,9 +21,14 @@ const OPTION_LABELS: Record<string, string> = { A: 'أ', B: 'ب', C: 'ج', D: '�
 const QuestionPreview = ({ q, correct_option, exam_year, exam_form }: { q: any; correct_option: string; exam_year?: any; exam_form?: string }) => (
   <div className="rounded-lg border bg-muted/30 p-3 space-y-2 text-sm">
     <div className="flex gap-2 flex-wrap mb-1">
-      {exam_year && <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 px-2 py-0.5 rounded-full">سنة {exam_year}</span>}
-      {exam_form && exam_form !== 'General' && <span className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 px-2 py-0.5 rounded-full">{exam_form === 'Parallel' ? 'الموازي' : exam_form}</span>}
-      {exam_form === 'General' && <span className="text-xs bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 px-2 py-0.5 rounded-full">النموذج العام</span>}
+      {exam_year === null || exam_year === undefined
+        ? <span className="text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 px-2 py-0.5 rounded-full">🧪 تجريبي</span>
+        : <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 px-2 py-0.5 rounded-full">سنة {exam_year}</span>
+      }
+      {exam_form === 'General' && <span className="text-xs bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 px-2 py-0.5 rounded-full">نموذج عام</span>}
+      {exam_form === 'Parallel' && <span className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 px-2 py-0.5 rounded-full">نموذج موازي</span>}
+      {exam_form === 'Mixed' && <span className="text-xs bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 px-2 py-0.5 rounded-full">نموذج مختلط</span>}
+      {exam_form && !['General','Parallel','Mixed'].includes(exam_form) && <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{exam_form}</span>}
     </div>
     <p className="font-semibold leading-relaxed">{q.question_text}</p>
     <div className="grid grid-cols-1 gap-1">
