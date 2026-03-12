@@ -61,19 +61,19 @@ const parseSanaaLegalContent = (text: string) => {
   // سطور رأس الصفحة الكاملة فقط — لا نحذف كلمات قد تظهر في الأسئلة
   const isHeaderLine = (t: string): boolean => {
     if (!t || t.length < 2) return true;
-    if (/^\d+\s*\/\s*\d+$/.test(t)) return true; // "1 / 4"
+    // أرقام الصفحات "1 / 4" أو "الصفحة 1 / 4"
+    if (/\d+\s*\/\s*\d+/.test(t) && !/^[\d]+[\)\(]\s*[+\-]/.test(t)) return true;
     if (/^-?\s*\(?(www\.tcpdf|TCPDF|Powered by)/i.test(t)) return true;
+    // رأس الصفحة — يدعم النص العادي والـ presentation forms بعد العكس
     const headerPhrases = [
-      'الجمهورية اليمنية',
-      'جامعة صنعاء',
-      'مركز الاختبارات الالكترونية',
-      'قائمة الاسئلة',
-      'قائمة الأسئلة',
+      'الجمهورية اليمنية', 'جامعة صنعاء', 'مركز الاختبارات', 'قائمة الاسئلة', 'قائمة الأسئلة',
     ];
     if (headerPhrases.some(p => t.includes(p))) return true;
-    // سطر عنوان المادة أو أي سطر يحتوي كلمات رأس الصفحة
-    const subjectHeaderWords = ['المستوى', 'النظام الموازي', 'الفترة', 'درجة الامتحان', 'كلية الشريعة', 'قسم أصول', 'النظام الانتظامي'];
-    if (subjectHeaderWords.some(w => t.includes(w)) && !/^[\d]+\)\s*[+\-]/.test(t)) return true;
+    // كلمات عنوان المادة — إذا وُجدت كلمتان أو أكثر معاً = سطر عنوان
+    const subjectWords = ['المستوى', 'الفترة', 'درجة الامتحان', 'كلية الشريعة', 'قسم أصول', 'النظام العام', 'النظام الموازي', 'النظام الانتظامي'];
+    const matchCount = subjectWords.filter(w => t.includes(w)).length;
+    if (matchCount >= 1 && t.includes(' - ') && !/^[\d]+[\)\(]\s*[+\-]/.test(t)) return true;
+    if (matchCount >= 2 && !/^[\d]+[\)\(]\s*[+\-]/.test(t)) return true;
     return false;
   };
 
@@ -82,14 +82,14 @@ const parseSanaaLegalContent = (text: string) => {
     if (!t || isHeaderLine(t)) return;
 
     // خيار: يبدأ بـ رقم) ثم + أو -
-    const optMatch = t.match(/^([1-4])\)\s*([+\-\u2013])\s*(.+)/);
+    const optMatch = t.match(/^([1-4])[\)\(]\s*([+\-\u2013])\s*(.+)/);
     const isTrueFalse = t.includes('العبارة صحيحة') || t.includes('العبارة خاطئة');
 
     if (optMatch || isTrueFalse) {
       if (!current) return;
       const isCorrect = optMatch ? optMatch[2] === '+' : t.includes('العبارة صحيحة');
       let cleanVal = optMatch
-        ? optMatch[3].replace(/\s*[-\u2013]\s*\(?\d*\)?\s*$/, '').trim()
+        ? optMatch[3].replace(/[\[\]]/g, '').replace(/\s*[-\u2013]\s*\(?\d*\)?\s*$/, '').trim()
         : (t.includes('العبارة صحيحة') ? 'العبارة صحيحة' : 'العبارة خاطئة');
 
       if (cleanVal && cleanVal.length > 0) {
@@ -108,7 +108,7 @@ const parseSanaaLegalContent = (text: string) => {
       }
 
       // أزل رقم السؤال من البداية مثل "1)" أو "(1)"
-      const qText = t.replace(/^[\(\s]*[\d\u0660-\u0669]+[\)\.]\s*/, '').trim();
+      const qText = t.replace(/^[\(\s]*[\d\u0660-\u0669]+[\)\(\.]\s*/, '').replace(/[\[\]:]+$/, '').replace(/[\[\]]/g, '').trim();
       if (!qText || qText.length < 4) return;
 
       if (!current) {
@@ -210,6 +210,21 @@ const AdminQuestions = () => {
   });
 
   // معالجة PDF
+  // إصلاح النص العربي المقلوب (الحروف والكلمات معكوسة في PDF)
+  const fixArabicLine = (line: string): string => {
+    const words = line.split(' ');
+    const fixed = words.map(w => w.split('').reverse().join(''));
+    return fixed.reverse().join(' ');
+  };
+
+  const isReversedArabic = (text: string): boolean => {
+    // تحقق إذا كان النص مقلوباً بفحص أول كلمة عربية
+    const firstLine = text.split('\n').find(l => l.trim().length > 3) || '';
+    const firstWord = firstLine.trim().split(' ')[0];
+    // إذا كانت الكلمة تبدأ بحرف عربي مقلوب (مثل ة أو ى أو ﺔ)
+    return /^[\u0629\u0649\u064A\uFE94\uFEB0\uFEEF]/.test(firstWord);
+  };
+
   const processPDF = async (file: File) => {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -219,8 +234,8 @@ const AdminQuestions = () => {
       const textContent = await page.getTextContent();
       if (textContent.items.length > 0) {
         const items: any[] = textContent.items;
-        // ترتيب: من الأعلى للأسفل، ومن اليمين لليسار (RTL)
-        items.sort((a, b) => (b.transform[5] - a.transform[5]) || (b.transform[4] - a.transform[4]));
+        // ترتيب من الأعلى للأسفل
+        items.sort((a, b) => (b.transform[5] - a.transform[5]) || (a.transform[4] - b.transform[4]));
         let lastY = -1;
         let lineItems: string[] = [];
         items.forEach(it => {
@@ -243,6 +258,10 @@ const AdminQuestions = () => {
         const { data: { text } } = await Tesseract.recognize(canvas, 'ara');
         fullText += text + '\n';
       }
+    }
+    // إذا كان النص مقلوباً، اعكس كل سطر
+    if (isReversedArabic(fullText)) {
+      fullText = fullText.split('\n').map(fixArabicLine).join('\n');
     }
     return fullText;
   };
