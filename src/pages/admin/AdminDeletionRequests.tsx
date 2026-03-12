@@ -18,8 +18,13 @@ const REQUEST_TYPE_CONFIG: Record<string, { label: string; icon: typeof Trash2; 
 const OPTION_LABELS: Record<string, string> = { A: 'أ', B: 'ب', C: 'ج', D: 'د' };
 
 // مكون عرض سؤال واحد
-const QuestionPreview = ({ q, correct_option }: { q: any; correct_option: string }) => (
+const QuestionPreview = ({ q, correct_option, exam_year, exam_form }: { q: any; correct_option: string; exam_year?: any; exam_form?: string }) => (
   <div className="rounded-lg border bg-muted/30 p-3 space-y-2 text-sm">
+    <div className="flex gap-2 flex-wrap mb-1">
+      {exam_year && <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 px-2 py-0.5 rounded-full">سنة {exam_year}</span>}
+      {exam_form && exam_form !== 'General' && <span className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 px-2 py-0.5 rounded-full">{exam_form === 'Parallel' ? 'الموازي' : exam_form}</span>}
+      {exam_form === 'General' && <span className="text-xs bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 px-2 py-0.5 rounded-full">النموذج العام</span>}
+    </div>
     <p className="font-semibold leading-relaxed">{q.question_text}</p>
     <div className="grid grid-cols-1 gap-1">
       {['A','B','C','D'].map(opt => {
@@ -173,7 +178,7 @@ const AdminDeletionRequests = () => {
       return (
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground font-semibold">السؤال بعد التعديل:</p>
-          <QuestionPreview q={newData} correct_option={newData?.correct_option} />
+          <QuestionPreview q={newData} correct_option={newData?.correct_option} exam_year={newData?.exam_year} exam_form={newData?.exam_form} />
         </div>
       );
     }
