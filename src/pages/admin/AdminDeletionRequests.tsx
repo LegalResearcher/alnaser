@@ -166,7 +166,7 @@ const AdminDeletionRequests = () => {
           {questions.map((q: any, i: number) => (
             <div key={i}>
               <p className="text-xs text-muted-foreground mb-1">السؤال {i + 1}</p>
-              <QuestionPreview q={q} correct_option={q.correct_option} />
+              <QuestionPreview q={q} correct_option={q.correct_option} exam_year={q.exam_year} exam_form={q.exam_form} />
             </div>
           ))}
         </div>
