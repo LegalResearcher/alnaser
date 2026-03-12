@@ -1,1 +1,4 @@
 project_id = "tozmmphymxiamvdxfmjv"
+
+[functions.create-editor]
+verify_jwt = false
