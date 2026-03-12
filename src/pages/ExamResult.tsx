@@ -36,6 +36,11 @@ interface ResultState {
   challengeMode?:      boolean;
   challengeSessionId?: string;
   subjectId?:          string;
+  examForm?:           string;
+  isTrial?:            boolean;
+  allQuestions?:       boolean;
+  examTime?:           number;
+  questionsCount?:     number;
 }
 
 // دائرة النسبة المئوية

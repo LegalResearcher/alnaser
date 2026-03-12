@@ -232,14 +232,19 @@ const ExamPage = () => {
     const scorePercentage = Math.round((finalScore / totalQuestions) * 100);
     try {
       // insert أساسي بدون أعمدة قد تكون غير موجودة
-      const insertPayload: Record<string, unknown> = {
-        subject_id: subjectId, student_name: state.studentName, score: finalScore,
-        total_questions: totalQuestions, passing_score: subject?.passing_score || 60,
-        passed, exam_year: state.isTrial ? null : (state.allQuestions ? null : state.examYear),
-        time_taken_seconds: timeTaken, answers,
+      const insertPayload = {
+        subject_id: subjectId,
+        student_name: state.studentName,
+        score: finalScore,
+        total_questions: totalQuestions,
+        passing_score: subject?.passing_score || 60,
+        passed,
+        exam_year: state.isTrial ? null : (state.allQuestions ? null : state.examYear),
+        time_taken_seconds: timeTaken,
+        answers,
+        score_percentage: scorePercentage,
+        challenge_session_id: state.challengeSessionId || null,
       };
-      // إضافة الأعمدة الجديدة بشكل آمن (تُتجاهل إن لم تكن موجودة)
-      try { Object.assign(insertPayload, { score_percentage: scorePercentage, challenge_session_id: state.challengeSessionId || null }); } catch { /* ignore */ }
       await supabase.from('exam_results').insert(insertPayload);
 
       // تسجيل إحصائيات الأسئلة (لا تعطل التسليم)
