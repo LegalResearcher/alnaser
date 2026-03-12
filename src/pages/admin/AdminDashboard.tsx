@@ -37,7 +37,7 @@ const AdminDashboard = () => {
         .from('exam_results')
         .select('*, subjects(name)')
         .order('created_at', { ascending: false })
-        .limit(5);
+        .limit(100);
       if (error) throw error;
       return data;
     },
@@ -108,7 +108,7 @@ const AdminDashboard = () => {
                       {exam.score}/{exam.total_questions}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(exam.created_at).toLocaleDateString('ar-SA')}
+                      {new Date(exam.created_at).toLocaleDateString('ar-SA')} {new Date(exam.created_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
                 </div>
