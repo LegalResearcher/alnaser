@@ -21,25 +21,20 @@ Deno.serve(async (req) => {
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-    // Verify the caller is an admin
-    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    })
-
+    // Verify the caller is an admin using service role
     const token = authHeader.replace('Bearer ', '')
-    const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token)
-    if (claimsError || !claimsData?.claims) {
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token)
+    if (userError || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders })
     }
 
-    const userId = claimsData.claims.sub as string
-
-    // Check admin role using service role client
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+    // Check admin role
     const { data: roleData } = await supabaseAdmin
       .from('user_roles')
       .select('role')
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .eq('role', 'admin')
       .maybeSingle()
 
