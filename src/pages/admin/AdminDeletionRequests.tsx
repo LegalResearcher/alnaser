@@ -24,18 +24,20 @@ const AdminDeletionRequests = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('deletion_requests')
-        .select('*, questions(question_text, subject_id, subjects(name))')
+        .select('*, questions!deletion_requests_question_id_fkey(question_text, subject_id, subjects(name))')
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
       if (error) throw error;
 
-      // Fetch editor emails
+      // جلب إيميل المحررين من user_roles
       const userIds = [...new Set((data || []).map((r: any) => r.requested_by))];
       const emailMap: Record<string, string> = {};
       if (userIds.length > 0) {
-        // Use edge function or direct query - since we can't query auth.users directly,
-        // we'll show user_id shortened if no profiles table
-        // For now, just return data as-is
+        const { data: roles } = await supabase
+          .from('user_roles')
+          .select('user_id, email')
+          .in('user_id', userIds as string[]);
+        (roles || []).forEach((r: any) => { if (r.email) emailMap[r.user_id] = r.email; });
       }
 
       return (data || []).map((r: any) => ({ ...r, editor_email: emailMap[r.requested_by] || null }));
