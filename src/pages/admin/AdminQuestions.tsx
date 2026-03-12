@@ -372,17 +372,48 @@ const AdminQuestions = () => {
         status: 'active' as const
       };
 
+      // المحرر يعدّل سؤال موجود → إرسال طلب تعديل
+      if (editingQuestion && isEditor && !isAdmin) {
+        const { error } = await supabase.from('deletion_requests').insert({
+          request_type: 'edit',
+          requested_by: user?.id,
+          status: 'pending',
+          reason: 'طلب تعديل سؤال من المحرر',
+          target_question_id: editingQuestion.id,
+          question_data: payload,
+        });
+        if (error) throw error;
+        return;
+      }
+
       if (editingQuestion) {
         const { error } = await supabase.from('questions').update(payload).eq('id', editingQuestion.id);
         if (error) throw error;
       } else {
+        // المحرر يضيف سؤال فردي → إرسال طلب إضافة
+        if (isEditor && !isAdmin) {
+          const { error } = await supabase.from('deletion_requests').insert({
+            request_type: 'add',
+            requested_by: user?.id,
+            status: 'pending',
+            reason: 'طلب إضافة سؤال من المحرر',
+            question_data: { questions: [payload], subject_id: selectedSubject, exam_year: payload.exam_year, exam_form: payload.exam_form },
+          });
+          if (error) throw error;
+          return;
+        }
         const { error } = await supabase.from('questions').insert(payload);
         if (error) throw error;
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['questions'] });
-      toast({ title: editingQuestion ? 'تم التعديل ✅' : 'تمت الإضافة ✅' });
+      queryClient.invalidateQueries({ queryKey: ['deletion-requests'] });
+      const isEditorRequest = isEditor && !isAdmin;
+      const msg = isEditorRequest
+        ? (editingQuestion ? 'تم إرسال طلب التعديل للمسؤل ✅' : 'تم إرسال طلب الإضافة للمسؤل ✅')
+        : (editingQuestion ? 'تم التعديل ✅' : 'تمت الإضافة ✅');
+      toast({ title: msg });
       setIsDialogOpen(false); setEditingQuestion(null);
       setFormData({ question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', hint: '', exam_year: '', exam_form: 'General' });
     },
