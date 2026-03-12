@@ -183,6 +183,7 @@ const AdminQuestions = () => {
   const [deleteQuestion, setDeleteQuestion] = useState<Question | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
+  const [requestDeleteQuestion, setRequestDeleteQuestion] = useState<Question | null>(null);
 
   const [formData, setFormData] = useState({
     question_text: '', option_a: '', option_b: '', option_c: '', option_d: '',
@@ -420,6 +421,26 @@ const AdminQuestions = () => {
     },
   });
 
+  // --- طلب حذف من المحرر (يحتاج موافقة المسؤل) ---
+  const requestDeleteMutation = useMutation({
+    mutationFn: async (question: Question) => {
+      const { error } = await supabase.from('deletion_requests').insert({
+        question_id: question.id,
+        requested_by: user?.id,
+        status: 'pending',
+        reason: 'طلب حذف من المحرر',
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'تم إرسال طلب الحذف للمسؤل ✅', description: 'سيتم مراجعته والموافقة عليه' });
+      setRequestDeleteQuestion(null);
+    },
+    onError: (err: any) => {
+      toast({ title: 'خطأ', description: err.message, variant: 'destructive' });
+    },
+  });
+
   const toggleSelectAll = () => selectedIds.length === questions.length ? setSelectedIds([]) : setSelectedIds(questions.map(q => q.id));
   const toggleSelectOne = (id: string) => selectedIds.includes(id) ? setSelectedIds(prev => prev.filter(x => x !== id)) : setSelectedIds(prev => [...prev, id]);
 
@@ -434,7 +455,7 @@ const AdminQuestions = () => {
             <p className="text-sm text-slate-500 font-medium">العدد الكلي: {questions.length} سؤال</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {selectedIds.length > 0 && (
+            {selectedIds.length > 0 && isAdmin && (
               <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteDialogOpen(true)} className="gap-2 animate-in fade-in zoom-in">
                 <Trash2 className="w-4 h-4" /> حذف المحدد ({selectedIds.length})
               </Button>
@@ -482,7 +503,7 @@ const AdminQuestions = () => {
                       <p className="font-bold text-slate-800 text-lg mb-4 leading-relaxed cursor-pointer" onClick={() => toggleSelectOne(q.id)}>{q.question_text}</p>
                       <div className="flex gap-2">
                         <Button variant="ghost" size="sm" onClick={() => { setEditingQuestion(q); setFormData({ question_text: q.question_text, option_a: q.option_a, option_b: q.option_b, option_c: q.option_c || '', option_d: q.option_d || '', correct_option: q.correct_option as 'A' | 'B' | 'C' | 'D', hint: q.hint || '', exam_year: q.exam_year?.toString() || '', exam_form: (q as any).exam_form || 'General' }); setIsDialogOpen(true); }} className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 bg-white border border-slate-100"><Edit2 className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="sm" onClick={() => setDeleteQuestion(q)} className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600 bg-white border border-slate-100"><Trash2 className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="sm" onClick={() => isAdmin ? setDeleteQuestion(q) : setRequestDeleteQuestion(q)} className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600 bg-white border border-slate-100" title={isEditor ? 'طلب حذف (يحتاج موافقة المسؤل)' : 'حذف'}><Trash2 className="w-4 h-4" /></Button>
                       </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
@@ -639,6 +660,28 @@ const AdminQuestions = () => {
               className="bg-destructive text-white rounded-xl font-black px-10"
             >
               حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* طلب حذف من المحرر - يحتاج موافقة المسؤل */}
+      <AlertDialog open={!!requestDeleteQuestion} onOpenChange={() => setRequestDeleteQuestion(null)}>
+        <AlertDialogContent className="rounded-3xl z-[9999] bg-white p-8 border-none shadow-2xl font-cairo">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-black text-2xl text-slate-900">طلب حذف السؤال</AlertDialogTitle>
+            <AlertDialogDescription className="text-right text-slate-600 mt-2">
+              لا تملك صلاحية الحذف المباشر. سيتم إرسال طلب حذف للمسؤل للمراجعة والموافقة.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-3 mt-8 font-bold">
+            <AlertDialogCancel className="rounded-xl font-bold">إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { if (!requestDeleteQuestion) return; requestDeleteMutation.mutate(requestDeleteQuestion); }}
+              disabled={requestDeleteMutation.isPending}
+              className="bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black px-10"
+            >
+              {requestDeleteMutation.isPending ? 'جاري الإرسال...' : 'إرسال طلب الحذف'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
