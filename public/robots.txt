@@ -1,18 +1,7 @@
 # منصة الناصر — الباحث القانوني
-# Alnasser Tech Digital Solutions
 
 User-agent: *
 Allow: /
 Disallow: /admin/
-Disallow: /admin/login
-
-User-agent: Googlebot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
 
 Sitemap: https://alnaseer.org/sitemap.xml
