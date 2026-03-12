@@ -218,11 +218,12 @@ const AdminQuestions = () => {
   };
 
   const isReversedArabic = (text: string): boolean => {
-    // تحقق إذا كان النص مقلوباً بفحص أول كلمة عربية
-    const firstLine = text.split('\n').find(l => l.trim().length > 3) || '';
-    const firstWord = firstLine.trim().split(' ')[0];
-    // إذا كانت الكلمة تبدأ بحرف عربي مقلوب (مثل ة أو ى أو ﺔ)
-    return /^[\u0629\u0649\u064A\uFE94\uFEB0\uFEEF]/.test(firstWord);
+    // النص المقلوب يستخدم Arabic Presentation Forms (0xFE70-0xFEFF)
+    // بينما النص العادي يستخدم Unicode العربي الأساسي (0x0600-0x06FF)
+    const sample = text.slice(0, 500);
+    const presentationCount = (sample.match(/[\uFE70-\uFEFF]/g) || []).length;
+    const normalCount = (sample.match(/[\u0600-\u06FF]/g) || []).length;
+    return presentationCount > normalCount;
   };
 
   const processPDF = async (file: File) => {
@@ -259,9 +260,13 @@ const AdminQuestions = () => {
         fullText += text + '\n';
       }
     }
-    // إذا كان النص مقلوباً، اعكس كل سطر
+    // إذا كان النص مقلوباً: اعكس كل سطر ثم حوّل Presentation Forms لـ Unicode عادي
     if (isReversedArabic(fullText)) {
-      fullText = fullText.split('\n').map(fixArabicLine).join('\n');
+      fullText = fullText
+        .split('\n')
+        .map(fixArabicLine)
+        .join('\n')
+        .normalize('NFKC');
     }
     return fullText;
   };
