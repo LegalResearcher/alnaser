@@ -681,7 +681,23 @@ ${challengeLink}`; window.open(`https://www.facebook.com/sharer/sharer.php?u=${e
                 <Home className="w-4 h-4" /> العودة لقائمة المواد
               </Button>
               <Button size="lg"
-                onClick={() => navigate(state?.subjectId ? `/exam/${state.subjectId}` : '/levels')}
+                onClick={() => {
+                  if (state?.subjectId) {
+                    navigate(`/exam/${state.subjectId}/start`, { replace: true,
+                      state: {
+                        studentName:    state.studentName,
+                        examYear:       state.examYear || 0,
+                        examForm:       state.examForm,
+                        isTrial:        state.isTrial,
+                        allQuestions:   state.allQuestions || !state.examYear,
+                        examTime:       state.examTime || 30,
+                        questionsCount: state.questionsCount || state.totalQuestions,
+                        subjectName:    state.subjectName,
+                        levelName:      state.levelName,
+                      },
+                    });
+                  } else { navigate('/levels'); }
+                }}
                 className="flex-1 h-13 rounded-xl font-bold shadow-lg shadow-primary/20 gap-2 hover:shadow-primary/30 active:scale-[0.98]">
                 <RotateCcw className="w-4 h-4" /> إعادة المحاولة من جديد
               </Button>
