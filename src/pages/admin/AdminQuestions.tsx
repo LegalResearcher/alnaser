@@ -1,0 +1,821 @@
+/**
+ * Alnasser Tech Digital Solutions
+ * Project: Alnaser Legal Platform
+ * Developed by: Mueen Al-Nasser
+ * Version: 22.0 (RTL Fix + Arabic Text Support)
+ */
+
+import { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { AdminLayout } from '@/components/admin/AdminLayout';
+import { 
+  Plus, Search, Edit2, Trash2, BookOpen, CheckCircle2, FileUp, 
+  Loader2, FileText, AlertCircle, Eye, Save, X, PencilLine, ScanLine
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Question, Subject, Level, EXAM_YEARS } from '@/types/database';
+import { AdminSEO } from '@/components/seo/SEOHead';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
+
+import * as pdfjsLib from 'pdfjs-dist';
+import Tesseract from 'tesseract.js';
+
+// رابط الـ Worker (ثابت)
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
+
+// نماذج الاختبار
+const EXAM_FORMS = [
+  { id: 'General', name: 'نموذج العام' },
+  { id: 'Parallel', name: 'نموذج الموازي' },
+  { id: 'Mixed', name: 'نموذج مختلط' }
+];
+
+// --- المحرك الذكي الشامل (يدعم العربية بالكامل + RTL) ---
+const parseSanaaLegalContent = (text: string) => {
+  const cleanText = text
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/_/g, '')
+    .replace(/\r/g, '');
+
+  const lines = cleanText.split('\n');
+  const results: any[] = [];
+  let current: any = null;
+
+  const headerKeywords = [
+    'الجمهورية اليمنية', 'جامعة صنعاء', 'مركز الاختبارات', 'قائمة الاسئلة',
+    'الصفحة', 'tcpdf', 'TCPDF', 'Powered by', 'كلية الشريعة', 'درجة الامتحان',
+    'النظام الموازي', 'الفترة', 'المستوى'
+  ];
+
+  const isHeader = (t: string) =>
+    headerKeywords.some(k => t.includes(k)) ||
+    t.length < 3 ||
+    /^\d+\s*\/\s*\d+$/.test(t);
+
+  lines.forEach(line => {
+    const t = line.trim();
+    if (!t || isHeader(t)) return;
+
+    const optMatch = t.match(/^([1-4])\)\s*([+\-\u2013])\s*(.+)/);
+    const isTrueFalse = t.includes('العبارة صحيحة') || t.includes('العبارة خاطئة');
+
+    if (optMatch || isTrueFalse) {
+      if (!current) return;
+      const isCorrect = optMatch ? optMatch[2] === '+' : t.includes('العبارة صحيحة');
+      let cleanVal = optMatch
+        ? optMatch[3].replace(/[-\u2013()\/\d]+$/, '').trim()
+        : (t.includes('العبارة صحيحة') ? 'العبارة صحيحة' : 'العبارة خاطئة');
+
+      if (cleanVal && cleanVal.length > 0) {
+        current.count++;
+        const letter = ['A', 'B', 'C', 'D'][current.count - 1];
+        if (letter) {
+          current[`option_${letter.toLowerCase()}`] = cleanVal;
+          if (isCorrect) current.correct_option = letter;
+        }
+      }
+    } else {
+      if (current && current.count >= 2) {
+        results.push(current);
+        current = null;
+      }
+
+      const qText = t.replace(/^[\(\s\d\u0661-\u0664\)\.]+/, '').trim();
+      if (!qText || qText.length < 5) return;
+
+      if (!current) {
+        current = {
+          id: Math.random().toString(36).substr(2, 9),
+          question_text: qText,
+          option_a: '', option_b: '', option_c: '', option_d: '',
+          correct_option: 'A',
+          count: 0
+        };
+      } else {
+        current.question_text += ' ' + qText;
+      }
+    }
+  });
+
+  if (current && current.count >= 2) results.push(current);
+  return results;
+};
+
+const AdminQuestions = () => {
+  const navigate = useNavigate();
+  const { user, isAdmin, isEditor } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const requireAdminOrEditor = () => {
+    if (!user) {
+      const err: any = new Error('يلزم تسجيل الدخول لإجراء هذه العملية');
+      err.code = 'AUTH_REQUIRED';
+      throw err;
+    }
+
+    if (!isAdmin && !isEditor) {
+      const err: any = new Error('ليس لديك صلاحية لتنفيذ هذا الإجراء');
+      err.code = 'FORBIDDEN';
+      throw err;
+    }
+  };
+
+  const getFriendlyError = (err: any): { title: string; description: string } => {
+    const raw = (err?.message ?? err?.error_description ?? '').toString();
+    const lower = raw.toLowerCase();
+
+    if (err?.code === 'AUTH_REQUIRED') {
+      return {
+        title: 'يلزم تسجيل الدخول',
+        description: 'سجّل الدخول بحساب مدير/محرر ثم أعد المحاولة.',
+      };
+    }
+
+    if (err?.code === 'FORBIDDEN') {
+      return {
+        title: 'لا تملك صلاحية',
+        description: 'هذه العملية متاحة فقط للمديرين أو المحررين.',
+      };
+    }
+
+    if (lower.includes('row-level security') || lower.includes('violates row-level security')) {
+      return {
+        title: 'خطأ صلاحيات (RLS)',
+        description: 'حسابك الحالي لا يملك صلاحية التعديل/الحذف. تأكد من تسجيل الدخول وأن دورك (admin/editor) مُسجل في النظام.',
+      };
+    }
+
+    return {
+      title: 'حدث خطأ',
+      description: raw || 'حدث خطأ غير متوقع. حاول مرة أخرى.',
+    };
+  };
+
+  const [selectedLevel, setSelectedLevel] = useState<string>('');
+  const [selectedSubject, setSelectedSubject] = useState<string>('');
+  const [selectedYear, setSelectedYear] = useState<string>('');
+  const [selectedExamForm, setSelectedExamForm] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const [isFileUploadOpen, setIsFileUploadOpen] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const [previewQuestions, setPreviewQuestions] = useState<any[]>([]);
+  const [previewSearch, setPreviewSearch] = useState('');
+  const [importExamForm, setImportExamForm] = useState<string>('General');
+  const [pasteText, setPasteText] = useState('');
+
+  // حالات التعديل والحذف
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+  const [deleteQuestion, setDeleteQuestion] = useState<Question | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
+  const [requestDeleteQuestion, setRequestDeleteQuestion] = useState<Question | null>(null);
+
+  const [formData, setFormData] = useState({
+    question_text: '', option_a: '', option_b: '', option_c: '', option_d: '',
+    correct_option: 'A' as 'A' | 'B' | 'C' | 'D', hint: '', exam_year: '', exam_form: 'General',
+  });
+
+  // معالجة PDF
+  const processPDF = async (file: File) => {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let fullText = "";
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      if (textContent.items.length > 0) {
+        const items: any[] = textContent.items;
+        // ترتيب: من الأعلى للأسفل، ومن اليمين لليسار (RTL)
+        items.sort((a, b) => (b.transform[5] - a.transform[5]) || (b.transform[4] - a.transform[4]));
+        let lastY = -1;
+        let lineItems: string[] = [];
+        items.forEach(it => {
+          if (lastY !== -1 && Math.abs(it.transform[5] - lastY) > 5) {
+            fullText += lineItems.join(' ').trim() + '\n';
+            lineItems = [];
+          }
+          if (it.str.trim()) lineItems.push(it.str.trim());
+          lastY = it.transform[5];
+        });
+        if (lineItems.length > 0) fullText += lineItems.join(' ').trim() + '\n';
+        fullText += '\n';
+      } else {
+        const viewport = page.getViewport({ scale: 2 });
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        await page.render({ canvasContext: context!, viewport, canvas } as any).promise;
+        const { data: { text } } = await Tesseract.recognize(canvas, 'ara');
+        fullText += text + '\n';
+      }
+    }
+    return fullText;
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsProcessingFile(true);
+    try {
+      if (file.type === "application/json" || file.name.endsWith(".json")) {
+        const textContent = await file.text();
+        const jsonData = JSON.parse(textContent);
+
+        if (Array.isArray(jsonData)) {
+          const mappedQuestions = jsonData.map((q: any) => ({
+            id: Math.random().toString(36).substr(2, 9),
+            question_text: q.question_text || "",
+            option_a: q.option_a || "",
+            option_b: q.option_b || "",
+            option_c: q.option_c || "",
+            option_d: q.option_d || "",
+            correct_option: q.correct_option || "A",
+            exam_form: q.exam_form || "General",
+            count: 4
+          }));
+
+          if (mappedQuestions.length > 0) {
+            setPreviewQuestions(mappedQuestions);
+            setIsFileUploadOpen(false);
+            setIsPreviewOpen(true);
+          } else {
+            toast({ title: 'تنبيه', description: 'ملف JSON فارغ أو غير صالح.', variant: 'destructive' });
+          }
+        } else {
+          toast({ title: 'تنبيه', description: 'صيغة ملف JSON غير صحيحة (يجب أن يكون مصفوفة).', variant: 'destructive' });
+        }
+      } else {
+        const content = file.type === "application/pdf" ? await processPDF(file) : await file.text();
+        const extracted = parseSanaaLegalContent(content);
+        if (extracted.length > 0) {
+          setPreviewQuestions(extracted);
+          setIsFileUploadOpen(false);
+          setIsPreviewOpen(true);
+        } else {
+          toast({ title: 'تنبيه', description: 'لم يتم العثور على أسئلة.', variant: 'destructive' });
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'خطأ', description: 'حدثت مشكلة أثناء المعالجة.', variant: 'destructive' });
+    } finally {
+      setIsProcessingFile(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  // معالجة النص الملصق مباشرة
+  const handlePasteText = () => {
+    if (!pasteText.trim()) return;
+    const extracted = parseSanaaLegalContent(pasteText);
+    if (extracted.length > 0) {
+      setPreviewQuestions(extracted);
+      setIsFileUploadOpen(false);
+      setIsPreviewOpen(true);
+      setPasteText('');
+    } else {
+      toast({ title: 'تنبيه', description: 'لم يتم العثور على أسئلة. تأكد من الصيغة الصحيحة.', variant: 'destructive' });
+    }
+  };
+
+  const { data: levels = [] } = useQuery({ queryKey: ['levels'], queryFn: async () => (await supabase.from('levels').select('*').order('order_index')).data as Level[] });
+  const { data: subjects = [] } = useQuery({ queryKey: ['subjects', selectedLevel], queryFn: async () => { let q = supabase.from('subjects').select('*').order('order_index'); if(selectedLevel) q = q.eq('level_id', selectedLevel); return (await q).data as Subject[]; } });
+
+  const { data: questions = [], isLoading } = useQuery({
+    queryKey: ['questions', selectedSubject, selectedYear, selectedExamForm, searchQuery],
+    queryFn: async () => {
+      let query = supabase.from('questions').select('*').eq('status', 'active').order('created_at', { ascending: false });
+      if (selectedSubject) query = query.eq('subject_id', selectedSubject);
+      if (selectedYear === 'trial') {
+        query = query.is('exam_year', null);
+      } else if (selectedYear) {
+        query = query.eq('exam_year', parseInt(selectedYear));
+      }
+      if (selectedExamForm) query = query.eq('exam_form', selectedExamForm);
+      const { data } = await query;
+      return data as Question[];
+    },
+    enabled: !!selectedSubject,
+  });
+
+  // --- حفظ جماعي ---
+  const bulkSave = useMutation({
+    mutationFn: async (list: any[]) => {
+      if (!selectedSubject) throw new Error("اختر المادة أولاً");
+      if (!user?.id) throw new Error("سجل دخولك");
+
+      const formatted = list.map(q => ({
+        subject_id: selectedSubject,
+        question_text: q.question_text || "سؤال",
+        option_a: q.option_a || "",
+        option_b: q.option_b || "",
+        option_c: q.option_c || "",
+        option_d: q.option_d || "",
+        correct_option: q.correct_option || 'A',
+        exam_year: selectedYear ? parseInt(selectedYear) : null,
+        exam_form: importExamForm,
+        created_by: user.id,
+        status: 'active' as const
+      }));
+
+      // المحرر: إرسال طلب إضافة بدلاً من الحفظ المباشر
+      if (isEditor && !isAdmin) {
+        const { error } = await supabase.from('deletion_requests').insert({
+          request_type: 'add',
+          requested_by: user.id,
+          status: 'pending',
+          reason: 'طلب إضافة أسئلة من المحرر',
+          question_data: { questions: formatted, subject_id: selectedSubject, exam_year: selectedYear ? parseInt(selectedYear) : null, exam_form: importExamForm },
+        });
+        if (error) throw error;
+        return null;
+      }
+
+      const { data, error } = await supabase.from('questions').insert(formatted).select();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['questions'] });
+      queryClient.invalidateQueries({ queryKey: ['deletion-requests'] });
+      toast({ title: (isEditor && !isAdmin) ? 'تم إرسال طلب الإضافة للمسؤل ✅' : '✅ تم الحفظ بنجاح', description: (isEditor && !isAdmin) ? 'سيتم مراجعته والموافقة عليه' : `تمت إضافة ${previewQuestions.length} سؤال.` });
+      setIsPreviewOpen(false); setPreviewQuestions([]);
+    },
+    onError: (err: any) => toast({ title: 'خطأ', description: err.message, variant: 'destructive' })
+  });
+
+  // --- حفظ فردي (إضافة/تعديل) ---
+  const saveSingleMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      if (!selectedSubject) throw new Error("اختر المادة");
+      const payload = {
+        subject_id: selectedSubject,
+        question_text: data.question_text,
+        option_a: data.option_a || "",
+        option_b: data.option_b || "",
+        option_c: data.option_c || "",
+        option_d: data.option_d || "",
+        correct_option: data.correct_option,
+        exam_year: (data.exam_year && data.exam_year !== 'trial') ? parseInt(data.exam_year) : null,
+        exam_form: data.exam_form || 'General',
+        created_by: user?.id,
+        status: 'active' as const
+      };
+
+      // المحرر يعدّل سؤال موجود → إرسال طلب تعديل
+      if (editingQuestion && isEditor && !isAdmin) {
+        const { error } = await supabase.from('deletion_requests').insert({
+          request_type: 'edit',
+          requested_by: user?.id,
+          status: 'pending',
+          reason: 'طلب تعديل سؤال من المحرر',
+          target_question_id: editingQuestion.id,
+          question_data: payload,
+        });
+        if (error) throw error;
+        return;
+      }
+
+      if (editingQuestion) {
+        const { error } = await supabase.from('questions').update(payload).eq('id', editingQuestion.id);
+        if (error) throw error;
+      } else {
+        // المحرر يضيف سؤال فردي → إرسال طلب إضافة
+        if (isEditor && !isAdmin) {
+          const { error } = await supabase.from('deletion_requests').insert({
+            request_type: 'add',
+            requested_by: user?.id,
+            status: 'pending',
+            reason: 'طلب إضافة سؤال من المحرر',
+            question_data: { questions: [payload], subject_id: selectedSubject, exam_year: payload.exam_year, exam_form: payload.exam_form },
+          });
+          if (error) throw error;
+          return;
+        }
+        const { error } = await supabase.from('questions').insert(payload);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['questions'] });
+      queryClient.invalidateQueries({ queryKey: ['deletion-requests'] });
+      const isEditorRequest = isEditor && !isAdmin;
+      const msg = isEditorRequest
+        ? (editingQuestion ? 'تم إرسال طلب التعديل للمسؤل ✅' : 'تم إرسال طلب الإضافة للمسؤل ✅')
+        : (editingQuestion ? 'تم التعديل ✅' : 'تمت الإضافة ✅');
+      toast({ title: msg });
+      setIsDialogOpen(false); setEditingQuestion(null);
+      setFormData({ question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', hint: '', exam_year: '', exam_form: 'General' });
+    },
+    onError: (err: any) => toast({ title: 'خطأ', description: err.message, variant: 'destructive' })
+  });
+
+  // --- حذف منطقي عبر RPC ---
+  const softDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      requireAdminOrEditor();
+      if (!ids.length) return 0;
+
+      const { data, error } = await supabase.rpc('soft_delete_questions', { p_ids: ids });
+
+      if (error) throw error;
+      return data as number;
+    },
+    onMutate: async (ids) => {
+      await queryClient.cancelQueries({ queryKey: ['questions'] });
+      const previous = queryClient.getQueriesData<Question[]>({ queryKey: ['questions'] });
+
+      queryClient.setQueriesData<Question[]>({ queryKey: ['questions'] }, (old) => {
+        if (!old) return old as any;
+        return old.filter((q) => !ids.includes(q.id));
+      });
+
+      return { previous };
+    },
+    onError: (err: any, _ids, ctx) => {
+      if (ctx?.previous) {
+        ctx.previous.forEach(([key, data]) => queryClient.setQueryData(key, data));
+      }
+
+      const friendly = getFriendlyError(err);
+      toast({ title: friendly.title, description: friendly.description, variant: 'destructive' });
+
+      if (err?.code === 'AUTH_REQUIRED') {
+        navigate('/admin/login');
+      }
+    },
+    onSuccess: (_data, ids) => {
+      queryClient.invalidateQueries({ queryKey: ['questions'] });
+      toast({ title: `تم حذف ${ids.length} سؤال ✅` });
+
+      if (ids.length > 1) {
+        setSelectedIds([]);
+        setIsBulkDeleteDialogOpen(false);
+      }
+      setDeleteQuestion(null);
+    },
+  });
+
+  // --- طلب حذف من المحرر (يحتاج موافقة المسؤل) ---
+  const requestDeleteMutation = useMutation({
+    mutationFn: async (question: Question) => {
+      const { error } = await supabase.from('deletion_requests').insert({
+        question_id: question.id,
+        requested_by: user?.id,
+        status: 'pending',
+        reason: 'طلب حذف من المحرر',
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'تم إرسال طلب الحذف للمسؤل ✅', description: 'سيتم مراجعته والموافقة عليه' });
+      setRequestDeleteQuestion(null);
+    },
+    onError: (err: any) => {
+      toast({ title: 'خطأ', description: err.message, variant: 'destructive' });
+    },
+  });
+
+  const toggleSelectAll = () => selectedIds.length === questions.length ? setSelectedIds([]) : setSelectedIds(questions.map(q => q.id));
+  const toggleSelectOne = (id: string) => selectedIds.includes(id) ? setSelectedIds(prev => prev.filter(x => x !== id)) : setSelectedIds(prev => [...prev, id]);
+
+  return (
+    <AdminLayout>
+      <AdminSEO pageName="إدارة الأسئلة" />
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 font-cairo">
+          <div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">إدارة بنك الأسئلة</h1>
+            <p className="text-sm text-slate-500 font-medium">العدد الكلي: {questions.length} سؤال</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {selectedIds.length > 0 && isAdmin && (
+              <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteDialogOpen(true)} className="gap-2 animate-in fade-in zoom-in">
+                <Trash2 className="w-4 h-4" /> حذف المحدد ({selectedIds.length})
+              </Button>
+            )}
+            <div className="h-8 w-px bg-slate-200 mx-2 hidden md:block"></div>
+            {isAdmin && (
+              <Button variant="outline" size="sm" onClick={() => setIsFileUploadOpen(true)} disabled={!selectedSubject} className="gap-2 border-primary/20 bg-primary/5 text-primary font-bold shadow-sm">
+                <ScanLine className="w-4 h-4" /> استيراد PDF/JSON/نص
+              </Button>
+            )}
+            <Button size="sm" onClick={() => { setEditingQuestion(null); setFormData({question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', hint: '', exam_year: '', exam_form: 'General'}); setIsDialogOpen(true); }} disabled={!selectedSubject} className="gradient-primary text-white gap-2 shadow-lg">
+              <Plus className="w-4 h-4" /> إضافة سؤال
+            </Button>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100 relative z-20 font-bold font-cairo">
+          <Select value={selectedLevel} onValueChange={setSelectedLevel}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="المستوى" /></SelectTrigger><SelectContent className="z-[9999] bg-white">{levels.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent></Select>
+          <Select value={selectedSubject} onValueChange={setSelectedSubject}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="المادة" /></SelectTrigger><SelectContent className="z-[9999] bg-white">{subjects.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select>
+          <Select value={selectedYear || "all"} onValueChange={(v) => setSelectedYear(v === "all" ? "" : v)}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="السنة" /></SelectTrigger><SelectContent className="z-[9999] bg-white shadow-2xl"><SelectItem value="all">كل السنوات</SelectItem><SelectItem value="trial" className="text-violet-600 font-black">🧪 التجريبي</SelectItem>{EXAM_YEARS.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}</SelectContent></Select>
+          <Select value={selectedExamForm || "all"} onValueChange={(v) => setSelectedExamForm(v === "all" ? "" : v)}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="النموذج" /></SelectTrigger><SelectContent className="z-[9999] bg-white shadow-2xl"><SelectItem value="all">كل النماذج</SelectItem>{EXAM_FORMS.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent></Select>
+          <div className="relative"><Search className="absolute right-3 top-2.5 w-4 h-4 text-slate-400" /><Input placeholder="بحث..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pr-10 bg-white border-slate-200 rounded-xl" dir="rtl" /></div>
+        </div>
+
+        {/* Select All Checkbox */}
+        {questions.length > 0 && (
+          <div className="flex items-center gap-3 px-4 py-2 bg-white rounded-xl border border-slate-100 font-cairo font-bold text-sm text-slate-600">
+            <Checkbox checked={selectedIds.length === questions.length && questions.length > 0} onCheckedChange={toggleSelectAll} className="w-5 h-5 border-slate-300 data-[state=checked]:bg-primary" />
+            <span>تحديد الكل ({questions.length})</span>
+          </div>
+        )}
+
+        {/* List */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden z-10 min-h-[400px]">
+          {!selectedSubject ? (
+            <div className="p-24 text-center text-slate-400 flex flex-col items-center gap-4 font-cairo"><BookOpen className="w-16 h-16 opacity-10" /><p className="font-bold">يرجى اختيار مادة تعليمية</p></div>
+          ) : isLoading ? (
+            <div className="p-6 space-y-4"><Skeleton className="h-28 w-full rounded-2xl" /><Skeleton className="h-28 w-full rounded-2xl" /></div>
+          ) : (
+            <div className="divide-y divide-slate-50 font-cairo">
+              {questions.map((q, i) => (
+                <div key={q.id} className={cn("p-6 hover:bg-slate-50 transition-colors group relative flex gap-4 items-start", selectedIds.includes(q.id) && "bg-blue-50/50")}>
+                  <div className="pt-1"><Checkbox checked={selectedIds.includes(q.id)} onCheckedChange={() => toggleSelectOne(q.id)} className="w-5 h-5 border-slate-300 data-[state=checked]:bg-primary" /></div>
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start">
+                      <p className="font-bold text-slate-800 text-lg mb-4 leading-relaxed cursor-pointer" onClick={() => toggleSelectOne(q.id)}>{q.question_text}</p>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => { setEditingQuestion(q); setFormData({ question_text: q.question_text, option_a: q.option_a, option_b: q.option_b, option_c: q.option_c || '', option_d: q.option_d || '', correct_option: q.correct_option as 'A' | 'B' | 'C' | 'D', hint: q.hint || '', exam_year: q.exam_year?.toString() || '', exam_form: (q as any).exam_form || 'General' }); setIsDialogOpen(true); }} className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 bg-white border border-slate-100"><Edit2 className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="sm" onClick={() => isAdmin ? setDeleteQuestion(q) : setRequestDeleteQuestion(q)} className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600 bg-white border border-slate-100" title={isEditor ? 'طلب حذف (يحتاج موافقة المسؤل)' : 'حذف'}><Trash2 className="w-4 h-4" /></Button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                      <div className={cn("p-4 rounded-xl border font-bold", q.correct_option === 'A' ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-white border-slate-100 text-slate-500")}>أ. {q.option_a}</div>
+                      <div className={cn("p-4 rounded-xl border font-bold", q.correct_option === 'B' ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-white border-slate-100 text-slate-500")}>ب. {q.option_b}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Import Preview */}
+      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <DialogContent className="max-w-5xl bg-white rounded-none md:rounded-3xl p-0 border-none shadow-2xl h-[100dvh] md:h-[94vh] flex flex-col overflow-hidden z-[9999] font-cairo">
+          {/* Sticky Header */}
+          <div className="sticky top-0 z-10 bg-white border-b px-4 md:px-8 py-4 md:py-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <DialogTitle className="text-lg md:text-2xl font-black flex items-center gap-2 md:gap-3 text-slate-900">
+                <Eye className="text-primary w-5 h-5 md:w-8 md:h-8" /> مراجعة الاستيراد
+              </DialogTitle>
+              <div className="flex items-center gap-2">
+                <Select value={importExamForm} onValueChange={setImportExamForm}>
+                  <SelectTrigger className="w-32 md:w-40 rounded-xl bg-slate-50 border-slate-200 text-sm">
+                    <SelectValue placeholder="النموذج" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[10001] bg-white">
+                    {EXAM_FORMS.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Button variant="ghost" onClick={() => setIsPreviewOpen(false)} className="rounded-xl font-bold px-4 md:px-8 text-sm">إلغاء</Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Search */}
+          <div className="px-4 md:px-8 py-3">
+            <Input
+              placeholder="بحث..."
+              value={previewSearch}
+              onChange={(e) => setPreviewSearch(e.target.value)}
+              className="h-10 md:h-12 bg-slate-50 border-slate-100 rounded-2xl font-bold text-sm text-right"
+              dir="rtl"
+              lang="ar"
+            />
+          </div>
+
+          {/* Scrollable Content */}
+          <ScrollArea className="flex-1 px-4 md:px-8">
+            <div className="space-y-6 md:space-y-10 pb-6">
+              {previewQuestions.filter(x => x.question_text.includes(previewSearch)).map((q) => (
+                <div key={q.id} className="bg-slate-50/50 p-4 md:p-8 rounded-2xl md:rounded-[36px] border border-slate-100 relative group/item">
+                  <button onClick={() => setPreviewQuestions(prev => prev.filter(p => p.id !== q.id))} className="absolute -left-2 -top-2 md:-left-3 md:-top-3 w-8 h-8 md:w-10 md:h-10 bg-white border border-red-100 text-destructive rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg hover:bg-destructive hover:text-white transition-all z-30"><Trash2 className="w-4 h-4 md:w-5 md:h-5" /></button>
+                  <Textarea
+                    value={q.question_text}
+                    onChange={(e) => { const up = [...previewQuestions]; const i = up.findIndex(x => x.id === q.id); up[i].question_text = e.target.value; setPreviewQuestions(up); }}
+                    className="mb-4 md:mb-8 rounded-xl md:rounded-2xl border-slate-200 font-bold text-sm md:text-lg bg-white min-h-[80px] md:min-h-[100px] font-cairo shadow-sm text-right"
+                    dir="rtl"
+                    lang="ar"
+                  />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
+                    {['A', 'B', 'C', 'D'].map(l => (
+                      <div key={l} className="space-y-1.5 md:space-y-2 font-cairo">
+                        <div className="flex justify-between items-center px-1">
+                          <Label className="text-[9px] md:text-[10px] font-black uppercase">خيار ({l})</Label>
+                          <button onClick={() => { const up = [...previewQuestions]; const i = up.findIndex(x => x.id === q.id); up[i].correct_option = l; setPreviewQuestions(up); }} className={cn("text-[8px] md:text-[9px] font-black px-2 md:px-2.5 py-0.5 md:py-1 rounded-lg transition-all", q.correct_option === l ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-400")}>{q.correct_option === l ? 'إجابة صحيحة' : 'تحديد'}</button>
+                        </div>
+                        <Input
+                          value={q[`option_${l.toLowerCase()}`]}
+                          onChange={(e) => { const up = [...previewQuestions]; const i = up.findIndex(x => x.id === q.id); up[i][`option_${l.toLowerCase()}`] = e.target.value; setPreviewQuestions(up); }}
+                          className="rounded-xl border-slate-200 bg-white font-bold h-10 md:h-12 text-sm text-right"
+                          dir="rtl"
+                          lang="ar"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+
+          {/* Sticky Footer */}
+          <div className="sticky bottom-0 z-10 bg-white border-t px-4 md:px-8 py-4 shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
+            <Button onClick={() => bulkSave.mutate(previewQuestions)} disabled={bulkSave.isPending} className="gradient-primary text-white font-black w-full h-12 md:h-14 rounded-xl shadow-xl text-base md:text-lg">
+              {bulkSave.isPending ? <Loader2 className="animate-spin" /> : `حفظ جميع الأسئلة (${previewQuestions.length})`}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* File Upload Dialog - مع دعم اللصق المباشر */}
+      <Dialog open={isFileUploadOpen} onOpenChange={setIsFileUploadOpen}>
+        <DialogContent className="max-w-lg bg-white rounded-3xl p-10 shadow-2xl border-none z-[9999] font-cairo">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black flex items-center gap-3 text-slate-900">
+              <ScanLine className="text-primary" /> استيراد الأسئلة
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* حقل اللصق المباشر - مع دعم RTL كامل */}
+          <div className="mt-6 space-y-3">
+            <Label className="font-black text-slate-700 text-sm">لصق النص مباشرة</Label>
+            <Textarea
+              dir="rtl"
+              lang="ar"
+              placeholder="الصق الأسئلة هنا بالصيغة:&#10;نص السؤال؟&#10;1) الخيار الأول.&#10;2) الخيار الصحيح. +&#10;3) الخيار الثالث."
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+              className="w-full min-h-[160px] rounded-2xl border-slate-200 font-cairo font-bold text-right text-sm resize-none"
+            />
+            <Button
+              onClick={handlePasteText}
+              disabled={!pasteText.trim()}
+              className="gradient-primary text-white font-black w-full h-11 rounded-xl shadow-lg"
+            >
+              استيراد النص
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-3 my-4">
+            <div className="flex-1 h-px bg-slate-200" />
+            <span className="text-xs text-slate-400 font-bold">أو</span>
+            <div className="flex-1 h-px bg-slate-200" />
+          </div>
+
+          {/* رفع ملف */}
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            className="border-2 border-dashed border-slate-200 rounded-3xl p-8 text-center hover:border-primary/40 hover:bg-primary/5 cursor-pointer group transition-all relative overflow-hidden"
+          >
+            <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".pdf,.json,.txt" />
+            {isProcessingFile
+              ? <div className="flex flex-col items-center gap-4"><Loader2 className="w-12 h-12 text-primary animate-spin" /><p className="text-sm font-black text-slate-600">جاري المعالجة...</p></div>
+              : <div className="flex flex-col items-center gap-4"><div className="p-5 bg-slate-100 rounded-2xl transition-all shadow-sm group-hover:bg-white"><FileText className="w-10 h-10 text-slate-400 group-hover:text-primary" /></div><p className="font-black text-slate-700 font-cairo">اضغط لاختيار ملف PDF أو JSON</p></div>
+            }
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deleteQuestion} onOpenChange={() => setDeleteQuestion(null)}>
+        <AlertDialogContent className="rounded-3xl z-[9999] bg-white p-8 border-none shadow-2xl font-cairo">
+          <AlertDialogHeader><AlertDialogTitle className="font-black text-2xl text-slate-900">حذف السؤال</AlertDialogTitle></AlertDialogHeader>
+          <AlertDialogFooter className="gap-3 mt-8 font-bold">
+            <AlertDialogCancel className="rounded-xl font-bold">تراجع</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!deleteQuestion) return;
+                softDeleteMutation.mutate([deleteQuestion.id]);
+              }}
+              disabled={softDeleteMutation.isPending}
+              className="bg-destructive text-white rounded-xl font-black px-10"
+            >
+              حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* طلب حذف من المحرر - يحتاج موافقة المسؤل */}
+      <AlertDialog open={!!requestDeleteQuestion} onOpenChange={() => setRequestDeleteQuestion(null)}>
+        <AlertDialogContent className="rounded-3xl z-[9999] bg-white p-8 border-none shadow-2xl font-cairo">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-black text-2xl text-slate-900">طلب حذف السؤال</AlertDialogTitle>
+            <AlertDialogDescription className="text-right text-slate-600 mt-2">
+              لا تملك صلاحية الحذف المباشر. سيتم إرسال طلب حذف للمسؤل للمراجعة والموافقة.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-3 mt-8 font-bold">
+            <AlertDialogCancel className="rounded-xl font-bold">إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { if (!requestDeleteQuestion) return; requestDeleteMutation.mutate(requestDeleteQuestion); }}
+              disabled={requestDeleteMutation.isPending}
+              className="bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-black px-10"
+            >
+              {requestDeleteMutation.isPending ? 'جاري الإرسال...' : 'إرسال طلب الحذف'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
+        <AlertDialogContent className="rounded-3xl z-[9999] bg-white p-8 border-none shadow-2xl font-cairo">
+          <AlertDialogHeader><AlertDialogTitle className="font-black text-2xl text-slate-900">حذف ({selectedIds.length}) سؤال</AlertDialogTitle></AlertDialogHeader>
+          <AlertDialogDescription>سيتم حذف جميع الأسئلة المحددة. هل أنت متأكد؟</AlertDialogDescription>
+          <AlertDialogFooter className="gap-3 mt-8 font-bold"><AlertDialogCancel className="rounded-xl font-bold">تراجع</AlertDialogCancel><AlertDialogAction onClick={() => softDeleteMutation.mutate(selectedIds)} disabled={softDeleteMutation.isPending} className="bg-destructive text-white rounded-xl font-black px-10">حذف الجميع</AlertDialogAction></AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-2xl bg-white rounded-3xl p-8 z-[9999] font-cairo font-bold shadow-2xl border-none">
+          <DialogHeader><DialogTitle className="text-2xl font-black">{editingQuestion ? 'تعديل السؤال' : 'إضافة سؤال جديد'}</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); saveSingleMutation.mutate(formData); }} className="space-y-6 mt-4">
+            <div className="space-y-2.5">
+              <Label className="font-black text-slate-700">نص السؤال *</Label>
+              <Textarea value={formData.question_text} onChange={(e) => setFormData({ ...formData, question_text: e.target.value })} required className="rounded-2xl border-slate-200 min-h-[120px] text-right" dir="rtl" lang="ar" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {['a', 'b', 'c', 'd'].map(l => (
+                <div key={l}>
+                  <Label className="text-xs mb-1 block">خيار {l.toUpperCase()}</Label>
+                  <Input placeholder="نص الخيار..." value={formData[`option_${l}` as keyof typeof formData] as string} onChange={(e) => setFormData({ ...formData, [`option_${l}`]: e.target.value })} className="rounded-xl h-12 text-right" dir="rtl" lang="ar" />
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label>الإجابة الصحيحة</Label>
+                <Select value={formData.correct_option} onValueChange={(v) => setFormData({...formData, correct_option: v as 'A' | 'B' | 'C' | 'D'})}>
+                  <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-slate-200">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="z-[10001] bg-white border border-slate-200 shadow-xl rounded-xl">
+                    <SelectItem value="A">أ (A)</SelectItem>
+                    <SelectItem value="B">ب (B)</SelectItem>
+                    <SelectItem value="C">ج (C)</SelectItem>
+                    <SelectItem value="D">د (D)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>السنة</Label>
+                <Select value={formData.exam_year} onValueChange={(v) => setFormData({...formData, exam_year: v})}>
+                  <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-slate-200">
+                    <SelectValue placeholder="اختر السنة" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[10001] bg-white border border-slate-200 shadow-xl rounded-xl max-h-[200px] overflow-y-auto">
+                    <SelectItem value="trial" className="text-violet-600 font-black">🧪 تجريبي</SelectItem>
+                    {EXAM_YEARS.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>النموذج</Label>
+                <Select value={formData.exam_form} onValueChange={(v) => setFormData({...formData, exam_form: v})}>
+                  <SelectTrigger className="rounded-xl h-12 bg-slate-50 border-slate-200">
+                    <SelectValue placeholder="اختر النموذج" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[10001] bg-white border border-slate-200 shadow-xl rounded-xl">
+                    {EXAM_FORMS.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <Button type="submit" disabled={saveSingleMutation.isPending} className="gradient-primary text-white w-full h-12 rounded-xl text-lg font-black shadow-lg">
+              {saveSingleMutation.isPending ? 'جاري الحفظ...' : 'حفظ البيانات'}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </AdminLayout>
+  );
+};
+
+export default AdminQuestions;
