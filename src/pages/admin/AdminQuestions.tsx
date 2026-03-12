@@ -58,21 +58,30 @@ const parseSanaaLegalContent = (text: string) => {
   const results: any[] = [];
   let current: any = null;
 
-  const headerKeywords = [
-    'الجمهورية اليمنية', 'جامعة صنعاء', 'مركز الاختبارات', 'قائمة الاسئلة',
-    'الصفحة', 'tcpdf', 'TCPDF', 'Powered by', 'كلية الشريعة', 'درجة الامتحان',
-    'النظام الموازي', 'الفترة', 'المستوى'
-  ];
-
-  const isHeader = (t: string) =>
-    headerKeywords.some(k => t.includes(k)) ||
-    t.length < 3 ||
-    /^\d+\s*\/\s*\d+$/.test(t);
+  // سطور رأس الصفحة الكاملة فقط — لا نحذف كلمات قد تظهر في الأسئلة
+  const isHeaderLine = (t: string): boolean => {
+    if (!t || t.length < 2) return true;
+    if (/^\d+\s*\/\s*\d+$/.test(t)) return true; // "1 / 4"
+    if (/^-?\s*\(?(www\.tcpdf|TCPDF|Powered by)/i.test(t)) return true;
+    const headerPhrases = [
+      'الجمهورية اليمنية',
+      'جامعة صنعاء',
+      'مركز الاختبارات الالكترونية',
+      'قائمة الاسئلة',
+      'قائمة الأسئلة',
+    ];
+    if (headerPhrases.some(p => t.includes(p))) return true;
+    // سطر عنوان المادة أو أي سطر يحتوي كلمات رأس الصفحة
+    const subjectHeaderWords = ['المستوى', 'النظام الموازي', 'الفترة', 'درجة الامتحان', 'كلية الشريعة', 'قسم أصول', 'النظام الانتظامي'];
+    if (subjectHeaderWords.some(w => t.includes(w)) && !/^[\d]+\)\s*[+\-]/.test(t)) return true;
+    return false;
+  };
 
   lines.forEach(line => {
     const t = line.trim();
-    if (!t || isHeader(t)) return;
+    if (!t || isHeaderLine(t)) return;
 
+    // خيار: يبدأ بـ رقم) ثم + أو -
     const optMatch = t.match(/^([1-4])\)\s*([+\-\u2013])\s*(.+)/);
     const isTrueFalse = t.includes('العبارة صحيحة') || t.includes('العبارة خاطئة');
 
@@ -80,7 +89,7 @@ const parseSanaaLegalContent = (text: string) => {
       if (!current) return;
       const isCorrect = optMatch ? optMatch[2] === '+' : t.includes('العبارة صحيحة');
       let cleanVal = optMatch
-        ? optMatch[3].replace(/[-\u2013()\/\d]+$/, '').trim()
+        ? optMatch[3].replace(/\s*[-\u2013]\s*\(?\d*\)?\s*$/, '').trim()
         : (t.includes('العبارة صحيحة') ? 'العبارة صحيحة' : 'العبارة خاطئة');
 
       if (cleanVal && cleanVal.length > 0) {
@@ -92,13 +101,15 @@ const parseSanaaLegalContent = (text: string) => {
         }
       }
     } else {
+      // سطر سؤال
       if (current && current.count >= 2) {
         results.push(current);
         current = null;
       }
 
-      const qText = t.replace(/^[\(\s\d\u0661-\u0664\)\.]+/, '').trim();
-      if (!qText || qText.length < 5) return;
+      // أزل رقم السؤال من البداية مثل "1)" أو "(1)"
+      const qText = t.replace(/^[\(\s]*[\d\u0660-\u0669]+[\)\.]\s*/, '').trim();
+      if (!qText || qText.length < 4) return;
 
       if (!current) {
         current = {
@@ -109,6 +120,7 @@ const parseSanaaLegalContent = (text: string) => {
           count: 0
         };
       } else {
+        // سطر تابع للسؤال (السؤال في أكثر من سطر)
         current.question_text += ' ' + qText;
       }
     }
