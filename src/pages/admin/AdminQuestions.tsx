@@ -34,11 +34,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 import Tesseract from 'tesseract.js';
 
 // رابط الـ Worker (ثابت)
-// Worker لـ pdfjs-dist v5
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString();
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
 
 // نماذج الاختبار
 const EXAM_FORMS = [
@@ -49,69 +45,73 @@ const EXAM_FORMS = [
 
 // --- المحرك الذكي الشامل (يدعم العربية بالكامل + RTL) ---
 const parseSanaaLegalContent = (text: string) => {
-  const cleanText = text.replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/_/g, '');
-  const lines = cleanText.split('\n');
+  const cleanText = text
+    .replace(/[​-‍﻿]/g, '')
+    .replace(/_/g, '')
+    .replace(//g, '');
+
+  const lines = cleanText.split('
+');
   const results: any[] = [];
   let current: any = null;
 
+  const headerKeywords = [
+    'الجمهورية اليمنية', 'جامعة صنعاء', 'مركز الاختبارات', 'قائمة الاسئلة',
+    'الصفحة', 'tcpdf', 'TCPDF', 'Powered by', 'كلية الشريعة', 'درجة الامتحان',
+    'النظام الموازي', 'الفترة', 'المستوى'
+  ];
+
+  const isHeader = (t: string) =>
+    headerKeywords.some(k => t.includes(k)) ||
+    t.length < 3 ||
+    /^d+s*/s*d+$/.test(t);
+
   lines.forEach(line => {
     const t = line.trim();
-    if (!t || t.length < 2) return;
+    if (!t || isHeader(t)) return;
 
-    // تحديد ما إذا كان السطر "خياراً" - يدعم الأرقام العربية والإنجليزية
-    const hasOptionIndicators =
-      t.includes('+') || t.includes('-') ||
-      t.startsWith('1)') || t.startsWith('2)') || t.startsWith('3)') || t.startsWith('4)') ||
-      t.startsWith('١)') || t.startsWith('٢)') || t.startsWith('٣)') || t.startsWith('٤)');
-
+    const optMatch = t.match(/^([1-4]))s*([+-–])s*(.+)/);
     const isTrueFalse = t.includes('العبارة صحيحة') || t.includes('العبارة خاطئة');
-    const isOption = (hasOptionIndicators || isTrueFalse) && (t.match(/[\d١٢٣٤]/) || t.startsWith('+') || t.startsWith('-'));
 
-    if (isOption) {
+    if (optMatch || isTrueFalse) {
       if (!current) return;
+      const isCorrect = optMatch ? optMatch[2] === '+' : t.includes('العبارة صحيحة');
+      let cleanVal = optMatch
+        ? optMatch[3].replace(/[-–()\/d]+$/, '').trim()
+        : (t.includes('العبارة صحيحة') ? 'العبارة صحيحة' : 'العبارة خاطئة');
 
-      const isCorrect = t.includes('+');
-
-      let cleanVal = t
-        .replace(/^[\(\s\d١٢٣٤\)\.\-\+]+/, '')
-        .replace(/[\+\-]$/, '')
-        .trim();
-
-      if (t.includes('العبارة صحيحة')) cleanVal = 'العبارة صحيحة';
-      else if (t.includes('العبارة خاطئة')) cleanVal = 'العبارة خاطئة';
-
-      if (cleanVal) {
+      if (cleanVal && cleanVal.length > 0) {
         current.count++;
-        const letters = ['A', 'B', 'C', 'D'];
-        const letter = letters[current.count - 1];
-
+        const letter = ['A', 'B', 'C', 'D'][current.count - 1];
         if (letter) {
           current[`option_${letter.toLowerCase()}`] = cleanVal;
           if (isCorrect) current.correct_option = letter;
         }
       }
-    }
-    else {
-      if (current && current.count > 0) {
+    } else {
+      if (current && current.count >= 2) {
         results.push(current);
         current = null;
       }
 
+      const qText = t.replace(/^[(sd١-٤).]+/, '').trim();
+      if (!qText || qText.length < 5) return;
+
       if (!current) {
         current = {
           id: Math.random().toString(36).substr(2, 9),
-          question_text: t.replace(/^[\(\s\d١٢٣٤\)]+/, '').trim(),
+          question_text: qText,
           option_a: '', option_b: '', option_c: '', option_d: '',
           correct_option: 'A',
           count: 0
         };
       } else {
-        current.question_text += ' ' + t.replace(/^[\(\s\d١٢٣٤\)]+/, '').trim();
+        current.question_text += ' ' + qText;
       }
     }
   });
 
-  if (current && current.count > 0) results.push(current);
+  if (current && current.count >= 2) results.push(current);
   return results;
 };
 
@@ -204,13 +204,19 @@ const AdminQuestions = () => {
       const textContent = await page.getTextContent();
       if (textContent.items.length > 0) {
         const items: any[] = textContent.items;
-        items.sort((a, b) => (b.transform[5] - a.transform[5]) || (a.transform[4] - b.transform[4]));
+        // ترتيب: من الأعلى للأسفل، ومن اليمين لليسار (RTL)
+        items.sort((a, b) => (b.transform[5] - a.transform[5]) || (b.transform[4] - a.transform[4]));
         let lastY = -1;
+        let lineItems: string[] = [];
         items.forEach(it => {
-          if (lastY !== -1 && Math.abs(it.transform[5] - lastY) > 5) fullText += '\n';
-          fullText += it.str + ' ';
+          if (lastY !== -1 && Math.abs(it.transform[5] - lastY) > 5) {
+            fullText += lineItems.join(' ').trim() + '\n';
+            lineItems = [];
+          }
+          if (it.str.trim()) lineItems.push(it.str.trim());
           lastY = it.transform[5];
         });
+        if (lineItems.length > 0) fullText += lineItems.join(' ').trim() + '\n';
         fullText += '\n';
       } else {
         const viewport = page.getViewport({ scale: 2 });
