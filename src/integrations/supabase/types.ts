@@ -109,37 +109,53 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          question_id: string
+          question_data: Json | null
+          question_id: string | null
           reason: string | null
+          request_type: string
           requested_by: string
           reviewed_at: string | null
           reviewed_by: string | null
           status: string
+          target_question_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
-          question_id: string
+          question_data?: Json | null
+          question_id?: string | null
           reason?: string | null
+          request_type?: string
           requested_by: string
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
+          target_question_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
-          question_id?: string
+          question_data?: Json | null
+          question_id?: string | null
           reason?: string | null
+          request_type?: string
           requested_by?: string
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
+          target_question_id?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "deletion_requests_question_id_fkey"
             columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deletion_requests_target_question_id_fkey"
+            columns: ["target_question_id"]
             isOneToOne: false
             referencedRelation: "questions"
             referencedColumns: ["id"]
