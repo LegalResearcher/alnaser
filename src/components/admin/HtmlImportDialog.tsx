@@ -55,13 +55,9 @@ const parseSanaaLegalContent = (text: string) => {
     const t = line.trim();
     if (!t || t.length < 2) return;
 
-    const hasOptionIndicators =
-      t.includes('+') || t.includes('-') ||
-      t.startsWith('1)') || t.startsWith('2)') || t.startsWith('3)') || t.startsWith('4)') ||
-      t.startsWith('١)') || t.startsWith('٢)') || t.startsWith('٣)') || t.startsWith('٤)');
-
     const isTrueFalse = t.includes('العبارة صحيحة') || t.includes('العبارة خاطئة');
-    const isOption = (hasOptionIndicators || isTrueFalse) && (t.match(/[\d١٢٣٤]/) || t.startsWith('+') || t.startsWith('-'));
+    const hasSignAfterNum = /^[١٢٣٤1-4]\)\s*[+\-]/.test(t);
+    const isOption = isTrueFalse || hasSignAfterNum;
 
     if (isOption) {
       if (!current) return;
@@ -69,6 +65,7 @@ const parseSanaaLegalContent = (text: string) => {
       let cleanVal = t
         .replace(/^[\(\s\d١٢٣٤\)\.\-\+]+/, '')
         .replace(/[\+\-]$/, '')
+        .replace(/\s*(TCPDF|tcpdf|www\.tcpdf\.org|Powered by TCPDF)[^$]*/gi, '')
         .trim();
       if (t.includes('العبارة صحيحة')) cleanVal = 'العبارة صحيحة';
       else if (t.includes('العبارة خاطئة')) cleanVal = 'العبارة خاطئة';
@@ -130,7 +127,7 @@ export const HtmlImportDialog = ({ open, onOpenChange, subjectId }: HtmlImportDi
   const processPDF = async (file: File): Promise<string> => {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    let fullText = '';
+    let allLines: string[] = [];
 
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
       const page = await pdf.getPage(pageNum);
@@ -144,7 +141,7 @@ export const HtmlImportDialog = ({ open, onOpenChange, subjectId }: HtmlImportDi
         canvas.width = viewport.width;
         await page.render({ canvasContext: context!, viewport, canvas } as any).promise;
         const { data: { text } } = await Tesseract.recognize(canvas, 'ara');
-        fullText += text + '\n';
+        allLines.push(...text.split('\n').filter((l: string) => l.trim()));
         continue;
       }
 
@@ -163,24 +160,39 @@ export const HtmlImportDialog = ({ open, onOpenChange, subjectId }: HtmlImportDi
       }
 
       const sortedYKeys = Array.from(linesMap.keys()).sort((a, b) => b - a);
+      const pageRawLines: string[] = [];
+
       for (const yKey of sortedYKeys) {
         const lineWords = linesMap.get(yKey)!;
         lineWords.sort((a, b) => b.x - a.x);
         const lineText = lineWords.map(w => w.text).join(' ');
-        const fixed = lineText.replace(/^\((\d)\s+/, '$1) ');
-        fullText += fixed + '\n';
+        const fixed = lineText.replace(/^\((\d{1,2})\s+/, '$1) ');
+        if (/^ﺔﺤﻔﺼﻟﺍ\s+\d+\s*\/\s*\d+/.test(fixed)) continue;
+        pageRawLines.push(fixed);
       }
-    }
-    // حذف الـ header: ابقِ فقط من أول سطر يبدأ بـ "رقم)" حتى النهاية
-    const lines = fullText.split('\n');
-    let startIdx = 0;
-    for (let i = 0; i < lines.length; i++) {
-      if (/^\d+\)\s/.test(lines[i].trim())) {
-        startIdx = i;
-        break;
+
+      let startIdx = 0;
+      for (let i = 0; i < pageRawLines.length; i++) {
+        if (/^\d+\)\s/.test(pageRawLines[i].trim())) { startIdx = i; break; }
       }
+
+      const pageLines = pageRawLines.slice(startIdx);
+      const merged: string[] = [];
+      for (const line of pageLines) {
+        const t = line.trim();
+        if (!t) continue;
+        const isNewLine = /^\d+\)/.test(t);
+        if (!isNewLine && merged.length > 0) {
+          merged[merged.length - 1] += ' ' + t;
+        } else {
+          merged.push(t);
+        }
+      }
+
+      allLines.push(...merged);
     }
-    return lines.slice(startIdx).join('\n');
+
+    return allLines.join('\n');
   };
 
   // --- الهياكل البرمجية المساعدة (نفس المنطق الأصلي مع تحسين التنظيف) ---
