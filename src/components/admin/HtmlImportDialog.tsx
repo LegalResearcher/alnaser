@@ -167,8 +167,10 @@ export const HtmlImportDialog = ({ open, onOpenChange, subjectId }: HtmlImportDi
         lineWords.sort((a, b) => b.x - a.x);
         const lineText = lineWords.map(w => w.text).join(' ');
         const fixed = lineText.replace(/^\((\d{1,2})\s+/, '$1) ');
-        if (/^ﺔﺤﻔﺼﻟﺍ\s+\d+\s*\/\s*\d+/.test(fixed)) continue;
-        pageRawLines.push(fixed);
+        const cleanFixed = fixed.replace(/[\u0600-\u06FF\uFE70-\uFEFF]+\s+\d+\s*\/\s*\d+/g, '').trim();
+        if (!cleanFixed) continue;
+        if (/TCPDF|tcpdf|www\.tcpdf/i.test(cleanFixed)) continue;
+        pageRawLines.push(cleanFixed);
       }
 
       let startIdx = 0;
