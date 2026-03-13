@@ -169,10 +169,10 @@ export const HtmlImportDialog = ({ open, onOpenChange, subjectId }: HtmlImportDi
         const rawText = await processPDF(file);
         const cleanedText = rawText.split('\n').map(line => {
           const t = line.trim();
-          // تحويل صيغة PDF: "النص + (2)" أو "النص - (1)" إلى "2) النص +" أو "1) النص -"
-          const pdfFormat = t.match(/^(.+?)\s*([\+\-])\s*[\(（]([\d١٢٣٤])[\)）]\s*$/);
+          // تحويل صيغة PDF: "(1 - النص" إلى "1) - النص"
+          const pdfFormat = t.match(/^\((\d|[١٢٣٤])\s+(.*)/);
           if (pdfFormat) {
-            return `${pdfFormat[3]}) ${pdfFormat[1]} ${pdfFormat[2]}`;
+            return `${pdfFormat[1]}) ${pdfFormat[2]}`;
           }
           return t;
         }).join('\n');
