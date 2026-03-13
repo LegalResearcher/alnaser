@@ -259,10 +259,12 @@ const AdminQuestions = () => {
         // 1. تحويل (10 ... أو (1 ... → 10) ... / 1) ...
         const fixed = lineText.replace(/^\((\d{1,2})\s+/, "$1) ");
 
-        // 2. حذف footer "الصفحة N / M"
-        if (/^ﺔﺤﻔﺼﻟﺍ\s+\d+\s*\/\s*\d+/.test(fixed)) continue;
+        // 2. حذف footer "الصفحة N / M" بكلا الصيغتين (Presentation Forms أو Unicode عادي)
+        const cleanFixed = fixed.replace(/[\u0600-\u06FF\uFE70-\uFEFF]+\s+\d+\s*\/\s*\d+/g, "").trim();
+        if (!cleanFixed) continue;
+        if (/TCPDF|tcpdf|www\.tcpdf/i.test(cleanFixed)) continue;
 
-        pageRawLines.push(fixed);
+        pageRawLines.push(cleanFixed);
       }
 
       // 3. حذف header: ابقِ من أول سطر يبدأ بـ رقم)
