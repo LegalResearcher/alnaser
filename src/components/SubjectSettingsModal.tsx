@@ -19,6 +19,7 @@ const EXAM_FORMS = [
   { id: 'General', name: 'نموذج العام' },
   { id: 'Parallel', name: 'نموذج الموازي' },
   { id: 'Mixed', name: 'نموذج مختلط' },
+  { id: 'Trial', name: 'أسئلة تجريبية' },
 ];
 
 function highlight(text: string, query: string) {
@@ -74,6 +75,11 @@ const SubjectSettingsModal = ({ subject, onClose }: SubjectSettingsModalProps) =
   useEffect(() => {
     const count = async () => {
       if (examMode === 'all') { setExamCount(questions.length); return; }
+      if (selectedForm === 'Trial') {
+        const { count } = await supabase.from('questions').select('*', { count: 'exact', head: true }).eq('subject_id', subject.id).eq('status', 'active').is('exam_year', null);
+        setExamCount(count || 0);
+        return;
+      }
       if (!selectedYear) { setExamCount(0); return; }
       let q = supabase.from('questions').select('*', { count: 'exact', head: true }).eq('subject_id', subject.id).eq('status', 'active').eq('exam_year', parseInt(selectedYear));
       if (selectedForm && selectedForm !== 'Mixed') q = q.eq('exam_form', selectedForm);
@@ -88,8 +94,8 @@ const SubjectSettingsModal = ({ subject, onClose }: SubjectSettingsModalProps) =
     if (examMode === 'all') {
       navigate(`/exam/${subject.id}/start`, { state: { studentName, examYear: 0, examForm: 'Mixed', examTime: subject.default_time_minutes, questionsCount: questions.length, subjectName: subject.name, levelName: subject.levelName, allQuestions: true } });
     } else {
-      if (!selectedYear) return;
-      navigate(`/exam/${subject.id}/start`, { state: { studentName, examYear: parseInt(selectedYear), examForm: selectedForm, examTime: subject.default_time_minutes, questionsCount: examCount, subjectName: subject.name, levelName: subject.levelName } });
+      if (selectedForm !== 'Trial' && !selectedYear) return;
+      navigate(`/exam/${subject.id}/start`, { state: { studentName, examYear: selectedForm === 'Trial' ? 0 : parseInt(selectedYear), examForm: selectedForm, examTime: subject.default_time_minutes, questionsCount: examCount, subjectName: subject.name, levelName: subject.levelName, isTrial: selectedForm === 'Trial' } });
     }
     onClose();
   };
@@ -207,7 +213,7 @@ const SubjectSettingsModal = ({ subject, onClose }: SubjectSettingsModalProps) =
         <span className="text-xs font-black text-muted-foreground">الأسئلة المتوفرة</span>
         <span className="font-black text-lg text-foreground">{examCount}</span>
       </div>
-      <Button onClick={handleStartExam} disabled={!studentName.trim() || (examMode === 'single' && !selectedYear) || examCount === 0} className="w-full h-13 rounded-2xl font-black">
+      <Button onClick={handleStartExam} disabled={!studentName.trim() || (examMode === 'single' && selectedForm !== 'Trial' && !selectedYear) || examCount === 0} className="w-full h-13 rounded-2xl font-black">
         <Play className="w-5 h-5 ml-2" /> ابدأ الاختبار
       </Button>
     </div>
