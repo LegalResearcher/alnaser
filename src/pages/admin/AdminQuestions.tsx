@@ -34,7 +34,10 @@ import * as pdfjsLib from 'pdfjs-dist';
 import Tesseract from 'tesseract.js';
 
 // رابط الـ Worker (ثابت)
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.mjs',
+  import.meta.url
+).toString();
 
 // نماذج الاختبار
 const EXAM_FORMS = [
