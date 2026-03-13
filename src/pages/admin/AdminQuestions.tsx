@@ -57,14 +57,12 @@ const parseSanaaLegalContent = (text: string) => {
     const t = line.trim();
     if (!t || t.length < 2) return;
 
-    // تحديد ما إذا كان السطر "خياراً" - يدعم الأرقام العربية والإنجليزية
-    const hasOptionIndicators =
-      t.includes('+') || t.includes('-') ||
-      t.startsWith('1)') || t.startsWith('2)') || t.startsWith('3)') || t.startsWith('4)') ||
-      t.startsWith('١)') || t.startsWith('٢)') || t.startsWith('٣)') || t.startsWith('٤)');
-
+    // تحديد ما إذا كان السطر "خياراً":
+    // الخيار يبدأ بـ "رقم) + أو -" أو يحتوي على "العبارة صحيحة/خاطئة"
+    // السؤال يبدأ بـ "رقم)" بدون + أو - مباشرة بعده
     const isTrueFalse = t.includes('العبارة صحيحة') || t.includes('العبارة خاطئة');
-    const isOption = (hasOptionIndicators || isTrueFalse) && (t.match(/[\d١٢٣٤]/) || t.startsWith('+') || t.startsWith('-'));
+    const hasSignAfterNum = /^[١٢٣٤1-4]\)\s*[+\-]/.test(t);
+    const isOption = isTrueFalse || hasSignAfterNum;
 
     if (isOption) {
       if (!current) return;
@@ -74,6 +72,7 @@ const parseSanaaLegalContent = (text: string) => {
       let cleanVal = t
         .replace(/^[\(\s\d١٢٣٤\)\.\-\+]+/, '')
         .replace(/[\+\-]$/, '')
+        .replace(/\s*(TCPDF|tcpdf|www\.tcpdf\.org|Powered by TCPDF)[^$]*/gi, '')
         .trim();
 
       if (t.includes('العبارة صحيحة')) cleanVal = 'العبارة صحيحة';
@@ -91,8 +90,17 @@ const parseSanaaLegalContent = (text: string) => {
       }
     }
     else {
-      if (current && current.count > 0) {
+      // حفظ السؤال السابق فقط إذا كان يحتوي على خيارات كافية
+      if (current && current.count >= 2) {
+        // أسئلة صح/خطأ: أكمل الخيارات الفارغة
+        if (current.count === 2 && !current.option_c && !current.option_d) {
+          current.option_c = '';
+          current.option_d = '';
+        }
         results.push(current);
+        current = null;
+      } else if (current && current.count > 0 && current.count < 2) {
+        // سؤال ناقص — تجاهله
         current = null;
       }
 
@@ -110,7 +118,7 @@ const parseSanaaLegalContent = (text: string) => {
     }
   });
 
-  if (current && current.count > 0) results.push(current);
+  if (current && current.count >= 2) results.push(current);
   return results;
 };
 
@@ -205,14 +213,13 @@ const AdminQuestions = () => {
   const processPDF = async (file: File): Promise<string> => {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    let fullText = "";
+    let allLines: string[] = [];
 
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
       const page = await pdf.getPage(pageNum);
       const textContent = await page.getTextContent();
 
       if (textContent.items.length === 0) {
-        // PDF ممسوح — استخدم OCR
         const viewport = page.getViewport({ scale: 2 });
         const canvas = document.createElement("canvas");
         const context = canvas.getContext("2d");
@@ -220,22 +227,19 @@ const AdminQuestions = () => {
         canvas.width = viewport.width;
         await page.render({ canvasContext: context!, viewport, canvas } as any).promise;
         const { data: { text } } = await Tesseract.recognize(canvas, "ara");
-        fullText += text + "\n";
+        allLines.push(...text.split("\n").filter(l => l.trim()));
         continue;
       }
 
       // تجميع الكلمات مع إحداثياتها
       interface WordItem { text: string; x: number; y: number; }
       const wordItems: WordItem[] = [];
-
       for (const item of textContent.items as any[]) {
         if (!item.str?.trim()) continue;
-        const x = item.transform[4];
-        const y = item.transform[5];
-        wordItems.push({ text: item.str.trim(), x, y });
+        wordItems.push({ text: item.str.trim(), x: item.transform[4], y: item.transform[5] });
       }
 
-      // تجميع الكلمات في أسطر بناءً على y (تقريب ±3px)
+      // تجميع في أسطر
       const linesMap = new Map<number, WordItem[]>();
       for (const w of wordItems) {
         const yKey = Math.round(w.y / 3) * 3;
@@ -243,31 +247,48 @@ const AdminQuestions = () => {
         linesMap.get(yKey)!.push(w);
       }
 
-      // ترتيب الأسطر من أعلى لأسفل (y تنازلي في PDF coords)
+      // ترتيب أسطر الصفحة من أعلى لأسفل، والكلمات RTL
       const sortedYKeys = Array.from(linesMap.keys()).sort((a, b) => b - a);
+      const pageRawLines: string[] = [];
 
       for (const yKey of sortedYKeys) {
         const lineWords = linesMap.get(yKey)!;
-        // ترتيب RTL: x تنازلي (أكبر x = أقصى اليمين يأتي أولاً)
         lineWords.sort((a, b) => b.x - a.x);
         const lineText = lineWords.map(w => w.text).join(" ");
 
-        // تحويل "(1 ..." إلى "1) ..." لتوافق محرك التحليل
-        const fixed = lineText.replace(/^\((\d)\s+/, "$1) ");
-        fullText += fixed + "\n";
+        // 1. تحويل (10 ... أو (1 ... → 10) ... / 1) ...
+        const fixed = lineText.replace(/^\((\d{1,2})\s+/, "$1) ");
+
+        // 2. حذف footer "الصفحة N / M"
+        if (/^ﺔﺤﻔﺼﻟﺍ\s+\d+\s*\/\s*\d+/.test(fixed)) continue;
+
+        pageRawLines.push(fixed);
       }
+
+      // 3. حذف header: ابقِ من أول سطر يبدأ بـ رقم)
+      let startIdx = 0;
+      for (let i = 0; i < pageRawLines.length; i++) {
+        if (/^\d+\)\s/.test(pageRawLines[i].trim())) { startIdx = i; break; }
+      }
+
+      // 4. دمج سطور الامتداد (لا تبدأ بـ رقم) مع السطر السابق
+      const pageLines = pageRawLines.slice(startIdx);
+      const merged: string[] = [];
+      for (const line of pageLines) {
+        const t = line.trim();
+        if (!t) continue;
+        const isNewLine = /^\d+\)/.test(t);
+        if (!isNewLine && merged.length > 0) {
+          merged[merged.length - 1] += " " + t;
+        } else {
+          merged.push(t);
+        }
+      }
+
+      allLines.push(...merged);
     }
 
-    // حذف الـ header: ابقِ فقط من أول سطر يبدأ بـ "رقم)" حتى النهاية
-    const lines = fullText.split('\n');
-    let startIdx = 0;
-    for (let i = 0; i < lines.length; i++) {
-      if (/^\d+\)\s/.test(lines[i].trim())) {
-        startIdx = i;
-        break;
-      }
-    }
-    return lines.slice(startIdx).join('\n');
+    return allLines.join("\n");
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
