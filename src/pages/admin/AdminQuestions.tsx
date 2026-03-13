@@ -114,6 +114,14 @@ const parseSanaaLegalContent = (text: string) => {
   return results;
 };
 
+// تنظيف نص الخيار القادم من PDF (يُزيل الأرقام والرموز الزائدة)
+const cleanPDFOptionText = (text: string): string =>
+  text
+    .replace(/^[\(\s\d١٢٣٤\)\.\-\+]+/, '')   // بداية السطر
+    .replace(/[\s\+\-]+$/, '')                  // نهاية السطر
+    .replace(/[\(（]\s*[\d١٢٣٤]\s*[)）]/g, '') // أرقام بين قوسين في الوسط
+    .trim();
+
 const AdminQuestions = () => {
   const navigate = useNavigate();
   const { user, isAdmin, isEditor } = useAuth();
@@ -258,7 +266,17 @@ const AdminQuestions = () => {
           toast({ title: 'تنبيه', description: 'صيغة ملف JSON غير صحيحة (يجب أن يكون مصفوفة).', variant: 'destructive' });
         }
       } else {
-        const content = file.type === "application/pdf" ? await processPDF(file) : await file.text();
+      const content = file.type === "application/pdf"
+        ? (await processPDF(file)).split('\n').map(line => {
+            const t = line.trim();
+            // تحويل صيغة PDF: "النص + (2)" أو "النص - (1)" إلى "2) النص +" أو "1) النص -"
+            const pdfFormat = t.match(/^(.+?)\s*([\+\-])\s*[\(（]([\d١٢٣٤])[\)）]\s*$/);
+            if (pdfFormat) {
+              return `${pdfFormat[3]}) ${pdfFormat[1]} ${pdfFormat[2]}`;
+            }
+            return t;
+          }).join('\n')
+        : await file.text();
         const extracted = parseSanaaLegalContent(content);
         if (extracted.length > 0) {
           setPreviewQuestions(extracted);
