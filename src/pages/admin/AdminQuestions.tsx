@@ -202,34 +202,62 @@ const AdminQuestions = () => {
   });
 
   // معالجة PDF
-  const processPDF = async (file: File) => {
+  const processPDF = async (file: File): Promise<string> => {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     let fullText = "";
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
+
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
       const textContent = await page.getTextContent();
-      if (textContent.items.length > 0) {
-        const items: any[] = textContent.items;
-        items.sort((a, b) => (b.transform[5] - a.transform[5]) || (a.transform[4] - b.transform[4]));
-        let lastY = -1;
-        items.forEach(it => {
-          if (lastY !== -1 && Math.abs(it.transform[5] - lastY) > 5) fullText += '\n';
-          fullText += it.str + ' ';
-          lastY = it.transform[5];
-        });
-        fullText += '\n';
-      } else {
+
+      if (textContent.items.length === 0) {
+        // PDF ممسوح — استخدم OCR
         const viewport = page.getViewport({ scale: 2 });
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
         canvas.height = viewport.height;
         canvas.width = viewport.width;
         await page.render({ canvasContext: context!, viewport, canvas } as any).promise;
-        const { data: { text } } = await Tesseract.recognize(canvas, 'ara');
-        fullText += text + '\n';
+        const { data: { text } } = await Tesseract.recognize(canvas, "ara");
+        fullText += text + "\n";
+        continue;
+      }
+
+      // تجميع الكلمات مع إحداثياتها
+      interface WordItem { text: string; x: number; y: number; }
+      const wordItems: WordItem[] = [];
+
+      for (const item of textContent.items as any[]) {
+        if (!item.str?.trim()) continue;
+        const x = item.transform[4];
+        const y = item.transform[5];
+        wordItems.push({ text: item.str.trim(), x, y });
+      }
+
+      // تجميع الكلمات في أسطر بناءً على y (تقريب ±3px)
+      const linesMap = new Map<number, WordItem[]>();
+      for (const w of wordItems) {
+        const yKey = Math.round(w.y / 3) * 3;
+        if (!linesMap.has(yKey)) linesMap.set(yKey, []);
+        linesMap.get(yKey)!.push(w);
+      }
+
+      // ترتيب الأسطر من أعلى لأسفل (y تنازلي في PDF coords)
+      const sortedYKeys = Array.from(linesMap.keys()).sort((a, b) => b - a);
+
+      for (const yKey of sortedYKeys) {
+        const lineWords = linesMap.get(yKey)!;
+        // ترتيب RTL: x تنازلي (أكبر x = أقصى اليمين يأتي أولاً)
+        lineWords.sort((a, b) => b.x - a.x);
+        const lineText = lineWords.map(w => w.text).join(" ");
+
+        // تحويل "(1 ..." إلى "1) ..." لتوافق محرك التحليل
+        const fixed = lineText.replace(/^\((\d)\s+/, "$1) ");
+        fullText += fixed + "\n";
       }
     }
+
     return fullText;
   };
 
@@ -267,15 +295,7 @@ const AdminQuestions = () => {
         }
       } else {
       const content = file.type === "application/pdf"
-        ? (await processPDF(file)).split('\n').map(line => {
-            const t = line.trim();
-            // تحويل صيغة PDF: "(1 - النص" إلى "1) - النص"
-            const pdfFormat = t.match(/^\((\d|[١٢٣٤])\s+(.*)/);
-            if (pdfFormat) {
-              return `${pdfFormat[1]}) ${pdfFormat[2]}`;
-            }
-            return t;
-          }).join('\n')
+        ? await processPDF(file)
         : await file.text();
         const extracted = parseSanaaLegalContent(content);
         if (extracted.length > 0) {
