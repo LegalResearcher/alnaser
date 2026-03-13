@@ -126,25 +126,17 @@ export const HtmlImportDialog = ({ open, onOpenChange, subjectId }: HtmlImportDi
     onOpenChange(false);
   };
 
-  // --- استخراج النص من PDF ---
+  // --- استخراج النص من PDF مع دعم RTL الكامل ---
   const processPDF = async (file: File): Promise<string> => {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     let fullText = '';
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
+
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
       const textContent = await page.getTextContent();
-      if (textContent.items.length > 0) {
-        const items: any[] = textContent.items;
-        items.sort((a, b) => (b.transform[5] - a.transform[5]) || (a.transform[4] - b.transform[4]));
-        let lastY = -1;
-        items.forEach(it => {
-          if (lastY !== -1 && Math.abs(it.transform[5] - lastY) > 5) fullText += '\n';
-          fullText += it.str + ' ';
-          lastY = it.transform[5];
-        });
-        fullText += '\n';
-      } else {
+
+      if (textContent.items.length === 0) {
         const viewport = page.getViewport({ scale: 2 });
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
@@ -153,103 +145,33 @@ export const HtmlImportDialog = ({ open, onOpenChange, subjectId }: HtmlImportDi
         await page.render({ canvasContext: context!, viewport, canvas } as any).promise;
         const { data: { text } } = await Tesseract.recognize(canvas, 'ara');
         fullText += text + '\n';
+        continue;
+      }
+
+      interface WordItem { text: string; x: number; y: number; }
+      const wordItems: WordItem[] = [];
+      for (const item of textContent.items as any[]) {
+        if (!item.str?.trim()) continue;
+        wordItems.push({ text: item.str.trim(), x: item.transform[4], y: item.transform[5] });
+      }
+
+      const linesMap = new Map<number, WordItem[]>();
+      for (const w of wordItems) {
+        const yKey = Math.round(w.y / 3) * 3;
+        if (!linesMap.has(yKey)) linesMap.set(yKey, []);
+        linesMap.get(yKey)!.push(w);
+      }
+
+      const sortedYKeys = Array.from(linesMap.keys()).sort((a, b) => b - a);
+      for (const yKey of sortedYKeys) {
+        const lineWords = linesMap.get(yKey)!;
+        lineWords.sort((a, b) => b.x - a.x);
+        const lineText = lineWords.map(w => w.text).join(' ');
+        const fixed = lineText.replace(/^\((\d)\s+/, '$1) ');
+        fullText += fixed + '\n';
       }
     }
     return fullText;
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-      setIsProcessing(true);
-      setErrors([]);
-      try {
-        const rawText = await processPDF(file);
-        const cleanedText = rawText.split('\n').map(line => {
-          const t = line.trim();
-          // تحويل صيغة PDF: "(1 - النص" إلى "1) - النص"
-          const pdfFormat = t.match(/^\((\d|[١٢٣٤])\s+(.*)/);
-          if (pdfFormat) {
-            return `${pdfFormat[1]}) ${pdfFormat[2]}`;
-          }
-          return t;
-        }).join('\n');
-        const questions = parseSanaaLegalContent(cleanedText);
-        if (questions.length > 0) {
-          setParsedQuestions(questions);
-          setErrors([]);
-          setStep('preview');
-        } else {
-          setErrors(['لم يتم العثور على أسئلة في ملف PDF. تأكد من أن الصيغة تطابق صيغة لصق النص.']);
-          setStep('preview');
-        }
-      } catch (err) {
-        setErrors(['حدث خطأ أثناء قراءة ملف PDF.']);
-      } finally {
-        setIsProcessing(false);
-      }
-    } else {
-      parseHtmlFile(file);
-    }
-  };
-    setIsProcessing(true);
-    setErrors([]);
-
-    try {
-      const text = await file.text();
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(text, 'text/html');
-      const questions: ParsedQuestion[] = [];
-      const parseErrors: string[] = [];
-
-      const questionContainers = doc.querySelectorAll(
-        '.question, .quiz-question, [class*="question"], div[data-question], article, .card'
-      );
-
-      if (questionContainers.length > 0) {
-        questionContainers.forEach((container, index) => {
-          const parsed = parseQuestionContainer(container, index + 1);
-          if (parsed.question) questions.push(parsed.question);
-          else if (parsed.error) parseErrors.push(parsed.error);
-        });
-      }
-
-      if (questions.length === 0) {
-        const listItems = doc.querySelectorAll('ol > li, ul > li');
-        listItems.forEach((li, index) => {
-          const parsed = parseListItem(li, index + 1);
-          if (parsed.question) questions.push(parsed.question);
-        });
-      }
-
-      if (questions.length === 0) {
-        const tables = doc.querySelectorAll('table');
-        tables.forEach((table) => {
-          const parsed = parseTable(table, parseErrors);
-          questions.push(...parsed);
-        });
-      }
-
-      if (questions.length === 0) {
-        const bodyText = doc.body?.textContent || text;
-        const textParsed = parseFromText(bodyText);
-        questions.push(...textParsed);
-      }
-
-      if (questions.length === 0 && parseErrors.length === 0) {
-        parseErrors.push('لم يتم العثور على أسئلة في الملف. تأكد من تنسيق ملف الـ HTML.');
-      }
-
-      setParsedQuestions(questions);
-      setErrors(parseErrors);
-      setStep('preview');
-    } catch (error) {
-      setErrors(['حدث خطأ أثناء قراءة الملف. تأكد من سلامة كود الـ HTML.']);
-    } finally {
-      setIsProcessing(false);
-    }
   };
 
   // --- الهياكل البرمجية المساعدة (نفس المنطق الأصلي مع تحسين التنظيف) ---
@@ -461,6 +383,34 @@ export const HtmlImportDialog = ({ open, onOpenChange, subjectId }: HtmlImportDi
   };
 
   const cleanQuestionText = (text: string): string => text.replace(/^\d+[\.\)\-\s]+/, '').replace(/\s+/g, ' ').trim();
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+      setIsProcessing(true);
+      setErrors([]);
+      try {
+        const text = await processPDF(file);
+        const questions = parseSanaaLegalContent(text);
+        if (questions.length > 0) {
+          setParsedQuestions(questions);
+          setErrors([]);
+          setStep('preview');
+        } else {
+          setErrors(['لم يتم العثور على أسئلة في ملف PDF. تأكد من أن الصيغة صحيحة.']);
+          setStep('preview');
+        }
+      } catch (err) {
+        setErrors(['حدث خطأ أثناء قراءة ملف PDF.']);
+      } finally {
+        setIsProcessing(false);
+      }
+    } else {
+      parseHtmlFile(file);
+    }
+  };
 
   const importQuestions = async () => {
     if (parsedQuestions.length === 0 || !subjectId) return;
