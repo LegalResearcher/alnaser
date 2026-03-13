@@ -258,7 +258,16 @@ const AdminQuestions = () => {
       }
     }
 
-    return fullText;
+    // حذف الـ header: ابقِ فقط من أول سطر يبدأ بـ "رقم)" حتى النهاية
+    const lines = fullText.split('\n');
+    let startIdx = 0;
+    for (let i = 0; i < lines.length; i++) {
+      if (/^\d+\)\s/.test(lines[i].trim())) {
+        startIdx = i;
+        break;
+      }
+    }
+    return lines.slice(startIdx).join('\n');
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
