@@ -66,7 +66,10 @@ const parseSanaaLegalContent = (text: string) => {
     if (isOption) {
       if (!current) return;
       const isCorrect = t.includes('+');
-      let cleanVal = t.replace(/^[\(\s\d١٢٣٤\)\.\-\+]+/, '').replace(/[\+\-]$/, '').trim();
+      let cleanVal = t
+        .replace(/^[\(\s\d١٢٣٤\)\.\-\+]+/, '')
+        .replace(/[\+\-]$/, '')
+        .trim();
       if (t.includes('العبارة صحيحة')) cleanVal = 'العبارة صحيحة';
       else if (t.includes('العبارة خاطئة')) cleanVal = 'العبارة خاطئة';
       if (cleanVal) {
@@ -163,8 +166,17 @@ export const HtmlImportDialog = ({ open, onOpenChange, subjectId }: HtmlImportDi
       setIsProcessing(true);
       setErrors([]);
       try {
-        const text = await processPDF(file);
-        const questions = parseSanaaLegalContent(text);
+        const rawText = await processPDF(file);
+        const cleanedText = rawText.split('\n').map(line => {
+          const t = line.trim();
+          // تحويل صيغة PDF: "النص + (2)" أو "النص - (1)" إلى "2) النص +" أو "1) النص -"
+          const pdfFormat = t.match(/^(.+?)\s*([\+\-])\s*[\(（]([\d١٢٣٤])[\)）]\s*$/);
+          if (pdfFormat) {
+            return `${pdfFormat[3]}) ${pdfFormat[1]} ${pdfFormat[2]}`;
+          }
+          return t;
+        }).join('\n');
+        const questions = parseSanaaLegalContent(cleanedText);
         if (questions.length > 0) {
           setParsedQuestions(questions);
           setErrors([]);
