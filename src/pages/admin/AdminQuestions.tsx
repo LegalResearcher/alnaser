@@ -43,7 +43,8 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 const EXAM_FORMS = [
   { id: 'General', name: 'نموذج العام' },
   { id: 'Parallel', name: 'نموذج الموازي' },
-  { id: 'Mixed', name: 'نموذج مختلط' }
+  { id: 'Mixed', name: 'نموذج مختلط' },
+  { id: 'Trial', name: 'أسئلة تجريبية' }
 ];
 
 // --- المحرك الذكي الشامل (يدعم العربية بالكامل + RTL) ---
@@ -369,12 +370,14 @@ const AdminQuestions = () => {
     queryFn: async () => {
       let query = supabase.from('questions').select('*').eq('status', 'active').order('created_at', { ascending: false });
       if (selectedSubject) query = query.eq('subject_id', selectedSubject);
-      if (selectedYear === 'trial') {
-        query = query.is('exam_year', null);
-      } else if (selectedYear) {
+      if (selectedYear) {
         query = query.eq('exam_year', parseInt(selectedYear));
       }
-      if (selectedExamForm) query = query.eq('exam_form', selectedExamForm);
+      if (selectedExamForm === 'Trial') {
+        query = query.is('exam_year', null);
+      } else if (selectedExamForm) {
+        query = query.eq('exam_form', selectedExamForm);
+      }
       const { data } = await query;
       return data as Question[];
     },
@@ -395,7 +398,7 @@ const AdminQuestions = () => {
         option_c: q.option_c || "",
         option_d: q.option_d || "",
         correct_option: q.correct_option || 'A',
-        exam_year: selectedYear ? parseInt(selectedYear) : null,
+        exam_year: (importExamForm === 'Trial') ? null : (selectedYear ? parseInt(selectedYear) : null),
         exam_form: importExamForm,
         created_by: user.id,
         status: 'active' as const
@@ -408,7 +411,7 @@ const AdminQuestions = () => {
           requested_by: user.id,
           status: 'pending',
           reason: 'طلب إضافة أسئلة من المحرر',
-          question_data: { questions: formatted, subject_id: selectedSubject, exam_year: selectedYear ? parseInt(selectedYear) : null, exam_form: importExamForm },
+          question_data: { questions: formatted, subject_id: selectedSubject, exam_year: (importExamForm === 'Trial') ? null : (selectedYear ? parseInt(selectedYear) : null), exam_form: importExamForm },
         });
         if (error) throw error;
         return null;
@@ -594,8 +597,8 @@ const AdminQuestions = () => {
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100 relative z-20 font-bold font-cairo">
           <Select value={selectedLevel} onValueChange={setSelectedLevel}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="المستوى" /></SelectTrigger><SelectContent className="z-[9999] bg-white">{levels.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent></Select>
           <Select value={selectedSubject} onValueChange={setSelectedSubject}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="المادة" /></SelectTrigger><SelectContent className="z-[9999] bg-white">{subjects.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select>
-          <Select value={selectedYear || "all"} onValueChange={(v) => setSelectedYear(v === "all" ? "" : v)}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="السنة" /></SelectTrigger><SelectContent className="z-[9999] bg-white shadow-2xl"><SelectItem value="all">كل السنوات</SelectItem><SelectItem value="trial" className="text-violet-600 font-black">🧪 التجريبي</SelectItem>{EXAM_YEARS.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}</SelectContent></Select>
-          <Select value={selectedExamForm || "all"} onValueChange={(v) => setSelectedExamForm(v === "all" ? "" : v)}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="النموذج" /></SelectTrigger><SelectContent className="z-[9999] bg-white shadow-2xl"><SelectItem value="all">كل النماذج</SelectItem>{EXAM_FORMS.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent></Select>
+          <Select value={selectedYear || "all"} onValueChange={(v) => setSelectedYear(v === "all" ? "" : v)}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="السنة" /></SelectTrigger><SelectContent className="z-[9999] bg-white shadow-2xl"><SelectItem value="all">كل السنوات</SelectItem>{EXAM_YEARS.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}</SelectContent></Select>
+          <Select value={selectedExamForm || "all"} onValueChange={(v) => { setSelectedExamForm(v === "all" ? "" : v); if (v === "Trial") setSelectedYear(""); }}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="النموذج" /></SelectTrigger><SelectContent className="z-[9999] bg-white shadow-2xl"><SelectItem value="all">كل النماذج</SelectItem>{EXAM_FORMS.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent></Select>
           <div className="relative"><Search className="absolute right-3 top-2.5 w-4 h-4 text-slate-400" /><Input placeholder="بحث..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pr-10 bg-white border-slate-200 rounded-xl" dir="rtl" /></div>
         </div>
 
@@ -854,7 +857,6 @@ const AdminQuestions = () => {
                     <SelectValue placeholder="اختر السنة" />
                   </SelectTrigger>
                   <SelectContent className="z-[10001] bg-white border border-slate-200 shadow-xl rounded-xl max-h-[200px] overflow-y-auto">
-                    <SelectItem value="trial" className="text-violet-600 font-black">🧪 تجريبي</SelectItem>
                     {EXAM_YEARS.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}
                   </SelectContent>
                 </Select>
