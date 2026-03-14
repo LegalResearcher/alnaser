@@ -257,6 +257,59 @@ export type Database = {
         }
         Relationships: []
       }
+      question_reports: {
+        Row: {
+          created_at: string
+          error_type: string
+          id: string
+          image_url: string | null
+          note: string | null
+          question_id: string
+          reporter_batch: string | null
+          reporter_contact: string | null
+          reporter_level: string | null
+          reporter_name: string | null
+          status: string
+          suggested_answer: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_type: string
+          id?: string
+          image_url?: string | null
+          note?: string | null
+          question_id: string
+          reporter_batch?: string | null
+          reporter_contact?: string | null
+          reporter_level?: string | null
+          reporter_name?: string | null
+          status?: string
+          suggested_answer?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_type?: string
+          id?: string
+          image_url?: string | null
+          note?: string | null
+          question_id?: string
+          reporter_batch?: string | null
+          reporter_contact?: string | null
+          reporter_level?: string | null
+          reporter_name?: string | null
+          status?: string
+          suggested_answer?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_reports_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       question_stats: {
         Row: {
           correct_answers: number
@@ -312,6 +365,7 @@ export type Database = {
           option_c: string
           option_d: string
           question_text: string
+          reviewed_by: string | null
           status: Database["public"]["Enums"]["deletion_status"]
           subject_id: string
           updated_at: string
@@ -329,6 +383,7 @@ export type Database = {
           option_c: string
           option_d: string
           question_text: string
+          reviewed_by?: string | null
           status?: Database["public"]["Enums"]["deletion_status"]
           subject_id: string
           updated_at?: string
@@ -346,6 +401,7 @@ export type Database = {
           option_c?: string
           option_d?: string
           question_text?: string
+          reviewed_by?: string | null
           status?: Database["public"]["Enums"]["deletion_status"]
           subject_id?: string
           updated_at?: string
