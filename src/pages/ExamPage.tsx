@@ -396,6 +396,42 @@ const ExamPage = () => {
     setShowShareMenu(false);
   };
 
+  const handleSubmitReport = async () => {
+    const currentQ = questions[currentIndex];
+    if (!currentQ) return;
+    setReportSubmitting(true);
+    let image_url: string | null = null;
+    if (reportImage) {
+      const ext = reportImage.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { data: uploadData } = await supabase.storage
+        .from('report-images').upload(fileName, reportImage, { upsert: false });
+      if (uploadData) {
+        const { data: urlData } = supabase.storage.from('report-images').getPublicUrl(fileName);
+        image_url = urlData.publicUrl;
+      }
+    }
+    await (supabase.from('question_reports') as any).insert({
+      question_id: currentQ.id,
+      error_type: reportType,
+      suggested_answer: reportAnswer || null,
+      note: reportNote || null,
+      reporter_name: reportName || null,
+      reporter_level: reportLevel || null,
+      reporter_batch: reportBatch || null,
+      reporter_contact: reportContact || null,
+      image_url,
+    });
+    setReportSubmitting(false);
+    setReportDone(true);
+    setTimeout(() => {
+      setShowReportModal(false); setReportDone(false);
+      setReportAnswer(''); setReportNote(''); setReportType('wrong_answer');
+      setReportName(''); setReportLevel(''); setReportBatch(''); setReportContact('');
+      setReportImage(null); setReportImagePreview(null);
+    }, 1800);
+  };
+
   const currentQuestion = questions[currentIndex];
   const answeredCount = Object.keys(answers).length;
   const progressPct = (answeredCount / questions.length) * 100;
