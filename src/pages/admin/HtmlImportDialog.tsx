@@ -332,8 +332,7 @@ export const HtmlImportDialog = ({ open, onOpenChange, subjectId }: HtmlImportDi
 
   const parseFromText = (text: string): ParsedQuestion[] => {
     const questions: ParsedQuestion[] = [];
-    const lines = text.split('
-');
+    const lines = text.split('\n');
     let i = 0;
 
     while (i < lines.length) {

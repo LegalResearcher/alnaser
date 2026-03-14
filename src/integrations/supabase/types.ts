@@ -167,6 +167,7 @@ export type Database = {
           answers: Json | null
           challenge_session_id: string | null
           created_at: string
+          exam_form: string | null
           exam_year: number | null
           id: string
           passed: boolean
@@ -182,6 +183,7 @@ export type Database = {
           answers?: Json | null
           challenge_session_id?: string | null
           created_at?: string
+          exam_form?: string | null
           exam_year?: number | null
           id?: string
           passed: boolean
@@ -197,6 +199,7 @@ export type Database = {
           answers?: Json | null
           challenge_session_id?: string | null
           created_at?: string
+          exam_form?: string | null
           exam_year?: number | null
           id?: string
           passed?: boolean

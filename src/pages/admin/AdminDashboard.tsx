@@ -109,7 +109,16 @@ const AdminDashboard = () => {
                 <div key={exam.id} className="p-3 sm:p-4 flex items-center justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-sm sm:text-base truncate">{exam.student_name}</p>
-                    <p className="text-xs sm:text-sm text-muted-foreground truncate">{exam.subjects?.name}</p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="text-xs sm:text-sm text-muted-foreground truncate">{exam.subjects?.name}</p>
+                      {exam.exam_form && EXAM_FORM_LABELS[exam.exam_form] && (
+                        <span className={`text-[10px] sm:text-xs font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${
+                          EXAM_FORM_LABELS[exam.exam_form].color
+                        }`}>
+                          {EXAM_FORM_LABELS[exam.exam_form].label}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="text-left shrink-0">
                     <p className={`font-bold text-sm sm:text-base ${exam.passed ? 'text-success' : 'text-destructive'}`}>
