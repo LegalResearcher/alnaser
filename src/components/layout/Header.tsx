@@ -14,6 +14,7 @@ import logoImage from '@/assets/logo.jpg';
 const navLinks = [
   { href: '/',           label: 'الرئيسية' },
   { href: '/levels',     label: 'المستويات' },
+  { href: '/features',   label: 'المزايا' },
   { href: '/diagnostic', label: 'التشخيص' },
   { href: '/progress',   label: 'تقدمي' },
   { href: '/about',      label: 'عن المنصة' },
