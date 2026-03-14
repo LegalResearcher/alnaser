@@ -30,8 +30,8 @@ const features = [
     details: [
       'جميع الأسئلة من اختبارات جامعة صنعاء الفعلية',
       'مُصنَّفة حسب المستوى والمادة والسنة والنموذج',
-      'تغطية كاملة لجميع مواد الكليات القانونية',
-      'تحديث مستمر بإضافة أسئلة الدورات الجديدة',
+      'تغطية كاملة لجميع مواد كلية الشريعة والقانون',
+      'تحديث مستمر بإضافة أسئلة النماذج الجديدة',
     ],
   },
   {
@@ -46,10 +46,10 @@ const features = [
     title: 'نماذج اختبار متعددة',
     short: 'عام · موازي · مختلط · تجريبي · جميع الأسئلة',
     details: [
-      'نموذج عام — الاختبار الرسمي للدورة',
-      'نموذج موازي — الدورة الاحتياطية',
-      'مختلط — عشوائي من جميع السنوات',
-      'تجريبي — أسئلة تدريبية إضافية خارج الدورات',
+      'نموذج عام — الاختبار  ',
+      'نموذج موازي —  الاختبار',
+      'مختلط — عشوائي ',
+      'تجريبي — أسئلة تدريبية إضافية خارج النماذج',
       'جميع الأسئلة — الكنز الكامل للمادة دفعة واحدة',
     ],
   },
@@ -322,7 +322,7 @@ const FeaturesPage = () => {
               </h1>
 
               <p className="text-base md:text-lg text-muted-foreground font-bold leading-relaxed mb-8 max-w-xl mx-auto">
-                منصة تعليمية متكاملة بُنيت خصيصاً لطلاب القانون في جامعة صنعاء — من بنك الأسئلة حتى التحدي الجماعي الحي
+                منصة تعليمية متكاملة بُنيت خصيصاً لطلاب الشريعة والقانون في اليمن  — من بنك الأسئلة حتى التحدي الجماعي الحي
               </p>
 
               {/* أزرار */}
@@ -337,7 +337,7 @@ const FeaturesPage = () => {
                 </button>
                 <button
                   onClick={() => navigate('/diagnostic')}
-                  className="inline-flex items-center justify-center gap-2 h-12 px-7 rounded-2xl font-black text-sm border border-border bg-background hover:bg-muted text-foreground transition-all"
+                  className="inline-flex items-center justify-center gap-2 h-12 px-7 rounded-2xl font-black text-sm border border-border bg-background text-foreground hover:bg-muted transition-all"
                 >
                   <Brain className="w-4 h-4 text-rose-500" />
                   جرّب التشخيصي
@@ -448,7 +448,7 @@ const FeaturesPage = () => {
                 </button>
                 <button
                   onClick={() => navigate('/progress')}
-                  className="inline-flex items-center justify-center gap-2 h-13 px-8 rounded-2xl font-black text-sm border border-border bg-background hover:bg-muted text-foreground transition-all"
+                  className="inline-flex items-center justify-center gap-2 h-13 px-8 rounded-2xl font-black text-sm border border-border bg-background text-foreground hover:bg-muted transition-all"
                 >
                   <Trophy className="w-4 h-4 text-amber-500" />
                   تقدمي الدراسي
