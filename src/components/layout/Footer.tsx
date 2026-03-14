@@ -1,4 +1,4 @@
-import { Scale, MapPin, Facebook, Twitter, Linkedin, Instagram, Code2, ShieldCheck, Send } from 'lucide-react';
+import { Scale, Facebook, Twitter, Linkedin, Instagram, Code2, Send } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export function Footer() {
@@ -87,29 +87,6 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* معلومات المقر والاتصال - صنعاء، اليمن */}
-          <div className="lg:col-span-4">
-            <h4 className="text-white font-bold text-lg mb-8 relative inline-block">
-              المقر والاتصال
-              <span className="absolute -bottom-2 right-0 w-8 h-1 bg-primary rounded-full" />
-            </h4>
-            <div className="bg-white dark:bg-card/[0.03] backdrop-blur-sm rounded-[2rem] p-8 border border-white/5 space-y-6">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                  <MapPin className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest mb-1">الموقع الجغرافي</p>
-                  <p className="text-sm font-bold text-slate-800 dark:text-slate-200">الجمهورية اليمنية، صنعاء</p>
-                </div>
-              </div>
-              
-              <div className="pt-4 border-t border-white/10 flex items-center gap-3">
-                 <ShieldCheck className="w-5 h-5 text-emerald-500" />
-                 <span className="text-[10px] text-slate-600 dark:text-slate-400 font-black uppercase tracking-widest">موثق ومعتمد رقمياً</span>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* سطر الحقوق الرسمي والنهائي */}
@@ -126,11 +103,6 @@ export function Footer() {
              </p>
           </div>
           
-          <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 dark:text-foreground/70">
-             <span>صنعاء</span>
-             <span className="w-1 h-1 rounded-full bg-slate-800" />
-             <span>الجمهورية اليمنية</span>
-          </div>
         </div>
       </div>
     </footer>
