@@ -172,6 +172,18 @@ const ExamPage = () => {
   const [copied, setCopied] = useState(false);
   const [animKey, setAnimKey] = useState(0);
   const [showScoreFloat, setShowScoreFloat] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportType, setReportType] = useState<'wrong_answer' | 'wrong_question' | 'other'>('wrong_answer');
+  const [reportAnswer, setReportAnswer] = useState('');
+  const [reportNote, setReportNote] = useState('');
+  const [reportName, setReportName] = useState('');
+  const [reportLevel, setReportLevel] = useState('');
+  const [reportBatch, setReportBatch] = useState('');
+  const [reportContact, setReportContact] = useState('');
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportDone, setReportDone] = useState(false);
+  const [reportImage, setReportImage] = useState<File | null>(null);
+  const [reportImagePreview, setReportImagePreview] = useState<string | null>(null);
 
   useEffect(() => {
     if (!state?.studentName) navigate(`/exam/${subjectId}`);
