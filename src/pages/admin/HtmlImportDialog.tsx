@@ -659,3 +659,5 @@ export const HtmlImportDialog = ({ open, onOpenChange, subjectId }: HtmlImportDi
     </Dialog>
   );
 };
+
+export default HtmlImportDialog;
