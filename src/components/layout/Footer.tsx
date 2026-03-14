@@ -42,11 +42,11 @@ export function Footer() {
             {/* أيقونات التواصل الاجتماعي */}
             <div className="flex items-center gap-4 pt-4">
               {[
-                { Icon: Twitter, href: "https://twitter.com/AlnasserTech" },
-                { Icon: Linkedin, href: "https://www.linkedin.com/company/alnasser-tech" },
-                { Icon: Facebook, href: "https://www.facebook.com/AlnasserTech" },
-                { Icon: Instagram, href: "https://www.instagram.com/AlnasserTech" },
-                { Icon: Send, href: "https://t.me/muen2025" }
+                { Icon: Twitter,   href: "https://t.me/muen2025" },
+                { Icon: Linkedin,  href: "https://t.me/muen2025" },
+                { Icon: Facebook,  href: "https://t.me/muen2025" },
+                { Icon: Instagram, href: "https://t.me/muen2025" },
+                { Icon: Send,      href: "https://t.me/muen2025" }
               ].map((social, index) => (
                 <a 
                   key={index} 
