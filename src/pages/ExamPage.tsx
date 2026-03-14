@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { Clock, ChevronLeft, ChevronRight, Flag, AlertTriangle, CheckCircle2, XCircle, Star, Share2, Check } from 'lucide-react';
+import { Clock, ChevronLeft, ChevronRight, Flag, AlertTriangle, CheckCircle2, XCircle, Star, Share2, Check, MessageSquare, X } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
@@ -172,6 +172,18 @@ const ExamPage = () => {
   const [copied, setCopied] = useState(false);
   const [animKey, setAnimKey] = useState(0);
   const [showScoreFloat, setShowScoreFloat] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportType, setReportType] = useState<'wrong_answer' | 'wrong_question' | 'other'>('wrong_answer');
+  const [reportAnswer, setReportAnswer] = useState('');
+  const [reportNote, setReportNote] = useState('');
+  const [reportName, setReportName] = useState('');
+  const [reportLevel, setReportLevel] = useState('');
+  const [reportBatch, setReportBatch] = useState('');
+  const [reportContact, setReportContact] = useState('');
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportDone, setReportDone] = useState(false);
+  const [reportImage, setReportImage] = useState<File | null>(null);
+  const [reportImagePreview, setReportImagePreview] = useState<string | null>(null);
 
   useEffect(() => {
     if (!state?.studentName) navigate(`/exam/${subjectId}`);
@@ -384,6 +396,42 @@ const ExamPage = () => {
     setShowShareMenu(false);
   };
 
+  const handleSubmitReport = async () => {
+    const currentQ = questions[currentIndex];
+    if (!currentQ) return;
+    setReportSubmitting(true);
+    let image_url: string | null = null;
+    if (reportImage) {
+      const ext = reportImage.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { data: uploadData } = await supabase.storage
+        .from('report-images').upload(fileName, reportImage, { upsert: false });
+      if (uploadData) {
+        const { data: urlData } = supabase.storage.from('report-images').getPublicUrl(fileName);
+        image_url = urlData.publicUrl;
+      }
+    }
+    await (supabase.from('question_reports') as any).insert({
+      question_id: currentQ.id,
+      error_type: reportType,
+      suggested_answer: reportAnswer || null,
+      note: reportNote || null,
+      reporter_name: reportName || null,
+      reporter_level: reportLevel || null,
+      reporter_batch: reportBatch || null,
+      reporter_contact: reportContact || null,
+      image_url,
+    });
+    setReportSubmitting(false);
+    setReportDone(true);
+    setTimeout(() => {
+      setShowReportModal(false); setReportDone(false);
+      setReportAnswer(''); setReportNote(''); setReportType('wrong_answer');
+      setReportName(''); setReportLevel(''); setReportBatch(''); setReportContact('');
+      setReportImage(null); setReportImagePreview(null);
+    }, 1800);
+  };
+
   const currentQuestion = questions[currentIndex];
   const answeredCount = Object.keys(answers).length;
   const progressPct = (answeredCount / questions.length) * 100;
@@ -523,50 +571,58 @@ const ExamPage = () => {
                     {state.isTrial ? '🧪 النموذج التجريبي' : state.allQuestions ? '📚 جميع الأسئلة' : `اختبار عام ${state.examYear} ${state.examForm === 'Parallel' ? '· موازي' : ''}`}
                   </span>
 
-                  {/* زر المشاركة مع قائمة منسدلة */}
-                  <div className="mr-auto relative">
-                    <button
-                      onClick={() => setShowShareMenu(prev => !prev)}
-                      className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] md:text-[10px] font-black border transition-all duration-200",
-                        showShareMenu
-                          ? "bg-primary border-primary text-white"
-                          : "bg-white dark:bg-card border-slate-200 dark:border-border text-slate-500 dark:text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/5"
+                  {/* زر المشاركة + التعقيب */}
+                  <div className="mr-auto flex items-center gap-2">
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowShareMenu(prev => !prev)}
+                        className={cn(
+                          "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] md:text-[10px] font-black border transition-all duration-200",
+                          showShareMenu
+                            ? "bg-primary border-primary text-white"
+                            : "bg-white dark:bg-card border-slate-200 dark:border-border text-slate-500 dark:text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/5"
+                        )}
+                      >
+                        <Share2 className="w-3 h-3" /> مشاركة
+                      </button>
+                      {showShareMenu && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setShowShareMenu(false)} />
+                          <div className="absolute left-0 top-full mt-2 z-50 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-2xl shadow-slate-200/60 overflow-hidden min-w-[160px] animate-in fade-in zoom-in-95 duration-150">
+                            <button onClick={handleShareWhatsapp} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black text-slate-700 dark:text-slate-200 hover:bg-green-50 dark:hover:bg-green-950 hover:text-green-700 transition-colors text-right">
+                              <svg className="w-4 h-4 text-green-500 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                              </svg>
+                              واتساب
+                            </button>
+                            <button onClick={handleShareTelegram} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black text-slate-700 dark:text-foreground/90 hover:bg-blue-50 hover:text-blue-700 transition-colors text-right border-t border-slate-50">
+                              <svg className="w-4 h-4 text-blue-500 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-1.97 9.289c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.48 14.697l-2.95-.924c-.64-.203-.654-.64.136-.953l11.57-4.461c.537-.194 1.006.131.326.889z"/>
+                              </svg>
+                              تيليجرام
+                            </button>
+                            <button onClick={handleShareTwitter} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black text-slate-700 dark:text-foreground/90 hover:bg-slate-50 dark:bg-muted hover:text-slate-900 dark:text-foreground transition-colors text-right border-t border-slate-50">
+                              <svg className="w-4 h-4 text-slate-800 dark:text-foreground shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                              </svg>
+                              تويتر (X)
+                            </button>
+                            <button onClick={handleCopyLink} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black text-slate-700 dark:text-foreground/90 hover:bg-slate-50 dark:bg-muted transition-colors text-right border-t border-slate-50">
+                              {copied
+                                ? <><Check className="w-4 h-4 text-emerald-500 shrink-0" /><span className="text-emerald-600">تم النسخ!</span></>
+                                : <><svg className="w-4 h-4 text-slate-400 dark:text-muted-foreground shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>نسخ الرابط</>
+                              }
+                            </button>
+                          </div>
+                        </>
                       )}
+                    </div>
+                    <button
+                      onClick={() => setShowReportModal(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] md:text-[10px] font-black border border-slate-200 dark:border-border bg-white dark:bg-card text-slate-500 dark:text-muted-foreground hover:border-orange-400 hover:text-orange-500 hover:bg-orange-50 transition-all duration-200"
                     >
-                      <Share2 className="w-3 h-3" /> مشاركة
+                      <MessageSquare className="w-3 h-3" /> تعقيب
                     </button>
-                    {showShareMenu && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={() => setShowShareMenu(false)} />
-                        <div className="absolute left-0 top-full mt-2 z-50 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-2xl shadow-slate-200/60 overflow-hidden min-w-[160px] animate-in fade-in zoom-in-95 duration-150">
-                          <button onClick={handleShareWhatsapp} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black text-slate-700 dark:text-slate-200 hover:bg-green-50 dark:hover:bg-green-950 hover:text-green-700 transition-colors text-right">
-                            <svg className="w-4 h-4 text-green-500 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                            </svg>
-                            واتساب
-                          </button>
-                          <button onClick={handleShareTelegram} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black text-slate-700 dark:text-foreground/90 hover:bg-blue-50 hover:text-blue-700 transition-colors text-right border-t border-slate-50">
-                            <svg className="w-4 h-4 text-blue-500 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-1.97 9.289c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.48 14.697l-2.95-.924c-.64-.203-.654-.64.136-.953l11.57-4.461c.537-.194 1.006.131.326.889z"/>
-                            </svg>
-                            تيليجرام
-                          </button>
-                          <button onClick={handleShareTwitter} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black text-slate-700 dark:text-foreground/90 hover:bg-slate-50 dark:bg-muted hover:text-slate-900 dark:text-foreground transition-colors text-right border-t border-slate-50">
-                            <svg className="w-4 h-4 text-slate-800 dark:text-foreground shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                            </svg>
-                            تويتر (X)
-                          </button>
-                          <button onClick={handleCopyLink} className="w-full flex items-center gap-3 px-4 py-3 text-xs font-black text-slate-700 dark:text-foreground/90 hover:bg-slate-50 dark:bg-muted transition-colors text-right border-t border-slate-50">
-                            {copied
-                              ? <><Check className="w-4 h-4 text-emerald-500 shrink-0" /><span className="text-emerald-600">تم النسخ!</span></>
-                              : <><svg className="w-4 h-4 text-slate-400 dark:text-muted-foreground shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>نسخ الرابط</>
-                            }
-                          </button>
-                        </div>
-                      </>
-                    )}
                   </div>
                 </div>
 
@@ -741,6 +797,123 @@ const ExamPage = () => {
           </div>
         </div>
       </section>
+
+      {/* ── نافذة التعقيب ── */}
+      {showReportModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" dir="rtl">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowReportModal(false)} />
+          <div className="relative bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 space-y-5 animate-in fade-in slide-in-from-bottom duration-300">
+            {reportDone ? (
+              <div className="py-10 text-center space-y-4">
+                <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                </div>
+                <h3 className="font-black text-xl">شكراً على تعقيبك!</h3>
+                <p className="text-sm text-muted-foreground">سيتم مراجعة ملاحظتك من قِبل الإدارة</p>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-orange-500" />
+                    <h3 className="font-black text-lg">تعقيب على السؤال</h3>
+                  </div>
+                  <button onClick={() => setShowReportModal(false)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground bg-slate-50 dark:bg-slate-800 p-3 rounded-xl line-clamp-2">
+                  {questions[currentIndex]?.question_text}
+                </p>
+                <div className="space-y-2">
+                  <p className="text-xs font-black text-slate-500 uppercase tracking-wider">نوع الخطأ</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {([
+                      { val: 'wrong_answer', label: 'خطأ في الإجابة' },
+                      { val: 'wrong_question', label: 'خطأ في السؤال' },
+                      { val: 'other', label: 'ملاحظة أخرى' },
+                    ] as const).map(({ val, label }) => (
+                      <button key={val} onClick={() => setReportType(val as any)}
+                        className={cn('py-2 px-2 rounded-xl text-[11px] font-black border transition-all text-center',
+                          reportType === val ? 'bg-orange-500 border-orange-500 text-white' : 'border-slate-200 dark:border-border text-slate-500 hover:border-orange-300')}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs font-black text-slate-500 uppercase tracking-wider">الإجابة الصحيحة من وجهة نظرك</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {(['A','B','C','D'] as const).map(opt => {
+                      const arLabel = opt === 'A' ? 'أ' : opt === 'B' ? 'ب' : opt === 'C' ? 'ج' : 'د';
+                      return (
+                        <button key={opt} onClick={() => setReportAnswer(reportAnswer === opt ? '' : opt)}
+                          className={cn('py-2 rounded-xl text-sm font-black border transition-all',
+                            reportAnswer === opt ? 'bg-primary border-primary text-white' : 'border-slate-200 dark:border-border text-slate-500 hover:border-primary/50')}>
+                          {arLabel}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs font-black text-slate-500 uppercase tracking-wider">ملاحظة إضافية (اختياري)</p>
+                  <textarea value={reportNote} onChange={e => setReportNote(e.target.value)}
+                    placeholder="اكتب ملاحظتك هنا..." rows={3}
+                    className="w-full rounded-xl border border-slate-200 dark:border-border bg-slate-50 dark:bg-slate-800 p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs font-black text-slate-500 uppercase tracking-wider">إرفاق صورة (اختياري)</p>
+                  {reportImagePreview ? (
+                    <div className="relative">
+                      <img src={reportImagePreview} alt="preview" className="w-full max-h-40 object-contain rounded-xl border border-slate-200" />
+                      <button onClick={() => { setReportImage(null); setReportImagePreview(null); }}
+                        className="absolute top-2 left-2 w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors">
+                        <XCircle className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed border-slate-200 dark:border-border cursor-pointer hover:border-orange-300 hover:bg-orange-50/50 transition-all">
+                      <span className="text-2xl">📎</span>
+                      <span className="text-xs font-semibold text-slate-400">اضغط لاختيار صورة</span>
+                      <input type="file" accept="image/*" className="hidden"
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (file) { setReportImage(file); setReportImagePreview(URL.createObjectURL(file)); }
+                        }} />
+                    </label>
+                  )}
+                </div>
+                <div className="space-y-2 border-t pt-4">
+                  <p className="text-xs font-black text-slate-500 uppercase tracking-wider">بياناتك (اختياري)</p>
+                  <input value={reportName} onChange={e => setReportName(e.target.value)} placeholder="الاسم الكامل"
+                    className="w-full rounded-xl border border-slate-200 dark:border-border bg-slate-50 dark:bg-slate-800 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <select value={reportLevel} onChange={e => setReportLevel(e.target.value)}
+                      className="rounded-xl border border-slate-200 dark:border-border bg-slate-50 dark:bg-slate-800 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 text-slate-500">
+                      <option value="">المستوى</option>
+                      <option value="الأول">الأول</option>
+                      <option value="الثاني">الثاني</option>
+                      <option value="الثالث">الثالث</option>
+                      <option value="الرابع">الرابع</option>
+                    </select>
+                    <input value={reportBatch} onChange={e => setReportBatch(e.target.value)} placeholder="الدفعة (مثال: 50)"
+                      className="rounded-xl border border-slate-200 dark:border-border bg-slate-50 dark:bg-slate-800 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                  </div>
+                  <input value={reportContact} onChange={e => setReportContact(e.target.value)} placeholder="رقم الجوال أو الإيميل (اختياري)"
+                    className="w-full rounded-xl border border-slate-200 dark:border-border bg-slate-50 dark:bg-slate-800 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                </div>
+                <button onClick={handleSubmitReport} disabled={reportSubmitting}
+                  className="w-full h-12 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-black transition-colors flex items-center justify-center gap-2 disabled:opacity-60">
+                  {reportSubmitting
+                    ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    : <><MessageSquare className="w-4 h-4" /> إرسال التعقيب</>}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── حوار التسليم ── */}
       <AlertDialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>

@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Scale, LayoutDashboard, BookOpen, Users, Settings, 
   BarChart3, LogOut, Menu, X, Trash2, Layers, 
-  FolderOpen, ChevronLeft, ExternalLink, ShieldCheck 
+  FolderOpen, ChevronLeft, ExternalLink, ShieldCheck, MessageSquare 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -21,6 +21,7 @@ const navItems = [
   { href: '/admin/users', label: 'إدارة المستخدمين', icon: Users, adminOnly: true },
   { href: '/admin/deletion-requests', label: 'طلبات الحذف', icon: Trash2, adminOnly: true },
   { href: '/admin/statistics', label: 'الإحصائيات التحليلية', icon: BarChart3, adminOnly: true },
+  { href: '/admin/reports', label: 'تعقيبات الأسئلة', icon: MessageSquare, adminOnly: true },
   { href: '/admin/settings', label: 'إعدادات المنصة', icon: Settings },
 ];
 
