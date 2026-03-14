@@ -875,12 +875,12 @@ const ExamPage = () => {
 
       {/* نافذة التعقيب */}
       {showReportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowReportModal(false)} />
-          <div className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-md p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200">
+          <div className="relative bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-2xl w-full sm:max-w-md animate-in fade-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200 flex flex-col" style={{ maxHeight: '92dvh' }}>
 
             {reportDone ? (
-              <div className="text-center py-6 space-y-3">
+              <div className="text-center py-6 space-y-3 p-6">
                 <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
                   <CheckCircle2 className="w-8 h-8 text-emerald-500" />
                 </div>
@@ -889,7 +889,8 @@ const ExamPage = () => {
               </div>
             ) : (
               <>
-                <div className="flex items-center justify-between">
+                {/* رأس ثابت */}
+                <div className="flex items-center justify-between px-6 pt-6 pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
                   <h3 className="font-black text-base flex items-center gap-2">
                     <MessageSquare className="w-5 h-5 text-orange-500" />
                     تعقيب على السؤال
@@ -898,6 +899,9 @@ const ExamPage = () => {
                     <XCircle className="w-5 h-5 text-muted-foreground" />
                   </button>
                 </div>
+
+                {/* محتوى قابل للتمرير */}
+                <div className="overflow-y-auto flex-1 px-6 py-4 space-y-5">
 
                 {/* نص السؤال */}
                 <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3 text-sm text-slate-600 dark:text-slate-300 line-clamp-3">
@@ -1034,16 +1038,21 @@ const ExamPage = () => {
                   />
                 </div>
 
-                <button
-                  onClick={handleSubmitReport}
-                  disabled={reportSubmitting}
-                  className="w-full h-12 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-black transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-                >
-                  {reportSubmitting
-                    ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    : <><MessageSquare className="w-4 h-4" /> إرسال التعقيب</>
-                  }
-                </button>
+                </div>{/* end scrollable content */}
+
+                {/* زر الإرسال ثابت في الأسفل */}
+                <div className="px-6 pb-6 pt-3 border-t border-slate-100 dark:border-slate-800 shrink-0">
+                  <button
+                    onClick={handleSubmitReport}
+                    disabled={reportSubmitting}
+                    className="w-full h-12 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-black transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+                  >
+                    {reportSubmitting
+                      ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      : <><MessageSquare className="w-4 h-4" /> إرسال التعقيب</>
+                    }
+                  </button>
+                </div>
               </>
             )}
           </div>
