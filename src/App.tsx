@@ -98,6 +98,7 @@ const App = () => (
                     <Route path="/admin/statistics"        element={<AdminStatistics />} />
                     <Route path="/admin/levels"            element={<AdminLevels />} />
                     <Route path="/admin/subjects"          element={<AdminSubjects />} />
+                    <Route path="/admin/reports"           element={<AdminReports />} />
                     <Route path="/admin/settings"          element={<AdminSettings />} />
 
                     {/* ── 404 ── */}

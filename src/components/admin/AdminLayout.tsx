@@ -21,6 +21,7 @@ const navItems = [
   { href: '/admin/users', label: 'إدارة المستخدمين', icon: Users, adminOnly: true },
   { href: '/admin/deletion-requests', label: 'طلبات الحذف', icon: Trash2, adminOnly: true },
   { href: '/admin/statistics', label: 'الإحصائيات التحليلية', icon: BarChart3, adminOnly: true },
+  { href: '/admin/reports', label: 'تعقيبات الأسئلة', icon: MessageSquare, adminOnly: true },
   { href: '/admin/settings', label: 'إعدادات المنصة', icon: Settings },
 ];
 

@@ -798,6 +798,123 @@ const ExamPage = () => {
         </div>
       </section>
 
+      {/* ── نافذة التعقيب ── */}
+      {showReportModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" dir="rtl">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowReportModal(false)} />
+          <div className="relative bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 space-y-5 animate-in fade-in slide-in-from-bottom duration-300">
+            {reportDone ? (
+              <div className="py-10 text-center space-y-4">
+                <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                </div>
+                <h3 className="font-black text-xl">شكراً على تعقيبك!</h3>
+                <p className="text-sm text-muted-foreground">سيتم مراجعة ملاحظتك من قِبل الإدارة</p>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-orange-500" />
+                    <h3 className="font-black text-lg">تعقيب على السؤال</h3>
+                  </div>
+                  <button onClick={() => setShowReportModal(false)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground bg-slate-50 dark:bg-slate-800 p-3 rounded-xl line-clamp-2">
+                  {questions[currentIndex]?.question_text}
+                </p>
+                <div className="space-y-2">
+                  <p className="text-xs font-black text-slate-500 uppercase tracking-wider">نوع الخطأ</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {([
+                      { val: 'wrong_answer', label: 'خطأ في الإجابة' },
+                      { val: 'wrong_question', label: 'خطأ في السؤال' },
+                      { val: 'other', label: 'ملاحظة أخرى' },
+                    ] as const).map(({ val, label }) => (
+                      <button key={val} onClick={() => setReportType(val as any)}
+                        className={cn('py-2 px-2 rounded-xl text-[11px] font-black border transition-all text-center',
+                          reportType === val ? 'bg-orange-500 border-orange-500 text-white' : 'border-slate-200 dark:border-border text-slate-500 hover:border-orange-300')}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs font-black text-slate-500 uppercase tracking-wider">الإجابة الصحيحة من وجهة نظرك</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {(['A','B','C','D'] as const).map(opt => {
+                      const arLabel = opt === 'A' ? 'أ' : opt === 'B' ? 'ب' : opt === 'C' ? 'ج' : 'د';
+                      return (
+                        <button key={opt} onClick={() => setReportAnswer(reportAnswer === opt ? '' : opt)}
+                          className={cn('py-2 rounded-xl text-sm font-black border transition-all',
+                            reportAnswer === opt ? 'bg-primary border-primary text-white' : 'border-slate-200 dark:border-border text-slate-500 hover:border-primary/50')}>
+                          {arLabel}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs font-black text-slate-500 uppercase tracking-wider">ملاحظة إضافية (اختياري)</p>
+                  <textarea value={reportNote} onChange={e => setReportNote(e.target.value)}
+                    placeholder="اكتب ملاحظتك هنا..." rows={3}
+                    className="w-full rounded-xl border border-slate-200 dark:border-border bg-slate-50 dark:bg-slate-800 p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs font-black text-slate-500 uppercase tracking-wider">إرفاق صورة (اختياري)</p>
+                  {reportImagePreview ? (
+                    <div className="relative">
+                      <img src={reportImagePreview} alt="preview" className="w-full max-h-40 object-contain rounded-xl border border-slate-200" />
+                      <button onClick={() => { setReportImage(null); setReportImagePreview(null); }}
+                        className="absolute top-2 left-2 w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors">
+                        <XCircle className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed border-slate-200 dark:border-border cursor-pointer hover:border-orange-300 hover:bg-orange-50/50 transition-all">
+                      <span className="text-2xl">📎</span>
+                      <span className="text-xs font-semibold text-slate-400">اضغط لاختيار صورة</span>
+                      <input type="file" accept="image/*" className="hidden"
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (file) { setReportImage(file); setReportImagePreview(URL.createObjectURL(file)); }
+                        }} />
+                    </label>
+                  )}
+                </div>
+                <div className="space-y-2 border-t pt-4">
+                  <p className="text-xs font-black text-slate-500 uppercase tracking-wider">بياناتك (اختياري)</p>
+                  <input value={reportName} onChange={e => setReportName(e.target.value)} placeholder="الاسم الكامل"
+                    className="w-full rounded-xl border border-slate-200 dark:border-border bg-slate-50 dark:bg-slate-800 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <select value={reportLevel} onChange={e => setReportLevel(e.target.value)}
+                      className="rounded-xl border border-slate-200 dark:border-border bg-slate-50 dark:bg-slate-800 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 text-slate-500">
+                      <option value="">المستوى</option>
+                      <option value="الأول">الأول</option>
+                      <option value="الثاني">الثاني</option>
+                      <option value="الثالث">الثالث</option>
+                      <option value="الرابع">الرابع</option>
+                    </select>
+                    <input value={reportBatch} onChange={e => setReportBatch(e.target.value)} placeholder="الدفعة (مثال: 50)"
+                      className="rounded-xl border border-slate-200 dark:border-border bg-slate-50 dark:bg-slate-800 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                  </div>
+                  <input value={reportContact} onChange={e => setReportContact(e.target.value)} placeholder="رقم الجوال أو الإيميل (اختياري)"
+                    className="w-full rounded-xl border border-slate-200 dark:border-border bg-slate-50 dark:bg-slate-800 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                </div>
+                <button onClick={handleSubmitReport} disabled={reportSubmitting}
+                  className="w-full h-12 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-black transition-colors flex items-center justify-center gap-2 disabled:opacity-60">
+                  {reportSubmitting
+                    ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    : <><MessageSquare className="w-4 h-4" /> إرسال التعقيب</>}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── حوار التسليم ── */}
       <AlertDialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
         <AlertDialogContent className="rounded-[2.5rem] p-8 md:p-12 text-right" dir="rtl">
