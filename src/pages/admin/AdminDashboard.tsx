@@ -43,7 +43,7 @@ const AdminDashboard = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('exam_results')
-        .select('*, subjects(name)')
+        .select('*, subjects(name), exam_form, exam_year')
         .order('created_at', { ascending: false })
         .limit(100);
       if (error) throw error;
