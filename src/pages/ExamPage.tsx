@@ -240,6 +240,7 @@ const ExamPage = () => {
         passing_score: subject?.passing_score || 60,
         passed,
         exam_year: state.isTrial ? null : (state.allQuestions ? null : state.examYear),
+        exam_form: state.isTrial ? 'Trial' : (state.allQuestions ? 'All' : (state.examForm || null)),
         time_taken_seconds: timeTaken,
         answers,
         score_percentage: scorePercentage,

@@ -5,6 +5,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AdminSEO } from '@/components/seo/SEOHead';
 
+const EXAM_FORM_LABELS: Record<string, { label: string; color: string }> = {
+  General:  { label: 'عام',           color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
+  Parallel: { label: 'موازي',         color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' },
+  Mixed:    { label: 'مختلط',         color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' },
+  Trial:    { label: 'تجريبي',        color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' },
+  All:      { label: 'جميع الأسئلة', color: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' },
+};
+
 const AdminDashboard = () => {
   const { data: stats, isLoading } = useQuery({
     queryKey: ['admin-stats'],
@@ -35,7 +43,7 @@ const AdminDashboard = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('exam_results')
-        .select('*, subjects(name)')
+        .select('*, subjects(name), exam_form, exam_year')
         .order('created_at', { ascending: false })
         .limit(100);
       if (error) throw error;
@@ -101,7 +109,16 @@ const AdminDashboard = () => {
                 <div key={exam.id} className="p-3 sm:p-4 flex items-center justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-sm sm:text-base truncate">{exam.student_name}</p>
-                    <p className="text-xs sm:text-sm text-muted-foreground truncate">{exam.subjects?.name}</p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="text-xs sm:text-sm text-muted-foreground truncate">{exam.subjects?.name}</p>
+                      {exam.exam_form && EXAM_FORM_LABELS[exam.exam_form] && (
+                        <span className={`text-[10px] sm:text-xs font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${
+                          EXAM_FORM_LABELS[exam.exam_form].color
+                        }`}>
+                          {EXAM_FORM_LABELS[exam.exam_form].label}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="text-left shrink-0">
                     <p className={`font-bold text-sm sm:text-base ${exam.passed ? 'text-success' : 'text-destructive'}`}>

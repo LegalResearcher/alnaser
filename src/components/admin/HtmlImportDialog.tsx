@@ -274,8 +274,7 @@ export const HtmlImportDialog = ({ open, onOpenChange, subjectId }: HtmlImportDi
 
   const parseFromText = (text: string): ParsedQuestion[] => {
     const questions: ParsedQuestion[] = [];
-    const lines = text.split('
-');
+    const lines = text.split('\n');
     let i = 0;
 
     while (i < lines.length) {
@@ -431,7 +430,27 @@ export const HtmlImportDialog = ({ open, onOpenChange, subjectId }: HtmlImportDi
         setIsProcessing(false);
       }
     } else {
-      parseHtmlFile(file);
+      // Handle HTML file - same inline implementation
+      setIsProcessing(true);
+      setErrors([]);
+
+      try {
+        const text = await file.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, 'text/html');
+        const textParsed = parseFromText(doc.body?.textContent || text);
+        
+        if (textParsed.length === 0) {
+          setErrors(['لم يتم العثور على أسئلة في الملف. تأكد من تنسيق الملف.']);
+        }
+        
+        setParsedQuestions(textParsed);
+        setStep('preview');
+      } catch (error) {
+        setErrors(['حدث خطأ أثناء قراءة الملف.']);
+      } finally {
+        setIsProcessing(false);
+      }
     }
   };
 

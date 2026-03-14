@@ -194,64 +194,62 @@ export const HtmlImportDialog = ({ open, onOpenChange, subjectId }: HtmlImportDi
         setIsProcessing(false);
       }
     } else {
-      parseHtmlFile(file);
-    }
-  };
-    setIsProcessing(true);
-    setErrors([]);
+      setIsProcessing(true);
+      setErrors([]);
 
-    try {
-      const text = await file.text();
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(text, 'text/html');
-      const questions: ParsedQuestion[] = [];
-      const parseErrors: string[] = [];
+      try {
+        const text = await file.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, 'text/html');
+        const questions: ParsedQuestion[] = [];
+        const parseErrors: string[] = [];
 
-      const questionContainers = doc.querySelectorAll(
-        '.question, .quiz-question, [class*="question"], div[data-question], article, .card'
-      );
+        const questionContainers = doc.querySelectorAll(
+          '.question, .quiz-question, [class*="question"], div[data-question], article, .card'
+        );
 
-      if (questionContainers.length > 0) {
-        questionContainers.forEach((container, index) => {
-          const parsed = parseQuestionContainer(container, index + 1);
-          if (parsed.question) questions.push(parsed.question);
-          else if (parsed.error) parseErrors.push(parsed.error);
-        });
+        if (questionContainers.length > 0) {
+          questionContainers.forEach((container, index) => {
+            const parsed = parseQuestionContainer(container, index + 1);
+            if (parsed.question) questions.push(parsed.question);
+            else if (parsed.error) parseErrors.push(parsed.error);
+          });
+        }
+
+        if (questions.length === 0) {
+          const listItems = doc.querySelectorAll('ol > li, ul > li');
+          listItems.forEach((li, index) => {
+            const parsed = parseListItem(li, index + 1);
+            if (parsed.question) questions.push(parsed.question);
+          });
+        }
+
+        if (questions.length === 0) {
+          const tables = doc.querySelectorAll('table');
+          tables.forEach((table) => {
+            const parsed = parseTable(table, parseErrors);
+            questions.push(...parsed);
+          });
+        }
+
+        if (questions.length === 0) {
+          const bodyText = doc.body?.textContent || text;
+          const textParsed = parseFromText(bodyText);
+          questions.push(...textParsed);
+        }
+
+        if (questions.length === 0 && parseErrors.length === 0) {
+          parseErrors.push('لم يتم العثور على أسئلة في الملف. تأكد من تنسيق ملف الـ HTML.');
+        }
+
+        setParsedQuestions(questions);
+        setErrors(parseErrors);
+        setStep('preview');
+      } catch (error) {
+        setErrors(['حدث خطأ أثناء قراءة الملف. تأكد من سلامة كود الـ HTML.']);
+      } finally {
+        setIsProcessing(false);
       }
-
-      if (questions.length === 0) {
-        const listItems = doc.querySelectorAll('ol > li, ul > li');
-        listItems.forEach((li, index) => {
-          const parsed = parseListItem(li, index + 1);
-          if (parsed.question) questions.push(parsed.question);
-        });
-      }
-
-      if (questions.length === 0) {
-        const tables = doc.querySelectorAll('table');
-        tables.forEach((table) => {
-          const parsed = parseTable(table, parseErrors);
-          questions.push(...parsed);
-        });
-      }
-
-      if (questions.length === 0) {
-        const bodyText = doc.body?.textContent || text;
-        const textParsed = parseFromText(bodyText);
-        questions.push(...textParsed);
-      }
-
-      if (questions.length === 0 && parseErrors.length === 0) {
-        parseErrors.push('لم يتم العثور على أسئلة في الملف. تأكد من تنسيق ملف الـ HTML.');
-      }
-
-      setParsedQuestions(questions);
-      setErrors(parseErrors);
-      setStep('preview');
-    } catch (error) {
-      setErrors(['حدث خطأ أثناء قراءة الملف. تأكد من سلامة كود الـ HTML.']);
-    } finally {
-      setIsProcessing(false);
     }
   };
 
@@ -332,8 +330,7 @@ export const HtmlImportDialog = ({ open, onOpenChange, subjectId }: HtmlImportDi
 
   const parseFromText = (text: string): ParsedQuestion[] => {
     const questions: ParsedQuestion[] = [];
-    const lines = text.split('
-');
+    const lines = text.split('\n');
     let i = 0;
 
     while (i < lines.length) {
@@ -660,3 +657,5 @@ export const HtmlImportDialog = ({ open, onOpenChange, subjectId }: HtmlImportDi
     </Dialog>
   );
 };
+
+export default HtmlImportDialog;
