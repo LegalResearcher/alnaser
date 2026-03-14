@@ -658,12 +658,13 @@ const ExamPage = () => {
                             const currentQ = questions[currentIndex];
                             const isCorr = currentQ?.correct_option === opt;
                             const isSel = answers[currentQ?.id] === opt;
+                            const arLabel = opt === 'A' ? 'أ' : opt === 'B' ? 'ب' : opt === 'C' ? 'ج' : 'د';
                             return (
                               <div key={opt} className={cn('rounded-xl p-2 text-center border',
                                 isCorr ? 'bg-emerald-50 border-emerald-200' :
                                 isSel && !isCorr ? 'bg-rose-50 border-rose-200' : 'bg-white dark:bg-card border-slate-100 dark:border-border')}>
                                 <div className={cn('text-[10px] font-black mb-1',
-                                  isCorr ? 'text-emerald-600' : isSel && !isCorr ? 'text-rose-500' : 'text-slate-400 dark:text-muted-foreground')}>{opt}</div>
+                                  isCorr ? 'text-emerald-600' : isSel && !isCorr ? 'text-rose-500' : 'text-slate-400 dark:text-muted-foreground')}>{arLabel}</div>
                                 <div className="h-8 bg-slate-100 dark:bg-muted rounded-lg overflow-hidden flex items-end mb-1">
                                   <div className={cn('w-full rounded-lg transition-all duration-700',
                                     isCorr ? 'bg-emerald-400' : isSel && !isCorr ? 'bg-rose-400' : 'bg-slate-300')}
