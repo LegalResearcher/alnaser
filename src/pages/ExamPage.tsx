@@ -640,7 +640,6 @@ const ExamPage = () => {
                   </button>
 
                   </div>{/* end mr-auto wrapper */}
-                </div>
 
                 <h2 className="text-base md:text-2xl font-black text-slate-800 dark:text-slate-100 mb-7 md:mb-10 leading-relaxed text-right">
                   {currentQuestion.question_text}
