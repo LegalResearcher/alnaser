@@ -40,6 +40,7 @@ const AdminStatistics       = lazy(() => import("./pages/admin/AdminStatistics")
 const AdminSettings         = lazy(() => import("./pages/admin/AdminSettings"));
 const AdminLevels           = lazy(() => import("./pages/admin/AdminLevels"));
 const AdminSubjects         = lazy(() => import("./pages/admin/AdminSubjects"));
+const AdminReports          = lazy(() => import("./pages/admin/AdminReports"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
