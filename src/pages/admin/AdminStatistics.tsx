@@ -8,6 +8,14 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
+const EXAM_FORM_LABELS: Record<string, { label: string; color: string }> = {
+  General:  { label: 'عام',            color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
+  Parallel: { label: 'موازي',          color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' },
+  Mixed:    { label: 'مختلط',          color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' },
+  Trial:    { label: 'تجريبي',         color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' },
+  All:      { label: 'جميع الأسئلة',   color: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' },
+};
+
 const AdminStatistics = () => {
   const { data: stats, isLoading } = useQuery({
     queryKey: ['statistics'],
@@ -15,23 +23,28 @@ const AdminStatistics = () => {
       // إصلاح: جلب العدد الكامل بدون حد الـ 1000 الافتراضي
       const [analytics, results, subjects] = await Promise.all([
         supabase.from('site_analytics').select('id', { count: 'exact', head: true }),
-        supabase.from('exam_results').select('id, passed, subject_id, created_at').limit(10000),
-        supabase.from('subjects').select('id, name').limit(1000),
+        supabase.from('exam_results').select('id, passed, subject_id, created_at, exam_form').limit(10000),
+        supabase.from('subjects').select('id, name, level_id, levels(name)').limit(1000),
       ]);
 
       const subjectMap = new Map(subjects.data?.map(s => [s.id, s.name]) || []);
+      const levelMap = new Map(subjects.data?.map(s => [s.id, (s.levels as any)?.name || '']) || []);
       const examsBySubject: Record<string, number> = {};
       const passedBySubject: Record<string, number> = {};
       const failedBySubject: Record<string, number> = {};
+      const subjectLevelMap: Record<string, string> = {};
 
       results.data?.forEach((r: any) => {
         const name = subjectMap.get(r.subject_id) || 'غير معروف';
+        const level = levelMap.get(r.subject_id) || '';
         examsBySubject[name] = (examsBySubject[name] || 0) + 1;
         if (r.passed) {
           passedBySubject[name] = (passedBySubject[name] || 0) + 1;
         } else {
           failedBySubject[name] = (failedBySubject[name] || 0) + 1;
         }
+        // حفظ اسم المستوى لكل مادة
+        if (!subjectLevelMap[name]) subjectLevelMap[name] = level;
       });
 
       const subjectData = Object.entries(examsBySubject)
@@ -41,13 +54,13 @@ const AdminStatistics = () => {
 
       // أكثر المواد رسوباً (top 5)
       const topFailed = Object.entries(failedBySubject)
-        .map(([name, count]) => ({ name, count }))
+        .map(([name, count]) => ({ name, count, level: subjectLevelMap[name] || '' }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
 
       // أكثر المواد نجاحاً (top 5)
       const topPassed = Object.entries(passedBySubject)
-        .map(([name, count]) => ({ name, count }))
+        .map(([name, count]) => ({ name, count, level: subjectLevelMap[name] || '' }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
 
@@ -78,6 +91,7 @@ const AdminStatistics = () => {
           passed: r.passed,
           date: new Date(r.created_at).toLocaleDateString('ar-SA'),
           time: new Date(r.created_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
+          exam_form: r.exam_form || null,
         }));
 
       return {
@@ -290,6 +304,11 @@ const AdminStatistics = () => {
                             {index + 1}
                           </span>
                           <span className="font-semibold text-sm truncate">{item.name}</span>
+                          {item.level && (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 bg-red-200 text-red-800 dark:bg-red-900/50 dark:text-red-300">
+                              {item.level}
+                            </span>
+                          )}
                         </div>
                         <span className="font-black text-sm text-red-600 shrink-0 mr-2">
                           {item.count} راسب
@@ -330,6 +349,11 @@ const AdminStatistics = () => {
                             {index + 1}
                           </span>
                           <span className="font-semibold text-sm truncate">{item.name}</span>
+                          {item.level && (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 bg-emerald-200 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300">
+                              {item.level}
+                            </span>
+                          )}
                         </div>
                         <span className="font-black text-sm text-emerald-600 shrink-0 mr-2">
                           {item.count} ناجح
@@ -365,6 +389,11 @@ const AdminStatistics = () => {
                   <div className="flex items-center gap-3 min-w-0">
                     <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${exam.passed ? 'bg-emerald-500' : 'bg-red-500'}`} />
                     <span className="font-semibold text-sm truncate">{exam.name}</span>
+                    {exam.exam_form && EXAM_FORM_LABELS[exam.exam_form] && (
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${EXAM_FORM_LABELS[exam.exam_form].color}`}>
+                        {EXAM_FORM_LABELS[exam.exam_form].label}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
                     <span className={`text-xs font-black px-2 py-0.5 rounded-full ${exam.passed ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400' : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400'}`}>
