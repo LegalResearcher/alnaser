@@ -30,8 +30,8 @@ const features = [
     details: [
       'جميع الأسئلة من اختبارات جامعة صنعاء الفعلية',
       'مُصنَّفة حسب المستوى والمادة والسنة والنموذج',
-      'تغطية كاملة لجميع مواد كلية الشريعة والقانون',
-      'تحديث مستمر بإضافة أسئلة النماذج الجديدة',
+      'تغطية كاملة لجميع مواد الكليات القانونية',
+      'تحديث مستمر بإضافة أسئلة الدورات الجديدة',
     ],
   },
   {
@@ -46,10 +46,10 @@ const features = [
     title: 'نماذج اختبار متعددة',
     short: 'عام · موازي · مختلط · تجريبي · جميع الأسئلة',
     details: [
-      'نموذج عام — الاختبار  ',
-      'نموذج موازي —  الاختبار',
-      'مختلط — عشوائي ',
-      'تجريبي — أسئلة تدريبية إضافية خارج النماذج',
+      'نموذج عام — الاختبار الرسمي للدورة',
+      'نموذج موازي — الدورة الاحتياطية',
+      'مختلط — عشوائي من جميع السنوات',
+      'تجريبي — أسئلة تدريبية إضافية خارج الدورات',
       'جميع الأسئلة — الكنز الكامل للمادة دفعة واحدة',
     ],
   },
@@ -248,8 +248,9 @@ function FeatureCard({ feature, index }: { feature: typeof features[0]; index: n
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className={cn(
               'text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full',
-              feature.bg, feature.accent,
-              'border', feature.border
+              feature.accent,
+              'border', feature.border,
+              'bg-white/60 dark:bg-white/5'
             )}>
               {feature.tag}
             </span>
@@ -321,7 +322,7 @@ const FeaturesPage = () => {
               </h1>
 
               <p className="text-base md:text-lg text-muted-foreground font-bold leading-relaxed mb-8 max-w-xl mx-auto">
-                منصة تعليمية متكاملة بُنيت خصيصاً لطلاب الشريعة والقانون في اليمن  — من بنك الأسئلة حتى التحدي الجماعي الحي
+                منصة تعليمية متكاملة بُنيت خصيصاً لطلاب القانون في جامعة صنعاء — من بنك الأسئلة حتى التحدي الجماعي الحي
               </p>
 
               {/* أزرار */}
@@ -336,7 +337,7 @@ const FeaturesPage = () => {
                 </button>
                 <button
                   onClick={() => navigate('/diagnostic')}
-                  className="inline-flex items-center justify-center gap-2 h-12 px-7 rounded-2xl font-black text-sm border border-border hover:bg-muted transition-all"
+                  className="inline-flex items-center justify-center gap-2 h-12 px-7 rounded-2xl font-black text-sm border border-border bg-background hover:bg-muted text-foreground transition-all"
                 >
                   <Brain className="w-4 h-4 text-rose-500" />
                   جرّب التشخيصي
@@ -347,7 +348,7 @@ const FeaturesPage = () => {
         </section>
 
         {/* ── Stats ── */}
-        <section className="border-y border-border bg-muted/30">
+        <section className="border-y border-border bg-muted/40 dark:bg-card/50">
           <div className="container mx-auto px-4 md:px-6 py-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
               {stats.map((s, i) => {
@@ -395,7 +396,7 @@ const FeaturesPage = () => {
         </section>
 
         {/* ── مقارنة سريعة ── */}
-        <section className="py-10 md:py-14 bg-muted/30 border-t border-border">
+        <section className="py-10 md:py-14 bg-muted/40 dark:bg-card/30 border-t border-border">
           <div className="container mx-auto px-4 md:px-6 max-w-2xl">
             <h2 className="text-xl font-black text-center text-foreground mb-8">ما يميّزنا عن غيرنا</h2>
             <div className="space-y-3">
@@ -412,9 +413,9 @@ const FeaturesPage = () => {
                     <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                     <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 leading-relaxed">{row.us}</span>
                   </div>
-                  <div className="flex items-start gap-2 p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/40">
-                    <span className="text-slate-400 shrink-0 mt-0.5 text-sm">✕</span>
-                    <span className="text-xs font-medium text-muted-foreground leading-relaxed">{row.them}</span>
+                  <div className="flex items-start gap-2 p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/50">
+                    <span className="text-slate-400 dark:text-slate-500 shrink-0 mt-0.5 text-sm">✕</span>
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400 leading-relaxed">{row.them}</span>
                   </div>
                 </div>
               ))}
@@ -447,7 +448,7 @@ const FeaturesPage = () => {
                 </button>
                 <button
                   onClick={() => navigate('/progress')}
-                  className="inline-flex items-center justify-center gap-2 h-13 px-8 rounded-2xl font-black text-sm border border-border hover:bg-muted transition-all"
+                  className="inline-flex items-center justify-center gap-2 h-13 px-8 rounded-2xl font-black text-sm border border-border bg-background hover:bg-muted text-foreground transition-all"
                 >
                   <Trophy className="w-4 h-4 text-amber-500" />
                   تقدمي الدراسي
@@ -479,7 +480,7 @@ function ExpandableCard({
       className={cn(
         'group rounded-3xl border transition-all duration-300 overflow-hidden',
         feature.bg, feature.border,
-        isOpen ? 'shadow-xl' : 'hover:shadow-lg hover:-translate-y-0.5'
+        isOpen ? 'shadow-xl dark:shadow-black/40' : 'hover:shadow-lg dark:hover:shadow-black/30 hover:-translate-y-0.5'
       )}
     >
       <button
@@ -496,7 +497,8 @@ function ExpandableCard({
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className={cn(
               'text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border',
-              feature.bg, feature.accent, feature.border
+              feature.accent, feature.border,
+              'bg-white/60 dark:bg-white/5'
             )}>
               {feature.tag}
             </span>
