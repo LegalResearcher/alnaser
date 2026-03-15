@@ -144,6 +144,9 @@ const AdminReports = () => {
                     <span className={cn('text-[10px] font-black px-2 py-0.5 rounded-full', STATUS_LABELS[r.status]?.color)}>{STATUS_LABELS[r.status]?.label}</span>
                   </div>
                   <p className="text-xs font-bold text-primary mb-1">{r.questions?.subjects?.name}</p>
+                  {examContext(r) && (
+                    <p className="text-[10px] font-semibold text-primary/70 truncate">{examContext(r)}</p>
+                  )}
                   <p className="text-sm font-semibold line-clamp-2 mb-2">{r.questions?.question_text}</p>
                   <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                     {r.reporter_name ? (
