@@ -91,6 +91,7 @@ const App = () => (
                     <Route path="/diagnostic"     element={<DiagnosticTest />} />
                     <Route path="/challenge/:sessionId" element={<ChallengePage />} />
                     <Route path="/features"            element={<FeaturesPage />} />
+                    <Route path="/suggest"             element={<SuggestQuestion />} />
 
                     {/* ── صفحات الإدارة ── */}
                     <Route path="/admin/login"             element={<AdminLogin />} />
