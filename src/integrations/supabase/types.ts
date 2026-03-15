@@ -261,8 +261,11 @@ export type Database = {
         Row: {
           created_at: string
           error_type: string
+          exam_form: string | null
+          exam_year: number | null
           id: string
           image_url: string | null
+          level_name: string | null
           note: string | null
           question_id: string
           reporter_batch: string | null
@@ -275,8 +278,11 @@ export type Database = {
         Insert: {
           created_at?: string
           error_type: string
+          exam_form?: string | null
+          exam_year?: number | null
           id?: string
           image_url?: string | null
+          level_name?: string | null
           note?: string | null
           question_id: string
           reporter_batch?: string | null
@@ -289,8 +295,11 @@ export type Database = {
         Update: {
           created_at?: string
           error_type?: string
+          exam_form?: string | null
+          exam_year?: number | null
           id?: string
           image_url?: string | null
+          level_name?: string | null
           note?: string | null
           question_id?: string
           reporter_batch?: string | null
@@ -366,6 +375,7 @@ export type Database = {
           option_d: string
           question_text: string
           reviewed_by: string | null
+          reviewer_credit: string | null
           status: Database["public"]["Enums"]["deletion_status"]
           subject_id: string
           updated_at: string
@@ -384,6 +394,7 @@ export type Database = {
           option_d: string
           question_text: string
           reviewed_by?: string | null
+          reviewer_credit?: string | null
           status?: Database["public"]["Enums"]["deletion_status"]
           subject_id: string
           updated_at?: string
@@ -402,6 +413,7 @@ export type Database = {
           option_d?: string
           question_text?: string
           reviewed_by?: string | null
+          reviewer_credit?: string | null
           status?: Database["public"]["Enums"]["deletion_status"]
           subject_id?: string
           updated_at?: string

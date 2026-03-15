@@ -14,6 +14,14 @@ const ERROR_TYPE_LABELS: Record<string, { label: string; color: string }> = {
   other:          { label: 'ملاحظة أخرى',     color: 'bg-slate-100 text-slate-600' },
 };
 
+const EXAM_FORM_LABELS: Record<string, string> = {
+  General:  'عام',
+  Parallel: 'موازي',
+  Mixed:    'مختلط',
+  Trial:    'تجريبي',
+  All:      'جميع الأسئلة',
+};
+
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   pending:  { label: 'بانتظار المراجعة', color: 'bg-amber-100 text-amber-700' },
   reviewed: { label: 'تمت المراجعة',     color: 'bg-blue-100 text-blue-700' },
@@ -66,7 +74,7 @@ const AdminReports = () => {
 
   const saveQuestion = useMutation({
     mutationFn: async ({ questionId, data, reviewedBy }: { questionId: string; data: any; reviewedBy?: string }) => {
-      const payload = { ...data, reviewed_by: reviewedBy || null };
+      const payload = { ...data, reviewer_credit: reviewedBy || null };
       await supabase.from('questions').update(payload).eq('id', questionId);
     },
     onSuccess: async () => {
@@ -93,6 +101,14 @@ const AdminReports = () => {
   };
 
   const optionLabel = (opt: string) => opt === 'A' ? 'أ' : opt === 'B' ? 'ب' : opt === 'C' ? 'ج' : 'د';
+
+  const examContext = (r: any) => {
+    const parts: string[] = [];
+    if (r.level_name) parts.push(r.level_name);
+    if (r.exam_year) parts.push(String(r.exam_year));
+    if (r.exam_form && EXAM_FORM_LABELS[r.exam_form]) parts.push(EXAM_FORM_LABELS[r.exam_form]);
+    return parts.join(' · ');
+  };
 
   return (
     <AdminLayout>
@@ -128,6 +144,9 @@ const AdminReports = () => {
                     <span className={cn('text-[10px] font-black px-2 py-0.5 rounded-full', STATUS_LABELS[r.status]?.color)}>{STATUS_LABELS[r.status]?.label}</span>
                   </div>
                   <p className="text-xs font-bold text-primary mb-1">{r.questions?.subjects?.name}</p>
+                  {examContext(r) && (
+                    <p className="text-[10px] font-semibold text-primary/70 truncate">{examContext(r)}</p>
+                  )}
                   <p className="text-sm font-semibold line-clamp-2 mb-2">{r.questions?.question_text}</p>
                   <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                     {r.reporter_name ? (
@@ -147,6 +166,11 @@ const AdminReports = () => {
                     <div className="flex items-center gap-2">
                       <span className={cn('text-xs font-black px-2.5 py-1 rounded-full', ERROR_TYPE_LABELS[selected.error_type]?.color)}>{ERROR_TYPE_LABELS[selected.error_type]?.label}</span>
                       <span className="text-xs font-bold text-primary">{selected.questions?.subjects?.name}</span>
+                      {examContext(selected) && (
+                        <span className="text-xs font-bold text-primary/80 bg-primary/10 px-2 py-0.5 rounded-full">
+                          {examContext(selected)}
+                        </span>
+                      )}
                     </div>
                     <button onClick={() => deleteReport.mutate(selected.id)} className="p-2 rounded-lg text-destructive hover:bg-destructive/10 shrink-0">
                       <Trash2 className="w-4 h-4" />
