@@ -477,6 +477,7 @@ const ExamPage = () => {
     } else {
       setShakeCard(true);
       setTimeout(() => setShakeCard(false), 520);
+      if (currentQuestion.hint) setShowHint(true);
     }
   };
 
