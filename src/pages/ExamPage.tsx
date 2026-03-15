@@ -701,6 +701,14 @@ const ExamPage = () => {
                       </span>
                     </div>
 
+                    {/* اسم المراجع */}
+                    {(currentQuestion as any).reviewer_credit && (
+                      <div className="mb-4 flex items-center gap-2 text-[11px] text-slate-400 dark:text-slate-500 font-semibold">
+                        <span>✏️ مراجعة:</span>
+                        <span className="text-primary/70 font-black">{(currentQuestion as any).reviewer_credit}</span>
+                      </div>
+                    )}
+
                     {/* إحصائيات المستخدمين */}
                     {currentQuestionStats && (currentQuestionStats as any).total_answers >= 5 && (
                       <div className="mb-4 bg-slate-50 dark:bg-slate-700 border border-slate-100 dark:border-slate-600 rounded-2xl p-4">
