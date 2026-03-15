@@ -30,6 +30,7 @@ const DiagnosticTest   = lazy(() => import("./pages/DiagnosticTest"));
 const About            = lazy(() => import("./pages/About"));
 const ChallengePage    = lazy(() => import("./pages/ChallengePage"));
 const FeaturesPage     = lazy(() => import("./pages/Features"));
+const SuggestQuestion  = lazy(() => import("./pages/SuggestQuestion"));
 
 // صفحات الإدارة — Lazy Loading
 const AdminLogin            = lazy(() => import("./pages/admin/AdminLogin"));
@@ -90,6 +91,7 @@ const App = () => (
                     <Route path="/diagnostic"     element={<DiagnosticTest />} />
                     <Route path="/challenge/:sessionId" element={<ChallengePage />} />
                     <Route path="/features"            element={<FeaturesPage />} />
+                    <Route path="/suggest"             element={<SuggestQuestion />} />
 
                     {/* ── صفحات الإدارة ── */}
                     <Route path="/admin/login"             element={<AdminLogin />} />

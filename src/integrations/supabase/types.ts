@@ -360,6 +360,84 @@ export type Database = {
           },
         ]
       }
+      question_suggestions: {
+        Row: {
+          admin_note: string | null
+          correct_option: string
+          created_at: string
+          hint: string | null
+          id: string
+          level_id: string
+          option_a: string
+          option_b: string
+          option_c: string | null
+          option_d: string | null
+          question_text: string
+          question_type: string
+          status: string
+          subject_id: string
+          suggester_batch: string | null
+          suggester_contact: string | null
+          suggester_level: string | null
+          suggester_name: string | null
+        }
+        Insert: {
+          admin_note?: string | null
+          correct_option: string
+          created_at?: string
+          hint?: string | null
+          id?: string
+          level_id: string
+          option_a: string
+          option_b: string
+          option_c?: string | null
+          option_d?: string | null
+          question_text: string
+          question_type?: string
+          status?: string
+          subject_id: string
+          suggester_batch?: string | null
+          suggester_contact?: string | null
+          suggester_level?: string | null
+          suggester_name?: string | null
+        }
+        Update: {
+          admin_note?: string | null
+          correct_option?: string
+          created_at?: string
+          hint?: string | null
+          id?: string
+          level_id?: string
+          option_a?: string
+          option_b?: string
+          option_c?: string | null
+          option_d?: string | null
+          question_text?: string
+          question_type?: string
+          status?: string
+          subject_id?: string
+          suggester_batch?: string | null
+          suggester_contact?: string | null
+          suggester_level?: string | null
+          suggester_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_suggestions_level_id_fkey"
+            columns: ["level_id"]
+            isOneToOne: false
+            referencedRelation: "levels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_suggestions_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       questions: {
         Row: {
           correct_option: string
