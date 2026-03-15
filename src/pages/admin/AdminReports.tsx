@@ -14,6 +14,14 @@ const ERROR_TYPE_LABELS: Record<string, { label: string; color: string }> = {
   other:          { label: 'ملاحظة أخرى',     color: 'bg-slate-100 text-slate-600' },
 };
 
+const EXAM_FORM_LABELS: Record<string, string> = {
+  General:  'عام',
+  Parallel: 'موازي',
+  Mixed:    'مختلط',
+  Trial:    'تجريبي',
+  All:      'جميع الأسئلة',
+};
+
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   pending:  { label: 'بانتظار المراجعة', color: 'bg-amber-100 text-amber-700' },
   reviewed: { label: 'تمت المراجعة',     color: 'bg-blue-100 text-blue-700' },
