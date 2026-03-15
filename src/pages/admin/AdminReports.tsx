@@ -313,7 +313,7 @@ const AdminReports = () => {
               <p className="text-xs font-black text-slate-500 uppercase tracking-wider">اسم المراجع (اختياري)</p>
               <input value={creditName} onChange={e => setCreditName(e.target.value)} placeholder="مثال: أحمد محمد"
                 className="w-full rounded-xl border border-slate-200 dark:border-border bg-slate-50 dark:bg-slate-800 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/30" />
-              <input value={creditBatch} onChange={e => setCreditBatch(e.target.value)} placeholder="الدفعة (اختياري، مثال: 50)"
+              <input value={creditBatch} onChange={e => setCreditBatch(e.target.value)} placeholder="رقم الدفعة فقط (مثال: 50)"
                 className="w-full rounded-xl border border-slate-200 dark:border-border bg-slate-50 dark:bg-slate-800 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/30" />
               {(creditName || creditBatch) && (
                 <p className="text-xs text-emerald-600 font-semibold bg-emerald-50 px-3 py-1.5 rounded-lg">
