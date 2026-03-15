@@ -89,7 +89,7 @@ const AdminSuggestions = () => {
 
   return (
     <AdminLayout>
-      <AdminSEO />
+      <AdminSEO pageName="اقتراحات الأسئلة" />
       <div className="space-y-6" dir="rtl">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
