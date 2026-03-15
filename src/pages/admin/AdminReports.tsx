@@ -166,6 +166,11 @@ const AdminReports = () => {
                     <div className="flex items-center gap-2">
                       <span className={cn('text-xs font-black px-2.5 py-1 rounded-full', ERROR_TYPE_LABELS[selected.error_type]?.color)}>{ERROR_TYPE_LABELS[selected.error_type]?.label}</span>
                       <span className="text-xs font-bold text-primary">{selected.questions?.subjects?.name}</span>
+                      {examContext(selected) && (
+                        <span className="text-xs font-bold text-primary/80 bg-primary/10 px-2 py-0.5 rounded-full">
+                          {examContext(selected)}
+                        </span>
+                      )}
                     </div>
                     <button onClick={() => deleteReport.mutate(selected.id)} className="p-2 rounded-lg text-destructive hover:bg-destructive/10 shrink-0">
                       <Trash2 className="w-4 h-4" />
