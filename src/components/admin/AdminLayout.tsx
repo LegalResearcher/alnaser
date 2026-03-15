@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Scale, LayoutDashboard, BookOpen, Users, Settings, 
   BarChart3, LogOut, Menu, X, Trash2, Layers, 
-  FolderOpen, ChevronLeft, ExternalLink, ShieldCheck, MessageSquare 
+  FolderOpen, ChevronLeft, ExternalLink, ShieldCheck, MessageSquare, Lightbulb 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
