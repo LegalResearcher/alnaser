@@ -182,6 +182,7 @@ const ExamPage = () => {
   const [reportImage, setReportImage] = useState<File | null>(null);
   const [reportImagePreview, setReportImagePreview] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showHint, setShowHint] = useState(false);
   const [animKey, setAnimKey] = useState(0);
   const [showScoreFloat, setShowScoreFloat] = useState(false);
 
