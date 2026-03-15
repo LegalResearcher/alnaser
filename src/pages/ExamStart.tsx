@@ -429,6 +429,11 @@ const ExamStart = () => {
                 <Play className="w-5 h-5 fill-current group-hover:scale-110 transition-transform" />
               </Button>
 
+              <Link to={`/suggest?level=${subject?.level_id || ''}&subject=${subjectId || ''}`}
+                className="w-full flex items-center justify-center gap-2 text-sm font-black text-primary hover:text-primary/80 transition-colors py-2">
+                💡 أضف سؤالاً لهذه المادة
+              </Link>
+
             </div>{/* /body */}
 
             {/* ── Footer ── */}

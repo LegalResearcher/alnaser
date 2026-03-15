@@ -704,6 +704,23 @@ const ExamPage = () => {
                       </span>
                     </div>
 
+                    {/* تلميح عند الإجابة الخاطئة */}
+                    {!isAnswerCorrect && currentQuestion.hint && (
+                      <div className="mb-4">
+                        {showHint && (
+                          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 rounded-xl p-3 mb-2 flex items-start gap-2 text-sm text-amber-700 dark:text-amber-400 animate-in fade-in duration-300">
+                            <span>💡</span>
+                            <span>{currentQuestion.hint}</span>
+                          </div>
+                        )}
+                        <button onClick={() => setShowHint(p => !p)}
+                          className="flex items-center gap-1.5 text-[11px] font-black text-amber-500 hover:text-amber-600 transition-colors">
+                          💡
+                          {showHint ? 'إخفاء التلميح' : 'عرض التلميح'}
+                        </button>
+                      </div>
+                    )}
+
                     {/* اسم المراجع */}
                     {(currentQuestion as any).reviewer_credit && (
                       <div className="mb-4 flex items-center gap-2 text-[11px] text-slate-400 dark:text-slate-500 font-semibold">
