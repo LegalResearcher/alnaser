@@ -484,6 +484,7 @@ const ExamPage = () => {
     setSlideDir(index > currentIndex ? 'left' : 'right');
     setAnimKey(k => k + 1);
     setCurrentIndex(index);
+    setShowHint(false);
   };
   const goNext = () => goTo(Math.min(questions.length - 1, currentIndex + 1));
   const goPrev = () => goTo(Math.max(0, currentIndex - 1));
