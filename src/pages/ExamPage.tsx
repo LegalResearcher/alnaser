@@ -1034,7 +1034,7 @@ const ExamPage = () => {
                     <input
                       value={reportBatch}
                       onChange={e => setReportBatch(e.target.value)}
-                      placeholder="الدفعة (مثال: 50)"
+                      placeholder="رقم الدفعة فقط (مثال: 50)"
                       className="rounded-xl border border-slate-200 dark:border-border bg-slate-50 dark:bg-slate-800 p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                     />
                   </div>
