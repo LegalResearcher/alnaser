@@ -102,6 +102,14 @@ const AdminReports = () => {
 
   const optionLabel = (opt: string) => opt === 'A' ? 'أ' : opt === 'B' ? 'ب' : opt === 'C' ? 'ج' : 'د';
 
+  const examContext = (r: any) => {
+    const parts: string[] = [];
+    if (r.level_name) parts.push(r.level_name);
+    if (r.exam_year) parts.push(String(r.exam_year));
+    if (r.exam_form && EXAM_FORM_LABELS[r.exam_form]) parts.push(EXAM_FORM_LABELS[r.exam_form]);
+    return parts.join(' · ');
+  };
+
   return (
     <AdminLayout>
       <AdminSEO pageName="تعقيبات الأسئلة" />
