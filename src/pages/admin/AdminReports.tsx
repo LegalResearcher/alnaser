@@ -74,7 +74,7 @@ const AdminReports = () => {
 
   const saveQuestion = useMutation({
     mutationFn: async ({ questionId, data, reviewedBy }: { questionId: string; data: any; reviewedBy?: string }) => {
-      const payload = { ...data, reviewed_by: reviewedBy || null };
+      const payload = { ...data, reviewer_credit: reviewedBy || null };
       await supabase.from('questions').update(payload).eq('id', questionId);
     },
     onSuccess: async () => {
