@@ -43,6 +43,7 @@ const AdminSettings         = lazy(() => import("./pages/admin/AdminSettings"));
 const AdminLevels           = lazy(() => import("./pages/admin/AdminLevels"));
 const AdminSubjects         = lazy(() => import("./pages/admin/AdminSubjects"));
 const AdminReports          = lazy(() => import("./pages/admin/AdminReports"));
+const AdminSuggestions      = lazy(() => import("./pages/admin/AdminSuggestions"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -103,6 +104,7 @@ const App = () => (
                     <Route path="/admin/levels"            element={<AdminLevels />} />
                     <Route path="/admin/subjects"          element={<AdminSubjects />} />
                     <Route path="/admin/reports"           element={<AdminReports />} />
+                    <Route path="/admin/suggestions"       element={<AdminSuggestions />} />
                     <Route path="/admin/settings"          element={<AdminSettings />} />
 
                     {/* ── 404 ── */}

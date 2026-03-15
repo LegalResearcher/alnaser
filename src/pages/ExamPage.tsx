@@ -182,6 +182,7 @@ const ExamPage = () => {
   const [reportImage, setReportImage] = useState<File | null>(null);
   const [reportImagePreview, setReportImagePreview] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showHint, setShowHint] = useState(false);
   const [animKey, setAnimKey] = useState(0);
   const [showScoreFloat, setShowScoreFloat] = useState(false);
 
@@ -476,6 +477,7 @@ const ExamPage = () => {
     } else {
       setShakeCard(true);
       setTimeout(() => setShakeCard(false), 520);
+      if (currentQuestion.hint) setShowHint(true);
     }
   };
 
@@ -483,6 +485,7 @@ const ExamPage = () => {
     setSlideDir(index > currentIndex ? 'left' : 'right');
     setAnimKey(k => k + 1);
     setCurrentIndex(index);
+    setShowHint(false);
   };
   const goNext = () => goTo(Math.min(questions.length - 1, currentIndex + 1));
   const goPrev = () => goTo(Math.max(0, currentIndex - 1));
@@ -700,6 +703,23 @@ const ExamPage = () => {
                           : `إجابة خاطئة — الصحيحة: ${currentQuestion.correct_option}`}
                       </span>
                     </div>
+
+                    {/* تلميح عند الإجابة الخاطئة */}
+                    {!isAnswerCorrect && currentQuestion.hint && (
+                      <div className="mb-4">
+                        {showHint && (
+                          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 rounded-xl p-3 mb-2 flex items-start gap-2 text-sm text-amber-700 dark:text-amber-400 animate-in fade-in duration-300">
+                            <span>💡</span>
+                            <span>{currentQuestion.hint}</span>
+                          </div>
+                        )}
+                        <button onClick={() => setShowHint(p => !p)}
+                          className="flex items-center gap-1.5 text-[11px] font-black text-amber-500 hover:text-amber-600 transition-colors">
+                          💡
+                          {showHint ? 'إخفاء التلميح' : 'عرض التلميح'}
+                        </button>
+                      </div>
+                    )}
 
                     {/* اسم المراجع */}
                     {(currentQuestion as any).reviewer_credit && (

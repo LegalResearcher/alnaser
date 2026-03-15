@@ -19,6 +19,7 @@ const navLinks = [
   { href: '/progress',   label: 'تقدمي' },
   { href: '/about',      label: 'عن المنصة' },
   { href: '/#faq',       label: 'الأسئلة الشائعة' },
+  { href: '/suggest',   label: '💡 أضف سؤالاً' },
   { href: 'https://t.me/MuenAlnaser', label: 'تواصل معنا', external: true },
 ];
 
