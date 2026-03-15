@@ -252,6 +252,12 @@ const AdminReports = () => {
                       ) : (
                         <>
                           <p className="text-sm font-semibold leading-relaxed">{selected.questions?.question_text}</p>
+                          {selected.questions?.reviewer_credit && (
+                            <div className="flex items-center gap-1.5 text-xs text-primary/70 font-bold mt-1">
+                              <span>✏️ مراجعة:</span>
+                              <span>{selected.questions.reviewer_credit}</span>
+                            </div>
+                          )}
                           {(['a','b','c','d'] as const).map(opt => (
                             <div key={opt} className={cn('flex items-center gap-2 p-2 rounded-xl text-sm',
                               selected.questions?.correct_option === opt.toUpperCase() ? 'bg-emerald-50 text-emerald-700 font-bold' : 'text-slate-600')}>
