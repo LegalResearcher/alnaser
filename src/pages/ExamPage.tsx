@@ -500,9 +500,6 @@ const ExamPage = () => {
   // isAnswerCorrect ستُحسب بعد mappedCorrectOption
   const progressColor = progressPct < 33 ? '#ef4444' : progressPct < 66 ? '#f59e0b' : '#10b981';
 
-  // خريطة تحويل الحروف الإنجليزية إلى عربية
-  const optionLabels: Record<string, string> = { A: 'أ', B: 'ب', C: 'ج', D: 'د' };
-
   const currentShuffled = shuffledOptionsMap[currentQuestion?.id] ?? { order: ['A','B','C','D'], correctMapped: currentQuestion?.correct_option };
   const availableOptions = ['A', 'B', 'C', 'D'].filter((_, i) => currentShuffled.order[i]);
   const mappedCorrectOption = currentShuffled.correctMapped;
