@@ -280,10 +280,14 @@ const ExamPage = () => {
         const statsPromises = questions.map(q => {
           const selected = answers[q.id];
           if (!selected) return Promise.resolve();
+          // تحويل الإجابة المخلوطة إلى الأصلية لتسجيل الإحصائيات بشكل صحيح
+          const shuffledOrder = shuffledOptionsMap[q.id]?.order ?? ['A','B','C','D'];
+          const idx = ['A','B','C','D'].indexOf(selected);
+          const originalSelected = shuffledOrder[idx] ?? selected;
           return supabase.rpc('record_question_answer', {
             p_question_id: q.id,
-            p_selected_option: selected,
-            p_is_correct: selected === q.correct_option,
+            p_selected_option: originalSelected,
+            p_is_correct: originalSelected === q.correct_option,
           });
         });
         await Promise.allSettled(statsPromises);
