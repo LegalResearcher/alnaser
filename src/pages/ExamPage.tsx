@@ -373,7 +373,7 @@ const ExamPage = () => {
         questionsCount: state.questionsCount,
       },
     });
-  }, [answers, questions, subject, state, subjectId, timeLeft, navigate, isSubmitting, totalTime]);
+  }, [answers, questions, subject, state, subjectId, timeLeft, navigate, isSubmitting, totalTime, shuffledOptionsMap]);
 
   useEffect(() => {
     if (timeLeft <= 0) { handleSubmit(); return; }
