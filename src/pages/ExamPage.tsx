@@ -805,7 +805,15 @@ const ExamPage = () => {
                             const pct = Math.round((count / (currentQuestionStats as any).total_answers) * 100);
                             const currentQ = questions[currentIndex];
                             const isCorr = currentQ?.correct_option === opt;
-                            const isSel = answers[currentQ?.id] === opt;
+                            // تحويل إجابة المستخدم المخلوطة إلى الأصلية للمقارنة مع الإحصائيات
+                            const userMappedAnswer = answers[currentQ?.id];
+                            const userOriginalAnswer = (() => {
+                              if (!userMappedAnswer || !currentQ) return undefined;
+                              const so = shuffledOptionsMap[currentQ.id]?.order ?? ['A','B','C','D'];
+                              const idx = ['A','B','C','D'].indexOf(userMappedAnswer);
+                              return so[idx] ?? userMappedAnswer;
+                            })();
+                            const isSel = userOriginalAnswer === opt;
                             const arLabel = opt === 'A' ? 'أ' : opt === 'B' ? 'ب' : opt === 'C' ? 'ج' : 'د';
                             return (
                               <div key={opt} className={cn('rounded-xl p-2 text-center border',
