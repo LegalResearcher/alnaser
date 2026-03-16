@@ -238,7 +238,10 @@ const ExamPage = () => {
     if (isSubmitting || !questions.length) return;
     setIsSubmitting(true);
     let finalScore = 0;
-    questions.forEach((q) => { if (answers[q.id] === q.correct_option) finalScore++; });
+    questions.forEach((q) => {
+      const mapped = shuffledOptionsMap[q.id]?.correctMapped ?? q.correct_option;
+      if (answers[q.id] === mapped) finalScore++;
+    });
     const totalQuestions = questions.length;
     const passed = Math.round((finalScore / totalQuestions) * 100) >= (subject?.passing_score || 60);
     const timeTaken = totalTime - timeLeft;
