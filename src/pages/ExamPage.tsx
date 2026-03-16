@@ -530,7 +530,7 @@ const ExamPage = () => {
 
   const getTextStyle = (opt: string) => {
     const isSel = selectedAnswer === opt;
-    const isCorr = currentQuestion.correct_option === opt;
+    const isCorr = mappedCorrectOption === opt;
     if (!hasAnswered) return isSel ? "text-primary font-black" : "text-slate-600 dark:text-slate-300 font-bold";
     if (isCorr) return "text-emerald-700 font-black";
     if (isSel && !isCorr) return "text-rose-700 font-black";
