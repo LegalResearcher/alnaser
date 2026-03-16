@@ -488,24 +488,6 @@ const ExamPage = () => {
   // خريطة تحويل الحروف الإنجليزية إلى عربية
   const optionLabels: Record<string, string> = { A: 'أ', B: 'ب', C: 'ج', D: 'د' };
 
-  // خيارات عشوائية مستقرة لكل سؤال (تتغير بين الجلسات، ثابتة داخل نفس الجلسة)
-  const shuffledOptionsMap = useMemo(() => {
-    if (!questions.length) return {};
-    const map: Record<string, { order: string[]; correctMapped: string }> = {};
-    questions.forEach((q) => {
-      const available = (['A', 'B', 'C', 'D'] as const).filter(opt => {
-        const v = q[`option_${opt.toLowerCase()}` as keyof Question] as string;
-        return v && v.trim().length > 0;
-      });
-      // خلط النصوص عشوائياً، الحروف تبقى A B C D بنفس ترتيبها
-      const shuffled = [...available].sort(() => Math.random() - 0.5);
-      // الحرف الجديد الذي يحمل الإجابة الصحيحة بعد الخلط
-      const newCorrect = String.fromCharCode(65 + shuffled.indexOf(q.correct_option));
-      map[q.id] = { order: shuffled, correctMapped: newCorrect };
-    });
-    return map;
-  }, [questions]);
-
   const currentShuffled = shuffledOptionsMap[currentQuestion?.id] ?? { order: ['A','B','C','D'], correctMapped: currentQuestion?.correct_option };
   const availableOptions = ['A', 'B', 'C', 'D'].filter((_, i) => currentShuffled.order[i]);
   const mappedCorrectOption = currentShuffled.correctMapped;
