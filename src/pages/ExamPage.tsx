@@ -258,7 +258,18 @@ const ExamPage = () => {
         exam_year: state.isTrial ? null : (state.allQuestions ? null : state.examYear),
         exam_form: state.isTrial ? 'Trial' : (state.allQuestions ? 'All' : (state.examForm || null)),
         time_taken_seconds: timeTaken,
-        answers,
+        answers: (() => {
+          const originalAnswers: Record<string, string> = {};
+          questions.forEach((q) => {
+            const selected = answers[q.id];
+            if (selected) {
+              const shuffledOrder = shuffledOptionsMap[q.id]?.order ?? ['A','B','C','D'];
+              const idx = ['A','B','C','D'].indexOf(selected);
+              originalAnswers[q.id] = shuffledOrder[idx] ?? selected;
+            }
+          });
+          return originalAnswers;
+        })(),
         score_percentage: scorePercentage,
         challenge_session_id: state.challengeSessionId || null,
       };
