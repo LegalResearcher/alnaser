@@ -744,7 +744,7 @@ const ExamPage = () => {
                       <span>
                         {isAnswerCorrect
                           ? "إجابة صحيحة! 🎉"
-                          : `إجابة خاطئة — الصحيحة: ${currentQuestion.correct_option}`}
+                          : `إجابة خاطئة — الصحيحة: ${mappedCorrectOption === 'A' ? 'أ' : mappedCorrectOption === 'B' ? 'ب' : mappedCorrectOption === 'C' ? 'ج' : 'د'}`}
                       </span>
                     </div>
 
