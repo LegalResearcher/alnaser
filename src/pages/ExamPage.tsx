@@ -512,7 +512,7 @@ const ExamPage = () => {
 
   const getOptionStyle = (opt: string) => {
     const isSel = selectedAnswer === opt;
-    const isCorr = currentQuestion.correct_option === opt;
+    const isCorr = mappedCorrectOption === opt;
     if (!hasAnswered) return isSel ? "border-primary bg-primary/5 shadow-lg scale-[1.01]" : "border-slate-100 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 hover:border-primary/30 hover:bg-white dark:hover:bg-slate-600 hover:scale-[1.005]";
     if (isCorr) return "border-emerald-500 bg-emerald-50 shadow-lg anim-glow";
     if (isSel && !isCorr) return "border-rose-500 bg-rose-50 shadow-md";
