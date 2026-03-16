@@ -6,7 +6,7 @@
  * Version: 2.3 (Full UX Enhancement: Confetti + Shake + Score + Circular Timer + Slide + Next-After-Answer)
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { Clock, ChevronLeft, ChevronRight, Flag, AlertTriangle, CheckCircle2, XCircle, Star, Share2, Check, MessageSquare } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -459,7 +459,24 @@ const ExamPage = () => {
   // خريطة تحويل الحروف الإنجليزية إلى عربية
   const optionLabels: Record<string, string> = { A: 'أ', B: 'ب', C: 'ج', D: 'د' };
 
-  const availableOptions = ['A', 'B', 'C', 'D'].filter(opt => {
+  // خيارات عشوائية مستقرة لكل سؤال (تتغير بين الجلسات، ثابتة داخل نفس الجلسة)
+  const shuffledOptions = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    questions.forEach(q => {
+      const opts = ['A', 'B', 'C', 'D'].filter(opt => {
+        const v = q[`option_${opt.toLowerCase()}` as keyof Question] as string;
+        return v && v.trim().length > 0;
+      });
+      for (let i = opts.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [opts[i], opts[j]] = [opts[j], opts[i]];
+      }
+      map[q.id] = opts;
+    });
+    return map;
+  }, [questions]);
+
+  const availableOptions = shuffledOptions[currentQuestion?.id] ?? ['A', 'B', 'C', 'D'].filter(opt => {
     const k = `option_${opt.toLowerCase()}` as keyof Question;
     const v = currentQuestion[k] as string;
     return v && v.trim().length > 0;
@@ -650,7 +667,8 @@ const ExamPage = () => {
 
                 {/* الخيارات */}
                 <div className="grid grid-cols-1 gap-3 md:gap-4" onCopy={e => e.preventDefault()} onContextMenu={e => e.preventDefault()} style={{userSelect:"none",WebkitUserSelect:"none"}}>
-                  {availableOptions.map((opt) => {
+                  {availableOptions.map((opt, optIdx) => {
+                    const posLabels = ['أ', 'ب', 'ج', 'د'];
                     const k = `option_${opt.toLowerCase()}` as keyof Question;
                     const text = cleanOptionText(currentQuestion[k] as string);
                     const isCorr = currentQuestion.correct_option === opt;
@@ -671,7 +689,7 @@ const ExamPage = () => {
                           "w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center font-black text-base md:text-lg shrink-0 transition-all duration-300",
                           getBadgeStyle(opt)
                         )}>
-                          {optionLabels[opt] ?? opt}
+                          {posLabels[optIdx] ?? opt}
                         </div>
                         <span className={cn("flex-1 text-sm md:text-base text-right transition-all duration-300", getTextStyle(opt))}>
                           {text}
