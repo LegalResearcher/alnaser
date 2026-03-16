@@ -453,7 +453,7 @@ const ExamPage = () => {
   const isTimeWarning = timeLeft < 60;
   const selectedAnswer = currentQuestion ? answers[currentQuestion.id] : undefined;
   const hasAnswered = !!selectedAnswer;
-  // ستُحسب isAnswerCorrect بعد تعريف mappedCorrectOption
+  // isAnswerCorrect ستُحسب بعد mappedCorrectOption
   const progressColor = progressPct < 33 ? '#ef4444' : progressPct < 66 ? '#f59e0b' : '#10b981';
 
   // خريطة تحويل الحروف الإنجليزية إلى عربية
