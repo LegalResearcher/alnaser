@@ -449,11 +449,11 @@ const ExamPage = () => {
 
   const currentQuestion = questions[currentIndex];
   const answeredCount = Object.keys(answers).length;
-  const progressPct = (answeredCount / questions.length) * 100;
+  const progressPct = questions.length ? (answeredCount / questions.length) * 100 : 0;
   const isTimeWarning = timeLeft < 60;
-  const selectedAnswer = answers[currentQuestion.id];
+  const selectedAnswer = currentQuestion ? answers[currentQuestion.id] : undefined;
   const hasAnswered = !!selectedAnswer;
-  const isAnswerCorrect = selectedAnswer === currentQuestion.correct_option;
+  const isAnswerCorrect = currentQuestion ? selectedAnswer === currentQuestion.correct_option : false;
   const progressColor = progressPct < 33 ? '#ef4444' : progressPct < 66 ? '#f59e0b' : '#10b981';
 
   // خريطة تحويل الحروف الإنجليزية إلى عربية
@@ -461,6 +461,7 @@ const ExamPage = () => {
 
   // خيارات عشوائية مستقرة لكل سؤال (تتغير بين الجلسات، ثابتة داخل نفس الجلسة)
   const shuffledOptions = useMemo(() => {
+    if (!questions.length) return {};
     const map: Record<string, string[]> = {};
     questions.forEach(q => {
       const opts = ['A', 'B', 'C', 'D'].filter(opt => {
@@ -481,6 +482,9 @@ const ExamPage = () => {
     const v = currentQuestion[k] as string;
     return v && v.trim().length > 0;
   });
+
+  // حماية: لا تكمل إذا لم يكن هناك سؤال حالي
+  if (!currentQuestion) return null;
 
   const handleAnswer = (option: string) => {
     if (hasAnswered) return;
