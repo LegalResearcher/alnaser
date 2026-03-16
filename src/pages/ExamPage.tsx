@@ -574,14 +574,17 @@ const ExamPage = () => {
 
                 {/* مؤشر الأسئلة الصغير */}
                 <div className="flex gap-[3px] overflow-hidden">
-                  {questions.map((q, i) => (
+                  {questions.map((q, i) => {
+                    const mc = shuffledOptionsMap[q.id]?.correctMapped ?? q.correct_option;
+                    return (
                     <div key={q.id} className={cn(
                       "h-1 flex-1 rounded-full transition-all duration-500",
                       i === currentIndex ? "bg-primary" :
-                      answers[q.id] ? (answers[q.id] === q.correct_option ? "bg-emerald-400" : "bg-rose-400") :
+                      answers[q.id] ? (answers[q.id] === mc ? "bg-emerald-400" : "bg-rose-400") :
                       "bg-slate-200"
                     )} />
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
