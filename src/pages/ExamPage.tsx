@@ -460,28 +460,26 @@ const ExamPage = () => {
   const optionLabels: Record<string, string> = { A: 'أ', B: 'ب', C: 'ج', D: 'د' };
 
   // خيارات عشوائية مستقرة لكل سؤال (تتغير بين الجلسات، ثابتة داخل نفس الجلسة)
-  const shuffledOptions = useMemo(() => {
+  const shuffledOptionsMap = useMemo(() => {
     if (!questions.length) return {};
-    const map: Record<string, string[]> = {};
-    questions.forEach(q => {
-      const opts = ['A', 'B', 'C', 'D'].filter(opt => {
+    const map: Record<string, { order: string[]; correctMapped: string }> = {};
+    questions.forEach((q) => {
+      const available = (['A', 'B', 'C', 'D'] as const).filter(opt => {
         const v = q[`option_${opt.toLowerCase()}` as keyof Question] as string;
         return v && v.trim().length > 0;
       });
-      for (let i = opts.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [opts[i], opts[j]] = [opts[j], opts[i]];
-      }
-      map[q.id] = opts;
+      // خلط النصوص عشوائياً، الحروف تبقى A B C D بنفس ترتيبها
+      const shuffled = [...available].sort(() => Math.random() - 0.5);
+      // الحرف الجديد الذي يحمل الإجابة الصحيحة بعد الخلط
+      const newCorrect = String.fromCharCode(65 + shuffled.indexOf(q.correct_option));
+      map[q.id] = { order: shuffled, correctMapped: newCorrect };
     });
     return map;
   }, [questions]);
 
-  const availableOptions = shuffledOptions[currentQuestion?.id] ?? ['A', 'B', 'C', 'D'].filter(opt => {
-    const k = `option_${opt.toLowerCase()}` as keyof Question;
-    const v = currentQuestion[k] as string;
-    return v && v.trim().length > 0;
-  });
+  const currentShuffled = shuffledOptionsMap[currentQuestion?.id] ?? { order: ['A','B','C','D'], correctMapped: currentQuestion?.correct_option };
+  const availableOptions = ['A', 'B', 'C', 'D'].filter((_, i) => currentShuffled.order[i]);
+  const mappedCorrectOption = currentShuffled.correctMapped;
 
   // حماية: لا تكمل إذا لم يكن هناك سؤال حالي
   if (!currentQuestion) return null;
