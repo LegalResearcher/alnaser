@@ -249,6 +249,7 @@ const ExamPage = () => {
     return map;
   }, [questions]);
 
+  const handleSubmit = useCallback(async () => {
     if (isSubmitting || !questions.length) return;
     setIsSubmitting(true);
     let finalScore = 0;
