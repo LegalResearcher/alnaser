@@ -348,7 +348,18 @@ const ExamPage = () => {
       state: {
         studentName: state.studentName, score: finalScore, totalQuestions,
         passingScore: subject?.passing_score || 60, passed, timeTaken,
-        questions, answers, subjectName: state.subjectName || subject?.name,
+        questions, answers: (() => {
+          const originalAnswers: Record<string, string> = {};
+          questions.forEach((q) => {
+            const selected = answers[q.id];
+            if (selected) {
+              const shuffledOrder = shuffledOptionsMap[q.id]?.order ?? ['A','B','C','D'];
+              const idx = ['A','B','C','D'].indexOf(selected);
+              originalAnswers[q.id] = shuffledOrder[idx] ?? selected;
+            }
+          });
+          return originalAnswers;
+        })(), subjectName: state.subjectName || subject?.name,
         levelName: state.levelName, examYear: state.examYear,
         scorePercentage,
         challengeMode: state.challengeMode,
