@@ -488,7 +488,7 @@ const ExamPage = () => {
   const handleAnswer = (option: string) => {
     if (hasAnswered) return;
     setAnswers({ ...answers, [currentQuestion.id]: option });
-    if (option === currentQuestion.correct_option) {
+    if (option === mappedCorrectOption) {
       setLiveScore(s => s + 1);
       setShowConfetti(true);
       setShowScoreFloat(true);
