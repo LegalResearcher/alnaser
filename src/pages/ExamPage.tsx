@@ -233,8 +233,22 @@ const ExamPage = () => {
     },
     enabled: !!questions[currentIndex]?.id && !!answers[questions[currentIndex]?.id],
   });
+  // خيارات عشوائية مستقرة لكل سؤال (تتغير بين الجلسات، ثابتة داخل نفس الجلسة)
+  const shuffledOptionsMap = useMemo(() => {
+    if (!questions.length) return {};
+    const map: Record<string, { order: string[]; correctMapped: string }> = {};
+    questions.forEach((q) => {
+      const available = (['A', 'B', 'C', 'D'] as const).filter(opt => {
+        const v = q[`option_${opt.toLowerCase()}` as keyof Question] as string;
+        return v && v.trim().length > 0;
+      });
+      const shuffled = [...available].sort(() => Math.random() - 0.5);
+      const newCorrect = String.fromCharCode(65 + shuffled.indexOf(q.correct_option));
+      map[q.id] = { order: shuffled, correctMapped: newCorrect };
+    });
+    return map;
+  }, [questions]);
 
-  const handleSubmit = useCallback(async () => {
     if (isSubmitting || !questions.length) return;
     setIsSubmitting(true);
     let finalScore = 0;
