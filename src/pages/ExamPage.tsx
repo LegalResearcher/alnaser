@@ -480,6 +480,7 @@ const ExamPage = () => {
   const currentShuffled = shuffledOptionsMap[currentQuestion?.id] ?? { order: ['A','B','C','D'], correctMapped: currentQuestion?.correct_option };
   const availableOptions = ['A', 'B', 'C', 'D'].filter((_, i) => currentShuffled.order[i]);
   const mappedCorrectOption = currentShuffled.correctMapped;
+  const isAnswerCorrect = currentQuestion ? selectedAnswer === mappedCorrectOption : false;
 
   // حماية: لا تكمل إذا لم يكن هناك سؤال حالي
   if (!currentQuestion) return null;
