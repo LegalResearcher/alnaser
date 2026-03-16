@@ -693,9 +693,11 @@ const ExamPage = () => {
                 <div className="grid grid-cols-1 gap-3 md:gap-4" onCopy={e => e.preventDefault()} onContextMenu={e => e.preventDefault()} style={{userSelect:"none",WebkitUserSelect:"none"}}>
                   {availableOptions.map((opt, optIdx) => {
                     const posLabels = ['أ', 'ب', 'ج', 'د'];
-                    const k = `option_${opt.toLowerCase()}` as keyof Question;
+                    // الحرف opt ثابت (A/B/C/D)، لكن النص يُقرأ من الخيار الأصلي الذي جاء في هذا الموضع بعد الخلط
+                    const originalOpt = currentShuffled.order[optIdx];
+                    const k = `option_${originalOpt.toLowerCase()}` as keyof Question;
                     const text = cleanOptionText(currentQuestion[k] as string);
-                    const isCorr = currentQuestion.correct_option === opt;
+                    const isCorr = mappedCorrectOption === opt;
                     const isSel = selectedAnswer === opt;
                     return (
                       <button
