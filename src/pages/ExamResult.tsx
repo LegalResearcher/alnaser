@@ -632,7 +632,8 @@ ${challengeLink}`; window.open(`https://www.facebook.com/sharer/sharer.php?u=${e
                       </div>
 
                       <div className="grid gap-2 mb-3">
-                        {['A','B','C','D'].map(opt => {
+                        {['A','B','C','D'].map((opt, optIdx) => {
+                          const arLabels = ['أ','ب','ج','د'];
                           const k = `option_${opt.toLowerCase()}` as keyof Question;
                           const text = q[k] as string;
                           if (!text?.trim()) return null;
@@ -650,7 +651,7 @@ ${challengeLink}`; window.open(`https://www.facebook.com/sharer/sharer.php?u=${e
                                 isCorr ? "bg-emerald-500 text-white" :
                                 isSel  ? "bg-rose-500 text-white" :
                                 "bg-muted text-muted-foreground"
-                              )}>{opt}</span>
+                              )}>{arLabels[optIdx]}</span>
                               <span className={cn(
                                 "flex-1 text-sm font-semibold",
                                 isCorr ? "text-emerald-700 dark:text-emerald-400" :
