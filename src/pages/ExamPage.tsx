@@ -233,12 +233,30 @@ const ExamPage = () => {
     },
     enabled: !!questions[currentIndex]?.id && !!answers[questions[currentIndex]?.id],
   });
+  // خيارات عشوائية مستقرة لكل سؤال (تتغير بين الجلسات، ثابتة داخل نفس الجلسة)
+  const shuffledOptionsMap = useMemo(() => {
+    if (!questions.length) return {};
+    const map: Record<string, { order: string[]; correctMapped: string }> = {};
+    questions.forEach((q) => {
+      const available = (['A', 'B', 'C', 'D'] as const).filter(opt => {
+        const v = q[`option_${opt.toLowerCase()}` as keyof Question] as string;
+        return v && v.trim().length > 0;
+      });
+      const shuffled = [...available].sort(() => Math.random() - 0.5);
+      const newCorrect = String.fromCharCode(65 + shuffled.indexOf(q.correct_option));
+      map[q.id] = { order: shuffled, correctMapped: newCorrect };
+    });
+    return map;
+  }, [questions]);
 
   const handleSubmit = useCallback(async () => {
     if (isSubmitting || !questions.length) return;
     setIsSubmitting(true);
     let finalScore = 0;
-    questions.forEach((q) => { if (answers[q.id] === q.correct_option) finalScore++; });
+    questions.forEach((q) => {
+      const mapped = shuffledOptionsMap[q.id]?.correctMapped ?? q.correct_option;
+      if (answers[q.id] === mapped) finalScore++;
+    });
     const totalQuestions = questions.length;
     const passed = Math.round((finalScore / totalQuestions) * 100) >= (subject?.passing_score || 60);
     const timeTaken = totalTime - timeLeft;
@@ -255,7 +273,18 @@ const ExamPage = () => {
         exam_year: state.isTrial ? null : (state.allQuestions ? null : state.examYear),
         exam_form: state.isTrial ? 'Trial' : (state.allQuestions ? 'All' : (state.examForm || null)),
         time_taken_seconds: timeTaken,
-        answers,
+        answers: (() => {
+          const originalAnswers: Record<string, string> = {};
+          questions.forEach((q) => {
+            const selected = answers[q.id];
+            if (selected) {
+              const shuffledOrder = shuffledOptionsMap[q.id]?.order ?? ['A','B','C','D'];
+              const idx = ['A','B','C','D'].indexOf(selected);
+              originalAnswers[q.id] = shuffledOrder[idx] ?? selected;
+            }
+          });
+          return originalAnswers;
+        })(),
         score_percentage: scorePercentage,
         challenge_session_id: state.challengeSessionId || null,
       };
@@ -266,10 +295,14 @@ const ExamPage = () => {
         const statsPromises = questions.map(q => {
           const selected = answers[q.id];
           if (!selected) return Promise.resolve();
+          // تحويل الإجابة المخلوطة إلى الأصلية لتسجيل الإحصائيات بشكل صحيح
+          const shuffledOrder = shuffledOptionsMap[q.id]?.order ?? ['A','B','C','D'];
+          const idx = ['A','B','C','D'].indexOf(selected);
+          const originalSelected = shuffledOrder[idx] ?? selected;
           return supabase.rpc('record_question_answer', {
             p_question_id: q.id,
-            p_selected_option: selected,
-            p_is_correct: selected === q.correct_option,
+            p_selected_option: originalSelected,
+            p_is_correct: originalSelected === q.correct_option,
           });
         });
         await Promise.allSettled(statsPromises);
@@ -330,7 +363,18 @@ const ExamPage = () => {
       state: {
         studentName: state.studentName, score: finalScore, totalQuestions,
         passingScore: subject?.passing_score || 60, passed, timeTaken,
-        questions, answers, subjectName: state.subjectName || subject?.name,
+        questions, answers: (() => {
+          const originalAnswers: Record<string, string> = {};
+          questions.forEach((q) => {
+            const selected = answers[q.id];
+            if (selected) {
+              const shuffledOrder = shuffledOptionsMap[q.id]?.order ?? ['A','B','C','D'];
+              const idx = ['A','B','C','D'].indexOf(selected);
+              originalAnswers[q.id] = shuffledOrder[idx] ?? selected;
+            }
+          });
+          return originalAnswers;
+        })(), subjectName: state.subjectName || subject?.name,
         levelName: state.levelName, examYear: state.examYear,
         scorePercentage,
         challengeMode: state.challengeMode,
@@ -344,7 +388,7 @@ const ExamPage = () => {
         questionsCount: state.questionsCount,
       },
     });
-  }, [answers, questions, subject, state, subjectId, timeLeft, navigate, isSubmitting, totalTime]);
+  }, [answers, questions, subject, state, subjectId, timeLeft, navigate, isSubmitting, totalTime, shuffledOptionsMap]);
 
   useEffect(() => {
     if (timeLeft <= 0) { handleSubmit(); return; }
@@ -453,35 +497,13 @@ const ExamPage = () => {
   const isTimeWarning = timeLeft < 60;
   const selectedAnswer = currentQuestion ? answers[currentQuestion.id] : undefined;
   const hasAnswered = !!selectedAnswer;
-  const isAnswerCorrect = currentQuestion ? selectedAnswer === currentQuestion.correct_option : false;
+  // isAnswerCorrect ستُحسب بعد mappedCorrectOption
   const progressColor = progressPct < 33 ? '#ef4444' : progressPct < 66 ? '#f59e0b' : '#10b981';
 
-  // خريطة تحويل الحروف الإنجليزية إلى عربية
-  const optionLabels: Record<string, string> = { A: 'أ', B: 'ب', C: 'ج', D: 'د' };
-
-  // خيارات عشوائية مستقرة لكل سؤال (تتغير بين الجلسات، ثابتة داخل نفس الجلسة)
-  const shuffledOptions = useMemo(() => {
-    if (!questions.length) return {};
-    const map: Record<string, string[]> = {};
-    questions.forEach(q => {
-      const opts = ['A', 'B', 'C', 'D'].filter(opt => {
-        const v = q[`option_${opt.toLowerCase()}` as keyof Question] as string;
-        return v && v.trim().length > 0;
-      });
-      for (let i = opts.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [opts[i], opts[j]] = [opts[j], opts[i]];
-      }
-      map[q.id] = opts;
-    });
-    return map;
-  }, [questions]);
-
-  const availableOptions = shuffledOptions[currentQuestion?.id] ?? ['A', 'B', 'C', 'D'].filter(opt => {
-    const k = `option_${opt.toLowerCase()}` as keyof Question;
-    const v = currentQuestion[k] as string;
-    return v && v.trim().length > 0;
-  });
+  const currentShuffled = shuffledOptionsMap[currentQuestion?.id] ?? { order: ['A','B','C','D'], correctMapped: currentQuestion?.correct_option };
+  const availableOptions = ['A', 'B', 'C', 'D'].filter((_, i) => currentShuffled.order[i]);
+  const mappedCorrectOption = currentShuffled.correctMapped;
+  const isAnswerCorrect = currentQuestion ? selectedAnswer === mappedCorrectOption : false;
 
   // حماية: لا تكمل إذا لم يكن هناك سؤال حالي
   if (!currentQuestion) return null;
@@ -489,7 +511,7 @@ const ExamPage = () => {
   const handleAnswer = (option: string) => {
     if (hasAnswered) return;
     setAnswers({ ...answers, [currentQuestion.id]: option });
-    if (option === currentQuestion.correct_option) {
+    if (option === mappedCorrectOption) {
       setLiveScore(s => s + 1);
       setShowConfetti(true);
       setShowScoreFloat(true);
@@ -513,7 +535,7 @@ const ExamPage = () => {
 
   const getOptionStyle = (opt: string) => {
     const isSel = selectedAnswer === opt;
-    const isCorr = currentQuestion.correct_option === opt;
+    const isCorr = mappedCorrectOption === opt;
     if (!hasAnswered) return isSel ? "border-primary bg-primary/5 shadow-lg scale-[1.01]" : "border-slate-100 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 hover:border-primary/30 hover:bg-white dark:hover:bg-slate-600 hover:scale-[1.005]";
     if (isCorr) return "border-emerald-500 bg-emerald-50 shadow-lg anim-glow";
     if (isSel && !isCorr) return "border-rose-500 bg-rose-50 shadow-md";
@@ -522,7 +544,7 @@ const ExamPage = () => {
 
   const getBadgeStyle = (opt: string) => {
     const isSel = selectedAnswer === opt;
-    const isCorr = currentQuestion.correct_option === opt;
+    const isCorr = mappedCorrectOption === opt;
     if (!hasAnswered) return isSel ? "bg-primary text-white shadow-primary/40 shadow-lg" : "bg-white dark:bg-slate-600 text-slate-500 dark:text-white border border-slate-200 dark:border-slate-500";
     if (isCorr) return "bg-emerald-500 text-white";
     if (isSel && !isCorr) return "bg-rose-500 text-white";
@@ -531,7 +553,7 @@ const ExamPage = () => {
 
   const getTextStyle = (opt: string) => {
     const isSel = selectedAnswer === opt;
-    const isCorr = currentQuestion.correct_option === opt;
+    const isCorr = mappedCorrectOption === opt;
     if (!hasAnswered) return isSel ? "text-primary font-black" : "text-slate-600 dark:text-slate-300 font-bold";
     if (isCorr) return "text-emerald-700 font-black";
     if (isSel && !isCorr) return "text-rose-700 font-black";
@@ -575,14 +597,17 @@ const ExamPage = () => {
 
                 {/* مؤشر الأسئلة الصغير */}
                 <div className="flex gap-[3px] overflow-hidden">
-                  {questions.map((q, i) => (
+                  {questions.map((q, i) => {
+                    const mc = shuffledOptionsMap[q.id]?.correctMapped ?? q.correct_option;
+                    return (
                     <div key={q.id} className={cn(
                       "h-1 flex-1 rounded-full transition-all duration-500",
                       i === currentIndex ? "bg-primary" :
-                      answers[q.id] ? (answers[q.id] === q.correct_option ? "bg-emerald-400" : "bg-rose-400") :
+                      answers[q.id] ? (answers[q.id] === mc ? "bg-emerald-400" : "bg-rose-400") :
                       "bg-slate-200"
                     )} />
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -673,9 +698,11 @@ const ExamPage = () => {
                 <div className="grid grid-cols-1 gap-3 md:gap-4" onCopy={e => e.preventDefault()} onContextMenu={e => e.preventDefault()} style={{userSelect:"none",WebkitUserSelect:"none"}}>
                   {availableOptions.map((opt, optIdx) => {
                     const posLabels = ['أ', 'ب', 'ج', 'د'];
-                    const k = `option_${opt.toLowerCase()}` as keyof Question;
+                    // الحرف opt ثابت (A/B/C/D)، لكن النص يُقرأ من الخيار الأصلي الذي جاء في هذا الموضع بعد الخلط
+                    const originalOpt = currentShuffled.order[optIdx];
+                    const k = `option_${originalOpt.toLowerCase()}` as keyof Question;
                     const text = cleanOptionText(currentQuestion[k] as string);
-                    const isCorr = currentQuestion.correct_option === opt;
+                    const isCorr = mappedCorrectOption === opt;
                     const isSel = selectedAnswer === opt;
                     return (
                       <button
@@ -722,7 +749,7 @@ const ExamPage = () => {
                       <span>
                         {isAnswerCorrect
                           ? "إجابة صحيحة! 🎉"
-                          : `إجابة خاطئة — الصحيحة: ${currentQuestion.correct_option}`}
+                          : `إجابة خاطئة — الصحيحة: ${mappedCorrectOption === 'A' ? 'أ' : mappedCorrectOption === 'B' ? 'ب' : mappedCorrectOption === 'C' ? 'ج' : 'د'}`}
                       </span>
                     </div>
 
@@ -778,7 +805,15 @@ const ExamPage = () => {
                             const pct = Math.round((count / (currentQuestionStats as any).total_answers) * 100);
                             const currentQ = questions[currentIndex];
                             const isCorr = currentQ?.correct_option === opt;
-                            const isSel = answers[currentQ?.id] === opt;
+                            // تحويل إجابة المستخدم المخلوطة إلى الأصلية للمقارنة مع الإحصائيات
+                            const userMappedAnswer = answers[currentQ?.id];
+                            const userOriginalAnswer = (() => {
+                              if (!userMappedAnswer || !currentQ) return undefined;
+                              const so = shuffledOptionsMap[currentQ.id]?.order ?? ['A','B','C','D'];
+                              const idx = ['A','B','C','D'].indexOf(userMappedAnswer);
+                              return so[idx] ?? userMappedAnswer;
+                            })();
+                            const isSel = userOriginalAnswer === opt;
                             const arLabel = opt === 'A' ? 'أ' : opt === 'B' ? 'ب' : opt === 'C' ? 'ج' : 'د';
                             return (
                               <div key={opt} className={cn('rounded-xl p-2 text-center border',
