@@ -720,7 +720,7 @@ const AdminQuestions = () => {
                     <SelectValue placeholder="النموذج" />
                   </SelectTrigger>
                   <SelectContent className="z-[10001] bg-white">
-                    {EXAM_FORMS.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                    {activeExamForms.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 <Button variant="ghost" onClick={() => setIsPreviewOpen(false)} className="rounded-xl font-bold px-4 md:px-8 text-sm">إلغاء</Button>
