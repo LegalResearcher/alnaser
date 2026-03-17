@@ -944,6 +944,48 @@ const AdminQuestions = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog إضافة نموذج جديد (ثالث ثانوي فقط) */}
+      <Dialog open={isAddFormDialogOpen} onOpenChange={setIsAddFormDialogOpen}>
+        <DialogContent className="max-w-md bg-white rounded-3xl p-8 z-[9999] font-cairo font-bold shadow-2xl border-none">
+          <DialogHeader><DialogTitle className="text-xl font-black">إدارة النماذج الإضافية</DialogTitle></DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="flex gap-2">
+              <Input
+                value={newFormName}
+                onChange={(e) => setNewFormName(e.target.value)}
+                placeholder="اسم النموذج الجديد (مثال: نموذج 16)"
+                className="rounded-xl h-11 text-right flex-1"
+                dir="rtl"
+              />
+              <Button
+                onClick={() => { if (newFormName.trim()) addFormMutation.mutate(newFormName.trim()); }}
+                disabled={!newFormName.trim() || addFormMutation.isPending}
+                className="gradient-primary text-white rounded-xl px-6 font-black"
+              >
+                {addFormMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'إضافة'}
+              </Button>
+            </div>
+            {customForms.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs text-slate-500 font-black">النماذج المضافة:</p>
+                {customForms.map((f: any) => (
+                  <div key={f.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-sm font-bold text-slate-700">{f.form_name}</span>
+                    <button
+                      onClick={() => deleteFormMutation.mutate(f.id)}
+                      disabled={deleteFormMutation.isPending}
+                      className="w-7 h-7 rounded-lg text-destructive hover:bg-destructive/10 flex items-center justify-center transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
