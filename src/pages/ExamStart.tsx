@@ -354,8 +354,8 @@ const ExamStart = () => {
                     focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all">
                     <SelectValue placeholder="اختر النموذج" />
                   </SelectTrigger>
-                  <SelectContent className="z-[9999] bg-white dark:bg-card border-slate-200 dark:border-border rounded-2xl shadow-2xl">
-                    {EXAM_FORMS.map((form) => (
+                  <SelectContent className="z-[9999] bg-white dark:bg-card border-slate-200 dark:border-border rounded-2xl shadow-2xl max-h-[280px]">
+                    {activeExamForms.map((form) => (
                       <SelectItem key={form.id} value={form.id} className="h-11 rounded-xl font-bold cursor-pointer">
                         {form.name}
                       </SelectItem>
