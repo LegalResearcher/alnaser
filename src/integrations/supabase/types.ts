@@ -572,6 +572,44 @@ export type Database = {
         }
         Relationships: []
       }
+      subject_exam_forms: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          form_id: string
+          form_name: string
+          id: string
+          order_index: number
+          subject_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          form_id: string
+          form_name: string
+          id?: string
+          order_index?: number
+          subject_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          form_id?: string
+          form_name?: string
+          id?: string
+          order_index?: number
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subject_exam_forms_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subjects: {
         Row: {
           allow_time_modification: boolean
