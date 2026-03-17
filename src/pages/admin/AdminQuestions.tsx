@@ -932,7 +932,7 @@ const AdminQuestions = () => {
                     <SelectValue placeholder="اختر النموذج" />
                   </SelectTrigger>
                   <SelectContent className="z-[10001] bg-white border border-slate-200 shadow-xl rounded-xl">
-                    {EXAM_FORMS.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                    {activeExamForms.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
