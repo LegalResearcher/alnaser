@@ -5,7 +5,7 @@
  * Version: 22.0 (RTL Fix + Arabic Text Support)
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { 
