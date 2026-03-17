@@ -23,6 +23,7 @@ import { Subject, EXAM_YEARS } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 import { useCachedQuery } from '@/hooks/useCachedQuery';
 import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { ExamStartSEO } from '@/components/seo/SEOHead';
 
@@ -90,6 +91,30 @@ const ExamStart = () => {
     },
     { enabled: !!subjectId }
   );
+
+  const isThirdLevel = !!subject?.levels?.name?.includes('ثالث');
+
+  const defaultThirdForms = useMemo(() =>
+    Array.from({ length: 15 }, (_, i) => ({ id: `Model_${i + 1}`, name: `نموذج ${i + 1}` })),
+  []);
+
+  const { data: customForms = [] } = useQuery({
+    queryKey: ['subject-exam-forms', subjectId],
+    queryFn: async () => {
+      const { data } = await (supabase.from('subject_exam_forms' as any) as any)
+        .select('*')
+        .eq('subject_id', subjectId)
+        .order('order_index');
+      return (data || []) as { form_id: string; form_name: string }[];
+    },
+    enabled: isThirdLevel && !!subjectId,
+  });
+
+  const activeExamForms = useMemo(() =>
+    isThirdLevel
+      ? [...defaultThirdForms, ...customForms.map(f => ({ id: f.form_id, name: f.form_name }))]
+      : EXAM_FORMS,
+  [isThirdLevel, defaultThirdForms, customForms]);
 
   const { data: questionCount = 0, isLoading: countLoading } = useQuery({
     queryKey: ['question-count', subjectId, selectedYear, selectedExamForm],
@@ -329,8 +354,8 @@ const ExamStart = () => {
                     focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all">
                     <SelectValue placeholder="اختر النموذج" />
                   </SelectTrigger>
-                  <SelectContent className="z-[9999] bg-white dark:bg-card border-slate-200 dark:border-border rounded-2xl shadow-2xl">
-                    {EXAM_FORMS.map((form) => (
+                  <SelectContent className="z-[9999] bg-white dark:bg-card border-slate-200 dark:border-border rounded-2xl shadow-2xl max-h-[280px]">
+                    {activeExamForms.map((form) => (
                       <SelectItem key={form.id} value={form.id} className="h-11 rounded-xl font-bold cursor-pointer">
                         {form.name}
                       </SelectItem>
