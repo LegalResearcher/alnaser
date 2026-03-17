@@ -23,6 +23,7 @@ import { Subject, EXAM_YEARS } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 import { useCachedQuery } from '@/hooks/useCachedQuery';
 import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { ExamStartSEO } from '@/components/seo/SEOHead';
 
