@@ -388,6 +388,63 @@ const AdminQuestions = () => {
     enabled: !!selectedSubject,
   });
 
+  // --- منطق ثالث ثانوي ---
+  const selectedLevelName = useMemo(() => levels.find(l => l.id === selectedLevel)?.name || '', [levels, selectedLevel]);
+  const isThirdLevel = selectedLevelName.includes('ثالث');
+
+  const defaultThirdForms = useMemo(() =>
+    Array.from({ length: 15 }, (_, i) => ({ id: `Model_${i + 1}`, name: `نموذج ${i + 1}` })),
+  []);
+
+  const { data: customForms = [] } = useQuery({
+    queryKey: ['subject-exam-forms', selectedSubject],
+    queryFn: async () => {
+      const { data } = await (supabase.from('subject_exam_forms' as any) as any)
+        .select('*')
+        .eq('subject_id', selectedSubject)
+        .order('order_index');
+      return (data || []) as { id: string; form_id: string; form_name: string; order_index: number }[];
+    },
+    enabled: isThirdLevel && !!selectedSubject,
+  });
+
+  const addFormMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const formId = name.replace(/\s+/g, '_');
+      const { error } = await (supabase.from('subject_exam_forms' as any) as any).insert({
+        subject_id: selectedSubject,
+        form_id: formId,
+        form_name: name,
+        order_index: (customForms.length || 0) + 16,
+        created_by: user?.id,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subject-exam-forms'] });
+      setNewFormName('');
+      toast({ title: 'تمت إضافة النموذج ✅' });
+    },
+    onError: (err: any) => toast({ title: 'خطأ', description: err.message, variant: 'destructive' }),
+  });
+
+  const deleteFormMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase.from('subject_exam_forms' as any) as any).delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subject-exam-forms'] });
+      toast({ title: 'تم حذف النموذج' });
+    },
+  });
+
+  const activeExamForms = useMemo(() => {
+    if (!isThirdLevel) return EXAM_FORMS;
+    const custom = customForms.map((f: any) => ({ id: f.form_id, name: f.form_name }));
+    return [...defaultThirdForms, ...custom];
+  }, [isThirdLevel, customForms, defaultThirdForms]);
+
   // --- حفظ جماعي ---
   const bulkSave = useMutation({
     mutationFn: async (list: any[]) => {
