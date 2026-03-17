@@ -5,7 +5,7 @@
  * Version: 22.0 (RTL Fix + Arabic Text Support)
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { 
@@ -205,6 +205,10 @@ const AdminQuestions = () => {
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [requestDeleteQuestion, setRequestDeleteQuestion] = useState<Question | null>(null);
 
+  // حالات نماذج ثالث ثانوي
+  const [isAddFormDialogOpen, setIsAddFormDialogOpen] = useState(false);
+  const [newFormName, setNewFormName] = useState('');
+
   const [formData, setFormData] = useState({
     question_text: '', option_a: '', option_b: '', option_c: '', option_d: '',
     correct_option: 'A' as 'A' | 'B' | 'C' | 'D', hint: '', exam_year: '', exam_form: 'General',
@@ -383,6 +387,63 @@ const AdminQuestions = () => {
     },
     enabled: !!selectedSubject,
   });
+
+  // --- منطق ثالث ثانوي ---
+  const selectedLevelName = useMemo(() => levels.find(l => l.id === selectedLevel)?.name || '', [levels, selectedLevel]);
+  const isThirdLevel = selectedLevelName.includes('ثالث');
+
+  const defaultThirdForms = useMemo(() =>
+    Array.from({ length: 15 }, (_, i) => ({ id: `Model_${i + 1}`, name: `نموذج ${i + 1}` })),
+  []);
+
+  const { data: customForms = [] } = useQuery({
+    queryKey: ['subject-exam-forms', selectedSubject],
+    queryFn: async () => {
+      const { data } = await (supabase.from('subject_exam_forms' as any) as any)
+        .select('*')
+        .eq('subject_id', selectedSubject)
+        .order('order_index');
+      return (data || []) as { id: string; form_id: string; form_name: string; order_index: number }[];
+    },
+    enabled: isThirdLevel && !!selectedSubject,
+  });
+
+  const addFormMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const formId = name.replace(/\s+/g, '_');
+      const { error } = await (supabase.from('subject_exam_forms' as any) as any).insert({
+        subject_id: selectedSubject,
+        form_id: formId,
+        form_name: name,
+        order_index: (customForms.length || 0) + 16,
+        created_by: user?.id,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subject-exam-forms'] });
+      setNewFormName('');
+      toast({ title: 'تمت إضافة النموذج ✅' });
+    },
+    onError: (err: any) => toast({ title: 'خطأ', description: err.message, variant: 'destructive' }),
+  });
+
+  const deleteFormMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase.from('subject_exam_forms' as any) as any).delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subject-exam-forms'] });
+      toast({ title: 'تم حذف النموذج' });
+    },
+  });
+
+  const activeExamForms = useMemo(() => {
+    if (!isThirdLevel) return EXAM_FORMS;
+    const custom = customForms.map((f: any) => ({ id: f.form_id, name: f.form_name }));
+    return [...defaultThirdForms, ...custom];
+  }, [isThirdLevel, customForms, defaultThirdForms]);
 
   // --- حفظ جماعي ---
   const bulkSave = useMutation({
@@ -598,7 +659,10 @@ const AdminQuestions = () => {
           <Select value={selectedLevel} onValueChange={setSelectedLevel}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="المستوى" /></SelectTrigger><SelectContent className="z-[9999] bg-white">{levels.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent></Select>
           <Select value={selectedSubject} onValueChange={setSelectedSubject}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="المادة" /></SelectTrigger><SelectContent className="z-[9999] bg-white">{subjects.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select>
           <Select value={selectedYear || "all"} onValueChange={(v) => setSelectedYear(v === "all" ? "" : v)}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="السنة" /></SelectTrigger><SelectContent className="z-[9999] bg-white shadow-2xl"><SelectItem value="all">كل السنوات</SelectItem>{EXAM_YEARS.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}</SelectContent></Select>
-          <Select value={selectedExamForm || "all"} onValueChange={(v) => { setSelectedExamForm(v === "all" ? "" : v); if (v === "Trial") setSelectedYear(""); }}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="النموذج" /></SelectTrigger><SelectContent className="z-[9999] bg-white shadow-2xl"><SelectItem value="all">كل النماذج</SelectItem>{EXAM_FORMS.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent></Select>
+          <div className="flex items-center gap-1">
+            <Select value={selectedExamForm || "all"} onValueChange={(v) => { setSelectedExamForm(v === "all" ? "" : v); if (v === "Trial") setSelectedYear(""); }}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="النموذج" /></SelectTrigger><SelectContent className="z-[9999] bg-white shadow-2xl max-h-[300px]"><SelectItem value="all">كل النماذج</SelectItem>{activeExamForms.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent></Select>
+            {isThirdLevel && selectedSubject && <button onClick={() => setIsAddFormDialogOpen(true)} className="shrink-0 w-10 h-10 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 flex items-center justify-center transition-colors"><Plus className="w-4 h-4" /></button>}
+          </div>
           <div className="relative"><Search className="absolute right-3 top-2.5 w-4 h-4 text-slate-400" /><Input placeholder="بحث..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pr-10 bg-white border-slate-200 rounded-xl" dir="rtl" /></div>
         </div>
 
@@ -656,7 +720,7 @@ const AdminQuestions = () => {
                     <SelectValue placeholder="النموذج" />
                   </SelectTrigger>
                   <SelectContent className="z-[10001] bg-white">
-                    {EXAM_FORMS.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                    {activeExamForms.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 <Button variant="ghost" onClick={() => setIsPreviewOpen(false)} className="rounded-xl font-bold px-4 md:px-8 text-sm">إلغاء</Button>
@@ -868,7 +932,7 @@ const AdminQuestions = () => {
                     <SelectValue placeholder="اختر النموذج" />
                   </SelectTrigger>
                   <SelectContent className="z-[10001] bg-white border border-slate-200 shadow-xl rounded-xl">
-                    {EXAM_FORMS.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                    {activeExamForms.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -878,6 +942,48 @@ const AdminQuestions = () => {
               {saveSingleMutation.isPending ? 'جاري الحفظ...' : 'حفظ البيانات'}
             </Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog إضافة نموذج جديد (ثالث ثانوي فقط) */}
+      <Dialog open={isAddFormDialogOpen} onOpenChange={setIsAddFormDialogOpen}>
+        <DialogContent className="max-w-md bg-white rounded-3xl p-8 z-[9999] font-cairo font-bold shadow-2xl border-none">
+          <DialogHeader><DialogTitle className="text-xl font-black">إدارة النماذج الإضافية</DialogTitle></DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="flex gap-2">
+              <Input
+                value={newFormName}
+                onChange={(e) => setNewFormName(e.target.value)}
+                placeholder="اسم النموذج الجديد (مثال: نموذج 16)"
+                className="rounded-xl h-11 text-right flex-1"
+                dir="rtl"
+              />
+              <Button
+                onClick={() => { if (newFormName.trim()) addFormMutation.mutate(newFormName.trim()); }}
+                disabled={!newFormName.trim() || addFormMutation.isPending}
+                className="gradient-primary text-white rounded-xl px-6 font-black"
+              >
+                {addFormMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'إضافة'}
+              </Button>
+            </div>
+            {customForms.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs text-slate-500 font-black">النماذج المضافة:</p>
+                {customForms.map((f: any) => (
+                  <div key={f.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-sm font-bold text-slate-700">{f.form_name}</span>
+                    <button
+                      onClick={() => deleteFormMutation.mutate(f.id)}
+                      disabled={deleteFormMutation.isPending}
+                      className="w-7 h-7 rounded-lg text-destructive hover:bg-destructive/10 flex items-center justify-center transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </AdminLayout>
