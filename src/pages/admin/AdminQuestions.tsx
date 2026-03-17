@@ -205,6 +205,10 @@ const AdminQuestions = () => {
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [requestDeleteQuestion, setRequestDeleteQuestion] = useState<Question | null>(null);
 
+  // حالات نماذج ثالث ثانوي
+  const [isAddFormDialogOpen, setIsAddFormDialogOpen] = useState(false);
+  const [newFormName, setNewFormName] = useState('');
+
   const [formData, setFormData] = useState({
     question_text: '', option_a: '', option_b: '', option_c: '', option_d: '',
     correct_option: 'A' as 'A' | 'B' | 'C' | 'D', hint: '', exam_year: '', exam_form: 'General',
