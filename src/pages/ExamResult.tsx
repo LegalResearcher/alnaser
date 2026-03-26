@@ -123,10 +123,18 @@ const ExamResult = () => {
   const [copiedChallenge, setCopiedChallenge] = useState(false);
   const [levelId, setLevelId] = useState<string | null>(null);
   const [nextSubject, setNextSubject] = useState<{ id: string; name: string } | null>(null);
+  const [wrongQuestions, setWrongQuestions] = useState<string[]>([]);
 
   // جلب level_id والمادة التالية
   useEffect(() => {
     if (!state?.subjectId) return;
+    // تحميل الأسئلة الخاطئة من localStorage
+    try {
+      const key = `wrong_questions_${state.subjectId}`;
+      const stored = JSON.parse(localStorage.getItem(key) || '[]') as string[];
+      setWrongQuestions(stored);
+    } catch { /* ignore */ }
+
     supabase.from('subjects').select('level_id, order_index').eq('id', state.subjectId).maybeSingle()
       .then(({ data: cur }) => {
         if (!cur?.level_id) return;
@@ -677,6 +685,41 @@ ${challengeLink}`; window.open(`https://www.facebook.com/sharer/sharer.php?u=${e
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* ── زر مراجعة الأسئلة الخاطئة ── */}
+            {wrongQuestions.length >= 3 && state?.subjectId && (
+              <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 rounded-3xl p-5 animate-in slide-in-from-bottom-4 fade-in duration-500">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-2xl bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center shrink-0">
+                    <AlertCircle className="w-5 h-5 text-rose-500" />
+                  </div>
+                  <div>
+                    <p className="font-black text-rose-700 dark:text-rose-400">لديك {wrongQuestions.length} سؤال أخطأت فيه</p>
+                    <p className="text-xs text-rose-500 font-bold">راجع أخطاءك وعزز فهمك</p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => navigate(`/exam/${state.subjectId}/start`, {
+                    state: {
+                      studentName:      state.studentName,
+                      examYear:         0,
+                      examForm:         'WrongReview',
+                      examTime:         state.examTime || 30,
+                      questionsCount:   wrongQuestions.length,
+                      subjectName:      state.subjectName,
+                      levelName:        state.levelName,
+                      isTrial:          false,
+                      allQuestions:     false,
+                      forcedQuestionIds: wrongQuestions,
+                      isWrongReview:    true,
+                    },
+                  })}
+                  className="w-full h-12 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-black text-sm gap-2 shadow-lg shadow-rose-500/25 active:scale-[0.98]"
+                >
+                  <RotateCcw className="w-4 h-4" /> اختبر الأسئلة التي أخطأت فيها
+                </Button>
               </div>
             )}
 
