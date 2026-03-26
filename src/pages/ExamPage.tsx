@@ -242,6 +242,38 @@ const ExamPage = () => {
 
   const progressSaveInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // ── جلب الأسئلة (يجب أن يكون قبل أي useEffect يستخدم questions) ──
+  const { data: questions = [], isLoading } = useQuery({
+    queryKey: ['exam-questions', subjectId, state?.examYear, state?.examForm, state?.questionsCount, state?.forcedQuestionIds?.join(','), !!state?.resumeProgress],
+    queryFn: async () => {
+      // استئناف: استخدم ترتيب الأسئلة المحفوظ
+      if (state?.resumeProgress?.questionIds?.length) {
+        const { data, error } = await supabase.from('questions').select('*').in('id', state.resumeProgress.questionIds).eq('status', 'active');
+        if (error) throw error;
+        const map = Object.fromEntries((data as Question[]).map(q => [q.id, q]));
+        return state.resumeProgress.questionIds.map(id => map[id]).filter(Boolean) as Question[];
+      }
+      // أسئلة محددة (مراجعة الأخطاء / مبارزة)
+      if (state?.forcedQuestionIds?.length) {
+        const { data, error } = await supabase.from('questions').select('*').in('id', state.forcedQuestionIds).eq('status', 'active');
+        if (error) throw error;
+        return (data as Question[]).sort(() => Math.random() - 0.5);
+      }
+      let query = supabase.from('questions').select('*').eq('subject_id', subjectId).eq('status', 'active');
+      if (!state?.allQuestions) {
+        if (state?.isTrial) { query = query.is('exam_year', null); }
+        else {
+          if (state.examYear) query = query.eq('exam_year', state.examYear);
+          if (state.examForm && state.examForm !== 'Mixed') query = query.eq('exam_form', state.examForm);
+        }
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data as Question[]).sort(() => Math.random() - 0.5);
+    },
+    enabled: !!subjectId && (!!state?.examYear || !!state?.isTrial || !!state?.allQuestions || !!state?.forcedQuestionIds?.length || !!state?.resumeProgress),
+  });
+
   // حفظ التقدم كل 5 ثوانٍ (فقط لـ allQuestions)
   useEffect(() => {
     if (!state?.allQuestions || !subjectId || !state?.studentName || !questions.length) return;
@@ -274,37 +306,6 @@ const ExamPage = () => {
   useEffect(() => {
     if (!state?.studentName) navigate(`/exam/${subjectId}`);
   }, [state, subjectId, navigate]);
-
-  const { data: questions = [], isLoading } = useQuery({
-    queryKey: ['exam-questions', subjectId, state?.examYear, state?.examForm, state?.questionsCount, state?.forcedQuestionIds?.join(','), !!state?.resumeProgress],
-    queryFn: async () => {
-      // استئناف: استخدم ترتيب الأسئلة المحفوظ
-      if (state?.resumeProgress?.questionIds?.length) {
-        const { data, error } = await supabase.from('questions').select('*').in('id', state.resumeProgress.questionIds).eq('status', 'active');
-        if (error) throw error;
-        const map = Object.fromEntries((data as Question[]).map(q => [q.id, q]));
-        return state.resumeProgress.questionIds.map(id => map[id]).filter(Boolean) as Question[];
-      }
-      // أسئلة محددة (مراجعة الأخطاء / مبارزة)
-      if (state?.forcedQuestionIds?.length) {
-        const { data, error } = await supabase.from('questions').select('*').in('id', state.forcedQuestionIds).eq('status', 'active');
-        if (error) throw error;
-        return (data as Question[]).sort(() => Math.random() - 0.5);
-      }
-      let query = supabase.from('questions').select('*').eq('subject_id', subjectId).eq('status', 'active');
-      if (!state?.allQuestions) {
-        if (state?.isTrial) { query = query.is('exam_year', null); }
-        else {
-          if (state.examYear) query = query.eq('exam_year', state.examYear);
-          if (state.examForm && state.examForm !== 'Mixed') query = query.eq('exam_form', state.examForm);
-        }
-      }
-      const { data, error } = await query;
-      if (error) throw error;
-      return (data as Question[]).sort(() => Math.random() - 0.5);
-    },
-    enabled: !!subjectId && (!!state?.examYear || !!state?.isTrial || !!state?.allQuestions || !!state?.forcedQuestionIds?.length || !!state?.resumeProgress),
-  });
 
   const { data: subject } = useCachedQuery(
     ['subject', subjectId],
