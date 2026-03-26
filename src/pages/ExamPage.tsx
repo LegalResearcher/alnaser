@@ -3,12 +3,12 @@
  * Project: Alnaser Legal Platform
  * Component: Exam Engine (Active Quiz)
  * Developed by: Mueen Al-Nasser
- * Version: 2.3 (Full UX Enhancement: Confetti + Shake + Score + Circular Timer + Slide + Next-After-Answer)
+ * Version: 3.0 (Wrong Bank + Resume + Updated Question Banner)
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { Clock, ChevronLeft, ChevronRight, Flag, AlertTriangle, CheckCircle2, XCircle, Star, Share2, Check, MessageSquare } from 'lucide-react';
+import { Clock, ChevronLeft, ChevronRight, Flag, AlertTriangle, CheckCircle2, XCircle, Star, Share2, Check, MessageSquare, AlertOctagon } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
@@ -27,6 +27,15 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+interface SavedProgress {
+  questionIds: string[];
+  answers: Record<string, string>;
+  currentIndex: number;
+  timeRemainingSeconds: number;
+  savedAt: string;
+  questionsCount: number;
+}
+
 interface ExamState {
   studentName: string;
   examYear: number;
@@ -40,6 +49,45 @@ interface ExamState {
   challengeMode?: boolean;
   challengeSessionId?: string;
   forcedQuestionIds?: string[];
+  isWrongReview?: boolean;
+  resumeProgress?: SavedProgress;
+}
+
+/* ── localStorage helpers ── */
+function addWrongQuestion(subjectId: string, questionId: string) {
+  try {
+    const key = `wrong_questions_${subjectId}`;
+    const existing: string[] = JSON.parse(localStorage.getItem(key) || '[]');
+    if (!existing.includes(questionId)) {
+      localStorage.setItem(key, JSON.stringify([...existing, questionId]));
+    }
+  } catch { /* ignore */ }
+}
+function removeWrongQuestion(subjectId: string, questionId: string) {
+  try {
+    const key = `wrong_questions_${subjectId}`;
+    const existing: string[] = JSON.parse(localStorage.getItem(key) || '[]');
+    localStorage.setItem(key, JSON.stringify(existing.filter(id => id !== questionId)));
+  } catch { /* ignore */ }
+}
+function saveExamProgress(subjectId: string, studentName: string, progress: SavedProgress) {
+  try {
+    const key = `exam_progress_${subjectId}_All_0_${studentName}`;
+    localStorage.setItem(key, JSON.stringify(progress));
+  } catch { /* ignore */ }
+}
+function clearExamProgress(subjectId: string, studentName: string) {
+  try {
+    localStorage.removeItem(`exam_progress_${subjectId}_All_0_${studentName}`);
+  } catch { /* ignore */ }
+}
+
+/* ── بانر تحذير السؤال المحدّث ── */
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+function isRecentlyUpdated(updatedAt: string | undefined): boolean {
+  if (!updatedAt) return false;
+  try { return Date.now() - new Date(updatedAt).getTime() < SEVEN_DAYS_MS; }
+  catch { return false; }
 }
 
 const cleanOptionText = (text: string | null | undefined): string => {
@@ -158,9 +206,15 @@ const ExamPage = () => {
   const state = location.state as ExamState;
   const totalTime = (state?.examTime || 30) * 60;
 
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [timeLeft, setTimeLeft] = useState(totalTime);
+  const [currentIndex, setCurrentIndex] = useState(
+    state?.resumeProgress ? state.resumeProgress.currentIndex : 0
+  );
+  const [answers, setAnswers] = useState<Record<string, string>>(
+    state?.resumeProgress ? state.resumeProgress.answers : {}
+  );
+  const [timeLeft, setTimeLeft] = useState(
+    state?.resumeProgress ? state.resumeProgress.timeRemainingSeconds : totalTime
+  );
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [showReviewDialog, setShowReviewDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -186,14 +240,52 @@ const ExamPage = () => {
   const [animKey, setAnimKey] = useState(0);
   const [showScoreFloat, setShowScoreFloat] = useState(false);
 
+  const progressSaveInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // حفظ التقدم كل 5 ثوانٍ (فقط لـ allQuestions)
+  useEffect(() => {
+    if (!state?.allQuestions || !subjectId || !state?.studentName || !questions.length) return;
+    progressSaveInterval.current = setInterval(() => {
+      saveExamProgress(subjectId, state.studentName, {
+        questionIds: questions.map(q => q.id),
+        answers,
+        currentIndex,
+        timeRemainingSeconds: timeLeft,
+        savedAt: new Date().toISOString(),
+        questionsCount: questions.length,
+      });
+    }, 5000);
+    return () => { if (progressSaveInterval.current) clearInterval(progressSaveInterval.current); };
+  }, [state?.allQuestions, subjectId, state?.studentName, questions, answers, currentIndex, timeLeft]);
+
+  // حفظ التقدم عند كل إجابة أو تنقل
+  const saveProgress = useCallback(() => {
+    if (!state?.allQuestions || !subjectId || !state?.studentName || !questions.length) return;
+    saveExamProgress(subjectId, state.studentName, {
+      questionIds: questions.map(q => q.id),
+      answers,
+      currentIndex,
+      timeRemainingSeconds: timeLeft,
+      savedAt: new Date().toISOString(),
+      questionsCount: questions.length,
+    });
+  }, [state?.allQuestions, subjectId, state?.studentName, questions, answers, currentIndex, timeLeft]);
+
   useEffect(() => {
     if (!state?.studentName) navigate(`/exam/${subjectId}`);
   }, [state, subjectId, navigate]);
 
   const { data: questions = [], isLoading } = useQuery({
-    queryKey: ['exam-questions', subjectId, state?.examYear, state?.examForm, state?.questionsCount, state?.forcedQuestionIds?.join(',')],
+    queryKey: ['exam-questions', subjectId, state?.examYear, state?.examForm, state?.questionsCount, state?.forcedQuestionIds?.join(','), !!state?.resumeProgress],
     queryFn: async () => {
-      // إذا كانت أسئلة محددة (مبارزة)
+      // استئناف: استخدم ترتيب الأسئلة المحفوظ
+      if (state?.resumeProgress?.questionIds?.length) {
+        const { data, error } = await supabase.from('questions').select('*').in('id', state.resumeProgress.questionIds).eq('status', 'active');
+        if (error) throw error;
+        const map = Object.fromEntries((data as Question[]).map(q => [q.id, q]));
+        return state.resumeProgress.questionIds.map(id => map[id]).filter(Boolean) as Question[];
+      }
+      // أسئلة محددة (مراجعة الأخطاء / مبارزة)
       if (state?.forcedQuestionIds?.length) {
         const { data, error } = await supabase.from('questions').select('*').in('id', state.forcedQuestionIds).eq('status', 'active');
         if (error) throw error;
@@ -201,9 +293,8 @@ const ExamPage = () => {
       }
       let query = supabase.from('questions').select('*').eq('subject_id', subjectId).eq('status', 'active');
       if (!state?.allQuestions) {
-        if (state?.isTrial) {
-          query = query.is('exam_year', null);
-        } else {
+        if (state?.isTrial) { query = query.is('exam_year', null); }
+        else {
           if (state.examYear) query = query.eq('exam_year', state.examYear);
           if (state.examForm && state.examForm !== 'Mixed') query = query.eq('exam_form', state.examForm);
         }
@@ -212,7 +303,7 @@ const ExamPage = () => {
       if (error) throw error;
       return (data as Question[]).sort(() => Math.random() - 0.5);
     },
-    enabled: !!subjectId && (!!state?.examYear || !!state?.isTrial || !!state?.allQuestions || !!state?.forcedQuestionIds?.length),
+    enabled: !!subjectId && (!!state?.examYear || !!state?.isTrial || !!state?.allQuestions || !!state?.forcedQuestionIds?.length || !!state?.resumeProgress),
   });
 
   const { data: subject } = useCachedQuery(
@@ -252,6 +343,10 @@ const ExamPage = () => {
   const handleSubmit = useCallback(async () => {
     if (isSubmitting || !questions.length) return;
     setIsSubmitting(true);
+    // مسح التقدم المحفوظ عند التسليم
+    if (state?.allQuestions && subjectId && state?.studentName) {
+      clearExamProgress(subjectId, state.studentName);
+    }
     let finalScore = 0;
     questions.forEach((q) => {
       const mapped = shuffledOptionsMap[q.id]?.correctMapped ?? q.correct_option;
@@ -510,8 +605,25 @@ const ExamPage = () => {
 
   const handleAnswer = (option: string) => {
     if (hasAnswered) return;
-    setAnswers({ ...answers, [currentQuestion.id]: option });
-    if (option === mappedCorrectOption) {
+    const newAnswers = { ...answers, [currentQuestion.id]: option };
+    setAnswers(newAnswers);
+
+    const isCorrect = option === mappedCorrectOption;
+
+    // تتبع الأسئلة الخاطئة (فقط في الاختبارات العادية وليس مراجعة الأخطاء)
+    if (subjectId && !state?.isWrongReview) {
+      if (!isCorrect) {
+        addWrongQuestion(subjectId, currentQuestion.id);
+      } else {
+        removeWrongQuestion(subjectId, currentQuestion.id);
+      }
+    }
+    // في مراجعة الأخطاء: إذا أجاب صح، احذف من القائمة
+    if (subjectId && state?.isWrongReview) {
+      if (isCorrect) removeWrongQuestion(subjectId, currentQuestion.id);
+    }
+
+    if (isCorrect) {
       setLiveScore(s => s + 1);
       setShowConfetti(true);
       setShowScoreFloat(true);
@@ -522,6 +634,20 @@ const ExamPage = () => {
       setTimeout(() => setShakeCard(false), 520);
       if (currentQuestion.hint) setShowHint(true);
     }
+
+    // حفظ التقدم بعد الإجابة
+    if (state?.allQuestions && subjectId && state?.studentName && questions.length) {
+      try {
+        saveExamProgress(subjectId, state.studentName, {
+          questionIds: questions.map(q => q.id),
+          answers: newAnswers,
+          currentIndex,
+          timeRemainingSeconds: timeLeft,
+          savedAt: new Date().toISOString(),
+          questionsCount: questions.length,
+        });
+      } catch { /* ignore */ }
+    }
   };
 
   const goTo = (index: number) => {
@@ -529,6 +655,19 @@ const ExamPage = () => {
     setAnimKey(k => k + 1);
     setCurrentIndex(index);
     setShowHint(false);
+    // حفظ التقدم عند التنقل
+    if (state?.allQuestions && subjectId && state?.studentName && questions.length) {
+      try {
+        saveExamProgress(subjectId, state.studentName, {
+          questionIds: questions.map(q => q.id),
+          answers,
+          currentIndex: index,
+          timeRemainingSeconds: timeLeft,
+          savedAt: new Date().toISOString(),
+          questionsCount: questions.length,
+        });
+      } catch { /* ignore */ }
+    }
   };
   const goNext = () => goTo(Math.min(questions.length - 1, currentIndex + 1));
   const goPrev = () => goTo(Math.max(0, currentIndex - 1));
@@ -625,6 +764,17 @@ const ExamPage = () => {
                   shakeCard && "anim-shake"
                 )}
               >
+                {/* ── بانر تحذير السؤال المحدّث ── */}
+                {isRecentlyUpdated((currentQuestion as any).updated_at) && (
+                  <div className="mb-5 flex items-start gap-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700/60 rounded-2xl px-4 py-3 animate-in fade-in zoom-in-95 duration-300">
+                    <AlertOctagon className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-black text-amber-700 dark:text-amber-400">⚠️ تنبيه: تم تحديث هذا السؤال مؤخراً</p>
+                      <p className="text-[11px] text-amber-600 dark:text-amber-500 font-bold mt-0.5">تأكد من قراءته بعناية — قد تكون الإجابة قد تغيّرت</p>
+                    </div>
+                  </div>
+                )}
+
                 {/* رأس البطاقة */}
                 <div className="flex items-center gap-3 mb-5 md:mb-8 flex-wrap">
                   <div className="w-11 h-11 md:w-14 md:h-14 rounded-2xl bg-gradient-to-br from-primary to-blue-600 text-white flex items-center justify-center font-black text-lg md:text-xl shadow-lg shadow-primary/30 shrink-0">
