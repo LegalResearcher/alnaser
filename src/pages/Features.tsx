@@ -328,11 +328,21 @@ const stats = [
   { icon: Star,          value: '١٣',       label: 'مزايا حصرية',       color: 'text-amber-500' },
 ];
 
+/* ─────────────── تحويل الأرقام العربية إلى إنجليزية ─────────────── */
+function arabicToInt(str: string): number {
+  return parseInt(
+    str
+      .replace(/[٠-٩]/g, d => String(d.charCodeAt(0) - 0x0660))
+      .replace(/[^0-9]/g, ''),
+    10
+  ) || 0;
+}
+
 /* ─────────────── Count-up hook ─────────────── */
 function useCountUp(target: number, duration = 1800, start = false) {
   const [count, setCount] = useState(0);
   useEffect(() => {
-    if (!start) return;
+    if (!start || target === 0) return;
     let startTime: number | null = null;
     const step = (timestamp: number) => {
       if (!startTime) startTime = timestamp;
@@ -340,6 +350,7 @@ function useCountUp(target: number, duration = 1800, start = false) {
       const eased = 1 - Math.pow(1 - progress, 3);
       setCount(Math.floor(eased * target));
       if (progress < 1) requestAnimationFrame(step);
+      else setCount(target);
     };
     requestAnimationFrame(step);
   }, [start, target, duration]);
@@ -349,12 +360,11 @@ function useCountUp(target: number, duration = 1800, start = false) {
 /* ─────────────── Stat Item with count-up ─────────────── */
 function StatItem({ stat, animate }: { stat: typeof stats[0]; animate: boolean }) {
   const Icon = stat.icon;
-  const numericTarget = parseInt(stat.value.replace(/[^0-9]/g, ''), 10) || 0;
+  const numericTarget = arabicToInt(stat.value);
   const count = useCountUp(numericTarget, 1800, animate);
-  const prefix = stat.value.match(/^\+/) ? '+' : '';
-  const suffix = stat.value.replace(/[^٠-٩0-9+,]/g, '');
-  const displayValue = animate
-    ? `${prefix}${count.toLocaleString('ar-EG')}`
+  const hasPlus = stat.value.includes('+');
+  const displayValue = animate && numericTarget > 0
+    ? `${hasPlus ? '+' : ''}${count.toLocaleString('ar-EG')}`
     : stat.value;
 
   return (
