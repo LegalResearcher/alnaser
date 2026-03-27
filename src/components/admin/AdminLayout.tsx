@@ -20,7 +20,7 @@ const navItems = [
   { href: '/admin/questions', label: 'إدارة الأسئلة', icon: BookOpen },
   { href: '/admin/users', label: 'إدارة المستخدمين', icon: Users, adminOnly: true },
   { href: '/admin/deletion-requests', label: 'طلبات الحذف', icon: Trash2, adminOnly: true },
-  { href: '/admin/statistics', label: 'الإحصائيات التحليلية', icon: BarChart3, adminOnly: true },
+  { href: '/admin/statistics', label: 'الإحصائيات التحليلية', icon: BarChart3 },
   { href: '/admin/reports', label: 'تعقيبات الأسئلة', icon: MessageSquare, adminOnly: true },
   { href: '/admin/suggestions', label: 'اقتراحات الأسئلة', icon: Lightbulb, adminOnly: true },
   { href: '/admin/settings', label: 'إعدادات المنصة', icon: Settings },
