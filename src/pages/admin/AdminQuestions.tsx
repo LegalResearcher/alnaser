@@ -187,6 +187,7 @@ const AdminQuestions = () => {
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [selectedExamForm, setSelectedExamForm] = useState<string>('');
+  const [selectedTrialModel, setSelectedTrialModel] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   const [isFileUploadOpen, setIsFileUploadOpen] = useState(false);
@@ -370,17 +371,18 @@ const AdminQuestions = () => {
   const { data: subjects = [] } = useQuery({ queryKey: ['subjects', selectedLevel], queryFn: async () => { let q = supabase.from('subjects').select('*').order('order_index'); if(selectedLevel) q = q.eq('level_id', selectedLevel); return (await q).data as Subject[]; } });
 
   const { data: questions = [], isLoading } = useQuery({
-    queryKey: ['questions', selectedSubject, selectedYear, selectedExamForm, searchQuery],
+    queryKey: ['questions', selectedSubject, selectedYear, selectedExamForm, selectedTrialModel, searchQuery],
     queryFn: async () => {
       let query = supabase.from('questions').select('*').eq('status', 'active').order('created_at', { ascending: false });
       if (selectedSubject) query = query.eq('subject_id', selectedSubject);
-      if (selectedYear) {
-        query = query.eq('exam_year', parseInt(selectedYear));
-      }
       if (selectedExamForm === 'Trial') {
         query = query.is('exam_year', null);
-      } else if (selectedExamForm) {
-        query = query.eq('exam_form', selectedExamForm);
+        if (selectedTrialModel && selectedTrialModel !== 'all') {
+          query = query.eq('exam_form', selectedTrialModel);
+        }
+      } else {
+        if (selectedYear) query = query.eq('exam_year', parseInt(selectedYear));
+        if (selectedExamForm) query = query.eq('exam_form', selectedExamForm);
       }
       const { data } = await query;
       return data as Question[];
@@ -657,11 +659,19 @@ const AdminQuestions = () => {
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100 relative z-20 font-bold font-cairo">
           <Select value={selectedLevel} onValueChange={setSelectedLevel}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="المستوى" /></SelectTrigger><SelectContent className="z-[9999] bg-white">{levels.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}</SelectContent></Select>
           <Select value={selectedSubject} onValueChange={setSelectedSubject}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="المادة" /></SelectTrigger><SelectContent className="z-[9999] bg-white">{subjects.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select>
-          <Select value={selectedYear || "all"} onValueChange={(v) => setSelectedYear(v === "all" ? "" : v)}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="السنة" /></SelectTrigger><SelectContent className="z-[9999] bg-white shadow-2xl"><SelectItem value="all">كل السنوات</SelectItem>{EXAM_YEARS.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}</SelectContent></Select>
+          {/* إخفاء السنوات عند اختيار أسئلة تجريبية */}
+          {!isTrialSelected && (
+            <Select value={selectedYear || "all"} onValueChange={(v) => setSelectedYear(v === "all" ? "" : v)}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="السنة" /></SelectTrigger><SelectContent className="z-[9999] bg-white shadow-2xl"><SelectItem value="all">كل السنوات</SelectItem>{EXAM_YEARS.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}</SelectContent></Select>
+          )}
           <div className="flex items-center gap-1">
-            <Select value={selectedExamForm || "all"} onValueChange={(v) => { setSelectedExamForm(v === "all" ? "" : v); if (v === "Trial") setSelectedYear(""); }}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="النموذج" /></SelectTrigger><SelectContent className="z-[9999] bg-white shadow-2xl max-h-[300px]"><SelectItem value="all">كل النماذج</SelectItem>{activeExamForms.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent></Select>
+            {/* فلتر النوع (أسئلة تجريبية / نماذج عادية) */}
+            <Select value={selectedExamForm || "all"} onValueChange={(v) => { setSelectedExamForm(v === "all" ? "" : v); if (v === "Trial") { setSelectedYear(""); setSelectedTrialModel("all"); } }}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="النموذج" /></SelectTrigger><SelectContent className="z-[9999] bg-white shadow-2xl max-h-[300px]"><SelectItem value="all">كل النماذج</SelectItem>{EXAM_FORMS.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent></Select>
             {isTrialSelected && selectedSubject && <button onClick={() => setIsAddFormDialogOpen(true)} className="shrink-0 w-10 h-10 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 flex items-center justify-center transition-colors"><Plus className="w-4 h-4" /></button>}
           </div>
+          {/* فلتر النموذج الرقمي - يظهر فقط عند اختيار أسئلة تجريبية */}
+          {isTrialSelected && selectedSubject && (
+            <Select value={selectedTrialModel} onValueChange={setSelectedTrialModel}><SelectTrigger className="bg-white border-blue-300 rounded-xl border-2"><SelectValue placeholder="كل النماذج" /></SelectTrigger><SelectContent className="z-[9999] bg-white shadow-2xl max-h-[300px]"><SelectItem value="all">كل النماذج</SelectItem>{activeExamForms.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent></Select>
+          )}
           <div className="relative"><Search className="absolute right-3 top-2.5 w-4 h-4 text-slate-400" /><Input placeholder="بحث..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pr-10 bg-white border-slate-200 rounded-xl" dir="rtl" /></div>
         </div>
 
