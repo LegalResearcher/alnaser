@@ -105,6 +105,7 @@ const ExamStart = () => {
   const [password,         setPassword]         = useState('');
   const [selectedYear,     setSelectedYear]     = useState<string>('');
   const [selectedExamForm, setSelectedExamForm] = useState<string>('General');
+  const [selectedTrialForm, setSelectedTrialForm] = useState<string>('all');
   const [examTime,         setExamTime]         = useState<number>(30);
   const [wrongQuestions,   setWrongQuestions]   = useState<string[]>([]);
   const [savedProgress,    setSavedProgress]    = useState<SavedProgress | null>(null);
@@ -132,8 +133,8 @@ const ExamStart = () => {
     { enabled: !!subjectId }
   );
 
-  const isThirdLevel = !!subject?.levels?.name?.includes('ثالث');
-  const defaultThirdForms = useMemo(() => Array.from({ length: 15 }, (_, i) => ({ id: `Model_${i + 1}`, name: `نموذج ${i + 1}` })), []);
+  const isTrialSelected = selectedYear === 'trial';
+  const defaultTrialForms = useMemo(() => Array.from({ length: 15 }, (_, i) => ({ id: `Model_${i + 1}`, name: `نموذج ${i + 1}` })), []);
 
   const { data: customForms = [] } = useQuery({
     queryKey: ['subject-exam-forms', subjectId],
@@ -141,19 +142,23 @@ const ExamStart = () => {
       const { data } = await (supabase.from('subject_exam_forms' as any) as any).select('*').eq('subject_id', subjectId).order('order_index');
       return (data || []) as { form_id: string; form_name: string }[];
     },
-    enabled: isThirdLevel && !!subjectId,
+    enabled: isTrialSelected && !!subjectId,
   });
 
-  const activeExamForms = useMemo(() =>
-    isThirdLevel ? [...defaultThirdForms, ...customForms.map(f => ({ id: f.form_id, name: f.form_name }))] : EXAM_FORMS,
-  [isThirdLevel, defaultThirdForms, customForms]);
+  const activeTrialForms = useMemo(() =>
+    [...defaultTrialForms, ...customForms.map(f => ({ id: f.form_id, name: f.form_name }))],
+  [defaultTrialForms, customForms]);
+
+  const activeExamForms = useMemo(() => EXAM_FORMS, []);
 
   const { data: questionCount = 0, isLoading: countLoading } = useQuery({
-    queryKey: ['question-count', subjectId, selectedYear, selectedExamForm],
+    queryKey: ['question-count', subjectId, selectedYear, selectedExamForm, selectedTrialForm],
     queryFn: async () => {
       let query = supabase.from('questions').select('*', { count: 'exact', head: true }).eq('subject_id', subjectId).eq('status', 'active');
-      if (selectedYear === 'trial') { query = query.is('exam_year', null); }
-      else if (selectedYear !== 'all' && selectedYear) {
+      if (selectedYear === 'trial') {
+        query = query.is('exam_year', null);
+        if (selectedTrialForm !== 'all') query = query.eq('exam_form', selectedTrialForm);
+      } else if (selectedYear !== 'all' && selectedYear) {
         query = query.eq('exam_year', parseInt(selectedYear));
         if (selectedExamForm && selectedExamForm !== 'Mixed') query = query.eq('exam_form', selectedExamForm);
       }
@@ -177,13 +182,16 @@ const ExamStart = () => {
     const baseState = {
       studentName,
       examYear:       (selectedYear === 'trial' || selectedYear === 'all') ? 0 : parseInt(selectedYear),
-      examForm:       selectedYear === 'trial' ? 'Trial' : selectedYear === 'all' ? 'All' : selectedExamForm,
+      examForm:       selectedYear === 'trial'
+        ? (selectedTrialForm !== 'all' ? selectedTrialForm : 'Trial')
+        : selectedYear === 'all' ? 'All' : selectedExamForm,
       examTime,
       questionsCount: questionCount,
       subjectName:    subject?.name,
       levelName:      subject?.levels?.name,
       isTrial:        selectedYear === 'trial',
       allQuestions:   selectedYear === 'all',
+      trialFormFilter: selectedYear === 'trial' ? selectedTrialForm : null,
     };
     if (resume && savedProgress) {
       navigate(`/exam/${subjectId}/start`, { state: { ...baseState, resumeProgress: savedProgress } });
@@ -334,10 +342,26 @@ const ExamStart = () => {
               )}
 
               {selectedYear === 'trial' && (
-                <div className="flex items-center gap-3 bg-violet-50 border border-violet-100 rounded-[1rem] px-4 py-3">
-                  <span className="text-2xl">🧪</span>
-                  <div><p className="text-xs font-black text-violet-700">النموذج التجريبي</p><p className="text-[10px] text-violet-500 font-bold">أسئلة تدريبية إضافية خارج دورات السنوات</p></div>
-                </div>
+                <>
+                  <div className="flex items-center gap-3 bg-violet-50 border border-violet-100 rounded-[1rem] px-4 py-3">
+                    <span className="text-2xl">🧪</span>
+                    <div><p className="text-xs font-black text-violet-700">النموذج التجريبي</p><p className="text-[10px] text-violet-500 font-bold">أسئلة تدريبية إضافية خارج دورات السنوات</p></div>
+                  </div>
+                  <div className="space-y-2">
+                    <FieldLabel><span className="inline-flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" />اختر النموذج</span></FieldLabel>
+                    <Select value={selectedTrialForm} onValueChange={setSelectedTrialForm}>
+                      <SelectTrigger className="h-14 rounded-[1rem] bg-slate-50 dark:bg-muted border-slate-200 dark:border-border font-bold px-5 focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all">
+                        <SelectValue placeholder="اختر النموذج" />
+                      </SelectTrigger>
+                      <SelectContent className="z-[9999] bg-white dark:bg-card border-slate-200 dark:border-border rounded-2xl shadow-2xl max-h-[280px]">
+                        <SelectItem value="all" className="h-11 rounded-xl font-bold cursor-pointer text-emerald-600">كل النماذج</SelectItem>
+                        {activeTrialForms.map((form) => (
+                          <SelectItem key={form.id} value={form.id} className="h-11 rounded-xl font-bold cursor-pointer">{form.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
               )}
               {selectedYear === 'all' && (
                 <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-[1rem] px-4 py-3">
