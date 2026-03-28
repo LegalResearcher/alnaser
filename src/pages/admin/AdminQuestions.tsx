@@ -195,7 +195,7 @@ const AdminQuestions = () => {
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   const [previewQuestions, setPreviewQuestions] = useState<any[]>([]);
   const [previewSearch, setPreviewSearch] = useState('');
-  const [importExamForm, setImportExamForm] = useState<string>('General');
+  const [importExamForm, setImportExamForm] = useState<string>('Model_1');
   const [pasteText, setPasteText] = useState('');
 
   // حالات التعديل والحذف
@@ -323,6 +323,11 @@ const AdminQuestions = () => {
 
           if (mappedQuestions.length > 0) {
             setPreviewQuestions(mappedQuestions);
+            setImportExamForm(
+              selectedExamForm === 'Trial'
+                ? (selectedTrialModel !== 'all' ? selectedTrialModel : 'Model_1')
+                : (selectedExamForm || 'General')
+            );
             setIsFileUploadOpen(false);
             setIsPreviewOpen(true);
           } else {
@@ -338,6 +343,11 @@ const AdminQuestions = () => {
         const extracted = parseSanaaLegalContent(content);
         if (extracted.length > 0) {
           setPreviewQuestions(extracted);
+          setImportExamForm(
+            selectedExamForm === 'Trial'
+              ? (selectedTrialModel !== 'all' ? selectedTrialModel : 'Model_1')
+              : (selectedExamForm || 'General')
+          );
           setIsFileUploadOpen(false);
           setIsPreviewOpen(true);
         } else {
@@ -359,6 +369,11 @@ const AdminQuestions = () => {
     const extracted = parseSanaaLegalContent(pasteText);
     if (extracted.length > 0) {
       setPreviewQuestions(extracted);
+      setImportExamForm(
+        selectedExamForm === 'Trial'
+          ? (selectedTrialModel !== 'all' ? selectedTrialModel : 'Model_1')
+          : (selectedExamForm || 'General')
+      );
       setIsFileUploadOpen(false);
       setIsPreviewOpen(true);
       setPasteText('');
