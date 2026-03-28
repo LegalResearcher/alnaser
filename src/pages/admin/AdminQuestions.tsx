@@ -388,11 +388,10 @@ const AdminQuestions = () => {
     enabled: !!selectedSubject,
   });
 
-  // --- منطق ثالث ثانوي ---
-  const selectedLevelName = useMemo(() => levels.find(l => l.id === selectedLevel)?.name || '', [levels, selectedLevel]);
-  const isThirdLevel = selectedLevelName.includes('ثالث');
+  // --- منطق النماذج (أسئلة تجريبية لجميع المستويات) ---
+  const isTrialSelected = selectedExamForm === 'Trial';
 
-  const defaultThirdForms = useMemo(() =>
+  const defaultTrialForms = useMemo(() =>
     Array.from({ length: 15 }, (_, i) => ({ id: `Model_${i + 1}`, name: `نموذج ${i + 1}` })),
   []);
 
@@ -405,7 +404,7 @@ const AdminQuestions = () => {
         .order('order_index');
       return (data || []) as { id: string; form_id: string; form_name: string; order_index: number }[];
     },
-    enabled: isThirdLevel && !!selectedSubject,
+    enabled: isTrialSelected && !!selectedSubject,
   });
 
   const addFormMutation = useMutation({
@@ -440,10 +439,10 @@ const AdminQuestions = () => {
   });
 
   const activeExamForms = useMemo(() => {
-    if (!isThirdLevel) return EXAM_FORMS;
+    if (!isTrialSelected) return EXAM_FORMS;
     const custom = customForms.map((f: any) => ({ id: f.form_id, name: f.form_name }));
-    return [...defaultThirdForms, ...custom];
-  }, [isThirdLevel, customForms, defaultThirdForms]);
+    return [...defaultTrialForms, ...custom];
+  }, [isTrialSelected, customForms, defaultTrialForms]);
 
   // --- حفظ جماعي ---
   const bulkSave = useMutation({
@@ -661,7 +660,7 @@ const AdminQuestions = () => {
           <Select value={selectedYear || "all"} onValueChange={(v) => setSelectedYear(v === "all" ? "" : v)}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="السنة" /></SelectTrigger><SelectContent className="z-[9999] bg-white shadow-2xl"><SelectItem value="all">كل السنوات</SelectItem>{EXAM_YEARS.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}</SelectContent></Select>
           <div className="flex items-center gap-1">
             <Select value={selectedExamForm || "all"} onValueChange={(v) => { setSelectedExamForm(v === "all" ? "" : v); if (v === "Trial") setSelectedYear(""); }}><SelectTrigger className="bg-white border-slate-200 rounded-xl"><SelectValue placeholder="النموذج" /></SelectTrigger><SelectContent className="z-[9999] bg-white shadow-2xl max-h-[300px]"><SelectItem value="all">كل النماذج</SelectItem>{activeExamForms.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent></Select>
-            {isThirdLevel && selectedSubject && <button onClick={() => setIsAddFormDialogOpen(true)} className="shrink-0 w-10 h-10 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 flex items-center justify-center transition-colors"><Plus className="w-4 h-4" /></button>}
+            {isTrialSelected && selectedSubject && <button onClick={() => setIsAddFormDialogOpen(true)} className="shrink-0 w-10 h-10 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 flex items-center justify-center transition-colors"><Plus className="w-4 h-4" /></button>}
           </div>
           <div className="relative"><Search className="absolute right-3 top-2.5 w-4 h-4 text-slate-400" /><Input placeholder="بحث..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pr-10 bg-white border-slate-200 rounded-xl" dir="rtl" /></div>
         </div>
@@ -945,7 +944,6 @@ const AdminQuestions = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog إضافة نموذج جديد (ثالث ثانوي فقط) */}
       <Dialog open={isAddFormDialogOpen} onOpenChange={setIsAddFormDialogOpen}>
         <DialogContent className="max-w-md bg-white rounded-3xl p-8 z-[9999] font-cairo font-bold shadow-2xl border-none">
           <DialogHeader><DialogTitle className="text-xl font-black">إدارة النماذج الإضافية</DialogTitle></DialogHeader>
