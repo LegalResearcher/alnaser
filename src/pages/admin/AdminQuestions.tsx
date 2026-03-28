@@ -62,8 +62,10 @@ const parseSanaaLegalContent = (text: string) => {
     // الخيار يبدأ بـ "رقم) + أو -" أو يحتوي على "العبارة صحيحة/خاطئة"
     // السؤال يبدأ بـ "رقم)" بدون + أو - مباشرة بعده
     const isTrueFalse = t.includes('العبارة صحيحة') || t.includes('العبارة خاطئة');
-    const hasSignAfterNum = /^[١٢٣٤1-4]\)\s*[+\-]/.test(t);
-    const isOption = isTrueFalse || hasSignAfterNum;
+    // الخيار: رقم أحادي (1-4) فقط + ) + مسافة + علامة — لا رقمين مثل 16) أو 30)
+    const hasSignAfterNum = /^[١٢٣٤1-4]\)\s*[+\-]/.test(t) && !/^\d{2,}/.test(t);
+    // اعتبره خياراً فقط إذا كان هناك سؤال حالي — يمنع الخلط مع أرقام الأسئلة
+    const isOption = (isTrueFalse || hasSignAfterNum) && !!current;
 
     if (isOption) {
       if (!current) return;
@@ -71,8 +73,8 @@ const parseSanaaLegalContent = (text: string) => {
       const isCorrect = t.includes('+');
 
       let cleanVal = t
-        .replace(/^[\(\s\d١٢٣٤\)\.\-\+]+/, '')
-        .replace(/[\+\-]$/, '')
+        .replace(/^[\(]?[١٢٣٤1-4][\)]\s*[+\-]?\s*/, '')
+        .replace(/\s*[+\-]\s*$/, '')
         .replace(/\s*(TCPDF|tcpdf|www\.tcpdf\.org|Powered by TCPDF)[^$]*/gi, '')
         .trim();
 
@@ -108,13 +110,13 @@ const parseSanaaLegalContent = (text: string) => {
       if (!current) {
         current = {
           id: Math.random().toString(36).substr(2, 9),
-          question_text: t.replace(/^[\(\s\d١٢٣٤\)]+/, '').trim(),
+          question_text: t.replace(/^[\(]?[١٢٣٤\d]+[\)]\s*/, '').trim(),
           option_a: '', option_b: '', option_c: '', option_d: '',
           correct_option: 'A',
           count: 0
         };
       } else {
-        current.question_text += ' ' + t.replace(/^[\(\s\d١٢٣٤\)]+/, '').trim();
+        current.question_text += ' ' + t.replace(/^[\(]?[١٢٣٤\d]+[\)]\s*/, '').trim();
       }
     }
   });
