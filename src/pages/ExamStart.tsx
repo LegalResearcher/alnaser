@@ -316,7 +316,7 @@ const ExamStart = () => {
                     <SelectValue placeholder="اختر السنة" />
                   </SelectTrigger>
                   <SelectContent className="z-[9999] bg-white dark:bg-card border-slate-200 dark:border-border rounded-2xl shadow-2xl max-h-[280px]">
-                    <SelectItem value="trial" className="h-11 rounded-xl font-bold cursor-pointer text-violet-600">🧪 النموذج التجريبي</SelectItem>
+                    <SelectItem value="trial" className="h-11 rounded-xl font-bold cursor-pointer text-violet-600">🧪 أسئلة تجريبية</SelectItem>
                     {selectedYear !== 'trial' && EXAM_YEARS.map((year) => (
                       <SelectItem key={year} value={year.toString()} className="h-11 rounded-xl font-bold cursor-pointer">دورة عام {year}</SelectItem>
                     ))}
@@ -348,7 +348,7 @@ const ExamStart = () => {
                 <>
                   <div className="flex items-center gap-3 bg-violet-50 border border-violet-100 rounded-[1rem] px-4 py-3">
                     <span className="text-2xl">🧪</span>
-                    <div><p className="text-xs font-black text-violet-700">النموذج التجريبي</p><p className="text-[10px] text-violet-500 font-bold">أسئلة تدريبية إضافية خارج دورات السنوات</p></div>
+                    <div><p className="text-xs font-black text-violet-700">أسئلة تجريبية</p><p className="text-[10px] text-violet-500 font-bold">أسئلة تدريبية إضافية شاملة من المقرر تساعدك على الاستعداد للاختبار</p></div>
                   </div>
                   <div className="space-y-2">
                     <FieldLabel><span className="inline-flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" />اختر النموذج</span></FieldLabel>
