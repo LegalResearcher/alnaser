@@ -311,21 +311,24 @@ const ExamStart = () => {
 
               <div className="space-y-2">
                 <FieldLabel>نموذج سنة الاختبار</FieldLabel>
-                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <Select value={selectedYear} onValueChange={(v) => { setSelectedYear(v); if (v !== 'trial') setSelectedTrialForm('all'); }}>
                   <SelectTrigger className="h-14 rounded-[1rem] bg-slate-50 dark:bg-muted border-slate-200 dark:border-border font-bold px-5 focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all">
                     <SelectValue placeholder="اختر السنة" />
                   </SelectTrigger>
                   <SelectContent className="z-[9999] bg-white dark:bg-card border-slate-200 dark:border-border rounded-2xl shadow-2xl max-h-[280px]">
                     <SelectItem value="trial" className="h-11 rounded-xl font-bold cursor-pointer text-violet-600">🧪 النموذج التجريبي</SelectItem>
-                    {EXAM_YEARS.map((year) => (
+                    {selectedYear !== 'trial' && EXAM_YEARS.map((year) => (
                       <SelectItem key={year} value={year.toString()} className="h-11 rounded-xl font-bold cursor-pointer">دورة عام {year}</SelectItem>
                     ))}
-                    <SelectItem value="all" className="h-11 rounded-xl font-bold cursor-pointer text-emerald-600">📚 الكل</SelectItem>
+                    {selectedYear !== 'trial' && (
+                      <SelectItem value="all" className="h-11 rounded-xl font-bold cursor-pointer text-emerald-600">📚 الكل</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
 
-              {selectedYear !== 'trial' && selectedYear !== 'all' && (
+              {/* السنوات والنماذج العادية - تظهر فقط عند عدم اختيار التجريبي */}
+              {selectedYear !== 'trial' && selectedYear !== 'all' && selectedYear && (
                 <div className="space-y-2">
                   <FieldLabel><span className="inline-flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" />نموذج الاختبار</span></FieldLabel>
                   <Select value={selectedExamForm} onValueChange={setSelectedExamForm}>
