@@ -317,12 +317,10 @@ const ExamStart = () => {
                   </SelectTrigger>
                   <SelectContent className="z-[9999] bg-white dark:bg-card border-slate-200 dark:border-border rounded-2xl shadow-2xl max-h-[280px]">
                     <SelectItem value="trial" className="h-11 rounded-xl font-bold cursor-pointer text-violet-600">🧪 أسئلة تجريبية</SelectItem>
-                    {selectedYear !== 'trial' && EXAM_YEARS.map((year) => (
+                    {EXAM_YEARS.map((year) => (
                       <SelectItem key={year} value={year.toString()} className="h-11 rounded-xl font-bold cursor-pointer">دورة عام {year}</SelectItem>
                     ))}
-                    {selectedYear !== 'trial' && (
-                      <SelectItem value="all" className="h-11 rounded-xl font-bold cursor-pointer text-emerald-600">📚 الكل</SelectItem>
-                    )}
+                    <SelectItem value="all" className="h-11 rounded-xl font-bold cursor-pointer text-emerald-600">📚 الكل</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
