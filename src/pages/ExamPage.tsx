@@ -51,6 +51,7 @@ interface ExamState {
   forcedQuestionIds?: string[];
   isWrongReview?: boolean;
   resumeProgress?: SavedProgress;
+  trialFormFilter?: string;
 }
 
 /* ── localStorage helpers ── */
@@ -261,8 +262,12 @@ const ExamPage = () => {
       }
       let query = supabase.from('questions').select('*').eq('subject_id', subjectId).eq('status', 'active');
       if (!state?.allQuestions) {
-        if (state?.isTrial) { query = query.is('exam_year', null); }
-        else {
+        if (state?.isTrial) {
+          query = query.is('exam_year', null);
+          if (state?.trialFormFilter && state.trialFormFilter !== 'all') {
+            query = query.eq('exam_form', state.trialFormFilter);
+          }
+        } else {
           if (state.examYear) query = query.eq('exam_year', state.examYear);
           if (state.examForm && state.examForm !== 'Mixed') query = query.eq('exam_form', state.examForm);
         }
