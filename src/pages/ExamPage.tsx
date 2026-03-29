@@ -171,30 +171,51 @@ const GlobalStyles = () => (
     .anim-score-float  { animation: scoreFloat 0.9s ease-out forwards; }
     .anim-glow         { animation: glowPulse 0.7s ease-out; }
     .anim-zoom-in      { animation: zoomIn 0.25s ease-out; }
+    @keyframes timerPulse {
+      0%,100% { transform: scale(1); }
+      50%     { transform: scale(1.06); }
+    }
+    @keyframes reportBounce {
+      0%,100% { transform: translateY(0) scale(1); }
+      30%     { transform: translateY(-4px) scale(1.05); }
+      60%     { transform: translateY(2px) scale(0.97); }
+    }
+    .anim-timer-warning { animation: timerPulse 0.8s ease-in-out infinite; }
+    .anim-report-bounce { animation: reportBounce 2s ease-in-out infinite; }
+    @keyframes shimmer {
+      0%   { background-position: -200% center; }
+      100% { background-position: 200% center; }
+    }
   `}</style>
 );
 
 // مؤقت دائري
 const CircularTimer = ({ timeLeft, totalTime, isWarning }: { timeLeft: number; totalTime: number; isWarning: boolean }) => {
-  const radius = 28;
+  const radius = 30;
   const circ = 2 * Math.PI * radius;
-  const offset = circ * (1 - timeLeft / totalTime);
-  const color = isWarning ? '#ef4444' : timeLeft / totalTime > 0.5 ? '#10b981' : '#f59e0b';
+  const pct = timeLeft / totalTime;
+  const offset = circ * (1 - pct);
+  const color = isWarning ? '#ef4444' : pct > 0.5 ? '#10b981' : '#f59e0b';
+  const bgColor = isWarning ? 'rgba(239,68,68,0.1)' : pct > 0.5 ? 'rgba(16,185,129,0.08)' : 'rgba(245,158,11,0.08)';
   const mins = Math.floor(timeLeft / 60);
   const secs = timeLeft % 60;
   return (
-    <div className="relative flex items-center justify-center w-20 h-20 md:w-24 md:h-24 shrink-0">
+    <div className={cn("relative flex items-center justify-center w-20 h-20 md:w-24 md:h-24 shrink-0 rounded-full transition-all duration-500", isWarning && "anim-timer-warning")}
+      style={{ background: bgColor, boxShadow: isWarning ? `0 0 20px rgba(239,68,68,0.3)` : `0 0 16px ${color}22` }}>
       <svg className="absolute inset-0 -rotate-90" viewBox="0 0 72 72" width="100%" height="100%">
-        <circle cx="36" cy="36" r={radius} fill="none" stroke="currentColor" className="text-slate-200 dark:text-slate-600 dark:text-foreground/70" strokeWidth="5" />
-        <circle cx="36" cy="36" r={radius} fill="none" stroke={color} strokeWidth="5"
+        {/* Track */}
+        <circle cx="36" cy="36" r={radius} fill="none" stroke={color} strokeWidth="3" opacity="0.15" />
+        {/* Progress */}
+        <circle cx="36" cy="36" r={radius} fill="none" stroke={color} strokeWidth="4"
           strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset}
-          style={{ transition: 'stroke-dashoffset 1s linear, stroke 0.5s' }} />
+          style={{ transition: 'stroke-dashoffset 1s linear, stroke 0.5s', filter: `drop-shadow(0 0 4px ${color}88)` }} />
       </svg>
-      <div className={cn("flex flex-col items-center z-10 gap-0.5", isWarning && "animate-pulse")}>
-        <Clock className={cn("w-3 h-3", isWarning ? "text-rose-500" : "text-slate-400 dark:text-slate-400 dark:text-muted-foreground")} />
-        <span className={cn("font-black text-xs md:text-sm tabular-nums leading-none", isWarning ? "text-rose-600" : "text-slate-700 dark:text-slate-200")} dir="ltr">
+      <div className="flex flex-col items-center z-10 gap-0.5">
+        <Clock className="w-3 h-3" style={{ color }} />
+        <span className="font-black text-xs md:text-sm tabular-nums leading-none" style={{ color }} dir="ltr">
           {String(mins).padStart(2,'0')}:{String(secs).padStart(2,'0')}
         </span>
+        {isWarning && <span className="text-[8px] font-black text-rose-500 uppercase tracking-wider">ينتهي!</span>}
       </div>
     </div>
   );
@@ -276,7 +297,7 @@ const ExamPage = () => {
       if (error) throw error;
       return (data as Question[]).sort(() => Math.random() - 0.5);
     },
-    enabled: !!subjectId && !!state?.studentName,
+    enabled: !!subjectId && (!!state?.examYear || !!state?.isTrial || !!state?.allQuestions || !!state?.forcedQuestionIds?.length || !!state?.resumeProgress),
   });
 
   // حفظ التقدم كل 5 ثوانٍ (فقط لـ allQuestions)
@@ -735,9 +756,13 @@ const ExamPage = () => {
                 </div>
 
                 {/* شريط تقدم ملوّن */}
-                <div className="h-2.5 md:h-3 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-700"
-                    style={{ width: `${progressPct}%`, backgroundColor: progressColor }} />
+                <div className="relative h-3 md:h-3.5 rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.06)' }}>
+                  <div className="h-full rounded-full transition-all duration-700 relative"
+                    style={{ width: `${progressPct}%`, background: `linear-gradient(90deg, ${progressColor}cc, ${progressColor})`, boxShadow: `0 0 8px ${progressColor}66` }}>
+                    {/* بريق متحرك */}
+                    <div className="absolute inset-0 rounded-full opacity-40"
+                      style={{ background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.6) 50%, transparent 100%)', backgroundSize: '200% 100%', animation: 'shimmer 2s linear infinite' }} />
+                  </div>
                 </div>
 
                 {/* مؤشر الأسئلة الصغير */}
@@ -765,43 +790,60 @@ const ExamPage = () => {
               <div
                 key={animKey}
                 className={cn(
-                  "bg-white dark:bg-slate-800 rounded-[2rem] md:rounded-[3.5rem] border border-slate-100 dark:border-slate-700 shadow-2xl shadow-slate-200/60 dark:shadow-slate-900/60 p-5 md:p-14 mb-4 md:mb-6",
+                  "rounded-[2rem] md:rounded-[3.5rem] p-5 md:p-14 mb-4 md:mb-6",
                   slideDir === 'left' ? "anim-slide-left" : "anim-slide-right",
                   shakeCard && "anim-shake"
                 )}
+                style={{ background: 'linear-gradient(145deg, #ffffff 0%, #f8faff 100%)', border: '1px solid rgba(99,102,241,0.1)', boxShadow: '0 20px 60px rgba(0,0,0,0.07), 0 4px 16px rgba(99,102,241,0.06), 0 0 0 1px rgba(255,255,255,0.8) inset' }}
               >
-                {/* ── بانر تحذير السؤال المحدّث ── */}
-                {isRecentlyUpdated((currentQuestion as any).updated_at) && (
-                  <div className="mb-5 flex items-start gap-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700/60 rounded-2xl px-4 py-3 animate-in fade-in zoom-in-95 duration-300">
-                    <AlertOctagon className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-black text-amber-700 dark:text-amber-400">⚠️ تنبيه: تم تحديث هذا السؤال مؤخراً</p>
-                      <p className="text-[11px] text-amber-600 dark:text-amber-500 font-bold mt-0.5">تأكد من قراءته بعناية — قد تكون الإجابة قد تغيّرت</p>
+                {/* ── بانر تحذير السؤال المحدّث — يظهر فقط إذا طُبّق البلاغ ── */}
+                {(currentQuestion as any).report_applied === true && (
+                  <div className="mb-5 relative overflow-hidden rounded-2xl animate-in fade-in zoom-in-95 duration-300"
+                    style={{ background: 'linear-gradient(135deg, #431407 0%, #7c2d12 50%, #431407 100%)', border: '1px solid rgba(251,146,60,0.4)', boxShadow: '0 8px 32px rgba(234,88,12,0.25), 0 0 0 1px rgba(255,255,255,0.05) inset' }}>
+                    {/* خلفية متوهجة */}
+                    <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(ellipse at 30% 50%, rgba(251,146,60,0.6) 0%, transparent 60%)' }} />
+                    {/* شريط علوي */}
+                    <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(90deg, transparent, #fb923c, #fbbf24, #fb923c, transparent)' }} />
+                    <div className="relative z-10 flex items-start gap-3 px-4 py-4">
+                      <div className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(251,146,60,0.2)', border: '1px solid rgba(251,146,60,0.4)' }}>
+                        <AlertOctagon className="w-5 h-5 text-orange-400" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest" style={{ background: 'rgba(251,146,60,0.25)', color: '#fb923c', border: '1px solid rgba(251,146,60,0.3)' }}>🔄 محدَّث</span>
+                        </div>
+                        <p className="text-sm font-black text-orange-200">تنبيه: تم تحديث هذا السؤال مؤخراً</p>
+                        <p className="text-[11px] text-orange-300/80 font-bold mt-0.5">تأكد من قراءته بعناية — قد تكون الإجابة قد تغيّرت</p>
+                      </div>
                     </div>
                   </div>
                 )}
 
                 {/* رأس البطاقة */}
                 <div className="flex items-center gap-3 mb-5 md:mb-8 flex-wrap">
-                  <div className="w-11 h-11 md:w-14 md:h-14 rounded-2xl bg-gradient-to-br from-primary to-blue-600 text-white flex items-center justify-center font-black text-lg md:text-xl shadow-lg shadow-primary/30 shrink-0">
+                  <div className="w-11 h-11 md:w-14 md:h-14 rounded-2xl text-white flex items-center justify-center font-black text-lg md:text-xl shrink-0 relative"
+                    style={{ background: 'linear-gradient(135deg, #1d4ed8, #4f46e5, #7c3aed)', boxShadow: '0 8px 24px rgba(99,102,241,0.5), 0 0 0 1px rgba(255,255,255,0.15) inset' }}>
                     {currentIndex + 1}
+                    <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white" style={{ boxShadow: '0 0 6px rgba(16,185,129,0.6)' }} />
                   </div>
                   <span className="inline-flex items-center px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-[9px] md:text-[10px] font-black tracking-widest">
-                    {state.isTrial ? '🧪 النموذج التجريبي' : state.allQuestions ? '📚 جميع الأسئلة' : `اختبار عام ${state.examYear} ${state.examForm === 'Parallel' ? '· موازي' : ''}`}
+                    {state.isTrial
+                      ? `🧪 ${state.trialFormFilter && state.trialFormFilter !== 'all' ? state.trialFormFilter.replace('Model_', 'نموذج ') : 'النموذج التجريبي'}`
+                      : state.allQuestions
+                        ? '📚 جميع الأسئلة'
+                        : `اختبار عام ${state.examYear} ${state.examForm === 'Parallel' ? '· موازي' : state.examForm === 'General' ? '· عام' : ''}`}
                   </span>
 
                   {/* زر المشاركة مع قائمة منسدلة */}
                   <div className="mr-auto relative flex items-center gap-2">
                     <button
                       onClick={() => setShowShareMenu(prev => !prev)}
-                      className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] md:text-[10px] font-black border transition-all duration-200",
-                        showShareMenu
-                          ? "bg-primary border-primary text-white"
-                          : "bg-white dark:bg-card border-slate-200 dark:border-border text-slate-500 dark:text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/5"
-                      )}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] md:text-xs font-black transition-all duration-200 hover:-translate-y-0.5 active:scale-95"
+                      style={showShareMenu
+                        ? { background: 'linear-gradient(135deg, #1d4ed8, #4f46e5)', color: '#fff', boxShadow: '0 4px 14px rgba(99,102,241,0.4)', border: '1px solid rgba(255,255,255,0.1)' }
+                        : { background: 'linear-gradient(135deg, #f0f4ff, #e8ecff)', color: '#4f46e5', border: '1px solid rgba(99,102,241,0.2)', boxShadow: '0 2px 8px rgba(99,102,241,0.1)' }}
                     >
-                      <Share2 className="w-3 h-3" /> مشاركة
+                      <Share2 className="w-3.5 h-3.5" /> مشاركة
                     </button>
                     {showShareMenu && (
                       <>
@@ -836,12 +878,13 @@ const ExamPage = () => {
                     )}
                   </div>
 
-                  {/* زر التعقيب */}
+                  {/* زر التعقيب - بارز لا يمكن تجاهله */}
                   <button
                     onClick={() => setShowReportModal(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] md:text-[10px] font-black border border-orange-300 bg-orange-50 text-orange-600 hover:bg-orange-500 hover:text-white hover:border-orange-500 transition-all duration-200"
+                    className="anim-report-bounce flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] md:text-xs font-black transition-all duration-200 hover:-translate-y-0.5 active:scale-95 hover:!animate-none"
+                    style={{ background: 'linear-gradient(135deg, #dc2626, #ea580c)', color: '#fff', boxShadow: '0 4px 16px rgba(220,38,38,0.45), 0 0 0 1px rgba(255,255,255,0.1) inset', border: 'none' }}
                   >
-                    <MessageSquare className="w-3 h-3" /> إبلاغ عن خطأ
+                    <AlertOctagon className="w-3.5 h-3.5" /> إبلاغ عن خطأ
                   </button>
 
                   </div>{/* end mr-auto wrapper */}
@@ -866,12 +909,14 @@ const ExamPage = () => {
                         onClick={() => handleAnswer(opt)}
                         disabled={hasAnswered}
                         className={cn(
-                          "w-full text-right p-4 md:p-5 rounded-2xl md:rounded-3xl border-2 transition-all duration-300 flex items-center gap-3 md:gap-5",
+                          "w-full text-right p-4 md:p-5 rounded-2xl md:rounded-3xl border-2 transition-all duration-300 flex items-center gap-3 md:gap-5 relative overflow-hidden group",
                           getOptionStyle(opt),
-                          !hasAnswered && "cursor-pointer active:scale-[0.98]",
+                          !hasAnswered && "cursor-pointer active:scale-[0.98] hover:shadow-md",
                           hasAnswered && "cursor-default"
                         )}
                       >
+                        {/* طبقة hover */}
+                        {!hasAnswered && <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-2xl" style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.04), rgba(59,130,246,0.04))' }} />}
                         <div className={cn(
                           "w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center font-black text-base md:text-lg shrink-0 transition-all duration-300",
                           getBadgeStyle(opt)
@@ -1020,7 +1065,8 @@ const ExamPage = () => {
             {/* ── أزرار التنقل الحر ── */}
             <div className="flex justify-between items-center gap-2 md:gap-4">
               <Button variant="outline" onClick={goPrev} disabled={currentIndex === 0}
-                className="rounded-xl md:rounded-2xl h-12 md:h-14 px-4 md:px-8 border-slate-200 dark:border-slate-600 dark:text-slate-200 dark:bg-slate-800 font-bold text-sm active:scale-95">
+                className="rounded-xl md:rounded-2xl h-12 md:h-14 px-4 md:px-8 font-bold text-sm active:scale-95 transition-all hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0"
+                style={{ background: 'linear-gradient(135deg, #f8faff, #f1f5ff)', border: '1.5px solid rgba(99,102,241,0.2)', color: '#4f46e5', boxShadow: '0 2px 8px rgba(99,102,241,0.1)' }}>
                 <ChevronRight className="ml-1 w-4 h-4" /> السابق
               </Button>
 
@@ -1044,7 +1090,8 @@ const ExamPage = () => {
                 </Button>
               ) : (
                 <Button onClick={goNext}
-                  className="rounded-xl md:rounded-2xl h-12 md:h-14 px-5 md:px-10 bg-primary text-white font-black text-sm active:scale-95">
+                  className="rounded-xl md:rounded-2xl h-12 md:h-14 px-5 md:px-10 text-white font-black text-sm active:scale-95 transition-all hover:-translate-y-0.5"
+                  style={{ background: 'linear-gradient(135deg, #1d4ed8, #4f46e5)', boxShadow: '0 4px 16px rgba(99,102,241,0.4)' }}>
                   التالي <ChevronLeft className="mr-1 w-4 h-4" />
                 </Button>
               )}
