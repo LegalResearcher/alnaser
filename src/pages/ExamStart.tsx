@@ -11,7 +11,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Clock, Target, User, Lock, Play,
   Info, ShieldCheck, FileText, ChevronLeft,
-  AlertCircle, RotateCcw, BookOpen
+  AlertCircle, RotateCcw, BookOpen, Sparkles, Zap, X, PenLine
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -78,12 +78,16 @@ function clearSavedProgress(subjectId: string, studentName: string) {
   try { localStorage.removeItem(`exam_progress_${subjectId}_All_0_${studentName}`); } catch { /* ignore */ }
 }
 
-function InfoCard({ icon, value, label }: { icon: React.ReactNode; value: string | number; label: string }) {
+function InfoCard({ icon, value, label, accent }: { icon: React.ReactNode; value: string | number; label: string; accent?: string }) {
   return (
-    <div className="flex flex-col items-center gap-2 p-5 bg-slate-50 dark:bg-muted border border-slate-100 dark:border-border rounded-[1.5rem] hover:border-blue-200 hover:shadow-md hover:shadow-blue-50 transition-all duration-300 cursor-default">
-      <span className="text-primary">{icon}</span>
+    <div className="relative flex flex-col items-center gap-2 p-5 overflow-hidden rounded-[1.5rem] cursor-default transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
+      style={{ background: 'linear-gradient(135deg, #f8faff 0%, #eef2ff 100%)', border: '1px solid rgba(99,102,241,0.12)' }}>
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-1"
+        style={{ background: accent || 'linear-gradient(135deg, #3b82f6, #6366f1)', boxShadow: '0 4px 12px rgba(99,102,241,0.3)' }}>
+        <span className="text-white [&>svg]:w-5 [&>svg]:h-5">{icon}</span>
+      </div>
       <p className="text-2xl font-black text-slate-800 dark:text-foreground leading-none">{value}</p>
-      <p className="text-[9px] font-black text-slate-400 dark:text-muted-foreground uppercase tracking-[0.15em]">{label}</p>
+      <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.15em]">{label}</p>
     </div>
   );
 }
@@ -287,20 +291,35 @@ const ExamStart = () => {
           <div className="max-w-lg mx-auto bg-white dark:bg-card rounded-[2.5rem] border border-slate-200 dark:border-border shadow-xl shadow-slate-200/60 overflow-hidden animate-in fade-in slide-in-from-bottom-6 duration-500">
 
             {/* Header */}
-            <div className="relative bg-slate-900 px-10 py-12 text-center overflow-hidden">
-              <div className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)', backgroundSize: '28px 28px' }} />
-              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-72 h-28 bg-blue-500/30 blur-2xl rounded-full pointer-events-none" />
+            <div className="relative px-10 py-12 text-center overflow-hidden" style={{ background: 'linear-gradient(135deg, #0a0f1e 0%, #0d1b3e 50%, #0a1628 100%)' }}>
+              {/* شبكة خلفية */}
+              <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)', backgroundSize: '28px 28px' }} />
+              {/* توهجات */}
+              <div className="absolute top-0 right-1/4 w-48 h-48 rounded-full opacity-25 blur-3xl pointer-events-none" style={{ background: 'radial-gradient(circle, #3b82f6 0%, transparent 70%)' }} />
+              <div className="absolute bottom-0 left-1/4 w-40 h-40 rounded-full opacity-20 blur-3xl pointer-events-none" style={{ background: 'radial-gradient(circle, #6366f1 0%, transparent 70%)' }} />
+              {/* شريط علوي */}
+              <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(90deg, transparent, #3b82f6, #818cf8, #3b82f6, transparent)' }} />
               <div className="relative z-10 flex flex-col items-center">
-                <div className="w-16 h-16 rounded-[1.25rem] mb-5 bg-blue-500/15 border border-white/10 flex items-center justify-center shadow-2xl backdrop-blur-sm">
-                  <ShieldCheck className="w-8 h-8 text-blue-400" />
+                {/* أيقونة كبيرة متوهجة */}
+                <div className="relative mb-5">
+                  <div className="w-20 h-20 rounded-[1.5rem] flex items-center justify-center shadow-2xl"
+                    style={{ background: 'linear-gradient(135deg, #1d4ed8, #4f46e5)', boxShadow: '0 0 40px rgba(99,102,241,0.5), 0 8px 32px rgba(0,0,0,0.3)' }}>
+                    <ShieldCheck className="w-10 h-10 text-white" />
+                  </div>
+                  {/* نقطة نابضة */}
+                  <span className="absolute -top-1 -right-1 flex w-4 h-4">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-50" />
+                    <span className="relative inline-flex rounded-full w-4 h-4 bg-blue-500 border-2 border-white/20" />
+                  </span>
                 </div>
                 {subject.levels?.name && (
-                  <span className="inline-block mb-3 px-4 py-1.5 rounded-full bg-white dark:bg-card/5 border border-white/10 text-[10px] font-black uppercase tracking-[0.18em] text-blue-300">
-                    {subject.levels.name}
+                  <span className="inline-flex items-center gap-1.5 mb-3 px-4 py-1.5 rounded-full border border-blue-400/30 bg-blue-500/10 text-[10px] font-black uppercase tracking-[0.18em] text-blue-300">
+                    <Sparkles className="w-3 h-3" />{subject.levels.name}
                   </span>
                 )}
-                <h1 className="text-3xl font-black text-white tracking-tight leading-snug">
-                  تجهيز اختبار <br /><span className="text-blue-400">{subject.name}</span>
+                <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em] mb-2">تجهيز اختبار</p>
+                <h1 className="text-3xl font-black tracking-tight leading-snug" style={{ background: 'linear-gradient(90deg, #60a5fa, #a5b4fc, #60a5fa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                  {subject.name}
                 </h1>
               </div>
             </div>
@@ -308,8 +327,8 @@ const ExamStart = () => {
             {/* Body */}
             <div className="px-8 md:px-10 py-8 space-y-6">
               <div className="grid grid-cols-2 gap-4">
-                <InfoCard icon={<Target className="w-5 h-5" />} value={`${subject.passing_score}%`} label="درجة النجاح" />
-                <InfoCard icon={<Clock className="w-5 h-5" />} value={examTime} label="الدقائق المتاحة" />
+                <InfoCard icon={<Target className="w-5 h-5" />} value={`${subject.passing_score}%`} label="درجة النجاح" accent="linear-gradient(135deg, #10b981, #059669)" />
+                <InfoCard icon={<Clock className="w-5 h-5" />} value={examTime} label="الدقائق المتاحة" accent="linear-gradient(135deg, #3b82f6, #6366f1)" />
               </div>
 
               <div className="space-y-2">
@@ -420,13 +439,40 @@ const ExamStart = () => {
                 </div>
               )}
 
-              <Button onClick={handleStartExam} disabled={!studentName.trim() || !selectedYear || questionCount === 0} className="w-full h-16 text-base font-black rounded-[1.25rem] bg-primary hover:bg-blue-600 text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 gap-3 group">
-                <span>{selectedYear === 'all' && savedProgress ? 'متابعة الاختبار' : 'ابدأ الاختبار الآن'}</span>
-                <Play className="w-5 h-5 fill-current group-hover:scale-110 transition-transform" />
-              </Button>
+              <button
+                onClick={handleStartExam}
+                disabled={!studentName.trim() || !selectedYear || questionCount === 0}
+                className="relative w-full h-16 rounded-[1.25rem] font-black text-base text-white overflow-hidden transition-all duration-300 hover:-translate-y-1 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 group"
+                style={{ background: 'linear-gradient(135deg, #1d4ed8, #4f46e5, #7c3aed)', boxShadow: '0 8px 32px rgba(99,102,241,0.45), 0 0 0 1px rgba(255,255,255,0.1) inset' }}
+              >
+                {/* توهج داخلي */}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: 'linear-gradient(135deg, #2563eb, #6366f1, #8b5cf6)' }} />
+                {/* بريق متحرك */}
+                <div className="absolute inset-0 -skew-x-12 translate-x-[-150%] group-hover:translate-x-[250%] transition-transform duration-700 ease-in-out" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)', width: '50%' }} />
+                <div className="relative z-10 flex items-center justify-center gap-3">
+                  <Play className="w-5 h-5 fill-current group-hover:scale-110 transition-transform" />
+                  <span>{selectedYear === 'all' && savedProgress ? 'متابعة الاختبار' : 'ابدأ الاختبار الآن'}</span>
+                  <Zap className="w-4 h-4 opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all" />
+                </div>
+              </button>
 
-              <Link to={`/suggest?level=${subject?.level_id || ''}&subject=${subjectId || ''}`} className="w-full flex items-center justify-center gap-2 text-sm font-black text-primary hover:text-primary/80 transition-colors py-2">
-                💡 أضف سؤالاً لهذه المادة
+              <Link
+                to={`/suggest?level=${subject?.level_id || ''}&subject=${subjectId || ''}`}
+                className="group relative w-full flex items-center justify-center gap-3 rounded-[1.25rem] overflow-hidden transition-all duration-300 hover:-translate-y-0.5 active:scale-[0.98]"
+                style={{ background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', border: '1.5px solid rgba(245,158,11,0.35)', padding: '14px 20px', boxShadow: '0 4px 16px rgba(245,158,11,0.15)' }}
+              >
+                {/* بريق متحرك */}
+                <div className="absolute inset-0 -skew-x-12 translate-x-[-150%] group-hover:translate-x-[250%] transition-transform duration-700" style={{ background: 'linear-gradient(90deg, transparent, rgba(245,158,11,0.15), transparent)', width: '50%' }} />
+                <div className="relative z-10 w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', boxShadow: '0 4px 10px rgba(245,158,11,0.4)' }}>
+                  <PenLine className="w-4 h-4 text-white" />
+                </div>
+                <div className="relative z-10 text-right">
+                  <p className="text-sm font-black text-amber-800">أضف سؤالاً لهذه المادة</p>
+                  <p className="text-[10px] font-bold text-amber-600">ساهم في تطوير المحتوى وساعد زملاءك</p>
+                </div>
+                <div className="relative z-10 mr-auto">
+                  <ChevronLeft className="w-4 h-4 text-amber-500 group-hover:-translate-x-1 transition-transform" />
+                </div>
               </Link>
             </div>
 
