@@ -340,6 +340,29 @@ const ExamResult = () => {
     ? { from:'#10b981', to:'#059669', glow:'rgba(16,185,129,0.3)', text:'#10b981' }
     : { from:'#64748b', to:'#475569', glow:'rgba(100,116,139,0.2)', text:'#94a3b8' };
 
+  // ── رسائل التحدي المخصصة — القانون التجاري رابع / أسئلة تجريبية ──
+  const getChallengeMessage = () => {
+    const isCommercialLaw4 =
+      state?.isTrial === true &&
+      state?.subjectName?.includes('القانون التجاري') &&
+      state?.levelName?.includes('الرابع');
+
+    if (!isCommercialLaw4) {
+      return `تحداني ${state.studentName} في ${state.subjectName}!\nنتيجته: ${state.scorePercentage ?? scorePercentage}%\nهل تستطيع التفوق عليه؟ 🔥\n${challengeLink}`;
+    }
+
+    const messages: Record<string, string> = {
+      Model_1: `🚢 بيوع بحرية | عقود تجارية | رهن تجاري\n\n50 سؤالاً مركّزاً يغطي أنواع البيوع البحرية (فوب، سيف، فاس، سي اند اف) والبيع بالتقسيط والتصفية والمزاد — كلها بأسلوب الاختبار الحقيقي.\n\nتدرّب الآن قبل فوات الأوان 👇\n${challengeLink}`,
+      Model_2: `📜 الكمبيالة | إنشاء | قبول | وفاء | بروتستو | تقادم\n\n50 سؤالاً يختبرك في كل تفاصيل الكمبيالة من أول بياناتها حتى مدد التقادم — لا يفوتك سؤال واحد.\n\nاختبر نفسك الآن 👇\n${challengeLink}`,
+      Model_3: `✍️ تظهير | شيك | سند لأمر | مدد قانونية\n\n50 سؤالاً تغطي أنواع التظهير الثلاثة وكامل أحكام الشيك والسند لأمر والمدد القانونية — هي الأسئلة التي تتكرّر دائماً في الامتحان.\n\nلا تتردد، ابدأ الآن 👇\n${challengeLink}`,
+      Model_4: `⚠️ إفلاس | رهن تجاري | ضمانات | فترة الريبة\n\n50 سؤالاً يغطي شروط الإفلاس وآثاره وجرائمه وفترة الريبة وأحكام الرهن التجاري — من أكثر المواضيع وروداً في الامتحان.\n\nحضّر نفسك جيداً وابدأ 👇\n${challengeLink}`,
+      Model_5: `🤝 وكالة تجارية | وكالة بعمولة | سمسرة | نقل\n\n50 سؤالاً يفرّق بدقة بين أنواع الوكالات وأحكام النقل بأنواعه — فاختبر نفسك قبل أن يختبرك الدكتور.\n\nابدأ التدريب الآن 👇\n${challengeLink}`,
+      Model_6: `🏦 بنوك | اعتماد مستندي | ودائع | مصارف إسلامية\n\n50 سؤالاً يغطي عمليات البنوك والاعتماد المستندي وخطابات الضمان وأحكام المصارف الإسلامية — أسئلة دقيقة بأسلوب الامتحان الحقيقي.\n\nاختبر نفسك وتأكد من جاهزيتك 👇\n${challengeLink}`,
+    };
+
+    return messages[state?.examForm ?? ''] ?? `تحداني ${state.studentName} في ${state.subjectName}!\nنتيجته: ${state.scorePercentage ?? scorePercentage}%\nهل تستطيع التفوق عليه؟ 🔥\n${challengeLink}`;
+  };
+
   return (
     <MainLayout>
       <Confetti active={showConfetti} />
@@ -570,24 +593,15 @@ const ExamResult = () => {
                             copiedChallenge ? 'bg-emerald-500/20 border border-emerald-400/30 text-emerald-300' : 'bg-white/15 border border-white/20 text-white hover:bg-white/25')}>
                           {copiedChallenge ? <><Check className="w-4 h-4" /> تم النسخ!</> : <><Copy className="w-4 h-4" /> نسخ الرابط</>}
                         </button>
-                        <button onClick={() => { const text = `تحداني ${state.studentName} في ${state.subjectName}!
-نتيجته: ${state.scorePercentage ?? scorePercentage}%
-هل تستطيع التفوق عليه؟ 🔥
-${challengeLink}`; window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank'); }}
+                        <button onClick={() => { const text = getChallengeMessage(); window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank'); }}
                           className="h-11 rounded-xl bg-green-500/20 border border-green-400/30 text-green-300 text-sm font-black flex items-center justify-center gap-2 hover:bg-green-500/30 transition-all">
                           واتساب
                         </button>
-                        <button onClick={() => { const text = `تحداني ${state.studentName} في ${state.subjectName}!
-نتيجته: ${state.scorePercentage ?? scorePercentage}%
-هل تستطيع التفوق عليه؟ 🔥
-${challengeLink}`; window.open(`https://t.me/share/url?url=${encodeURIComponent(challengeLink!)}&text=${encodeURIComponent(text)}`, '_blank'); }}
+                        <button onClick={() => { const text = getChallengeMessage(); window.open(`https://t.me/share/url?url=${encodeURIComponent(challengeLink!)}&text=${encodeURIComponent(text)}`, '_blank'); }}
                           className="h-11 rounded-xl bg-blue-500/20 border border-blue-400/30 text-blue-300 text-sm font-black flex items-center justify-center gap-2 hover:bg-blue-500/30 transition-all">
                           تيليجرام
                         </button>
-                        <button onClick={() => { const text = `تحداني ${state.studentName} في ${state.subjectName}!
-نتيجته: ${state.scorePercentage ?? scorePercentage}%
-هل تستطيع التفوق عليه؟ 🔥
-${challengeLink}`; window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(challengeLink!)}&quote=${encodeURIComponent(text)}`, '_blank'); }}
+                        <button onClick={() => { const text = getChallengeMessage(); window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(challengeLink!)}&quote=${encodeURIComponent(text)}`, '_blank'); }}
                           className="h-11 rounded-xl bg-blue-700/20 border border-blue-600/30 text-blue-200 text-sm font-black flex items-center justify-center gap-2 hover:bg-blue-700/30 transition-all">
                           فيسبوك
                         </button>
