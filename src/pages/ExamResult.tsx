@@ -746,15 +746,15 @@ const ExamResult = () => {
               <Button size="lg"
                 onClick={() => {
                   if (state?.subjectId) {
-                    navigate(`/exam/${state.subjectId}/start`, { replace: true,
+                    navigate(`/exam/${state.subjectId}/start`, {
                       state: {
                         studentName:    state.studentName,
-                        examYear:       state.examYear || 0,
-                        examForm:       state.examForm,
-                        isTrial:        state.isTrial,
-                        allQuestions:   state.allQuestions || !state.examYear,
-                        examTime:       state.examTime || 30,
-                        questionsCount: state.questionsCount || state.totalQuestions,
+                        examYear:       state.examYear ?? 0,
+                        examForm:       state.examForm ?? '',
+                        isTrial:        state.isTrial ?? false,
+                        allQuestions:   state.allQuestions ?? false,
+                        examTime:       state.examTime ?? 30,
+                        questionsCount: state.questionsCount ?? state.totalQuestions,
                         subjectName:    state.subjectName,
                         levelName:      state.levelName,
                       },
