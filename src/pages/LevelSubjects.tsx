@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, ArrowRight, Clock, Target, User, 
-  Lock, BookOpen, Layers, Sparkles, ChevronLeft, Settings2, Zap 
+  Lock, BookOpen, Layers, Sparkles, ChevronLeft, Zap 
 } from 'lucide-react';
 import SubjectSettingsModal from '@/components/SubjectSettingsModal';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -214,13 +214,15 @@ const LevelSubjects = () => {
                 const qCount = questionCounts[subject.id] ?? 0;
                 return (
                   <div key={subject.id} className="group relative" style={{ animationDelay: `${idx * 60}ms` }}>
-                    {/* زر الإعدادات */}
+                    {/* زر أدوات المادة */}
                     <button
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSettingsSubject({ ...subject, levelName: level?.name }); }}
-                      className="absolute top-4 left-4 z-30 w-9 h-9 rounded-xl bg-white/90 dark:bg-card border border-slate-200 dark:border-border shadow-sm flex items-center justify-center hover:bg-primary hover:text-white hover:border-primary transition-all duration-200"
-                      title="إعدادات المادة"
+                      className={cn("absolute left-4 z-30 flex items-center gap-1.5 px-3 py-2 rounded-xl font-black text-[10px] tracking-wide transition-all duration-200 active:scale-95", hasNew ? "top-14" : "top-4")}
+                      style={{ background: 'linear-gradient(135deg, #1e293b, #0f172a)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.35)', boxShadow: '0 4px 14px rgba(0,0,0,0.25), 0 0 0 1px rgba(251,191,36,0.1)' }}
+                      title="أدوات المادة"
                     >
-                      <Settings2 className="w-4 h-4" />
+                      <Zap className="w-3 h-3" />
+                      ⚡ أدوات المادة
                     </button>
 
                     <Link to={`/exam/${subject.id}`} className="block h-full">
