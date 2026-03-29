@@ -178,6 +178,15 @@ const ExamStart = () => {
 
   useEffect(() => { if (subject) setExamTime(subject.default_time_minutes || 30); }, [subject]);
 
+  // عند اختيار "الكل" يكون الوقت الافتراضي 120 دقيقة مع إمكانية التغيير
+  useEffect(() => {
+    if (selectedYear === 'all') {
+      setExamTime(120);
+    } else if (subject) {
+      setExamTime(subject.default_time_minutes || 30);
+    }
+  }, [selectedYear, subject]);
+
   const navigateToExam = (resume: boolean) => {
     const baseState = {
       studentName,
