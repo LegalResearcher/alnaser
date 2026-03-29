@@ -19,24 +19,40 @@ const LEVELS_BG_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBD
 
 const levelColors = [
   { 
-    bg: 'from-blue-700 via-blue-600 to-indigo-500', 
+    bg: 'from-[#1a1a2e] via-[#16213e] to-[#0f3460]',
+    accent: '#4f8ef7',
+    glow: 'rgba(79,142,247,0.4)',
     shadow: 'shadow-blue-200',
-    icon: 'text-blue-600'
+    icon: 'text-blue-500',
+    badge: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+    num: 'text-blue-300',
   },
   { 
-    bg: 'from-emerald-700 via-emerald-600 to-teal-500', 
+    bg: 'from-[#0d1f0d] via-[#133313] to-[#1a4a1a]',
+    accent: '#4ade80',
+    glow: 'rgba(74,222,128,0.4)',
     shadow: 'shadow-emerald-200',
-    icon: 'text-emerald-600'
+    icon: 'text-emerald-500',
+    badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+    num: 'text-emerald-300',
   },
   { 
-    bg: 'from-amber-600 via-amber-500 to-orange-400', 
+    bg: 'from-[#1f1a0d] via-[#332a13] to-[#4a3a1a]',
+    accent: '#fbbf24',
+    glow: 'rgba(251,191,36,0.4)',
     shadow: 'shadow-amber-200',
-    icon: 'text-amber-600'
+    icon: 'text-amber-500',
+    badge: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+    num: 'text-amber-300',
   },
   { 
-    bg: 'from-rose-700 via-rose-600 to-pink-500', 
+    bg: 'from-[#1f0d1a] via-[#331320] to-[#4a1a2e]',
+    accent: '#f472b6',
+    glow: 'rgba(244,114,182,0.4)',
     shadow: 'shadow-rose-200',
-    icon: 'text-rose-600'
+    icon: 'text-rose-500',
+    badge: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
+    num: 'text-rose-300',
   },
 ];
 
@@ -100,151 +116,158 @@ const Levels = () => {
     }
   );
 
+  const col = (index: number) => levelColors[index] ?? levelColors[0];
+
   return (
     <MainLayout>
       <LevelsSEO />
-      <section className="py-8 md:py-24 bg-slate-50 dark:bg-muted/50 min-h-[calc(100vh-80px)]">
+      {/* Inject keyframes */}
+      <style>{`
+        @keyframes floatBadge { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+        @keyframes glowPulse  { 0%,100%{opacity:0.5} 50%{opacity:1} }
+        @keyframes slideUp    { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+        .level-card { animation: slideUp 0.5s ease-out both; }
+        .level-card:nth-child(1){animation-delay:0.05s}
+        .level-card:nth-child(2){animation-delay:0.12s}
+        .level-card:nth-child(3){animation-delay:0.19s}
+        .level-card:nth-child(4){animation-delay:0.26s}
+        .float-badge { animation: floatBadge 3s ease-in-out infinite; }
+        .glow-dot    { animation: glowPulse 2s ease-in-out infinite; }
+      `}</style>
+
+      <section className="min-h-[calc(100vh-80px)] bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900 py-10 md:py-20" dir="rtl">
         <div className="container mx-auto px-4 md:px-6">
-          
-          {/* Header - تصميم فخم ومركزي */}
-          <div className="text-center max-w-3xl mx-auto mb-12 md:mb-20 space-y-3 md:space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 md:px-4 py-1 md:py-1.5 rounded-full bg-primary/10 text-primary text-[10px] md:text-xs font-black uppercase tracking-[0.15em] md:tracking-[0.2em] animate-fade-in">
-              <GraduationCap className="w-3.5 h-3.5 md:w-4 md:h-4" />
+
+          {/* ── Header ── */}
+          <div className="text-center max-w-2xl mx-auto mb-10 md:mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-primary text-[10px] font-black uppercase tracking-[0.2em] mb-4">
+              <GraduationCap className="w-3.5 h-3.5" />
               المسار الأكاديمي القانوني
             </div>
-            <h1 className="text-3xl md:text-6xl font-black text-slate-900 dark:text-foreground tracking-tight">
-              اختر <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-600">مستواك الدراسي</span>
+            <h1 className="text-4xl md:text-6xl font-black text-slate-900 dark:text-white tracking-tight leading-tight mb-4">
+              اختر{' '}
+              <span className="relative inline-block">
+                <span className="text-transparent bg-clip-text bg-gradient-to-l from-primary to-blue-600">مستواك الدراسي</span>
+                <span className="absolute -bottom-1 left-0 right-0 h-[3px] rounded-full bg-gradient-to-l from-primary to-blue-600 opacity-40" />
+              </span>
             </h1>
-            <p className="text-slate-500 dark:text-muted-foreground text-base md:text-xl font-medium px-4">
+            <p className="text-slate-500 dark:text-slate-400 text-base md:text-lg font-medium">
               حدد المرحلة التعليمية التي تنتمي إليها للوصول إلى بنك الأسئلة المخصص لك.
             </p>
           </div>
 
-          {/* Levels Grid - (2x2) على الكمبيوتر وعمودي على الجوال */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8 max-w-5xl mx-auto">
-            {levelsLoading && levels.length === 0 ? (
-              Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-56 md:h-72 rounded-[2rem] md:rounded-[3rem] bg-white dark:bg-card border border-slate-100 dark:border-border animate-pulse shadow-sm" />
-              ))
-            ) : (
-              levels.map((level, index) => {
-                const isDisabled = level.is_disabled;
-                const CardWrapper = isDisabled ? 'div' : Link;
-                const cardProps = isDisabled
-                  ? {
-                      onClick: () => setDisabledDialog(level),
-                      className: 'group relative cursor-not-allowed',
-                    }
-                  : {
-                      to: `/levels/${level.id}`,
-                      className: 'group relative',
-                    };
+          {/* ── Grid ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-7 max-w-5xl mx-auto">
+            {levelsLoading && levels.length === 0
+              ? Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-56 rounded-[2rem] bg-slate-100 dark:bg-slate-800 animate-pulse" />
+                ))
+              : levels.map((level, index) => {
+                  const isDisabled = level.is_disabled;
+                  const c = col(index);
+                  const CardWrapper = isDisabled ? 'div' : Link;
+                  const cardProps = isDisabled
+                    ? { onClick: () => setDisabledDialog(level), className: 'group level-card cursor-not-allowed block' }
+                    : { to: `/levels/${level.id}`,              className: 'group level-card block' };
 
-                return (
-                  <CardWrapper key={level.id} {...(cardProps as any)}>
-                    {/* Card Main Container */}
-                    <div className={cn(
-                      "bg-white dark:bg-card rounded-[2rem] md:rounded-[3rem] border border-slate-100 dark:border-border overflow-hidden transition-all duration-500 flex flex-col h-full shadow-sm active:scale-[0.98]",
-                      isDisabled
-                        ? 'opacity-60 grayscale-[30%]'
-                        : 'hover:-translate-y-2 md:hover:-translate-y-3 hover:shadow-2xl',
-                      !isDisabled && (levelColors[index]?.shadow || "shadow-slate-200")
-                    )}>
-                      
-                      {/* Visual Top Section */}
+                  return (
+                    <CardWrapper key={level.id} {...(cardProps as any)}>
                       <div className={cn(
-                        "h-32 md:h-44 relative overflow-hidden",
-                        isDisabled ? 'bg-gray-300' : ''
-                      )}
-                        style={!isDisabled ? {
-                          backgroundImage: `url(${LEVELS_BG_IMAGE})`,
-                          backgroundSize: 'cover',
-                          backgroundPosition: 'center',
-                        } : {}}
-                      >
-                        {/* طبقة لونية شفافة فوق الصورة */}
-                        {!isDisabled && (
-                          <div className={cn(
-                            "absolute inset-0 opacity-75 bg-gradient-to-br",
-                            levelColors[index]?.bg || levelColors[0].bg
-                          )} />
-                        )}
-                        {/* تأثير الشبكة */}
-                        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_2px_2px,white_1px,transparent_0)] bg-[length:24px_24px]" />
-                        
-                        {/* أيقونة القفل للمعطل */}
-                        {isDisabled && (
-                          <div className="absolute inset-0 flex items-center justify-center z-10">
-                            <ShieldOff className="w-12 h-12 md:w-16 md:h-16 text-white/60" />
-                          </div>
-                        )}
-                        
-                        {/* الرقم العائم */}
-                        <div className="absolute bottom-4 md:bottom-6 right-4 md:right-8">
-                          <div className="w-14 h-14 md:w-20 md:h-20 rounded-[1.25rem] md:rounded-[2rem] bg-white dark:bg-card/20 backdrop-blur-md border border-white/30 flex items-center justify-center rotate-12 group-hover:rotate-0 transition-transform duration-500 shadow-2xl">
-                            <span className="text-3xl md:text-5xl font-black text-white">{index + 1}</span>
-                          </div>
-                        </div>
+                        "relative overflow-hidden rounded-[2rem] transition-all duration-400 active:scale-[0.98]",
+                        isDisabled ? "opacity-55 grayscale-[40%]" : "hover:-translate-y-1.5 hover:shadow-2xl"
+                      )}>
 
-                        {/* شارة عدد المواد وعدد الأسئلة */}
-                        <div className="absolute top-4 md:top-6 left-4 md:left-8 flex flex-col gap-1.5">
-                          <span className="bg-black/10 backdrop-blur-sm text-white text-[9px] md:text-[10px] font-black uppercase tracking-widest px-3 md:px-4 py-1 md:py-1.5 rounded-full border border-white/10 flex items-center gap-1.5 md:gap-2">
-                            <Layers className="w-3 h-3 md:w-3.5 md:h-3.5" />
-                            {subjectCounts[level.id] || 0} مادة
-                          </span>
-                          <span className="bg-black/10 backdrop-blur-sm text-white text-[9px] md:text-[10px] font-black uppercase tracking-widest px-3 md:px-4 py-1 md:py-1.5 rounded-full border border-white/10 flex items-center gap-1.5 md:gap-2">
-                            <HelpCircle className="w-3 h-3 md:w-3.5 md:h-3.5" />
-                            {(questionCounts[level.id] || 0).toLocaleString('ar-EG')} سؤال
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Content Section */}
-                      <div className="p-6 md:p-10 flex-1 flex flex-col">
-                        <div className="flex items-center gap-2 mb-2 md:mb-3">
-                           <Sparkles className={cn("w-4 h-4 md:w-5 md:h-5", isDisabled ? 'text-gray-400' : levelColors[index]?.icon)} />
-                           <h2 className={cn(
-                             "font-black text-xl md:text-2xl tracking-tight",
-                             isDisabled ? 'text-slate-400 dark:text-muted-foreground' : 'text-slate-800 dark:text-foreground group-hover:text-primary transition-colors'
-                           )}>
-                            {level.name}
-                          </h2>
-                          {isDisabled && (
-                            <span className="text-[10px] md:text-xs bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 px-2 py-0.5 rounded-full font-bold shrink-0">
-                              غير متاح
-                            </span>
+                        {/* ── Top dark image band ── */}
+                        <div className="relative h-36 md:h-48 overflow-hidden"
+                          style={!isDisabled ? {
+                            background: `linear-gradient(135deg, ${c.bg.includes('1a1a2e') ? '#1a1a2e,#0f3460' : c.bg.includes('0d1f0d') ? '#0d2010,#133313' : c.bg.includes('1f1a0d') ? '#1f1a0d,#332a13' : '#1f0d1a,#4a1a2e'})`,
+                          } : { background: '#1e1e2e' }}
+                        >
+                          {/* Background image overlay */}
+                          {!isDisabled && (
+                            <div className="absolute inset-0 opacity-15"
+                              style={{ backgroundImage: `url(${LEVELS_BG_IMAGE})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
                           )}
-                        </div>
-                        
-                        <p className="text-slate-500 dark:text-muted-foreground font-medium leading-relaxed mb-6 md:mb-8 line-clamp-2 text-sm md:text-base">
-                          {level.description}
-                        </p>
-                        
-                        {/* Action Button */}
-                        <div className="mt-auto pt-4 md:pt-6 border-t border-slate-50 flex items-center justify-between">
-                          <div className={cn(
-                            "flex items-center gap-2 font-black text-[10px] md:text-xs uppercase tracking-[0.15em] md:tracking-[0.2em]",
-                            isDisabled ? 'text-gray-400' : 'text-primary'
-                          )}>
-                            <BookOpen className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                            <span>{isDisabled ? 'غير متاح حالياً' : 'تصفح المواد'}</span>
+                          {/* Dot grid overlay */}
+                          <div className="absolute inset-0 opacity-[0.07]"
+                            style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+                          {/* Glow effect */}
+                          {!isDisabled && (
+                            <div className="glow-dot absolute top-6 right-8 w-24 h-24 rounded-full blur-2xl pointer-events-none"
+                              style={{ background: c.glow }} />
+                          )}
+                          {/* Disabled icon */}
+                          {isDisabled && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <ShieldOff className="w-12 h-12 text-white/30" />
+                            </div>
+                          )}
+                          {/* Stats badges top-left */}
+                          {!isDisabled && (
+                            <div className="absolute top-4 right-4 md:top-5 md:right-5 flex flex-col gap-2">
+                              <span className={cn("flex items-center gap-1.5 text-[9px] md:text-[10px] font-black tracking-widest px-2.5 py-1 rounded-full border backdrop-blur-sm", c.badge)}>
+                                <Layers className="w-2.5 h-2.5 md:w-3 md:h-3" />
+                                {subjectCounts[level.id] || 0} مادة
+                              </span>
+                              <span className={cn("flex items-center gap-1.5 text-[9px] md:text-[10px] font-black tracking-widest px-2.5 py-1 rounded-full border backdrop-blur-sm", c.badge)}>
+                                <HelpCircle className="w-2.5 h-2.5 md:w-3 md:h-3" />
+                                {(questionCounts[level.id] || 0).toLocaleString('ar-EG')} سؤال
+                              </span>
+                            </div>
+                          )}
+                          {/* Big number bottom-left */}
+                          <div className="absolute bottom-4 left-4 md:bottom-5 md:left-6 float-badge">
+                            <span className={cn("text-5xl md:text-7xl font-black leading-none select-none opacity-80", c.num)}>
+                              {String(index + 1).padStart(2, '0')}
+                            </span>
                           </div>
+                          {/* Accent bar bottom */}
+                          <div className="absolute bottom-0 left-0 right-0 h-[2px]"
+                            style={{ background: `linear-gradient(90deg, transparent, ${c.accent}, transparent)` }} />
+                        </div>
+
+                        {/* ── Content bottom white band ── */}
+                        <div className="bg-white dark:bg-slate-900 border border-t-0 border-slate-100 dark:border-slate-800 rounded-b-[2rem] px-6 md:px-8 py-5 md:py-6 flex items-center justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Sparkles className={cn("w-4 h-4 shrink-0", isDisabled ? 'text-slate-400' : c.icon)} />
+                              <h2 className={cn(
+                                "font-black text-lg md:text-xl tracking-tight truncate",
+                                isDisabled ? 'text-slate-400' : 'text-slate-800 dark:text-white'
+                              )}>
+                                {level.name}
+                              </h2>
+                              {isDisabled && (
+                                <span className="text-[9px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-black shrink-0">
+                                  غير متاح
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-slate-400 dark:text-slate-500 text-[11px] md:text-xs font-medium leading-relaxed line-clamp-1">
+                              {level.description || 'بنك اختبارات الشريعة والقانون'}
+                            </p>
+                          </div>
+
+                          {/* Arrow button */}
                           <div className={cn(
-                            "w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-all duration-300",
+                            "shrink-0 w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center transition-all duration-300",
                             isDisabled
-                              ? 'bg-gray-100 text-gray-400'
-                              : 'bg-slate-50 dark:bg-muted group-hover:bg-primary group-hover:text-white'
-                          )}>
-                            <ArrowLeft className="w-4 h-4 md:w-5 md:h-5 group-hover:-translate-x-1 transition-transform" />
+                              ? 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                              : 'group-hover:scale-110 group-hover:shadow-lg'
+                          )}
+                            style={!isDisabled ? { background: c.accent, boxShadow: `0 4px 14px ${c.glow}` } : {}}
+                          >
+                            <ArrowLeft className={cn("w-4 h-4 md:w-5 md:h-5 transition-transform group-hover:-translate-x-0.5", isDisabled ? '' : 'text-white')} />
                           </div>
                         </div>
+
                       </div>
-                    </div>
-                  </CardWrapper>
-                );
-              })
-            )}
+                    </CardWrapper>
+                  );
+                })
+            }
           </div>
+
         </div>
       </section>
 
