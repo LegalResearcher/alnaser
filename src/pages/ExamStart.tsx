@@ -178,14 +178,16 @@ const ExamStart = () => {
 
   useEffect(() => { if (subject) setExamTime(subject.default_time_minutes || 30); }, [subject]);
 
-  // عند اختيار "الكل" يكون الوقت الافتراضي 120 دقيقة مع إمكانية التغيير
+  // عند اختيار "الكل" أو "أسئلة تجريبية + كل النماذج" يكون الوقت الافتراضي 120 دقيقة
   useEffect(() => {
-    if (selectedYear === 'all') {
+    const isAllQuestions = selectedYear === 'all';
+    const isAllTrialForms = selectedYear === 'trial' && selectedTrialForm === 'all';
+    if (isAllQuestions || isAllTrialForms) {
       setExamTime(120);
     } else if (subject) {
       setExamTime(subject.default_time_minutes || 30);
     }
-  }, [selectedYear, subject]);
+  }, [selectedYear, selectedTrialForm, subject]);
 
   const navigateToExam = (resume: boolean) => {
     const baseState = {
