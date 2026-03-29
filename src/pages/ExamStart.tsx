@@ -114,6 +114,8 @@ const ExamStart = () => {
   const [wrongQuestions,   setWrongQuestions]   = useState<string[]>([]);
   const [savedProgress,    setSavedProgress]    = useState<SavedProgress | null>(null);
   const [showResumeDialog, setShowResumeDialog] = useState(false);
+  const [showNewQsNotif,   setShowNewQsNotif]   = useState(false);
+  const newQsDismissKey = subjectId ? `new_qs_dismissed_${subjectId}` : null;
 
   useEffect(() => {
     if (!subjectId) return;
@@ -172,6 +174,49 @@ const ExamStart = () => {
     },
     enabled: !!subjectId,
   });
+
+  // ── جلب الأسئلة الجديدة (آخر 7 أيام) ──
+  interface NewQGroup { label: string; count: number; }
+  const { data: newQsGroups = [] } = useQuery<NewQGroup[]>({
+    queryKey: ['new-questions', subjectId],
+    queryFn: async () => {
+      const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from('questions')
+        .select('exam_year, exam_form, created_at')
+        .eq('subject_id', subjectId)
+        .eq('status', 'active')
+        .gte('created_at', since);
+      if (error) throw error;
+      if (!data || data.length === 0) return [];
+      const groups: Record<string, number> = {};
+      for (const q of data) {
+        let label = '';
+        if (!q.exam_year) {
+          const form = q.exam_form || '';
+          label = form ? `أسئلة تجريبية — ${form.replace('Model_', 'نموذج ')}` : 'أسئلة تجريبية';
+        } else {
+          const formMap: Record<string, string> = { General: 'نموذج العام', Parallel: 'نموذج الموازي', Mixed: 'نموذج مختلط' };
+          const formName = formMap[q.exam_form] || q.exam_form || '';
+          label = formName ? `دورة ${q.exam_year} — ${formName}` : `دورة ${q.exam_year}`;
+        }
+        groups[label] = (groups[label] || 0) + 1;
+      }
+      return Object.entries(groups).map(([label, count]) => ({ label, count }));
+    },
+    enabled: !!subjectId,
+  });
+
+  useEffect(() => {
+    if (!newQsDismissKey || newQsGroups.length === 0) return;
+    const dismissed = localStorage.getItem(newQsDismissKey);
+    if (!dismissed) setShowNewQsNotif(true);
+  }, [newQsGroups, newQsDismissKey]);
+
+  const handleDismissNewQs = () => {
+    if (newQsDismissKey) localStorage.setItem(newQsDismissKey, '1');
+    setShowNewQsNotif(false);
+  };
 
   useEffect(() => {
     if (subject?.levels?.is_disabled) {
@@ -282,6 +327,61 @@ const ExamStart = () => {
                   <button onClick={() => { clearWrongQuestions(subjectId!); setWrongQuestions([]); }} className="p-2 rounded-xl border border-rose-200 dark:border-rose-800 text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors" title="مسح الأخطاء">
                     <RotateCcw className="w-3.5 h-3.5" />
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── إشعار الأسئلة الجديدة ── */}
+          {showNewQsNotif && newQsGroups.length > 0 && (
+            <div className="max-w-lg mx-auto mb-5 animate-in fade-in slide-in-from-top-4 duration-500 zoom-in-95">
+              <div className="relative overflow-hidden rounded-[1.75rem] border border-amber-300/60 shadow-2xl shadow-amber-500/20"
+                style={{ background: 'linear-gradient(135deg, #0f0f1a 0%, #1a1025 40%, #0d1a2e 100%)' }}>
+                <div className="absolute inset-0 opacity-30"
+                  style={{ backgroundImage: 'radial-gradient(ellipse at 20% 50%, rgba(251,191,36,0.3) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(99,102,241,0.3) 0%, transparent 60%)' }} />
+                <div className="absolute top-0 left-0 right-0 h-[2px]"
+                  style={{ background: 'linear-gradient(90deg, transparent, #fbbf24, #a78bfa, #fbbf24, transparent)' }} />
+                <div className="relative z-10 p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 flex-1">
+                      <div className="shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center shadow-lg"
+                        style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', boxShadow: '0 0 20px rgba(251,191,36,0.5)' }}>
+                        <Sparkles className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest"
+                            style={{ background: 'linear-gradient(90deg, #f59e0b, #d97706)', color: '#000' }}>
+                            <Zap className="w-2.5 h-2.5" /> جديد
+                          </span>
+                          <span className="text-amber-300/70 text-[9px] font-bold">خلال آخر 7 أيام</span>
+                        </div>
+                        <p className="text-white font-black text-sm leading-snug mb-3">
+                          🎯 تم إضافة أسئلة جديدة لهذه المادة!
+                        </p>
+                        <div className="space-y-1.5">
+                          {newQsGroups.map((g, i) => (
+                            <div key={i} className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl"
+                              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                              <span className="text-[11px] font-bold text-slate-300">{g.label}</span>
+                              <span className="shrink-0 text-[10px] font-black px-2 py-0.5 rounded-full"
+                                style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }}>
+                                +{g.count} سؤال
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-slate-400 text-[10px] font-bold mt-2.5">
+                          🎯 راجعها قبل الامتحان وكن مستعداً
+                        </p>
+                      </div>
+                    </div>
+                    <button onClick={handleDismissNewQs}
+                      className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all hover:scale-110"
+                      style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                      <X className="w-3.5 h-3.5 text-slate-400" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
