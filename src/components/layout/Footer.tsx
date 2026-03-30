@@ -44,7 +44,7 @@ export function Footer() {
               {[
                 {
                   label: "Telegram",
-                  href: "https://t.me/muen2025",
+                  href: `https://t.me/share/url?url=${encodeURIComponent('https://alnaseer.org')}&text=${encodeURIComponent('منصة الباحث القانوني - أكبر منصة لتحضير الاختبارات القانونية في اليمن')}`,
                   color: "hover:bg-[#229ED9]",
                   svg: (
                     <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current">
@@ -64,7 +64,7 @@ export function Footer() {
                 },
                 {
                   label: "Instagram",
-                  href: "https://t.me/muen2025",
+                  href: `https://www.instagram.com/share?url=${encodeURIComponent('https://alnaseer.org')}`,
                   color: "hover:bg-gradient-to-br hover:from-[#833ab4] hover:via-[#fd1d1d] hover:to-[#fcb045]",
                   svg: (
                     <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current">
@@ -74,7 +74,7 @@ export function Footer() {
                 },
                 {
                   label: "Facebook",
-                  href: "https://t.me/muen2025",
+                  href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent('https://alnaseer.org')}`,
                   color: "hover:bg-[#1877F2]",
                   svg: (
                     <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current">
@@ -84,7 +84,7 @@ export function Footer() {
                 },
                 {
                   label: "LinkedIn",
-                  href: "https://t.me/muen2025",
+                  href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent('https://alnaseer.org')}`,
                   color: "hover:bg-[#0A66C2]",
                   svg: (
                     <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current">
@@ -105,6 +105,22 @@ export function Footer() {
                 </a>
               ))}
             </div>
+
+            {/* رابط قناة تيليغرام */}
+            <a
+              href="https://t.me/muen2025"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2.5 mt-2 px-4 py-2.5 rounded-2xl bg-[#229ED9]/10 border border-[#229ED9]/20 text-[#229ED9] hover:bg-[#229ED9]/20 transition-all duration-300 hover:scale-[1.02] group w-fit"
+            >
+              <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current shrink-0">
+                <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+              </svg>
+              <span className="text-sm font-bold">قناة الباحث القانوني</span>
+              <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-none stroke-current stroke-2 shrink-0 opacity-60 group-hover:translate-x-[-2px] transition-transform" style={{strokeLinecap:'round',strokeLinejoin:'round'}}>
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/>
+              </svg>
+            </a>
           </div>
 
           {/* روابط سريعة */}
