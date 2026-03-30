@@ -222,6 +222,7 @@ export function Header() {
                 </svg>
                 قناة الباحث القانوني
               </a>
+              <Link to="/levels" onClick={() => setIsMenuOpen(false)}>
                 <Button
                   className="w-full h-11 rounded-xl font-bold text-white text-[15px] active:scale-[0.98] transition-transform"
                   style={{ background: 'linear-gradient(135deg, hsl(217 91% 55%), hsl(199 89% 48%))' }}
