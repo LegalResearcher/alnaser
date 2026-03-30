@@ -703,8 +703,8 @@ const ExamPage = () => {
     const isSel = selectedAnswer === opt;
     const isCorr = mappedCorrectOption === opt;
     if (!hasAnswered) return isSel ? "border-primary bg-primary/5 shadow-lg scale-[1.01]" : "border-slate-100 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 hover:border-primary/30 hover:bg-white dark:hover:bg-slate-600 hover:scale-[1.005]";
-    if (isCorr) return "border-emerald-500 bg-emerald-50 shadow-lg anim-glow";
-    if (isSel && !isCorr) return "border-rose-500 bg-rose-50 shadow-md";
+    if (isCorr) return "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 shadow-lg anim-glow";
+    if (isSel && !isCorr) return "border-rose-500 bg-rose-50 dark:bg-rose-900/30 shadow-md";
     return "border-slate-100 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 opacity-40";
   };
 
@@ -721,8 +721,8 @@ const ExamPage = () => {
     const isSel = selectedAnswer === opt;
     const isCorr = mappedCorrectOption === opt;
     if (!hasAnswered) return isSel ? "text-primary font-black" : "text-slate-600 dark:text-slate-300 font-bold";
-    if (isCorr) return "text-emerald-700 font-black";
-    if (isSel && !isCorr) return "text-rose-700 font-black";
+    if (isCorr) return "text-emerald-700 dark:text-emerald-300 font-black";
+    if (isSel && !isCorr) return "text-rose-700 dark:text-rose-300 font-black";
     return "text-slate-400 dark:text-muted-foreground font-medium";
   };
 
@@ -790,11 +790,11 @@ const ExamPage = () => {
               <div
                 key={animKey}
                 className={cn(
-                  "rounded-[2rem] md:rounded-[3.5rem] p-5 md:p-14 mb-4 md:mb-6",
+                  "rounded-[2rem] md:rounded-[3.5rem] p-5 md:p-14 mb-4 md:mb-6 bg-white dark:bg-slate-800",
                   slideDir === 'left' ? "anim-slide-left" : "anim-slide-right",
                   shakeCard && "anim-shake"
                 )}
-                style={{ background: 'linear-gradient(145deg, #ffffff 0%, #f8faff 100%)', border: '1px solid rgba(99,102,241,0.1)', boxShadow: '0 20px 60px rgba(0,0,0,0.07), 0 4px 16px rgba(99,102,241,0.06), 0 0 0 1px rgba(255,255,255,0.8) inset' }}
+                style={{ border: '1px solid rgba(99,102,241,0.1)', boxShadow: '0 20px 60px rgba(0,0,0,0.07), 0 4px 16px rgba(99,102,241,0.06)' }}
               >
                 {/* ── بانر تحذير السؤال المحدّث — يظهر فقط إذا طُبّق البلاغ ── */}
                 {(currentQuestion as any).report_applied === true && (
@@ -940,8 +940,8 @@ const ExamPage = () => {
                     <div className={cn(
                       "p-4 md:p-5 rounded-2xl flex items-center gap-3 font-black text-sm md:text-base mb-4",
                       isAnswerCorrect
-                        ? "bg-emerald-50 border-2 border-emerald-200 text-emerald-700"
-                        : "bg-rose-50 border-2 border-rose-200 text-rose-700"
+                        ? "bg-emerald-50 dark:bg-emerald-900/30 border-2 border-emerald-200 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300"
+                        : "bg-rose-50 dark:bg-rose-900/30 border-2 border-rose-200 dark:border-rose-700 text-rose-700 dark:text-rose-300"
                     )}>
                       {isAnswerCorrect
                         ? <CheckCircle2 className="w-5 h-5 shrink-0" />
