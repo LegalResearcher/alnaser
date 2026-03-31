@@ -1,0 +1,1728 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ملخص التنفيذ الجبري – منصة الباحث القانوني</title>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Cairo:wght@300;400;600;700;900&family=Scheherazade+New:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #c9a84c;
+    --gold-light: #e8c97a;
+    --gold-dark: #8a6d1e;
+    --navy: #0d1b2a;
+    --navy-mid: #1a2d45;
+    --navy-light: #243b57;
+    --cream: #fdf6e3;
+    --cream-dark: #f0e6c8;
+    --text-light: #f0e8d0;
+    --text-muted: #a89060;
+    --accent: #d4872a;
+    --success: #2a7d4f;
+    --divider: rgba(201,168,76,0.3);
+    --shadow: 0 4px 32px rgba(13,27,42,0.18);
+  }
+
+  [data-theme="light"] {
+    --bg-main: #fdf6e3;
+    --bg-card: #ffffff;
+    --bg-section: #f5ead0;
+    --bg-header: #0d1b2a;
+    --text-primary: #1a1a2e;
+    --text-secondary: #3d3020;
+    --text-gold: #8a6d1e;
+    --border: rgba(201,168,76,0.25);
+    --card-shadow: 0 2px 24px rgba(13,27,42,0.10);
+    --sidebar-bg: #f0e6c8;
+    --tag-bg: #e8d9a8;
+  }
+
+  [data-theme="dark"] {
+    --bg-main: #0a1520;
+    --bg-card: #0d1b2a;
+    --bg-section: #111f30;
+    --bg-header: #060e18;
+    --text-primary: #f0e8d0;
+    --text-secondary: #c8b88a;
+    --text-gold: #c9a84c;
+    --border: rgba(201,168,76,0.2);
+    --card-shadow: 0 2px 32px rgba(0,0,0,0.4);
+    --sidebar-bg: #0d1b2a;
+    --tag-bg: rgba(201,168,76,0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Cairo', 'Amiri', serif;
+    background: var(--bg-main);
+    color: var(--text-primary);
+    line-height: 1.9;
+    transition: background 0.35s, color 0.35s;
+    min-height: 100vh;
+    padding-bottom: 80px;
+  }
+
+  /* ===== HERO HEADER ===== */
+  .hero {
+    background: var(--bg-header);
+    background-image:
+      radial-gradient(ellipse at 20% 50%, rgba(201,168,76,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(201,168,76,0.06) 0%, transparent 50%),
+      url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c9a84c' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    padding: 60px 20px 50px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    border-bottom: 2px solid var(--gold-dark);
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--gold), var(--gold-light), var(--gold), transparent);
+    animation: shimmer 3s ease-in-out infinite;
+  }
+
+  @keyframes shimmer {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  .hero-badge {
+    display: inline-block;
+    background: rgba(201,168,76,0.12);
+    border: 1px solid rgba(201,168,76,0.4);
+    color: var(--gold-light);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    padding: 5px 18px;
+    border-radius: 30px;
+    margin-bottom: 22px;
+    font-family: 'Cairo', sans-serif;
+    animation: fadeDown 0.6s ease both;
+  }
+
+  .hero-title {
+    font-family: 'Amiri', serif;
+    font-size: clamp(2rem, 6vw, 3.8rem);
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.3;
+    margin-bottom: 12px;
+    animation: fadeDown 0.7s ease both;
+  }
+
+  .hero-title span {
+    color: var(--gold);
+    position: relative;
+  }
+
+  .hero-subtitle {
+    font-size: 1rem;
+    color: rgba(201,168,76,0.7);
+    margin-bottom: 28px;
+    animation: fadeDown 0.8s ease both;
+    font-family: 'Cairo', sans-serif;
+  }
+
+  .hero-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    justify-content: center;
+    animation: fadeDown 0.9s ease both;
+  }
+
+  .hero-meta-item {
+    background: rgba(201,168,76,0.1);
+    border: 1px solid rgba(201,168,76,0.25);
+    color: var(--text-light);
+    padding: 7px 20px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-family: 'Cairo', sans-serif;
+  }
+
+  .hero-meta-item strong { color: var(--gold); }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-18px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ===== CONTROLS BAR ===== */
+  .controls-bar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--bg-header);
+    border-bottom: 1px solid var(--divider);
+    padding: 10px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    backdrop-filter: blur(10px);
+    transition: background 0.35s;
+  }
+
+  .controls-brand {
+    font-family: 'Cairo', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--gold);
+    white-space: nowrap;
+  }
+
+  .controls-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .theme-btn {
+    background: rgba(201,168,76,0.12);
+    border: 1px solid rgba(201,168,76,0.3);
+    color: var(--gold);
+    padding: 7px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'Cairo', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.25s;
+    white-space: nowrap;
+  }
+
+  .theme-btn:hover {
+    background: rgba(201,168,76,0.22);
+    border-color: var(--gold);
+  }
+
+  .toc-btn {
+    background: var(--gold);
+    border: none;
+    color: var(--navy);
+    padding: 7px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'Cairo', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 700;
+    transition: all 0.25s;
+    white-space: nowrap;
+  }
+
+  .toc-btn:hover { background: var(--gold-light); }
+
+  /* ===== TOC MODAL ===== */
+  .toc-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    z-index: 200;
+    backdrop-filter: blur(4px);
+  }
+
+  .toc-overlay.active { display: flex; align-items: center; justify-content: center; }
+
+  .toc-modal {
+    background: var(--bg-card);
+    border: 1px solid var(--gold-dark);
+    border-radius: 16px;
+    padding: 32px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 80px rgba(0,0,0,0.5);
+    animation: modalIn 0.3s ease;
+  }
+
+  @keyframes modalIn {
+    from { transform: scale(0.9); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .toc-modal h3 {
+    font-family: 'Amiri', serif;
+    font-size: 1.4rem;
+    color: var(--gold);
+    margin-bottom: 20px;
+    text-align: center;
+    border-bottom: 1px solid var(--divider);
+    padding-bottom: 14px;
+  }
+
+  .toc-list { list-style: none; }
+
+  .toc-list li {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.2s;
+  }
+
+  .toc-list li:last-child { border-bottom: none; }
+
+  .toc-list a {
+    display: block;
+    padding: 10px 14px;
+    color: var(--text-primary);
+    text-decoration: none;
+    font-size: 0.92rem;
+    font-family: 'Cairo', sans-serif;
+    transition: color 0.2s;
+    border-radius: 6px;
+  }
+
+  .toc-list a:hover { color: var(--gold); background: var(--tag-bg); }
+
+  .toc-close {
+    display: block;
+    margin: 20px auto 0;
+    background: var(--gold);
+    border: none;
+    color: var(--navy);
+    padding: 9px 28px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'Cairo', sans-serif;
+    font-weight: 700;
+    font-size: 0.9rem;
+  }
+
+  /* ===== MAIN LAYOUT ===== */
+  .main-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 20px 20px;
+  }
+
+  /* ===== SECTION CARDS ===== */
+  .section-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 36px 40px;
+    margin-bottom: 28px;
+    box-shadow: var(--card-shadow);
+    transition: background 0.35s, box-shadow 0.25s;
+    position: relative;
+    overflow: hidden;
+    animation: slideUp 0.5s ease both;
+  }
+
+  .section-card::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(180deg, var(--gold), var(--gold-dark));
+    border-radius: 0 16px 16px 0;
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ===== HEADINGS ===== */
+  .sec-h1 {
+    font-family: 'Amiri', serif;
+    font-size: clamp(1.4rem, 4vw, 2rem);
+    font-weight: 700;
+    color: var(--gold);
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 2px solid var(--divider);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .sec-h1 .icon {
+    width: 38px; height: 38px;
+    background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    color: var(--navy);
+  }
+
+  .sec-h2 {
+    font-family: 'Cairo', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-gold);
+    margin: 22px 0 12px;
+    padding-right: 14px;
+    border-right: 3px solid var(--gold);
+  }
+
+  .sec-h3 {
+    font-family: 'Cairo', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 16px 0 8px;
+  }
+
+  /* ===== TEXT ===== */
+  p {
+    font-family: 'Cairo', sans-serif;
+    font-size: 0.97rem;
+    line-height: 2;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+  }
+
+  /* ===== DEFINITION BOX ===== */
+  .def-box {
+    background: linear-gradient(135deg, rgba(201,168,76,0.10), rgba(201,168,76,0.04));
+    border: 1px solid rgba(201,168,76,0.35);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin: 18px 0;
+    position: relative;
+  }
+
+  .def-box::before {
+    content: '✦';
+    position: absolute;
+    top: -12px; right: 20px;
+    background: var(--bg-card);
+    padding: 0 8px;
+    color: var(--gold);
+    font-size: 1rem;
+  }
+
+  .def-box p { margin: 0; font-size: 1rem; font-weight: 600; color: var(--text-primary); }
+
+  /* ===== NUMBERED LIST ===== */
+  .num-list {
+    list-style: none;
+    margin: 12px 0;
+  }
+
+  .num-list > li {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 10px;
+    align-items: flex-start;
+    font-family: 'Cairo', sans-serif;
+    font-size: 0.95rem;
+    line-height: 1.8;
+    color: var(--text-primary);
+  }
+
+  .num-list > li .num {
+    min-width: 28px; height: 28px;
+    background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+    color: var(--navy);
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 900;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  /* ===== BULLET LIST ===== */
+  .bullet-list {
+    list-style: none;
+    margin: 10px 0;
+  }
+
+  .bullet-list li {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    font-family: 'Cairo', sans-serif;
+    font-size: 0.93rem;
+    line-height: 1.85;
+    color: var(--text-primary);
+    margin-bottom: 7px;
+  }
+
+  .bullet-list li::before {
+    content: '◆';
+    color: var(--gold);
+    font-size: 0.6rem;
+    flex-shrink: 0;
+    margin-top: 7px;
+  }
+
+  /* ===== TAGS / BADGES ===== */
+  .badge {
+    display: inline-block;
+    background: var(--tag-bg);
+    color: var(--text-gold);
+    border: 1px solid var(--border);
+    padding: 3px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    font-family: 'Cairo', sans-serif;
+    margin: 3px;
+  }
+
+  /* ===== ALERT/NOTE BOX ===== */
+  .note-box {
+    background: rgba(42,125,79,0.08);
+    border: 1px solid rgba(42,125,79,0.3);
+    border-radius: 10px;
+    padding: 14px 20px;
+    margin: 14px 0;
+    font-family: 'Cairo', sans-serif;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    position: relative;
+    padding-right: 44px;
+  }
+
+  .note-box::before {
+    content: '⚡';
+    position: absolute;
+    right: 14px;
+    top: 14px;
+    font-size: 1.1rem;
+  }
+
+  .warn-box {
+    background: rgba(201,168,76,0.08);
+    border: 1px solid rgba(201,168,76,0.3);
+    border-radius: 10px;
+    padding: 14px 20px;
+    margin: 14px 0;
+    font-family: 'Cairo', sans-serif;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    position: relative;
+    padding-right: 44px;
+  }
+
+  .warn-box::before {
+    content: '⚠️';
+    position: absolute;
+    right: 14px;
+    top: 14px;
+    font-size: 1rem;
+  }
+
+  /* ===== COLUMNS GRID ===== */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin: 16px 0;
+  }
+
+  @media (max-width: 600px) {
+    .two-col { grid-template-columns: 1fr; }
+    .section-card { padding: 24px 18px; }
+  }
+
+  .col-box {
+    background: var(--bg-section);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+
+  .col-box h4 {
+    font-family: 'Cairo', sans-serif;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--gold);
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--divider);
+  }
+
+  /* ===== TABLE ===== */
+  .styled-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-family: 'Cairo', sans-serif;
+    font-size: 0.88rem;
+  }
+
+  .styled-table th {
+    background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+    color: var(--navy);
+    padding: 11px 16px;
+    font-weight: 700;
+    text-align: right;
+    border: 1px solid var(--gold-dark);
+  }
+
+  .styled-table td {
+    padding: 10px 16px;
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    background: var(--bg-card);
+    line-height: 1.7;
+    text-align: right;
+  }
+
+  .styled-table tr:nth-child(even) td { background: var(--bg-section); }
+
+  /* ===== DIVIDER ===== */
+  .gold-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    margin: 22px 0;
+    opacity: 0.5;
+  }
+
+  /* ===== HIGHLIGHT TEXT ===== */
+  .highlight { color: var(--gold); font-weight: 700; }
+  .em { font-style: italic; color: var(--text-secondary); }
+
+  /* ===== INTRO BOX ===== */
+  .intro-box {
+    background: linear-gradient(135deg, var(--navy-mid), var(--navy));
+    border: 1px solid var(--gold-dark);
+    border-radius: 16px;
+    padding: 32px 36px;
+    margin-bottom: 28px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .intro-box::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  }
+
+  .intro-box .ayah {
+    font-family: 'Amiri', serif;
+    font-size: 1.1rem;
+    color: var(--gold-light);
+    line-height: 2.2;
+    margin-bottom: 16px;
+  }
+
+  .intro-box .ayah-ref {
+    font-size: 0.8rem;
+    color: rgba(201,168,76,0.6);
+    font-family: 'Cairo', sans-serif;
+  }
+
+  .intro-box .moqadema {
+    font-family: 'Cairo', sans-serif;
+    font-size: 0.95rem;
+    color: rgba(240,232,208,0.85);
+    line-height: 2;
+    margin-top: 18px;
+    text-align: justify;
+  }
+
+  /* ===== SITE LINK ===== */
+  .site-link-box {
+    text-align: center;
+    margin: 0 0 28px;
+  }
+
+  .site-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+    color: var(--navy);
+    text-decoration: none;
+    padding: 14px 36px;
+    border-radius: 50px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 1rem;
+    font-weight: 900;
+    box-shadow: 0 6px 28px rgba(201,168,76,0.35);
+    transition: all 0.3s;
+    letter-spacing: 0.03em;
+  }
+
+  .site-link:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 40px rgba(201,168,76,0.5);
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+  }
+
+  .site-link svg { width: 20px; height: 20px; fill: var(--navy); }
+
+  /* ===== FOOTER ===== */
+  .footer-fixed {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--bg-header);
+    border-top: 1px solid var(--gold-dark);
+    padding: 12px 24px;
+    text-align: center;
+    z-index: 90;
+    font-family: 'Cairo', sans-serif;
+    font-size: 0.82rem;
+    color: rgba(201,168,76,0.7);
+    backdrop-filter: blur(10px);
+  }
+
+  .footer-fixed a {
+    color: var(--gold);
+    text-decoration: none;
+    font-weight: 700;
+    transition: color 0.2s;
+  }
+
+  .footer-fixed a:hover { color: var(--gold-light); }
+
+  /* ===== SCROLL PROGRESS ===== */
+  .progress-bar {
+    position: fixed;
+    top: 0; left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--gold), var(--gold-light));
+    z-index: 300;
+    transition: width 0.1s;
+    width: 0%;
+  }
+
+  /* ===== BACK TO TOP ===== */
+  .back-top {
+    position: fixed;
+    bottom: 70px;
+    left: 24px;
+    background: var(--gold);
+    color: var(--navy);
+    border: none;
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(201,168,76,0.4);
+    transition: all 0.25s;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 90;
+  }
+
+  .back-top.visible { opacity: 1; pointer-events: all; }
+  .back-top:hover { transform: translateY(-3px); background: var(--gold-light); }
+
+  /* SPECIAL: conditions grid */
+  .conditions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+    margin: 14px 0;
+  }
+
+  .condition-item {
+    background: var(--bg-section);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 0.88rem;
+    color: var(--text-primary);
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .condition-item .dot {
+    width: 8px; height: 8px;
+    background: var(--gold);
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 6px;
+  }
+
+  /* section number decoration */
+  .section-num {
+    position: absolute;
+    top: 18px;
+    left: 18px;
+    font-family: 'Amiri', serif;
+    font-size: 3rem;
+    font-weight: 700;
+    color: rgba(201,168,76,0.07);
+    line-height: 1;
+    pointer-events: none;
+    user-select: none;
+  }
+</style>
+</head>
+<body data-theme="dark">
+
+<div class="progress-bar" id="progressBar"></div>
+
+<!-- CONTROLS -->
+<div class="controls-bar">
+  <span class="controls-brand">⚖️ ملخص التنفيذ الجبري</span>
+  <div class="controls-right">
+    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">
+      <span id="themeIcon">☀️</span>
+      <span id="themeLabel">الوضع النهاري</span>
+    </button>
+    <button class="toc-btn" onclick="openTOC()">📋 الفهرس</button>
+  </div>
+</div>
+
+<!-- TOC MODAL -->
+<div class="toc-overlay" id="tocOverlay" onclick="closeTOCOutside(event)">
+  <div class="toc-modal">
+    <h3>📚 فهرس الموضوعات</h3>
+    <ul class="toc-list">
+      <li><a href="#moqadema" onclick="closeTOC()">المقدمة والآية الكريمة</a></li>
+      <li><a href="#def" onclick="closeTOC()">تعريف التنفيذ الجبري وعناصره</a></li>
+      <li><a href="#persons" onclick="closeTOC()">أشخاص التنفيذ</a></li>
+      <li><a href="#judge" onclick="closeTOC()">قاضي التنفيذ – الاختصاص والوظائف</a></li>
+      <li><a href="#assistant" onclick="closeTOC()">معاون قاضي التنفيذ</a></li>
+      <li><a href="#parties" onclick="closeTOC()">أطراف التنفيذ</a></li>
+      <li><a href="#snad" onclick="closeTOC()">السند التنفيذي</a></li>
+      <li><a href="#types-snad" onclick="closeTOC()">أنواع السندات التنفيذية</a></li>
+      <li><a href="#ahkam" onclick="closeTOC()">الأحكام القضائية وتوقف التنفيذ</a></li>
+      <li><a href="#mujal" onclick="closeTOC()">التنفيذ المعجل</a></li>
+      <li><a href="#tahkim" onclick="closeTOC()">أحكام التحكيم</a></li>
+      <li><a href="#mahal" onclick="closeTOC()">محل التنفيذ</a></li>
+      <li><a href="#moqadimat" onclick="closeTOC()">مقدمات التنفيذ</a></li>
+      <li><a href="#hajz" onclick="closeTOC()">الحجز – أنواعه وإجراءاته</a></li>
+      <li><a href="#athar" onclick="closeTOC()">آثار الحجز</a></li>
+      <li><a href="#manqol" onclick="closeTOC()">حجز المنقول لدى المدين</a></li>
+      <li><a href="#aqar" onclick="closeTOC()">حجز العقار</a></li>
+      <li><a href="#ghair" onclick="closeTOC()">حجز ما للمدين لدى الغير</a></li>
+      <li><a href="#bai" onclick="closeTOC()">البيع الجبري</a></li>
+      <li><a href="#tawzee" onclick="closeTOC()">توزيع حصيلة التنفيذ</a></li>
+      <li><a href="#tanwihaat" onclick="closeTOC()">تنويهات هامة</a></li>
+    </ul>
+    <button class="toc-close" onclick="closeTOC()">إغلاق</button>
+  </div>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">جامعة صنعاء – كلية الشريعة والقانون – المستوى الرابع</div>
+  <h1 class="hero-title">ملخص مادة <span>التنفيذ الجبري</span></h1>
+  <p class="hero-subtitle">تأليف: د/ عادل النجار</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item"><strong>إعداد الملخص:</strong> لمياء عبدالله العرشي</div>
+    <div class="hero-meta-item"><strong>الدفعة:</strong> الخمسون (50)</div>
+    <div class="hero-meta-item"><strong>التطوير الرقمي:</strong> أ. معين الناصر</div>
+  </div>
+</div>
+
+<!-- SITE LINK -->
+<div class="main-container" style="padding-top:28px; padding-bottom:0;">
+  <div class="site-link-box">
+    <a href="https://www.alnaseer.org/" target="_blank" rel="noopener" class="site-link">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+      🌐 منصة الباحث القانوني – www.alnaseer.org
+    </a>
+  </div>
+</div>
+
+<div class="main-container">
+
+  <!-- INTRO / QURAN AYAH -->
+  <div class="intro-box" id="moqadema">
+    <div class="ayah">
+      ﴿ قُلْ هَلْ يَسْتَوِي الَّذِينَ يَعْلَمُونَ وَالَّذِينَ لَا يَعْلَمُونَ ﴾
+    </div>
+    <div class="ayah-ref">سورة الزمر، آية: 9</div>
+    <div class="gold-divider"></div>
+    <p class="moqadema">
+      الحمد لله على ما أولى من عون وتسديد، وله الشكر على ما أفاض من فضل وتمكين، والصلاة والسلام على سيدنا محمد المبعوث رحمةً للعالمين، وعلى آله وصحبه أجمعين.
+      <br><br>
+      أما بعد، فهذا <strong style="color:var(--gold)">ملخصٌ لمادة التنفيذ الجبري</strong>، قصدت به لمّ شتات مسائلها، وجمع أطراف مباحثها، في نسقٍ محكم وعبارةٍ سهلة المأخذ، مستمداً العون من الله وحده، ومعترفاً بفضله ومنّته.
+    </p>
+  </div>
+
+  <!-- ===== 1. DEFINITION ===== -->
+  <div class="section-card" id="def">
+    <div class="section-num">١</div>
+    <h2 class="sec-h1">
+      <span class="icon">⚖️</span>
+      تعريف التنفيذ الجبري وعناصره
+    </h2>
+
+    <div class="def-box">
+      <p>التنفيذ الجبري هو ما تقوم به محكمة التنفيذ من إجراءات لإجبار المدين بالوفاء بما تضمّنه سند تنفيذي يؤكد حق طالب التنفيذ منه وفقاً للشرع والقانون.</p>
+    </div>
+
+    <h3 class="sec-h2">عناصر التنفيذ الجبري الثلاثة</h3>
+    <div class="conditions-grid">
+      <div class="condition-item">
+        <div class="dot"></div>
+        <div><strong>أشخاص التنفيذ:</strong> محكمة التنفيذ وأطراف التنفيذ</div>
+      </div>
+      <div class="condition-item">
+        <div class="dot"></div>
+        <div><strong>سبب التنفيذ:</strong> السند التنفيذي</div>
+      </div>
+      <div class="condition-item">
+        <div class="dot"></div>
+        <div><strong>محل التنفيذ:</strong> ما تنصبّ عليه الإجراءات</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 2. PERSONS ===== -->
+  <div class="section-card" id="persons">
+    <div class="section-num">٢</div>
+    <h2 class="sec-h1">
+      <span class="icon">👥</span>
+      أشخاص التنفيذ
+    </h2>
+    <p>أشخاص التنفيذ هم الذين لا يُتصوَّر إجراء التنفيذ الجبري دونهم، وهم:</p>
+
+    <div class="two-col">
+      <div class="col-box">
+        <h4>① محكمة التنفيذ</h4>
+        <ul class="bullet-list">
+          <li>قاضي التنفيذ</li>
+          <li>معاونو قاضي التنفيذ</li>
+        </ul>
+      </div>
+      <div class="col-box">
+        <h4>② أطراف التنفيذ</h4>
+        <ul class="bullet-list">
+          <li>طالب التنفيذ</li>
+          <li>المُنفَّذ ضده</li>
+          <li>الغير</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- JUDGE -->
+    <h3 class="sec-h2" id="judge">قاضي التنفيذ</h3>
+    <p>يقتضي تخصيص دائرة من دوائر القضاء يترأسها قاضٍ متخصص يعاونه عدد من الموظفين. يختص قاضي التنفيذ بأمرين:</p>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>الإشراف على كافة إجراءات التنفيذ</span></li>
+      <li><span class="num">٢</span><span>الفصل في جميع منازعاته</span></li>
+    </ul>
+
+    <div class="gold-divider"></div>
+    <h3 class="sec-h3">الاختصاص النوعي لقاضي التنفيذ</h3>
+    <p>يُعدّ قاضي التنفيذ محكمةً مستقلة بذاتها بنفس درجة المحكمة الابتدائية، وهو قاضٍ فرد، واختصاصه اختصاص عام. يترتب على ذلك نتيجتان:</p>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>لا يخرج من اختصاصه إلا ما أُسند بنص خاص لمحكمة أخرى – مثل تنفيذ أحكام المحكمين التي تختص بها محكمة الاستئناف.</span></li>
+      <li><span class="num">٢</span><span>المسائل غير المتعلقة بالتنفيذ الجبري لا تدخل في اختصاصه إلا بنص خاص – كدعاوى أصحاب حقوق الأولوية والامتياز.</span></li>
+    </ul>
+
+    <div class="gold-divider"></div>
+    <h3 class="sec-h3">الاختصاص المكاني لقاضي التنفيذ</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>تختص المحكمة التي يقع في دائرتها محل إقامة من عليه الحق أو التي توجد بدائرتها أمواله.</span></li>
+      <li><span class="num">٢</span><span>إذا لم يكن للمنفَّذ ضده أموال ظاهرة أو محل إقامة – تختص المحكمة التي نظرت النزاع ابتداءً.</span></li>
+      <li><span class="num">٣</span><span>عند حجز ما للمدين لدى الغير – تختص المحكمة التي يقع في دائرتها موطن المحجوز لديه.</span></li>
+      <li><span class="num">٤</span><span>إذا تعددت المحاكم المختصة – تختص التي قُدِّم إليها طلب التنفيذ أولاً.</span></li>
+    </ul>
+
+    <div class="note-box">في حال تعدد المحاكم المختصة مكانياً تظهر الإنابة بين محاكم التنفيذ: المحكمة المُنيبة تُكلِّف المحكمة المُنابة بالتنفيذ أو بإجراء من إجراءاته.</div>
+
+    <div class="gold-divider"></div>
+    <h3 class="sec-h3">وظائف قاضي التنفيذ</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span><strong class="highlight">الوظيفة الرقابية:</strong> أوامر وقرارات رقابة سابقة ولاحقة ومعاصرة لإجراءات التنفيذ.</span></li>
+      <li><span class="num">٢</span><span><strong class="highlight">الوظيفة الولائية:</strong> قرارات وقتية أو تحفظية – كالأمر بفرض الحراسة، ومنع المنفَّذ ضده من السفر، والإذن بالتنفيذ في غير الأوقات المسموح بها.</span></li>
+      <li><span class="num">٣</span><span><strong class="highlight">الوظيفة القضائية:</strong> نظر والفصل في المنازعات التنفيذية التي تُرفع على هيئة دعاوى بأحكام قضائية.</span></li>
+    </ul>
+
+    <!-- ASSISTANT -->
+    <div class="gold-divider"></div>
+    <h3 class="sec-h2" id="assistant">معاون قاضي التنفيذ</h3>
+    <p>هو موظف عام ينتمي للجهاز القضائي، يقوم بالأعمال والإجراءات التي يقتضيها التنفيذ.</p>
+
+    <h3 class="sec-h3">مهام معاون قاضي التنفيذ</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>الانتقال إلى مكان التنفيذ أو إلى مكان الأموال المراد حجزها</span></li>
+      <li><span class="num">٢</span><span>تحرير الأموال ووضع الأختام عليها</span></li>
+      <li><span class="num">٣</span><span>استلام الأموال المنقولة في التنفيذ المباشر وتسليمها لطالب التنفيذ</span></li>
+      <li><span class="num">٤</span><span>قبض المبالغ التي تُدفع وفاءً للديون أو التي تُحصَّل من الأموال المحجوزة</span></li>
+      <li><span class="num">٥</span><span>القيام ببعض الإخطارات والإعلانات المتعلقة بالتنفيذ</span></li>
+      <li><span class="num">٦</span><span>إشهار محضر حجز المنقول أو العقار في لوحة إعلانات المحكمة</span></li>
+      <li><span class="num">٧</span><span>نقل بعض الأموال المحجوزة كالسبائك وإيداعها خزانة المحكمة</span></li>
+      <li><span class="num">٨</span><span>استعمال القوة المناسبة لكسر الأبواب أو الأقفال المغلقة بعد الحصول على إذن من قاضي التنفيذ</span></li>
+      <li><span class="num">٩</span><span>بيع الأموال المنقولة</span></li>
+      <li><span class="num">١٠</span><span>المناداة بالمزايدة في بيع العقار</span></li>
+    </ul>
+
+    <h3 class="sec-h3">ما لا يجوز لمعاون قاضي التنفيذ القيام به</h3>
+    <ul class="bullet-list">
+      <li>أن يكون حارساً قضائياً على الأموال المحجوزة</li>
+      <li>التقدم للمزايدة في بيع الأموال المحجوزة</li>
+      <li>مباشرة أي عمل إذا كان أحد أطراف التنفيذ قريباً أو صهراً له إلى الدرجة الرابعة</li>
+      <li>مباشرة أي عمل خارج نطاق الاختصاص المكاني للمحكمة</li>
+    </ul>
+  </div>
+
+  <!-- ===== 3. PARTIES ===== -->
+  <div class="section-card" id="parties">
+    <div class="section-num">٣</div>
+    <h2 class="sec-h1">
+      <span class="icon">🤝</span>
+      أطراف التنفيذ
+    </h2>
+    <p>أطراف التنفيذ هم الأشخاص الذين يشتركون فيه ويعود عليهم نفعٌ من إجرائه أو يتحملون عبئاً من ورائه.</p>
+
+    <h3 class="sec-h2">① طالب التنفيذ (الطرف الإيجابي)</h3>
+    <p>القاضي لا يأمر بالتنفيذ إلا بناءً على طلبٍ منه.</p>
+    <h3 class="sec-h3">شروط طالب التنفيذ</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>أن يكون ذا صفة – تُثبَت من السند التنفيذي ذاته (أصالةً أو نيابةً كالولي والوصي، أو بالخلف العام والخاص).</span></li>
+      <li><span class="num">٢</span><span>أن يكون متمتعاً بأهلية الإدارة – ولا يُلزَم بأهلية التصرف.</span></li>
+    </ul>
+
+    <div class="gold-divider"></div>
+    <h3 class="sec-h2">② المُنفَّذ ضده (الطرف السلبي)</h3>
+    <p>إجراءات التنفيذ تُوجَّه إليه أو تُتَّخذ ضده.</p>
+    <h3 class="sec-h3">شروط المُنفَّذ ضده</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>أن يكون ذا صفة – تثبت أصلاً للمُلزَم شخصياً بالدين (المدين أو الكفيل الشخصي). استثناءً: يجوز التنفيذ في مواجهة الكفيل العيني والحائز لأموال المُنفَّذ ضده.</span></li>
+      <li><span class="num">٢</span><span>أن يكون متمتعاً بأهلية التصرف – غير أن عدم توافرها لا يحول دون التنفيذ.</span></li>
+    </ul>
+
+    <h3 class="sec-h3">شروط التنفيذ ضد الكفيل</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>ثبوت الكفالة واستمرار نفاذها في مواجهة الكفيل</span></li>
+      <li><span class="num">٢</span><span>الرجوع بالمطالبة على المكفول عنه (المدين) أولاً</span></li>
+      <li><span class="num">٣</span><span>أن يتعذر التنفيذ في مواجهة المدين</span></li>
+      <li><span class="num">٤</span><span>إعلان الكفيل قبل مباشرة التنفيذ في مواجهته بسبعة أيام من تاريخ ثبوت الرجوع بالمطالبة</span></li>
+    </ul>
+
+    <div class="gold-divider"></div>
+    <h3 class="sec-h2">③ الغير</h3>
+    <p><strong class="highlight">بمعناه العام:</strong> كل من لم يكن طرفاً في الرابطة القانونية.<br>
+    <strong class="highlight">بمعناه الخاص في التنفيذ:</strong> من لم يكن من أطراف الحق في التنفيذ؛ لكن القانون يُلزمه بالاشتراك في إجراءاته استثناءً.</p>
+    <h3 class="sec-h3">الشروط الواجب توافرها في الغير</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>ألا يكون طرفاً في الحق في التنفيذ</span></li>
+      <li><span class="num">٢</span><span>أن يُلزمه القانون بالاشتراك في إجراءات التنفيذ بسبب صلته بمحل التنفيذ</span></li>
+    </ul>
+    <div class="note-box">أبرز أشخاص الغير: المحجوز لديه (مدين المدين غالباً) والحارس القضائي.</div>
+  </div>
+
+  <!-- ===== 4. SNAD TANFIZI ===== -->
+  <div class="section-card" id="snad">
+    <div class="section-num">٤</div>
+    <h2 class="sec-h1">
+      <span class="icon">📜</span>
+      السند التنفيذي
+    </h2>
+    <div class="def-box">
+      <p>هو عملٌ قانوني يتخذ شكلاً معيناً، يتضمن تأكيداً لحق الدائن ويُخوِّله اقتضاء ذلك الحق جبراً. وهو سبب الحق في التنفيذ.</p>
+    </div>
+
+    <h3 class="sec-h2">الشروط الموضوعية للسند التنفيذي</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>أن يكون الحق محقَّق الوجود</span></li>
+      <li><span class="num">٢</span><span>أن يكون الحق معيَّن الأداء</span></li>
+      <li><span class="num">٣</span><span>أن يكون الحق حالَّ الأداء</span></li>
+    </ul>
+    <div class="warn-box">يجب توافر الشروط الثلاثة معاً قبل البدء في التنفيذ، وإلا كان باطلاً.</div>
+
+    <h3 class="sec-h2">الشروط الإجرائية – الصورة التنفيذية</h3>
+    <p>هي صورة عن طبق الأصل من السند التنفيذي مُذيَّلة بالصيغة التنفيذية وممهورة بتوقيع كاتبها وختم المحكمة.</p>
+    <h3 class="sec-h3">إجراءات الحصول على الصورة التنفيذية</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>تقديم طلب لرئيس المحكمة لتذييل السند بالصيغة التنفيذية</span></li>
+      <li><span class="num">٢</span><span>التحقق من قابلية السند بواسطة كاتب المحكمة</span></li>
+      <li><span class="num">٣</span><span>تسليم صورة واحدة للمستفيد أو من حلّ محله</span></li>
+    </ul>
+    <div class="note-box">إذا فُقدت الصورة التنفيذية يجوز استخراج نسخة أخرى بشرط إثبات واقعة الضياع، ويؤشَّر عليها بـ: «لا عمل بالأصل المفقود إن وجد».</div>
+
+    <h3 class="sec-h3">حالات التنفيذ دون الصورة التنفيذية</h3>
+    <ul class="bullet-list">
+      <li>الأحكام المستعجلة</li>
+      <li>الأوامر على العرائض</li>
+    </ul>
+  </div>
+
+  <!-- ===== 5. TYPES OF SNAD ===== -->
+  <div class="section-card" id="types-snad">
+    <div class="section-num">٥</div>
+    <h2 class="sec-h1">
+      <span class="icon">🗂️</span>
+      أنواع السندات التنفيذية (المادة 328)
+    </h2>
+    <p>أوردت المادة <span class="highlight">328</span> السندات التنفيذية على سبيل الحصر:</p>
+    <div class="conditions-grid">
+      <div class="condition-item"><div class="dot"></div><div>الأحكام القضائية</div></div>
+      <div class="condition-item"><div class="dot"></div><div>أوامر الأداء والأوامر على العرائض</div></div>
+      <div class="condition-item"><div class="dot"></div><div>أحكام المحكِّمين</div></div>
+      <div class="condition-item"><div class="dot"></div><div>اتفاقات الصلح</div></div>
+      <div class="condition-item"><div class="dot"></div><div>القرارات النهائية للجان الإدارية</div></div>
+      <div class="condition-item"><div class="dot"></div><div>مسودات الأراضي وعقارات الأوقاف</div></div>
+    </div>
+  </div>
+
+  <!-- ===== 6. AHKAM ===== -->
+  <div class="section-card" id="ahkam">
+    <div class="section-num">٦</div>
+    <h2 class="sec-h1">
+      <span class="icon">🏛️</span>
+      الأحكام القضائية – التنفيذ العادي والوقف
+    </h2>
+    <p>الأحكام القضائية الصادرة بالإلزام هي فقط القابلة للتنفيذ الجبري. أما الأحكام التقريرية والمُنشئة فلا تصلح له.</p>
+
+    <h3 class="sec-h2">حالات كون الحكم نهائياً (الابتدائي)</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>صدوره في حدود النصاب النهائي: مدني ≤ 5 ملايين، تجاري ≤ 10 ملايين</span></li>
+      <li><span class="num">٢</span><span>نص القانون صراحةً على عدم الطعن بالاستئناف</span></li>
+      <li><span class="num">٣</span><span>قضايا الإيجارات والشفعة</span></li>
+      <li><span class="num">٤</span><span>انقضاء ميعاد الطعن بالاستئناف (60 يوماً)</span></li>
+      <li><span class="num">٥</span><span>قبول المحكوم عليه الحكم</span></li>
+      <li><span class="num">٦</span><span>تنفيذه اختيارياً من قِبَل المحكوم عليه</span></li>
+      <li><span class="num">٧</span><span>تنازل المحكوم عليه عن الحق في الاستئناف</span></li>
+      <li><span class="num">٨</span><span>سقوط خصومة الاستئناف</span></li>
+      <li><span class="num">٩</span><span>اعتبار الاستئناف كأن لم يكن أو اعتبار المستأنف تاركاً لاستئنافه</span></li>
+    </ul>
+
+    <div class="gold-divider"></div>
+    <h3 class="sec-h2">وقف التنفيذ من محكمة الطعن بالنقض</h3>
+    <div class="two-col">
+      <div class="col-box">
+        <h4>الوقف الجوازي – شروطه</h4>
+        <ul class="bullet-list">
+          <li>طلب الطاعن الوقف في صحيفة الطعن</li>
+          <li>تقديم الطلب قبل تمام التنفيذ</li>
+          <li>أن يتضمن مبرراً تقتنع به المحكمة</li>
+        </ul>
+      </div>
+      <div class="col-box">
+        <h4>الوقف الوجوبي – حالاته</h4>
+        <ul class="bullet-list">
+          <li>مسائل الأحوال الشخصية</li>
+          <li>المنازعات العقارية</li>
+          <li>المنازعات المتعلقة بالإزالة</li>
+          <li>الحق المدني في القضايا الجنائية</li>
+          <li>المسائل الإدارية</li>
+          <li>دعوى مخاصمة القاضي الابتدائي</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="warn-box"><strong>منع الوقف مطلقاً في:</strong> الأحكام الصادرة في النفقات الشرعية، والأحكام الصادرة في مسائل الحضانة.</div>
+
+    <h3 class="sec-h3">وقف التنفيذ من محكمة التماس إعادة النظر</h3>
+    <p>يكون جوازياً دائماً، ويُشترط: طلب الملتمس وقف التنفيذ، وأن يكون قبل تمامه، وأن تُخشى أضرار يتعذر تداركها.</p>
+    <div class="note-box">في المحكمة العليا: يسري الوقف من تاريخ تقديم طلبه. في التماس إعادة النظر: من تاريخ صدور الحكم بالوقف.</div>
+  </div>
+
+  <!-- ===== 7. MUJAL ===== -->
+  <div class="section-card" id="mujal">
+    <div class="section-num">٧</div>
+    <h2 class="sec-h1">
+      <span class="icon">⚡</span>
+      التنفيذ المعجَّل وضماناته
+    </h2>
+    <div class="def-box">
+      <p>التنفيذ المعجَّل: تنفيذ الحكم رغم قابليته للطعن بالاستئناف، وهو يُعدّ حقاً للمحكوم له.</p>
+    </div>
+
+    <div class="two-col">
+      <div class="col-box">
+        <h4>أولاً: الوجوبي (بنص القانون)</h4>
+        <ul class="bullet-list">
+          <li>الأحكام في المسائل التجارية</li>
+          <li>الأحكام في المسائل المستعجلة</li>
+          <li>الأحكام في بعض مسائل الأحوال الشخصية</li>
+          <li>أحكام قاضي التنفيذ في دعاوى أصحاب حقوق الأولوية والامتياز</li>
+        </ul>
+        <p style="font-size:0.83rem; color:var(--text-secondary); margin-top:10px;">⚠️ لا تُشترط الكفالة إلا في الحالة الأولى (المسائل التجارية)</p>
+      </div>
+      <div class="col-box">
+        <h4>ثانياً: الجوازي (بأمر المحكمة)</h4>
+        <ul class="bullet-list">
+          <li>إذا كان المحكوم عليه قد أقرّ بنشأة الالتزام</li>
+          <li>إذا بُني الحكم على سند رسمي غير مطعون فيه بالتزوير</li>
+          <li>إذا تضمّن إلزاماً بأداء مرتب أو معاش</li>
+          <li>إذا كان التأخير سيُفضي إلى ضرر جسيم</li>
+        </ul>
+        <p style="font-size:0.83rem; color:var(--text-secondary); margin-top:10px;">✅ تُشترط الكفالة في جميع حالاته</p>
+      </div>
+    </div>
+
+    <div class="gold-divider"></div>
+    <h3 class="sec-h2">ضمانات التنفيذ المعجَّل</h3>
+    <h3 class="sec-h3">الضمانة الأولى: الكفالة – صورها</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>تقديم كفيل مقتدر (تقدِّره المحكمة)</span></li>
+      <li><span class="num">٢</span><span>إيداع مبلغ نقدي في خزانة المحكمة</span></li>
+      <li><span class="num">٣</span><span>إيداع ما يُتحصَّل من التنفيذ لدى خزانة المحكمة</span></li>
+      <li><span class="num">٤</span><span>تسليم الشيء المأمور بتسليمه إلى حارس أمين مقتدر</span></li>
+    </ul>
+    <div class="note-box">لا يجوز للمُنفَّذ ضده المنازعة في الصورة الثالثة (إيداع ما يُتحصَّل من التنفيذ في خزانة المحكمة).</div>
+
+    <h3 class="sec-h3">الضمانة الثانية: وقف التنفيذ من محكمة الاستئناف – شروطه</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>أن يُقدَّم الطلب تبعاً لاستئناف مرفوع بالفعل</span></li>
+      <li><span class="num">٢</span><span>أن يُقدَّم قبل تمام التنفيذ</span></li>
+      <li><span class="num">٣</span><span>أن يُخشى من التنفيذ وقوع ضرر جسيم يتعذر تداركه</span></li>
+    </ul>
+  </div>
+
+  <!-- ===== 8. TAHKIM ===== -->
+  <div class="section-card" id="tahkim">
+    <div class="section-num">٨</div>
+    <h2 class="sec-h1">
+      <span class="icon">⚖️</span>
+      أحكام التحكيم
+    </h2>
+    <p>حكم التحكيم هو <span class="highlight">قضاء موازٍ</span> للحكم القضائي (القضاء الخاص مقابل القضاء العام) وليس قضاءً بديلاً.</p>
+
+    <div class="def-box">
+      <p>حكم التحكيم سند تنفيذي <strong>مُركَّب</strong>: لا يتمتع بالقوة التنفيذية إلا بعد صدور أمر من قضاء الدولة بتنفيذه.</p>
+    </div>
+
+    <h3 class="sec-h2">شروط قابلية حكم التحكيم للتنفيذ الجبري</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>أن يفصل في موضوع النزاع بشكل قاطع ومُنهٍ</span></li>
+      <li><span class="num">٢</span><span>أن يتضمن إلزاماً للمحكوم عليه بأداء معيَّن يقتضي التنفيذ جبراً</span></li>
+      <li><span class="num">٣</span><span>أن يكون نهائياً</span></li>
+    </ul>
+
+    <h3 class="sec-h3">حالات كون حكم التحكيم نهائياً</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>انقضاء ميعاد دعوى البطلان</span></li>
+      <li><span class="num">٢</span><span>القضاء بعدم قبول دعوى البطلان أو برفضها</span></li>
+      <li><span class="num">٣</span><span>اتفاق أطراف التحكيم عليه (ما يُسمى الحكم القبلي «التشريف»)</span></li>
+      <li><span class="num">٤</span><span>تنفيذ المحكوم عليه الحكم اختيارياً</span></li>
+      <li><span class="num">٥</span><span>الحكم بسقوط خصومة دعوى البطلان</span></li>
+      <li><span class="num">٦</span><span>اعتبار مدّعي البطلان تاركاً لدعواه (وقف اتفاقي لمدة ≤ 3 أشهر دون تعجيل)</span></li>
+    </ul>
+
+    <div class="gold-divider"></div>
+    <h3 class="sec-h2">الأمر بتنفيذ حكم التحكيم</h3>
+    <p>المحكمة المختصة بالأمر بالتنفيذ هي <span class="highlight">محكمة الاستئناف</span>، وهي المختصة بتذييل الحكم بالصيغة التنفيذية.</p>
+    <h3 class="sec-h3">المستندات المرفقة بطلب الأمر بالتنفيذ</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>أصل الحكم أو صورة موقَّعة من جميع أعضاء لجنة التحكيم</span></li>
+      <li><span class="num">٢</span><span>صورة ضوئية من اتفاق التحكيم</span></li>
+      <li><span class="num">٣</span><span>صورة من محضر إيداع حكم التحكيم</span></li>
+    </ul>
+    <h3 class="sec-h3">شروط إصدار الأمر بتنفيذ حكم التحكيم</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>أن يكون نهائياً وقابلاً للتنفيذ الجبري</span></li>
+      <li><span class="num">٢</span><span>ألا يتعارض مع حكم نهائي سبق صدوره من المحاكم</span></li>
+      <li><span class="num">٣</span><span>أن يكون صادراً وفق أحكام قانون التحكيم وألا يخالف النصوص الملزِمة</span></li>
+    </ul>
+  </div>
+
+  <!-- ===== 9. MAHAL ===== -->
+  <div class="section-card" id="mahal">
+    <div class="section-num">٩</div>
+    <h2 class="sec-h1">
+      <span class="icon">🏠</span>
+      محل التنفيذ
+    </h2>
+    <div class="def-box">
+      <p>محل التنفيذ هو المال أو الشيء الذي تَرِد عليه إجراءات التنفيذ.</p>
+    </div>
+
+    <div class="two-col">
+      <div class="col-box">
+        <h4>التنفيذ المباشر</h4>
+        <p style="font-size:0.88rem;">محل التنفيذ هو ذاته محل الحق الموضوعي، ويتحدد بما ورد في السند التنفيذي.</p>
+      </div>
+      <div class="col-box">
+        <h4>التنفيذ غير المباشر</h4>
+        <p style="font-size:0.88rem;">أي مال مملوك للمدين. ويُسمى محله «محل الحجز».</p>
+      </div>
+    </div>
+
+    <h3 class="sec-h2">شروط محل الحجز</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>مالاً أو حقاً مالياً مملوكاً للمسؤول شخصياً عن الدين</span></li>
+      <li><span class="num">٢</span><span>مما يجوز التصرف فيه (لا تجوز الأموال المملوكة للدولة وأموال الوقف)</span></li>
+      <li><span class="num">٣</span><span>ألا يكون القانون قد نص على عدم جواز الحجز عليه</span></li>
+    </ul>
+
+    <h3 class="sec-h2">القواعد العامة للحجز</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>جواز الحجز على أي مال مملوك للمدين (مادي، معنوي، منقول، عقار، في حيازته أو لدى الغير)</span></li>
+      <li><span class="num">٢</span><span>حرية الدائن في اختيار أي من تلك الأموال للحجز عليها</span></li>
+      <li><span class="num">٣</span><span>عدم اشتراط التناسب بين قيمة حق الدائن وقيمة المال المحجوز</span></li>
+    </ul>
+
+    <div class="gold-divider"></div>
+    <h3 class="sec-h2">الأموال التي لا يجوز الحجز عليها</h3>
+    <div class="two-col">
+      <div class="col-box">
+        <h4>لأسباب إنسانية</h4>
+        <ul class="bullet-list">
+          <li>ما يلزم للمدين وزوجته وأولاده ومن تجب نفقتهم شرعاً لمدة 3 أشهر</li>
+          <li>أدوات وآلات الحرفة أو المهنة</li>
+          <li>الأجر أو المرتب أو المعاش</li>
+        </ul>
+      </div>
+      <div class="col-box">
+        <h4>للمصلحة العامة</h4>
+        <ul class="bullet-list">
+          <li>الأموال المملوكة للدولة والمخصصة للمنفعة العامة</li>
+          <li>أموال المرافق العامة</li>
+          <li>المبالغ المودعة في صناديق التوفير البريدي</li>
+        </ul>
+      </div>
+      <div class="col-box">
+        <h4>بسبب طبيعة المال</h4>
+        <ul class="bullet-list">
+          <li>أموال الدول الأجنبية والمنظمات الدولية</li>
+          <li>المبالغ المحكوم بها كنفقة مقرَّرة</li>
+          <li>الثمار والمحاصيل قبل انعقادها</li>
+        </ul>
+      </div>
+      <div class="col-box">
+        <h4>احتراماً لإرادة الأفراد</h4>
+        <ul class="bullet-list">
+          <li>الأموال الموقوفة أو الموهوبة مقترنة بشرط القربة</li>
+          <li>المعاش أو المرتب المقرَّر على سبيل التبرع</li>
+        </ul>
+      </div>
+    </div>
+    <div class="warn-box">أموال محظور الحجز عليها مطلقاً بلا استثناء: المساعدات الاجتماعية، الأموال العامة، أموال المرافق العامة، وما يلزم المدين من نفقة.</div>
+  </div>
+
+  <!-- ===== 10. MOQADIMAT ===== -->
+  <div class="section-card" id="moqadimat">
+    <div class="section-num">١٠</div>
+    <h2 class="sec-h1">
+      <span class="icon">📋</span>
+      مقدمات التنفيذ
+    </h2>
+    <p>مقدمات التنفيذ هي الإجراءات التي يوجب القانون اتخاذها قبل الشروع في التنفيذ الجبري.</p>
+
+    <h3 class="sec-h2">أولاً: تقديم طلب التنفيذ</h3>
+    <p>يُقدَّم بناءً على عريضة من طالب التنفيذ، في أي وقت ولو مضت مدة كبيرة. استثناءً: أوامر العرائض تسقط إذا لم تُقدَّم خلال 10 أيام من تاريخ صدورها.</p>
+    <h3 class="sec-h3">بيانات عريضة طلب التنفيذ</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>رقم القضية وأسماء الأطراف ونوع السند وتاريخه</span></li>
+      <li><span class="num">٢</span><span>بيان ما إذا كان قد حصل وفاء ومقداره أو أية تسوية</span></li>
+      <li><span class="num">٣</span><span>بيان كافٍ بما يُراد التنفيذ استيفاءً له</span></li>
+      <li><span class="num">٤</span><span>اسم الشخص المراد تنفيذ السند في مواجهته</span></li>
+      <li><span class="num">٥</span><span>بيان موطن مختار لطالب التنفيذ في دائرة المحكمة</span></li>
+      <li><span class="num">٦</span><span>بيان محل التنفيذ وطريقته</span></li>
+      <li><span class="num">٧</span><span>تاريخ تقديم الطلب (مهم لتحديد المحكمة المختصة عند تعدد المحاكم)</span></li>
+    </ul>
+
+    <div class="gold-divider"></div>
+    <h3 class="sec-h2">ثانياً: إعلان السند التنفيذي والتكليف بالتنفيذ الاختياري</h3>
+    <p>يجب أن يسبق التنفيذ إعلان السند التنفيذي لشخص المحكوم عليه أو في موطنه الأصلي، وإلا كان التنفيذ باطلاً.</p>
+    <div class="warn-box">إغفال التكليف بالتنفيذ الاختياري بيانٌ جوهري يُرتِّب البطلان.</div>
+
+    <div class="gold-divider"></div>
+    <h3 class="sec-h2">ثالثاً: انقضاء مهلة التنفيذ الاختياري</h3>
+    <div class="two-col">
+      <div class="col-box">
+        <h4>في التنفيذ العادي</h4>
+        <p style="font-size:0.9rem;">أسبوع على الأقل من تاريخ إعلان السند</p>
+      </div>
+      <div class="col-box">
+        <h4>في التنفيذ المعجَّل</h4>
+        <p style="font-size:0.9rem;">ثلاثة أيام من تاريخ إعلان السند</p>
+      </div>
+    </div>
+
+    <div class="gold-divider"></div>
+    <h3 class="sec-h2">حالات التنفيذ دون اتباع المقدمات</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>الأحكام المستعجلة – تُنفَّذ فور صدورها من واقع مسودتها</span></li>
+      <li><span class="num">٢</span><span>الأحكام الصادرة من قاضي التنفيذ في دعاوى أصحاب حقوق الأولوية والامتياز</span></li>
+      <li><span class="num">٣</span><span>حجز ما للمدين لدى الغير</span></li>
+      <li><span class="num">٤</span><span>التدابير التحفظية (الحجز التحفظي والمنع من السفر)</span></li>
+    </ul>
+  </div>
+
+  <!-- ===== 11. HAJZ ===== -->
+  <div class="section-card" id="hajz">
+    <div class="section-num">١١</div>
+    <h2 class="sec-h1">
+      <span class="icon">🔒</span>
+      الحجز – التنفيذ غير المباشر
+    </h2>
+    <div class="def-box">
+      <p>الحجز هو إجراء يتم بموجبه وضع مال أو أموال معينة مملوكة للمدين تحت يد القضاء بهدف التمهيد لبيعها (الحجز التنفيذي)، أو مجرد المحافظة عليها (الحجز التحفظي).</p>
+    </div>
+
+    <h3 class="sec-h2">الحجز التحفظي</h3>
+    <p>يهدف إلى منع المدين من التصرف في المال المحجوز تصرفاً يضر بحقوق الدائنين. يُجيز القانون اليمني الحجز على أي مال منقولاً كان أو عقاراً.</p>
+
+    <h3 class="sec-h3">شروط الحجز التحفظي</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>أن يكون الحق محقَّق الوجود</span></li>
+      <li><span class="num">٢</span><span>أن يكون الحق حالَّ الأداء</span></li>
+    </ul>
+
+    <h3 class="sec-h3">حالات الحجز التحفظي</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>إذا كان الدائن يخشى فقدان ما يضمن له الوفاء بحقه</span></li>
+      <li><span class="num">٢</span><span>إذا كان الدائن مؤجِّراً لعقار (بشروط 4 مخصوصة)</span></li>
+      <li><span class="num">٣</span><span>الحجز من مالك المنقول</span></li>
+      <li><span class="num">٤</span><span>إذا كان حق الدائن بموجب كمبيالة أو سند لأمر</span></li>
+      <li><span class="num">٥</span><span>الحجز التحفظي على السفينة (بأمر المحكمة المختصة لوفاء دين بحري)</span></li>
+    </ul>
+
+    <div class="gold-divider"></div>
+    <h3 class="sec-h3">إجراءات الحجز التحفظي</h3>
+    <ul class="bullet-list">
+      <li>يختص بالأمر بالحجز رئيس المحكمة الابتدائية – بناءً على عريضة</li>
+      <li>يجب إعلان المدين بأمر الحجز خلال 3 أيام من تاريخ صدوره وإلا سقط الحجز</li>
+      <li>ينتقل معاون التنفيذ لمكان الأموال بحضور شاهدَي عدل يوقعان المحضر</li>
+      <li>إعلان محضر الحجز للمحجوز عليه خلال 5 أيام من الإيقاع</li>
+      <li>رفع دعوى بالحق وبصحة الحجز خلال 8 أيام من إعلان المدين بالحجز، وإلا سقط</li>
+    </ul>
+
+    <div class="note-box">يتحوَّل الحجز التحفظي إلى حجز تنفيذي متى أصبح الحكم المبني عليه سنداً تنفيذياً.</div>
+  </div>
+
+  <!-- ===== 12. ATHAR ===== -->
+  <div class="section-card" id="athar">
+    <div class="section-num">١٢</div>
+    <h2 class="sec-h1">
+      <span class="icon">📊</span>
+      الآثار العامة للحجز
+    </h2>
+    <ul class="num-list">
+      <li><span class="num">١</span><span><strong class="highlight">تحديد الأموال محل التنفيذ:</strong> يُعرَف بالأثر الكلي للحجز – يشمل كل الأموال المحجوزة لا ما يوازي حق الدائن فحسب.</span></li>
+      <li><span class="num">٢</span><span><strong class="highlight">بقاء الأموال المحجوزة في ملكية صاحبها:</strong> التصرف نافذ بين المدين والمتصرَّف إليه، لكنه غير نافذ في مواجهة الدائن الحاجز.</span></li>
+      <li><span class="num">٣</span><span><strong class="highlight">عدم نفاذ التصرفات في المال المحجوز:</strong> في مواجهة الدائن الحاجز، والدائن المتدخل في الحجز، والراسي عليه المزاد.</span></li>
+      <li><span class="num">٤</span><span><strong class="highlight">تقييد استغلال المال المحجوز</strong> في حالات: تعيين حارس قضائي، كون المحجوز لديه منقولاً لدى الغير، أو اقتضاء نقل المال من مكانه.</span></li>
+      <li><span class="num">٥</span><span><strong class="highlight">حجز ثمار المال المحجوز</strong> من تاريخ الحجز حتى يوم البيع (الطبيعية فحسب).</span></li>
+      <li><span class="num">٦</span><span><strong class="highlight">انقطاع مدة التقادم</strong> الساري لمصلحة المحجوز عليه في مواجهة الدائن الحاجز.</span></li>
+    </ul>
+
+    <div class="gold-divider"></div>
+    <h3 class="sec-h2">القواعد العامة لإجراء الحجز التنفيذي</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>لا يجوز إيقاع الحجز إلا بعد صدور أمر من القاضي المختص</span></li>
+      <li><span class="num">٢</span><span>لا يجوز إجراء الحجز قبل الساعة 6 صباحاً ولا بعد الساعة 6 مساءً ولا في أيام العطل إلا بإذن مسبق</span></li>
+      <li><span class="num">٣</span><span>يجري الحجز على المال ولو في أيام متتابعة حتى في العطل</span></li>
+      <li><span class="num">٤</span><span>يجري على نفقة طالب الحجز وتُرد له من قيمة الأموال عند بيعها</span></li>
+      <li><span class="num">٥</span><span>يجوز إجراؤه في غياب المحجوز عليه مع وجوب إعلانه خلال 5 أيام</span></li>
+      <li><span class="num">٦</span><span>لا يجوز إجراء الحجز إلا بحضور شاهدَي عدل لا علاقة ولا قرابة لهما بأطراف التنفيذ</span></li>
+      <li><span class="num">٧</span><span>لا يجوز دخول المساكن أو كسر الأبواب إلا بإذن مسبَّب من قاضي التنفيذ</span></li>
+    </ul>
+  </div>
+
+  <!-- ===== 13. MANQOL ===== -->
+  <div class="section-card" id="manqol">
+    <div class="section-num">١٣</div>
+    <h2 class="sec-h1">
+      <span class="icon">📦</span>
+      حجز المنقول لدى المدين
+    </h2>
+    <p>هو الحجز الذي يُوقعه الدائن على المنقولات المادية المملوكة للمدين والتي في حيازته، تمهيداً لبيعها.</p>
+
+    <h3 class="sec-h2">شروط المال المطلوب حجزه</h3>
+    <ul class="bullet-list">
+      <li>أن يكون منقولاً (يُستبعَد العقار)</li>
+      <li>أن يكون منقولاً مادياً (تُستبعَد الديون والحقوق المالية)</li>
+      <li>أن يكون في حيازة المدين أو من يتبعه وقت توقيع الحجز</li>
+    </ul>
+
+    <h3 class="sec-h3">الاستثناءات</h3>
+    <ul class="bullet-list">
+      <li>الغلة المتصلة بالأرض أو الشجر أو المزروعات بعد انعقادها</li>
+      <li>الأوراق المالية أو التجارية أو القابلة للتظهير</li>
+    </ul>
+
+    <div class="gold-divider"></div>
+    <h3 class="sec-h2">البيانات الجوهرية في محضر حجز المنقول</h3>
+    <div class="conditions-grid">
+      <div class="condition-item"><div class="dot"></div><div>السند التنفيذي</div></div>
+      <div class="condition-item"><div class="dot"></div><div>مكان الحجز</div></div>
+      <div class="condition-item"><div class="dot"></div><div>ما قام به المعاون من أعمال</div></div>
+      <div class="condition-item"><div class="dot"></div><div>مفردات الأموال المحجوزة بالتفصيل</div></div>
+      <div class="condition-item"><div class="dot"></div><div>توقيع معاون التنفيذ</div></div>
+      <div class="condition-item"><div class="dot"></div><div>توقيع الشاهدين</div></div>
+      <div class="condition-item"><div class="dot"></div><div>تاريخ الحجز</div></div>
+    </div>
+    <div class="note-box">البيانات غير الجوهرية (لا تُرتِّب بطلاناً): موطن الحاجز، تعيين الحارس القضائي، يوم ومكان البيع.</div>
+
+    <h3 class="sec-h2">الإجراءات اللاحقة لحجز المنقول</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>إعلان محضر الحجز للمحجوز عليه خلال 5 أيام من تاريخ إيقاعه – وإلا كانت الإجراءات اللاحقة باطلة</span></li>
+      <li><span class="num">٢</span><span>إشهار الحجز في لوحة إعلانات المحكمة وفي صحيفة يومية لمدة يومين</span></li>
+    </ul>
+  </div>
+
+  <!-- ===== 14. AQAR ===== -->
+  <div class="section-card" id="aqar">
+    <div class="section-num">١٤</div>
+    <h2 class="sec-h1">
+      <span class="icon">🏢</span>
+      حجز العقار
+    </h2>
+    <p>العقار هو كل شيء له أصل ثابت لا يمكن نقله دون تلف (العقار بطبيعته)، ويشمل الآلات المخصصة للمصانع أو لخدمة الأراضي (العقار بالتخصيص).</p>
+
+    <h3 class="sec-h2">البيانات الخاصة بمحضر حجز العقار</h3>
+    <div class="two-col">
+      <div class="col-box">
+        <h4>بيانات جوهرية (بطلان عند إغفالها)</h4>
+        <ul class="bullet-list">
+          <li>وصف العقار المطلوب حجزه</li>
+          <li>موقع العقار ومساحته وحدوده والمنطقة</li>
+        </ul>
+      </div>
+      <div class="col-box">
+        <h4>بيانات غير جوهرية</h4>
+        <ul class="bullet-list">
+          <li>وصف مجمل لطريقة البيع</li>
+          <li>تحديد مكان البيع ويومه وساعته</li>
+          <li>أية بيانات أخرى تفيد العقار</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 class="sec-h2">الإجراءات اللاحقة لحجز العقار</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>إخطار السجل العقاري أو أمين المنطقة بوقوع الحجز يوم التحرير أو اليوم التالي على الأكثر</span></li>
+      <li><span class="num">٢</span><span>إعلان محضر حجز العقار خلال 5 أيام من التحرير لكل من: المدين، والحائز المرتهن أو المشتري عن غيره، والكفيل العيني، وأي دائن له حق عيني على العقار</span></li>
+      <li><span class="num">٣</span><span>إشهار الحجز في لوحة إعلانات المحكمة أو صحيفة يومية لمدة <strong class="highlight">4 أيام</strong></span></li>
+    </ul>
+    <div class="warn-box">عدم إعلان محضر حجز العقار للمحجوز عليه يُرتِّب بطلان الإجراءات اللاحقة للحجز.</div>
+  </div>
+
+  <!-- ===== 15. GHAIR ===== -->
+  <div class="section-card" id="ghair">
+    <div class="section-num">١٥</div>
+    <h2 class="sec-h1">
+      <span class="icon">🏦</span>
+      حجز ما للمدين لدى الغير
+    </h2>
+    <p>هو الحجز الذي يُوقعه الدائن على ما يكون لمدينه من أموال منقولة في حيازة الغير أو من ديون وحقوق في ذمة الغير.</p>
+
+    <h3 class="sec-h2">أطراف هذا الحجز (ثلاثة)</h3>
+    <div class="conditions-grid">
+      <div class="condition-item"><div class="dot"></div><div><strong>الحاجز:</strong> الدائن</div></div>
+      <div class="condition-item"><div class="dot"></div><div><strong>المحجوز عليه:</strong> المدين</div></div>
+      <div class="condition-item"><div class="dot"></div><div><strong>المحجوز لديه:</strong> الغير (مدين المدين، المودَع لديه، الوكيل، المستأجر…)</div></div>
+    </div>
+
+    <h3 class="sec-h2">الإجراءات اللازمة لإيقاع الحجز</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>استصدار قرار أو أمر الحجز من القاضي المختص مع دفع أمانة لحساب النفقات</span></li>
+      <li><span class="num">٢</span><span>إعلان قرار الحجز للمحجوز لديه مع نهيه عن الوفاء للمدين وتكليفه بالتقرير بما في ذمته</span></li>
+    </ul>
+
+    <h3 class="sec-h2">الإجراءات اللاحقة</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>إعلان المحجوز عليه بقرار الحجز خلال <strong class="highlight">5 أيام</strong> من تاريخ إعلان المحجوز لديه</span></li>
+      <li><span class="num">٢</span><span>تقرير المحجوز لديه بما في ذمته للمدين خلال <strong class="highlight">15 يوماً</strong> من تاريخ إعلان التكليف</span></li>
+      <li><span class="num">٣</span><span>دعوى ثبوت الحق وصحة الحجز خلال <strong class="highlight">8 أيام</strong> من تاريخ إعلان المدين بالحجز (في حالة الحجز التحفظي)</span></li>
+    </ul>
+  </div>
+
+  <!-- ===== 16. BAI ===== -->
+  <div class="section-card" id="bai">
+    <div class="section-num">١٦</div>
+    <h2 class="sec-h1">
+      <span class="icon">🔨</span>
+      البيع الجبري
+    </h2>
+    <div class="def-box">
+      <p>البيع الجبري هو بيعٌ يتم بواسطة القضاء أو تحت إشرافه، بهدف تحويل المال المحجوز إلى مبلغ نقدي يستوفي منه الدائن الحاجز حقه.</p>
+    </div>
+
+    <h3 class="sec-h2">القواعد العامة للبيع الجبري</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>يُجرى بواسطة القضاء أو تحت إشرافه بالمزاد العلني</span></li>
+      <li><span class="num">٢</span><span>طلب البيع يُقدَّم خلال 5 أيام من تاريخ آخر إجراء في الحجز وإلا تحمَّل الحاجز نفقات الحجز والحراسة</span></li>
+      <li><span class="num">٣</span><span>يجب أهلية التصرف في المشتري وألا يكون ممنوعاً من الاشتراك في المزايدة</span></li>
+      <li><span class="num">٤</span><span>يجب إتمام البيع خلال 3 أشهر من تاريخ الحجز وإلا سقط</span></li>
+      <li><span class="num">٥</span><span>إلزام الدائن بالاستيفاء العيني إذا تعذَّر البيع (بعد الإعلان 3 مرات وإنقاص القيمة بما لا يزيد عن 50%)</span></li>
+    </ul>
+
+    <h3 class="sec-h3">الأشخاص الممنوعون من المزايدة</h3>
+    <ul class="bullet-list">
+      <li>القضاة الذين نظروا في إجراءات التنفيذ بأي وجه</li>
+      <li>معاونو قاضي التنفيذ وموظفو المحكمة</li>
+      <li>محامو الخصوم أو وكلاؤهم</li>
+      <li>المدين ذاته</li>
+      <li>الخبراء المعيَّنون لتقدير الأموال المعروضة</li>
+      <li>الأشخاص المكلَّفون ببيع الأموال (كالسمسار والصيرفي)</li>
+    </ul>
+
+    <div class="gold-divider"></div>
+    <h3 class="sec-h2">إجراءات بيع المنقول</h3>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>طلب البيع وصدور الأمر بإجرائه</span></li>
+      <li><span class="num">٢</span><span>تحديد يوم البيع ومكانه مع إعلان المحجوز عليه قبل 3 أيام</span></li>
+      <li><span class="num">٣</span><span>تقدير قيمة المنقولات بانتداب خبير (إجراء جوهري)</span></li>
+      <li><span class="num">٤</span><span>الإعلان عن البيع: بالنشر في صحيفة إذا بلغ التقدير 500,000 ريال فأكثر، وفي لوحة المحكمة إذا كان أقل</span></li>
+    </ul>
+
+    <div class="gold-divider"></div>
+    <h3 class="sec-h2">إجراءات بيع العقار</h3>
+    <p>مثل بيع المنقول مع اختلافات: يُنتدَب خبيران لتقدير قيمة العقار قبل الإعلان بـ5 أيام على الأقل، ويُعدَّ قائمة شروط البيع قبل الإعلان. الاعتراضات تُقدَّم قبل 3 أيام من يوم البيع وإلا سقط الحق فيها.</p>
+
+    <h3 class="sec-h3">آثار البيع الرئيسة</h3>
+    <ul class="bullet-list">
+      <li>زوال الحجز</li>
+      <li>الولوج في توزيع الحصيلة</li>
+      <li>اكتساب الحاجز قبل البيع أولوية على غيره</li>
+      <li>عدم جواز دعوى الاسترداد بعد البيع</li>
+      <li>عدم جواز الإيداع والتخصيص للمحجوز عليه والغير</li>
+    </ul>
+  </div>
+
+  <!-- ===== 17. TAWZEE ===== -->
+  <div class="section-card" id="tawzee">
+    <div class="section-num">١٧</div>
+    <h2 class="sec-h1">
+      <span class="icon">💰</span>
+      توزيع حصيلة التنفيذ
+    </h2>
+    <div class="def-box">
+      <p>حصيلة التنفيذ: مجموع المبالغ النقدية المُحصَّلة في مرحلة البيع أو الحجز، وهي محل الإيداع ثم التوزيع.</p>
+    </div>
+
+    <h3 class="sec-h2">أولاً: الإيداع</h3>
+    <p>على معاون التنفيذ إيداع الحصيلة خزينة المحكمة أو بنك معتمد فور تحصيلها، وتُثبَت في كشوفات موقَّعة من المعاون والقاضي.</p>
+
+    <h3 class="sec-h2">ثانياً: خصم نفقات التنفيذ</h3>
+    <ul class="bullet-list">
+      <li>النفقات القضائية في حفظ أموال المدين</li>
+      <li>نفقات ترميم الأموال المحجوزة وإصلاحها</li>
+      <li>نفقات النقل والانتقال وإجراءات البيع</li>
+      <li>ما أنفقه الحارس القضائي أو الحاجز في البذر والتسميد وغيره</li>
+    </ul>
+
+    <div class="gold-divider"></div>
+    <h3 class="sec-h2">ثالثاً: طرق توزيع الحصيلة</h3>
+
+    <h3 class="sec-h3">الطريقة الأولى: التوزيع الاتفاقي</h3>
+    <p>يتم بالنسب التي اتفق عليها جميع الدائنين. يُشترط: اتفاق الجميع كتابةً، وتقديمه خلال 5 أيام من الإبلاغ. يسقط بمجرد تقديم اعتراض خلال 3 أيام.</p>
+
+    <h3 class="sec-h3">الطريقة الثانية: التوزيع القضائي</h3>
+    <p>بواسطة قاضي التنفيذ وفق الترتيب التالي:</p>
+    <ul class="num-list">
+      <li><span class="num">١</span><span>النفقات الشرعية (إن لم تُستثنَ من الحجز)</span></li>
+      <li><span class="num">٢</span><span>حقوق أصحاب الامتياز بمراتبهم القانونية</span></li>
+      <li><span class="num">٣</span><span>حق الدائن المرتهن من العين المرهونة</span></li>
+      <li><span class="num">٤</span><span>حقوق بقية الحاجزين (الدائنون العاديون)</span></li>
+    </ul>
+
+    <h3 class="sec-h3">صور التوزيع</h3>
+    <ul class="bullet-list">
+      <li><strong class="highlight">بالترتيب:</strong> وفق الأولوية المذكورة</li>
+      <li><strong class="highlight">بالمحاصة:</strong> نسبة كل دائن إلى مجموع الديون بلا أفضلية</li>
+      <li><strong class="highlight">ترتيب مع قسمة غرماء:</strong> جمع الطريقتين عند وجود دائنين ممتازين وعاديين</li>
+    </ul>
+
+    <h3 class="sec-h3">حالات الأولوية الإجرائية</h3>
+    <ul class="bullet-list">
+      <li>يُقدَّم حق الحاجز الذي باشر جميع إجراءات التنفيذ حتى وقت الوفاء</li>
+      <li>يُقدَّم حق الحاجز السابق على الكف عن البيع</li>
+      <li>يُقدَّم حق الحاجز قبل صدور الحكم بقصر الحجز</li>
+    </ul>
+  </div>
+
+  <!-- ===== 18. TANWIHAAT ===== -->
+  <div class="section-card" id="tanwihaat">
+    <div class="section-num">١٨</div>
+    <h2 class="sec-h1">
+      <span class="icon">💡</span>
+      تنويهات هامة للمراجعة
+    </h2>
+
+    <ul class="num-list">
+      <li><span class="num">٭</span><span>يُطلق على أحكام التحكيم «القضاء الخاص» وعلى الحكم القضائي «القضاء العام».</span></li>
+      <li><span class="num">٭</span><span>يجوز في أحكام التحكيم أن يتفق الأطراف على صدور الحكم دون تسبيب، خلافاً للحكم القضائي.</span></li>
+      <li><span class="num">٭</span><span>إذا خلا المنطوق من الإلزام فإن الحكم يُعدّ غير قابل للتنفيذ الجبري.</span></li>
+      <li><span class="num">٭</span><span>للمُنفَّذ ضده المنازعة في الكفالة خلال <strong class="highlight">3 أيام</strong> من تاريخ تبليغه.</span></li>
+      <li><span class="num">٭</span><span>حكم محكمة الاستئناف بوقف التنفيذ يُعدّ حكماً مستعجلاً، ويزول عند الطعن أمام المحكمة العليا.</span></li>
+      <li><span class="num">٭</span><span>يُطلق على طالب التنفيذ مصطلح «حاجز» في التنفيذ غير المباشر فحسب، و«دائن» عندما يكون صاحب حق شخصي.</span></li>
+      <li><span class="num">٭</span><span>كل من تثبت له صفة طالب التنفيذ أو المُنفَّذ ضده لا يُعدّ من الغير.</span></li>
+      <li><span class="num">٭</span><span>الاستثناء من عدم نفاذ تصرفات المدين: إذا كان المال المحجوز منقولاً وتصرَّف فيه المدين بالبيع – نفذ في مواجهة الحاجز تطبيقاً لقاعدة «الحيازة في المنقول سند الملكية».</span></li>
+      <li><span class="num">٭</span><span>حكم رسو المزاد لا يُعدّ حكماً بالمعنى الدقيق (لا يفصل في خصومة) وبالتالي غير قابل للطعن بأي طريق.</span></li>
+      <li><span class="num">٭</span><span>إذا كان جميع الحاجزين دائنين عاديين فتوزَّع الحصيلة بينهم <strong class="highlight">قسمة غرماء</strong> – الأولوية في الحجز لا تُعطي أولوية في الاستيفاء.</span></li>
+    </ul>
+  </div>
+
+  <!-- END LINK -->
+  <div class="site-link-box" style="margin-top:10px;">
+    <a href="https://www.alnaseer.org/" target="_blank" rel="noopener" class="site-link">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+      زيارة منصة الباحث القانوني
+    </a>
+  </div>
+
+</div><!-- end main-container -->
+
+<!-- FIXED FOOTER -->
+<div class="footer-fixed">
+  جميع الحقوق التقنية محفوظة لـ <a href="https://www.alnaseer.org/" target="_blank" rel="noopener">منصة الباحث القانوني</a> &copy; 2026
+</div>
+
+<!-- BACK TO TOP -->
+<button class="back-top" id="backTop" onclick="scrollToTop()" title="العودة للأعلى">↑</button>
+
+<script>
+  // Theme toggle
+  function toggleTheme() {
+    const body = document.body;
+    const isDark = body.getAttribute('data-theme') === 'dark';
+    body.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    document.getElementById('themeIcon').textContent = isDark ? '🌙' : '☀️';
+    document.getElementById('themeLabel').textContent = isDark ? 'الوضع الليلي' : 'الوضع النهاري';
+  }
+
+  // TOC
+  function openTOC() { document.getElementById('tocOverlay').classList.add('active'); }
+  function closeTOC() { document.getElementById('tocOverlay').classList.remove('active'); }
+  function closeTOCOutside(e) { if (e.target === document.getElementById('tocOverlay')) closeTOC(); }
+
+  // Scroll progress
+  window.addEventListener('scroll', () => {
+    const scrollTop = document.documentElement.scrollTop;
+    const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+    const progress = (scrollTop / scrollHeight) * 100;
+    document.getElementById('progressBar').style.width = progress + '%';
+
+    // Back to top button
+    const btn = document.getElementById('backTop');
+    if (scrollTop > 400) btn.classList.add('visible');
+    else btn.classList.remove('visible');
+  });
+
+  function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+  // Animate sections on scroll
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.style.animationPlayState = 'running';
+      }
+    });
+  }, { threshold: 0.05 });
+
+  document.querySelectorAll('.section-card').forEach((card, i) => {
+    card.style.animationDelay = (i * 0.04) + 's';
+    card.style.animationPlayState = 'paused';
+    observer.observe(card);
+  });
+</script>
+</body>
+</html>
