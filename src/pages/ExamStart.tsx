@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useTheme } from 'next-themes';
 import {
   Clock, Target, User, Lock, Play,
   Info, ShieldCheck, FileText, ChevronLeft,
@@ -113,6 +114,8 @@ const SummaryModal = ({
   const [html, setHtml] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
 
   useEffect(() => {
     setLoading(true);
@@ -123,8 +126,17 @@ const SummaryModal = ({
       .catch(() => { setError(true); setLoading(false); });
   }, [url]);
 
+  // نستبدل data-theme على <body> مباشرة حسب ثيم المنصة الحالي
+  const themedHtml = html
+    ? html
+        .replace(/<body([^>]*?)data-theme="(light|dark)"([^>]*)>/i,
+          `<body$1data-theme="${isDark ? 'dark' : 'light'}"$3>`)
+        .replace(/<body(?![^>]*data-theme)([^>]*)>/i,
+          `<body data-theme="${isDark ? 'dark' : 'light'}"$1>`)
+    : '';
+
   return (
-    <div className="fixed inset-0 z-[99999] flex flex-col" style={{ background: 'rgba(0,0,0,0.95)' }}>
+    <div className="fixed inset-0 z-[99999] flex flex-col">
       {/* شريط العنوان */}
       <div
         dir="rtl"
@@ -149,12 +161,12 @@ const SummaryModal = ({
       </div>
 
       {/* المحتوى */}
-      <div className="flex-1 overflow-y-auto bg-white">
+      <div className="flex-1 overflow-hidden" style={{ background: isDark ? '#0a1520' : '#fff' }}>
         {loading && (
-          <div className="flex items-center justify-center h-full min-h-[300px]">
+          <div className="flex items-center justify-center h-full min-h-[300px]" style={{ background: isDark ? '#0a1520' : '#fff' }}>
             <div className="text-center">
               <div className="w-10 h-10 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-              <p className="text-gray-500 font-bold">جاري تحميل الملخص...</p>
+              <p className="font-bold" style={{ color: isDark ? '#c9a84c' : '#666' }}>جاري تحميل الملخص...</p>
             </div>
           </div>
         )}
@@ -167,9 +179,12 @@ const SummaryModal = ({
           </div>
         )}
         {!loading && !error && html !== null && (
-          <div
-            className="w-full h-full"
-            dangerouslySetInnerHTML={{ __html: html }}
+          <iframe
+            key={isDark ? 'dark' : 'light'}
+            srcDoc={themedHtml}
+            title="ملخص المادة"
+            className="w-full h-full border-0"
+            sandbox="allow-same-origin allow-scripts allow-popups"
           />
         )}
       </div>
@@ -179,6 +194,17 @@ const SummaryModal = ({
         className="flex justify-center py-3 shrink-0"
         style={{ background: '#0d1b2a', borderTop: '1px solid rgba(201,168,76,0.2)' }}
       >
+        <button
+          onClick={onClose}
+          className="px-8 py-2 rounded-2xl font-black text-sm"
+          style={{ background: 'linear-gradient(135deg, #c9a84c, #e8c97a)', color: '#0d1b2a' }}
+        >
+          إغلاق الملخص
+        </button>
+      </div>
+    </div>
+  );
+};
         <button
           onClick={onClose}
           className="px-8 py-2 rounded-2xl font-black text-sm"
