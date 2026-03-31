@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { Plus, Edit2, Trash2, BookOpen, Clock, Target, Settings, User, Lock } from 'lucide-react';
+import { Plus, Edit2, Trash2, BookOpen, Clock, Target, Settings, User, Lock, Upload, Loader2, FileText, CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -56,6 +56,9 @@ const AdminSubjects = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [deleteSubject, setDeleteSubject] = useState<Subject | null>(null);
+  const [uploadingHtml, setUploadingHtml] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [uploadError, setUploadError] = useState('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -68,17 +71,12 @@ const AdminSubjects = () => {
     passing_score: 60,
     password: '',
     author_name: '',
+    summary_url: '',
   });
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
   const { data: levels = [] } = useQuery({
@@ -104,10 +102,7 @@ const AdminSubjects = () => {
   const reorderMutation = useMutation({
     mutationFn: async (newOrder: { id: string; order_index: number }[]) => {
       for (const item of newOrder) {
-        const { error } = await supabase
-          .from('subjects')
-          .update({ order_index: item.order_index })
-          .eq('id', item.id);
+        const { error } = await supabase.from('subjects').update({ order_index: item.order_index }).eq('id', item.id);
         if (error) throw error;
       }
     },
@@ -120,21 +115,19 @@ const AdminSubjects = () => {
   const saveMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       if (editingSubject) {
-        const { error } = await supabase
-          .from('subjects')
-          .update({
-            name: data.name,
-            description: data.description || null,
-            default_time_minutes: data.default_time_minutes,
-            allow_time_modification: data.allow_time_modification,
-            min_time_minutes: data.min_time_minutes,
-            max_time_minutes: data.max_time_minutes,
-            questions_per_exam: data.questions_per_exam,
-            passing_score: data.passing_score,
-            password: data.password || null,
-            author_name: data.author_name || null,
-          })
-          .eq('id', editingSubject.id);
+        const { error } = await supabase.from('subjects').update({
+          name: data.name,
+          description: data.description || null,
+          default_time_minutes: data.default_time_minutes,
+          allow_time_modification: data.allow_time_modification,
+          min_time_minutes: data.min_time_minutes,
+          max_time_minutes: data.max_time_minutes,
+          questions_per_exam: data.questions_per_exam,
+          passing_score: data.passing_score,
+          password: data.password || null,
+          author_name: data.author_name || null,
+          summary_url: data.summary_url || null,
+        }).eq('id', editingSubject.id);
         if (error) throw error;
       } else {
         const maxOrder = Math.max(...subjects.map(s => s.order_index), 0);
@@ -150,6 +143,7 @@ const AdminSubjects = () => {
           passing_score: data.passing_score,
           password: data.password || null,
           author_name: data.author_name || null,
+          summary_url: data.summary_url || null,
           order_index: maxOrder + 1,
         });
         if (error) throw error;
@@ -160,9 +154,7 @@ const AdminSubjects = () => {
       toast({ title: editingSubject ? 'تم تحديث المادة' : 'تم إضافة المادة بنجاح' });
       handleCloseDialog();
     },
-    onError: () => {
-      toast({ title: 'حدث خطأ', variant: 'destructive' });
-    },
+    onError: () => { toast({ title: 'حدث خطأ', variant: 'destructive' }); },
   });
 
   const deleteMutation = useMutation({
@@ -179,18 +171,11 @@ const AdminSubjects = () => {
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-
     if (over && active.id !== over.id) {
-      const oldIndex = subjects.findIndex((s) => s.id === active.id);
-      const newIndex = subjects.findIndex((s) => s.id === over.id);
-
+      const oldIndex = subjects.findIndex(s => s.id === active.id);
+      const newIndex = subjects.findIndex(s => s.id === over.id);
       const newSubjects = arrayMove(subjects, oldIndex, newIndex);
-      const newOrder = newSubjects.map((subject, index) => ({
-        id: subject.id,
-        order_index: index + 1,
-      }));
-
-      // Optimistic update
+      const newOrder = newSubjects.map((subject, index) => ({ id: subject.id, order_index: index + 1 }));
       queryClient.setQueryData(['subjects', selectedLevel], newSubjects);
       reorderMutation.mutate(newOrder);
     }
@@ -200,17 +185,12 @@ const AdminSubjects = () => {
     setIsDialogOpen(false);
     setEditingSubject(null);
     setFormData({
-      name: '',
-      description: '',
-      default_time_minutes: 30,
-      allow_time_modification: true,
-      min_time_minutes: 10,
-      max_time_minutes: 120,
-      questions_per_exam: 20,
-      passing_score: 60,
-      password: '',
-      author_name: '',
+      name: '', description: '', default_time_minutes: 30, allow_time_modification: true,
+      min_time_minutes: 10, max_time_minutes: 120, questions_per_exam: 20,
+      passing_score: 60, password: '', author_name: '', summary_url: '',
     });
+    setUploadSuccess(false);
+    setUploadError('');
   };
 
   const handleEdit = (subject: Subject) => {
@@ -226,8 +206,33 @@ const AdminSubjects = () => {
       passing_score: subject.passing_score,
       password: subject.password || '',
       author_name: subject.author_name || '',
+      summary_url: subject.summary_url || '',
     });
     setIsDialogOpen(true);
+  };
+
+  const handleHtmlUpload = async (file: File) => {
+    if (!file || !file.name.endsWith('.html')) {
+      setUploadError('يرجى اختيار ملف HTML فقط');
+      return;
+    }
+    setUploadingHtml(true);
+    setUploadError('');
+    setUploadSuccess(false);
+    try {
+      const fileName = `summaries/${editingSubject?.id || 'new'}_${Date.now()}.html`;
+      const { error: upErr } = await supabase.storage
+        .from('summaries')
+        .upload(fileName, file, { upsert: true, contentType: 'text/html' });
+      if (upErr) throw upErr;
+      const { data: urlData } = supabase.storage.from('summaries').getPublicUrl(fileName);
+      setFormData(prev => ({ ...prev, summary_url: urlData.publicUrl }));
+      setUploadSuccess(true);
+    } catch (err: any) {
+      setUploadError(err?.message || 'فشل رفع الملف');
+    } finally {
+      setUploadingHtml(false);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -296,15 +301,8 @@ const AdminSubjects = () => {
               <p className="text-sm sm:text-base">لا توجد مواد في هذا المستوى</p>
             </div>
           ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={subjects.map((s) => s.id)}
-                strategy={verticalListSortingStrategy}
-              >
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={subjects.map((s) => s.id)} strategy={verticalListSortingStrategy}>
                 <div className="divide-y">
                   {subjects.map((subject) => (
                     <div key={subject.id} className="p-3 sm:p-4 hover:bg-muted/50 transition-colors">
@@ -337,6 +335,12 @@ const AdminSubjects = () => {
                                 <span className="flex items-center gap-1 hidden sm:flex">
                                   <User className="w-4 h-4" />
                                   {subject.author_name}
+                                </span>
+                              )}
+                              {subject.summary_url && (
+                                <span className="flex items-center gap-1 text-emerald-600">
+                                  <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                  ملخص
                                 </span>
                               )}
                             </div>
@@ -420,6 +424,52 @@ const AdminSubjects = () => {
                     placeholder="اتركها فارغة للوصول المفتوح"
                   />
                 </div>
+
+                {/* ── رفع ملف الملخص ── */}
+                <div className="space-y-3 col-span-1 sm:col-span-2 p-4 rounded-xl border-2 border-dashed border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20">
+                  <Label className="flex items-center gap-2 text-sm font-black">
+                    <FileText className="w-4 h-4 text-emerald-600" /> ملخص المادة (ملف HTML)
+                  </Label>
+
+                  <label className="flex items-center justify-center gap-2 w-full h-12 rounded-xl cursor-pointer transition-all font-black text-sm text-white"
+                    style={{ background: 'linear-gradient(135deg, #059669, #047857)', boxShadow: '0 4px 14px rgba(5,150,105,0.35)' }}>
+                    {uploadingHtml
+                      ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري الرفع...</>
+                      : <><Upload className="w-4 h-4" /> {formData.summary_url ? 'استبدال الملف' : 'رفع ملف HTML'}</>
+                    }
+                    <input type="file" accept=".html,text/html" className="hidden" disabled={uploadingHtml}
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) handleHtmlUpload(f); e.target.value = ''; }} />
+                  </label>
+
+                  {uploadSuccess && (
+                    <div className="flex items-center gap-2 text-xs font-black text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/40 rounded-lg px-3 py-2">
+                      <CheckCircle2 className="w-4 h-4 shrink-0" /> تم رفع الملف بنجاح!
+                    </div>
+                  )}
+
+                  {uploadError && (
+                    <div className="flex items-center gap-2 text-xs font-black text-destructive bg-destructive/10 rounded-lg px-3 py-2">
+                      <XCircle className="w-4 h-4 shrink-0" /> {uploadError}
+                    </div>
+                  )}
+
+                  {formData.summary_url && (
+                    <div className="flex items-center justify-between gap-2 bg-white dark:bg-card rounded-lg px-3 py-2 border border-emerald-200 dark:border-emerald-800">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span className="text-xs font-bold text-muted-foreground truncate">ملف مرفوع</span>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <a href={formData.summary_url} target="_blank" rel="noopener noreferrer"
+                          className="text-xs font-black text-emerald-600 hover:underline">معاينة</a>
+                        <button type="button"
+                          onClick={() => { setFormData(prev => ({ ...prev, summary_url: '' })); setUploadSuccess(false); }}
+                          className="text-xs font-black text-destructive hover:underline">حذف</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {/* ── نهاية رفع الملخص ── */}
               </div>
             </div>
 
@@ -528,7 +578,7 @@ const AdminSubjects = () => {
           <AlertDialogHeader>
             <AlertDialogTitle className="text-base sm:text-lg">تأكيد الحذف</AlertDialogTitle>
             <AlertDialogDescription className="text-right text-sm">
-              هل أنت متأكد من حذف مادة "{deleteSubject?.name}"؟ سيتم حذف جميع الأسئلة المرتبطة بها.
+              هل أنت متأكد من حذف مادة &quot;{deleteSubject?.name}&quot;؟ سيتم حذف جميع الأسئلة المرتبطة بها.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col-reverse sm:flex-row-reverse gap-2">

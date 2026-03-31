@@ -338,14 +338,14 @@ export const HtmlImportDialog = ({ open, onOpenChange, subjectId }: HtmlImportDi
 
       // ── صيغة PDF: السؤال يبدأ برقم) مثل: 1) نص السؤال
       // والخيارات: 1) - نص أو 1) + نص (+ تعني الصحيحة)
-      const qMatchPdf = line.match(/^(d+))s*[-–]?s*(.+)/);
+      const qMatchPdf = line.match(/^(\d+)\)\s*[-–]?\s*(.+)/);
       if (
         qMatchPdf &&
         i + 4 < lines.length &&
-        /^1)s*[+-–]/.test(lines[i+1]?.trim()) &&
-        /^2)s*[+-–]/.test(lines[i+2]?.trim()) &&
-        /^3)s*[+-–]/.test(lines[i+3]?.trim()) &&
-        /^4)s*[+-–]/.test(lines[i+4]?.trim())
+        /^1\)\s*[+-–]/.test(lines[i+1]?.trim()) &&
+        /^2\)\s*[+-–]/.test(lines[i+2]?.trim()) &&
+        /^3\)\s*[+-–]/.test(lines[i+3]?.trim()) &&
+        /^4\)\s*[+-–]/.test(lines[i+4]?.trim())
       ) {
         const questionText = qMatchPdf[2].trim();
         const rawOpts = [
@@ -356,7 +356,7 @@ export const HtmlImportDialog = ({ open, onOpenChange, subjectId }: HtmlImportDi
         ];
         let correctOption: 'A' | 'B' | 'C' | 'D' = 'A';
         const cleanedOpts = rawOpts.map((opt, idx) => {
-          const m = opt.match(/^d+)s*([+-–])s*(.+)/);
+          const m = opt.match(/^\d+\)\s*([+-–])\s*(.+)/);
           if (!m) return opt.trim();
           if (m[1] === '+') correctOption = (['A', 'B', 'C', 'D'] as const)[idx];
           return m[2].trim();
@@ -376,19 +376,19 @@ export const HtmlImportDialog = ({ open, onOpenChange, subjectId }: HtmlImportDi
       }
 
       // ── الصيغة اليدوية: السؤال بدون رقم، خيارات 1) نص +
-      if (line && !/^d+)/.test(line)) {
+      if (line && !/^\d+\)/.test(line)) {
         if (
           i + 4 < lines.length &&
-          /^1)/.test(lines[i+1]?.trim()) &&
-          /^2)/.test(lines[i+2]?.trim()) &&
-          /^3)/.test(lines[i+3]?.trim()) &&
-          /^4)/.test(lines[i+4]?.trim())
+          /^1\)/.test(lines[i+1]?.trim()) &&
+          /^2\)/.test(lines[i+2]?.trim()) &&
+          /^3\)/.test(lines[i+3]?.trim()) &&
+          /^4\)/.test(lines[i+4]?.trim())
         ) {
           const rawOpts = [
-            lines[i+1].trim().replace(/^1)s*/, ''),
-            lines[i+2].trim().replace(/^2)s*/, ''),
-            lines[i+3].trim().replace(/^3)s*/, ''),
-            lines[i+4].trim().replace(/^4)s*/, ''),
+            lines[i+1].trim().replace(/^1\)\s*/, ''),
+            lines[i+2].trim().replace(/^2\)\s*/, ''),
+            lines[i+3].trim().replace(/^3\)\s*/, ''),
+            lines[i+4].trim().replace(/^4\)\s*/, ''),
           ];
           let correctOption: 'A' | 'B' | 'C' | 'D' = 'A';
           const cleanedOpts = rawOpts.map((opt, idx) => {

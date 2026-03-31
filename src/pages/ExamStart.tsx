@@ -300,6 +300,50 @@ const ExamStart = () => {
   return (
     <MainLayout>
       <ExamStartSEO subjectName={subject?.name ?? ''} questionsCount={questionCount} />
+
+      {/* ── شريط الملخص الذهبي ── */}
+      {subject?.summary_url && (
+        <div
+          dir="rtl"
+          onClick={() => window.location.href = subject.summary_url!}
+          className="fixed top-0 left-0 right-0 z-[9999] flex items-center justify-between gap-3 px-4 py-3 cursor-pointer group overflow-hidden"
+          style={{
+            background: 'linear-gradient(135deg, #0d1b2a 0%, #1a3320 50%, #0d1b2a 100%)',
+            borderBottom: '2px solid rgba(201,168,76,0.55)',
+            boxShadow: '0 4px 28px rgba(201,168,76,0.28)',
+          }}
+        >
+          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+            style={{ background: 'linear-gradient(135deg, #152338, #1f4a30, #152338)' }} />
+          <div className="absolute inset-0 -skew-x-12 translate-x-[-150%] group-hover:translate-x-[250%] transition-transform duration-1000 ease-in-out"
+            style={{ background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.22), transparent)', width: '40%' }} />
+          <div className="absolute top-0 left-0 right-0 h-[2px]"
+            style={{ background: 'linear-gradient(90deg, transparent, #c9a84c, #e8c97a, #c9a84c, transparent)' }} />
+          <div className="relative z-10 flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300"
+              style={{ background: 'linear-gradient(135deg, #c9a84c, #8a6d1e)', boxShadow: '0 3px 12px rgba(201,168,76,0.55)' }}>
+              <BookOpen className="w-4 h-4 text-white" />
+            </div>
+            <div className="text-right">
+              <p className="text-xs font-black leading-tight" style={{ color: '#e8c97a' }}>📖 ملخص المادة</p>
+              <p className="text-[9px] font-bold leading-tight" style={{ color: '#a89060' }}>اضغط للمراجعة قبل الاختبار</p>
+            </div>
+          </div>
+          <div className="relative z-10 flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: '#c9a84c' }} />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5" style={{ background: '#c9a84c' }} />
+            </span>
+            <div className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-black group-hover:scale-105 transition-transform duration-300"
+              style={{ background: 'rgba(201,168,76,0.18)', color: '#e8c97a', border: '1px solid rgba(201,168,76,0.4)', boxShadow: '0 2px 8px rgba(201,168,76,0.2)' }}>
+              <span>اقرأ الآن</span>
+              <ChevronLeft className="w-3 h-3" />
+            </div>
+          </div>
+        </div>
+      )}
+      {subject?.summary_url && <div className="h-[52px]" />}
+
       <section className="py-8 md:py-16 bg-slate-50 dark:bg-muted/50 min-h-[calc(100vh-80px)]" dir="rtl">
         <div className="container mx-auto px-4 md:px-6">
 
