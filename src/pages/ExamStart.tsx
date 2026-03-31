@@ -229,7 +229,6 @@ const SummaryModal = ({
             srcDoc={themedHtml}
             title="ملخص المادة"
             className="w-full h-full border-0"
-            sandbox="allow-same-origin allow-scripts allow-popups allow-top-navigation-by-user-activation allow-modals"
           />
         )}
       </div>
