@@ -27,6 +27,7 @@ export interface Subject {
   passing_score: number;
   password: string | null;
   author_name: string | null;
+  summary_url: string | null;
   created_at: string;
   updated_at: string;
 }
