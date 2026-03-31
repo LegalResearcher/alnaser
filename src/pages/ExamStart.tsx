@@ -127,12 +127,17 @@ const SummaryModal = ({
   }, [url]);
 
   // نستبدل data-theme على <body> مباشرة حسب ثيم المنصة الحالي
+  const targetTheme = isDark ? 'dark' : 'light';
   const themedHtml = html
     ? html
-        .replace(/<body([^>]*?)data-theme="(light|dark)"([^>]*)>/i,
-          `<body$1data-theme="${isDark ? 'dark' : 'light'}"$3>`)
-        .replace(/<body(?![^>]*data-theme)([^>]*)>/i,
-          `<body data-theme="${isDark ? 'dark' : 'light'}"$1>`)
+        .replace(
+          new RegExp('(<body[^>]*?)data-theme="(?:light|dark)"([^>]*>)', 'i'),
+          `$1data-theme="${targetTheme}"$2`
+        )
+        .replace(
+          new RegExp('(<body)(?![^>]*data-theme)([^>]*>)', 'i'),
+          `$1 data-theme="${targetTheme}"$2`
+        )
     : '';
 
   return (
