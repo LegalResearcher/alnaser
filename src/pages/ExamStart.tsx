@@ -216,17 +216,6 @@ const SummaryModal = ({
     </div>
   );
 };
-        <button
-          onClick={onClose}
-          className="px-8 py-2 rounded-2xl font-black text-sm"
-          style={{ background: 'linear-gradient(135deg, #c9a84c, #e8c97a)', color: '#0d1b2a' }}
-        >
-          إغلاق الملخص
-        </button>
-      </div>
-    </div>
-  );
-};
 
 const ExamStart = () => {
   const { subjectId } = useParams<{ subjectId: string }>();
