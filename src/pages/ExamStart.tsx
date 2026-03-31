@@ -103,15 +103,19 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 
 /* ── مكوّن عرض ملخص المادة ── */
 /* دالة حقن الثيم في HTML الملخص */
-function injectTheme(html: string, theme: string): string {
-  const withTheme = html.split('data-theme="light"').join('data-theme="__THEME__"')
-                        .split('data-theme="dark"').join('data-theme="__THEME__"')
-                        .split('data-theme="__THEME__"').join('data-theme="' + theme + '"');
-  if (withTheme === html) {
-    return html.split('<body').join('<body data-theme="' + theme + '"');
+function injectTheme(rawHtml: string, theme: string): string {
+  const dqLight = 'data-theme' + '=' + String.fromCharCode(34) + 'light' + String.fromCharCode(34);
+  const dqDark  = 'data-theme' + '=' + String.fromCharCode(34) + 'dark'  + String.fromCharCode(34);
+  const dqTheme = 'data-theme' + '=' + String.fromCharCode(34) + theme    + String.fromCharCode(34);
+  let result = rawHtml.split(dqLight).join(dqTheme).split(dqDark).join(dqTheme);
+  if (result === rawHtml) {
+    const openBody = String.fromCharCode(60) + 'body';
+    result = result.split(openBody).join(openBody + ' ' + dqTheme);
   }
-  return withTheme;
+  return result;
 }
+
+
 
 const SummaryModal = ({
   url,
