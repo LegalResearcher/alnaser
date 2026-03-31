@@ -104,14 +104,48 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 /* ── مكوّن عرض ملخص المادة ── */
 /* دالة حقن الثيم في HTML الملخص */
 function injectTheme(rawHtml: string, theme: string): string {
-  const dqLight = 'data-theme' + '=' + String.fromCharCode(34) + 'light' + String.fromCharCode(34);
-  const dqDark  = 'data-theme' + '=' + String.fromCharCode(34) + 'dark'  + String.fromCharCode(34);
-  const dqTheme = 'data-theme' + '=' + String.fromCharCode(34) + theme    + String.fromCharCode(34);
+  const q = String.fromCharCode(34);
+  const dqLight = `data-theme=${q}light${q}`;
+  const dqDark  = `data-theme=${q}dark${q}`;
+  const dqTheme = `data-theme=${q}${theme}${q}`;
+
+  // 1) استبدال data-theme الموجود
   let result = rawHtml.split(dqLight).join(dqTheme).split(dqDark).join(dqTheme);
+
+  // 2) إذا لم يكن هناك data-theme، أضفه على <html> أو <body>
   if (result === rawHtml) {
-    const openBody = String.fromCharCode(60) + 'body';
-    result = result.split(openBody).join(openBody + ' ' + dqTheme);
+    if (result.includes('<html')) {
+      result = result.replace('<html', `<html ${dqTheme}`);
+    } else {
+      const openBody = String.fromCharCode(60) + 'body';
+      result = result.split(openBody).join(openBody + ' ' + dqTheme);
+    }
   }
+
+  // 3) حقن CSS قسري للوضع النهاري لأن الملخص مبني على dark افتراضياً
+  if (theme === 'light') {
+    const lightOverride = `<style id="__theme_override__">
+  :root, [data-theme="light"], body, html {
+    --bg: #f8f5ec !important;
+    --bg-secondary: #ffffff !important;
+    --text: #1a1a1a !important;
+    --text-secondary: #4a4a4a !important;
+    color-scheme: light !important;
+  }
+  body, html {
+    background-color: #f8f5ec !important;
+    color: #1a1a1a !important;
+  }
+</style>`;
+    if (result.includes('</head>')) {
+      result = result.replace('</head>', lightOverride + '</head>');
+    } else if (result.includes('<head>')) {
+      result = result.replace('<head>', '<head>' + lightOverride);
+    } else {
+      result = lightOverride + result;
+    }
+  }
+
   return result;
 }
 
@@ -143,7 +177,7 @@ const SummaryModal = ({
 
   // نستبدل data-theme على <body> مباشرة حسب ثيم المنصة الحالي
   // نستبدل data-theme على <body> حسب ثيم المنصة
-  const targetTheme = isDark ? 'dark' : 'light';
+  const targetTheme = 'dark'; // الملخص دائماً بالوضع الليلي لأن تصميمه مُحسَّن له
   const themedHtml = html ? injectTheme(html, targetTheme) : '';
 
   return (
