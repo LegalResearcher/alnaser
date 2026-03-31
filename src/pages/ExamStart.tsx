@@ -115,6 +115,7 @@ const ExamStart = () => {
   const [savedProgress,    setSavedProgress]    = useState<SavedProgress | null>(null);
   const [showResumeDialog, setShowResumeDialog] = useState(false);
   const [showNewQsNotif,   setShowNewQsNotif]   = useState(false);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
   const newQsDismissKey = subjectId ? `new_qs_dismissed_${subjectId}` : null;
 
   useEffect(() => {
@@ -305,7 +306,7 @@ const ExamStart = () => {
       {subject?.summary_url && (
         <div
           dir="rtl"
-          onClick={() => window.location.href = subject.summary_url!}
+          onClick={() => setShowSummaryModal(true)}
           className="fixed top-0 left-0 right-0 z-[9999] flex items-center justify-between gap-3 px-4 py-3 cursor-pointer group overflow-hidden"
           style={{
             background: 'linear-gradient(135deg, #0d1b2a 0%, #1a3320 50%, #0d1b2a 100%)',
@@ -646,6 +647,71 @@ const ExamStart = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ── مودال عرض ملخص المادة ── */}
+      {showSummaryModal && subject?.summary_url && (
+        <div
+          className="fixed inset-0 z-[99999] flex flex-col"
+          style={{ background: 'rgba(0,0,0,0.92)' }}
+        >
+          {/* شريط العنوان */}
+          <div
+            dir="rtl"
+            className="flex items-center justify-between px-4 py-3 shrink-0"
+            style={{
+              background: 'linear-gradient(135deg, #0d1b2a, #1a3320)',
+              borderBottom: '2px solid rgba(201,168,76,0.5)',
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-5 h-5" style={{ color: '#c9a84c' }} />
+              <span className="font-black text-base" style={{ color: '#e8c97a' }}>
+                📖 ملخص المادة
+              </span>
+              <span className="text-sm font-bold text-white/70 mr-1">— {subject.name}</span>
+            </div>
+            <button
+              onClick={() => setShowSummaryModal(false)}
+              className="flex items-center justify-center w-9 h-9 rounded-full transition-all"
+              style={{
+                background: 'rgba(201,168,76,0.15)',
+                border: '1px solid rgba(201,168,76,0.4)',
+                color: '#e8c97a',
+              }}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* iframe الملخص */}
+          <div className="flex-1 overflow-hidden">
+            <iframe
+              src={subject.summary_url}
+              title="ملخص المادة"
+              className="w-full h-full border-0"
+              sandbox="allow-same-origin allow-scripts"
+              style={{ background: '#fff' }}
+            />
+          </div>
+
+          {/* زر الإغلاق السفلي */}
+          <div
+            className="flex justify-center py-3 shrink-0"
+            style={{ background: '#0d1b2a', borderTop: '1px solid rgba(201,168,76,0.2)' }}
+          >
+            <button
+              onClick={() => setShowSummaryModal(false)}
+              className="px-8 py-2 rounded-2xl font-black text-sm"
+              style={{
+                background: 'linear-gradient(135deg, #c9a84c, #e8c97a)',
+                color: '#0d1b2a',
+              }}
+            >
+              إغلاق الملخص
+            </button>
+          </div>
+        </div>
+      )}
     </MainLayout>
   );
 };
