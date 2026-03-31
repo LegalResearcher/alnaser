@@ -100,6 +100,97 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+/* ── مكوّن عرض ملخص المادة ── */
+const SummaryModal = ({
+  url,
+  subjectName,
+  onClose,
+}: {
+  url: string;
+  subjectName: string;
+  onClose: () => void;
+}) => {
+  const [html, setHtml] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(false);
+    fetch(url)
+      .then(r => r.text())
+      .then(text => { setHtml(text); setLoading(false); })
+      .catch(() => { setError(true); setLoading(false); });
+  }, [url]);
+
+  return (
+    <div className="fixed inset-0 z-[99999] flex flex-col" style={{ background: 'rgba(0,0,0,0.95)' }}>
+      {/* شريط العنوان */}
+      <div
+        dir="rtl"
+        className="flex items-center justify-between px-4 py-3 shrink-0"
+        style={{
+          background: 'linear-gradient(135deg, #0d1b2a, #1a3320)',
+          borderBottom: '2px solid rgba(201,168,76,0.5)',
+        }}
+      >
+        <div className="flex items-center gap-2">
+          <BookOpen className="w-5 h-5" style={{ color: '#c9a84c' }} />
+          <span className="font-black text-base" style={{ color: '#e8c97a' }}>📖 ملخص المادة</span>
+          <span className="text-sm font-bold text-white/60 mr-1">— {subjectName}</span>
+        </div>
+        <button
+          onClick={onClose}
+          className="flex items-center justify-center w-9 h-9 rounded-full"
+          style={{ background: 'rgba(201,168,76,0.15)', border: '1px solid rgba(201,168,76,0.4)', color: '#e8c97a' }}
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* المحتوى */}
+      <div className="flex-1 overflow-y-auto bg-white">
+        {loading && (
+          <div className="flex items-center justify-center h-full min-h-[300px]">
+            <div className="text-center">
+              <div className="w-10 h-10 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-gray-500 font-bold">جاري تحميل الملخص...</p>
+            </div>
+          </div>
+        )}
+        {error && (
+          <div className="flex items-center justify-center h-full min-h-[300px]">
+            <div className="text-center px-6">
+              <p className="text-red-500 font-black text-lg mb-2">⚠️ تعذّر تحميل الملخص</p>
+              <p className="text-gray-500 text-sm">تحقق من اتصالك بالإنترنت وحاول مرة أخرى</p>
+            </div>
+          </div>
+        )}
+        {!loading && !error && html !== null && (
+          <div
+            className="w-full h-full"
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+        )}
+      </div>
+
+      {/* زر الإغلاق السفلي */}
+      <div
+        className="flex justify-center py-3 shrink-0"
+        style={{ background: '#0d1b2a', borderTop: '1px solid rgba(201,168,76,0.2)' }}
+      >
+        <button
+          onClick={onClose}
+          className="px-8 py-2 rounded-2xl font-black text-sm"
+          style={{ background: 'linear-gradient(135deg, #c9a84c, #e8c97a)', color: '#0d1b2a' }}
+        >
+          إغلاق الملخص
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const ExamStart = () => {
   const { subjectId } = useParams<{ subjectId: string }>();
   const navigate = useNavigate();
@@ -650,67 +741,11 @@ const ExamStart = () => {
 
       {/* ── مودال عرض ملخص المادة ── */}
       {showSummaryModal && subject?.summary_url && (
-        <div
-          className="fixed inset-0 z-[99999] flex flex-col"
-          style={{ background: 'rgba(0,0,0,0.92)' }}
-        >
-          {/* شريط العنوان */}
-          <div
-            dir="rtl"
-            className="flex items-center justify-between px-4 py-3 shrink-0"
-            style={{
-              background: 'linear-gradient(135deg, #0d1b2a, #1a3320)',
-              borderBottom: '2px solid rgba(201,168,76,0.5)',
-            }}
-          >
-            <div className="flex items-center gap-2">
-              <BookOpen className="w-5 h-5" style={{ color: '#c9a84c' }} />
-              <span className="font-black text-base" style={{ color: '#e8c97a' }}>
-                📖 ملخص المادة
-              </span>
-              <span className="text-sm font-bold text-white/70 mr-1">— {subject.name}</span>
-            </div>
-            <button
-              onClick={() => setShowSummaryModal(false)}
-              className="flex items-center justify-center w-9 h-9 rounded-full transition-all"
-              style={{
-                background: 'rgba(201,168,76,0.15)',
-                border: '1px solid rgba(201,168,76,0.4)',
-                color: '#e8c97a',
-              }}
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* iframe الملخص */}
-          <div className="flex-1 overflow-hidden">
-            <iframe
-              src={subject.summary_url}
-              title="ملخص المادة"
-              className="w-full h-full border-0"
-              sandbox="allow-same-origin allow-scripts"
-              style={{ background: '#fff' }}
-            />
-          </div>
-
-          {/* زر الإغلاق السفلي */}
-          <div
-            className="flex justify-center py-3 shrink-0"
-            style={{ background: '#0d1b2a', borderTop: '1px solid rgba(201,168,76,0.2)' }}
-          >
-            <button
-              onClick={() => setShowSummaryModal(false)}
-              className="px-8 py-2 rounded-2xl font-black text-sm"
-              style={{
-                background: 'linear-gradient(135deg, #c9a84c, #e8c97a)',
-                color: '#0d1b2a',
-              }}
-            >
-              إغلاق الملخص
-            </button>
-          </div>
-        </div>
+        <SummaryModal
+          url={subject.summary_url}
+          subjectName={subject.name}
+          onClose={() => setShowSummaryModal(false)}
+        />
       )}
     </MainLayout>
   );
