@@ -626,6 +626,7 @@ export type Database = {
           passing_score: number
           password: string | null
           questions_per_exam: number
+          summary_url: string | null
           updated_at: string
         }
         Insert: {
@@ -643,6 +644,7 @@ export type Database = {
           passing_score?: number
           password?: string | null
           questions_per_exam?: number
+          summary_url?: string | null
           updated_at?: string
         }
         Update: {
@@ -660,6 +662,7 @@ export type Database = {
           passing_score?: number
           password?: string | null
           questions_per_exam?: number
+          summary_url?: string | null
           updated_at?: string
         }
         Relationships: [
