@@ -424,7 +424,7 @@ const ExamStart = () => {
         <div
           dir="rtl"
           onClick={() => setShowSummaryModal(true)}
-          className="fixed top-0 left-0 right-0 z-[9999] flex items-center justify-between gap-3 px-4 py-3 cursor-pointer group overflow-hidden"
+          className="sticky top-0 left-0 right-0 z-[9999] flex items-center justify-between gap-3 px-4 py-3 cursor-pointer group overflow-hidden"
           style={{
             background: 'linear-gradient(135deg, #0d1b2a 0%, #1a3320 50%, #0d1b2a 100%)',
             borderBottom: '2px solid rgba(201,168,76,0.55)',
@@ -460,7 +460,7 @@ const ExamStart = () => {
           </div>
         </div>
       )}
-      {subject?.summary_url && <div className="h-[52px]" />}
+
 
       <section className="py-8 md:py-16 bg-slate-50 dark:bg-muted/50 min-h-[calc(100vh-80px)]" dir="rtl">
         <div className="container mx-auto px-4 md:px-6">
