@@ -102,6 +102,17 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 }
 
 /* ── مكوّن عرض ملخص المادة ── */
+/* دالة حقن الثيم في HTML الملخص */
+function injectTheme(html: string, theme: string): string {
+  const withTheme = html.split('data-theme="light"').join('data-theme="__THEME__"')
+                        .split('data-theme="dark"').join('data-theme="__THEME__"')
+                        .split('data-theme="__THEME__"').join('data-theme="' + theme + '"');
+  if (withTheme === html) {
+    return html.split('<body').join('<body data-theme="' + theme + '"');
+  }
+  return withTheme;
+}
+
 const SummaryModal = ({
   url,
   subjectName,
@@ -127,18 +138,9 @@ const SummaryModal = ({
   }, [url]);
 
   // نستبدل data-theme على <body> مباشرة حسب ثيم المنصة الحالي
+  // نستبدل data-theme على <body> حسب ثيم المنصة
   const targetTheme = isDark ? 'dark' : 'light';
-  const themedHtml = html
-    ? html
-        .replace(
-          new RegExp('(<body[^>]*?)data-theme="(?:light|dark)"([^>]*>)', 'i'),
-          `$1data-theme="${targetTheme}"$2`
-        )
-        .replace(
-          new RegExp('(<body)(?![^>]*data-theme)([^>]*>)', 'i'),
-          `$1 data-theme="${targetTheme}"$2`
-        )
-    : '';
+  const themedHtml = html ? injectTheme(html, targetTheme) : '';
 
   return (
     <div className="fixed inset-0 z-[99999] flex flex-col">
