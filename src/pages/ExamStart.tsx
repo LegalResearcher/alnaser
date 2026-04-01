@@ -376,7 +376,19 @@ const ExamStart = () => {
     }
   }, [subject, navigate, toast]);
 
-  useEffect(() => { if (subject) setExamTime(subject.default_time_minutes || 30); }, [subject]);
+  useEffect(() => {
+    if (subject) {
+      setExamTime(subject.default_time_minutes || 30);
+      // تعيين "أسئلة تجريبية" افتراضياً لقسم ثالث ثانوي
+      setSelectedYear(prev => {
+        if (!prev && subject.levels?.name?.includes('ثالث ثانوي')) {
+          return 'trial';
+        }
+        return prev;
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subject]);
 
   // عند اختيار "الكل" أو "أسئلة تجريبية + كل النماذج" يكون الوقت الافتراضي 120 دقيقة
   useEffect(() => {
