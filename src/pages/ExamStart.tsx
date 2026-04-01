@@ -12,7 +12,8 @@ import { useTheme } from 'next-themes';
 import {
   Clock, Target, User, Lock, Play,
   Info, ShieldCheck, FileText, ChevronLeft,
-  AlertCircle, RotateCcw, BookOpen, Sparkles, Zap, X, PenLine
+  AlertCircle, RotateCcw, BookOpen, Sparkles, Zap, X, PenLine,
+  Swords, Users
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -746,20 +747,54 @@ const ExamStart = () => {
                 </div>
               )}
 
+              {/* ── زر ابدأ الاختبار (الأصلي) ── */}
               <button
                 onClick={handleStartExam}
                 disabled={!studentName.trim() || !selectedYear || questionCount === 0}
                 className="relative w-full h-16 rounded-[1.25rem] font-black text-base text-white overflow-hidden transition-all duration-300 hover:-translate-y-1 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 group"
                 style={{ background: 'linear-gradient(135deg, #1d4ed8, #4f46e5, #7c3aed)', boxShadow: '0 8px 32px rgba(99,102,241,0.45), 0 0 0 1px rgba(255,255,255,0.1) inset' }}
               >
-                {/* توهج داخلي */}
                 <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: 'linear-gradient(135deg, #2563eb, #6366f1, #8b5cf6)' }} />
-                {/* بريق متحرك */}
                 <div className="absolute inset-0 -skew-x-12 translate-x-[-150%] group-hover:translate-x-[250%] transition-transform duration-700 ease-in-out" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)', width: '50%' }} />
                 <div className="relative z-10 flex items-center justify-center gap-3">
                   <Play className="w-5 h-5 fill-current group-hover:scale-110 transition-transform" />
                   <span>{selectedYear === 'all' && savedProgress ? 'متابعة الاختبار' : 'ابدأ الاختبار الآن'}</span>
                   <Zap className="w-4 h-4 opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all" />
+                </div>
+              </button>
+
+              {/* ── زر إنشاء غرفة تحدي جماعي ── */}
+              <button
+                onClick={() => {
+                  const params = new URLSearchParams();
+                  if (subject?.level_id) params.set('levelId', subject.level_id);
+                  if (subjectId) params.set('subjectId', subjectId);
+                  navigate(`/battle/create?${params.toString()}`);
+                }}
+                className="relative w-full h-14 rounded-[1.25rem] font-black text-base overflow-hidden transition-all duration-300 hover:-translate-y-1 active:scale-[0.98] group"
+                style={{
+                  background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)',
+                  border: '1.5px solid rgba(251,191,36,0.5)',
+                  boxShadow: '0 6px 28px rgba(251,191,36,0.18), inset 0 1px 0 rgba(255,255,255,0.06)',
+                  color: '#fde68a',
+                }}
+              >
+                {/* توهج داخلي عند hover */}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                  style={{ background: 'linear-gradient(135deg, #1e1b4b, #312e81)' }} />
+                {/* بريق ذهبي */}
+                <div className="absolute inset-0 -skew-x-12 translate-x-[-150%] group-hover:translate-x-[250%] transition-transform duration-700"
+                  style={{ background: 'linear-gradient(90deg, transparent, rgba(251,191,36,0.2), transparent)', width: '50%' }} />
+                {/* توهج الحدود عند hover */}
+                <div className="absolute inset-0 rounded-[1.25rem] opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                  style={{ boxShadow: '0 0 24px rgba(251,191,36,0.4)' }} />
+                <div className="relative z-10 flex items-center justify-center gap-2.5">
+                  <Swords className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300"
+                    style={{ filter: 'drop-shadow(0 0 6px rgba(251,191,36,0.8))' }} />
+                  <span style={{ textShadow: '0 0 16px rgba(251,191,36,0.5)' }}>
+                    تحدَّ أصدقاءك — غرفة جماعية
+                  </span>
+                  <Users className="w-4 h-4 opacity-60 group-hover:opacity-100 transition-opacity" />
                 </div>
               </button>
 
