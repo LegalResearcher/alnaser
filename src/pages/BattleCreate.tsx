@@ -57,6 +57,7 @@ const BattleCreate = () => {
   const [creating, setCreating] = useState(false);
   const [createdRoom, setCreatedRoom] = useState<{ code: string; id: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   // Advanced settings
   const [isPrivate, setIsPrivate] = useState(false);
@@ -202,9 +203,54 @@ const BattleCreate = () => {
     }
   };
 
+  const getRoomShareMessage = () => {
+    const url = `${window.location.origin}/battle/${createdRoom?.code}`;
+    const subjectObj = subjects.find((s: any) => s.id === selectedSubject);
+    const levelObj = levels.find((l: any) => l.id === selectedLevel);
+    const subjectNameStr = subjectObj?.name || '';
+    const levelNameStr = levelObj?.name || '';
+    const examFormName = questionType === 'exam'
+      ? (EXAM_FORMS.find(f => f.id === selectedExamForm)?.name || '')
+      : questionType === 'trial'
+      ? (activeTrialForms.find(f => f.id === selectedTrialForm)?.name || '')
+      : '';
+    const yearStr = selectedExamYear ? ` | ${selectedExamYear}` : '';
+    const formStr = examFormName ? ` | ${examFormName}` : '';
+
+    return `⚔️ تحدٍّ قانوني مباشر!
+
+📚 المادة: ${subjectNameStr}
+🎓 المستوى: ${levelNameStr}${yearStr}${formStr}
+❓ الأسئلة: ${questionsCount} سؤال
+👨‍🏫 المنشئ: ${creatorName}
+
+🔥 هل أنت مستعد للمنافسة؟ انضم الآن!
+🔗 ${url}`;
+  };
+
   const handleCopy = () => {
     const url = `${window.location.origin}/battle/${createdRoom?.code}`;
     navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShareWhatsApp = () => {
+    const text = getRoomShareMessage();
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  };
+  const handleShareTelegram = () => {
+    const url = `${window.location.origin}/battle/${createdRoom?.code}`;
+    const text = getRoomShareMessage();
+    window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`, '_blank');
+  };
+  const handleShareFacebook = () => {
+    const url = `${window.location.origin}/battle/${createdRoom?.code}`;
+    const text = getRoomShareMessage();
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(text)}`, '_blank');
+  };
+  const handleCopyMessage = () => {
+    navigator.clipboard.writeText(getRoomShareMessage());
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -248,8 +294,8 @@ const BattleCreate = () => {
 
               <div className="p-7 space-y-3">
                 <p className="text-center text-sm text-slate-500 font-bold">شارك الكود مع أصدقائك للانضمام</p>
-                <Button onClick={handleCopy} variant="outline" className="w-full h-12 rounded-2xl font-black gap-2 border-2">
-                  {copied ? <><Check className="w-4 h-4 text-emerald-500" /> تم النسخ!</> : <><Copy className="w-4 h-4" /> نسخ رابط الغرفة</>}
+                <Button onClick={() => setShowShareModal(true)} variant="outline" className="w-full h-12 rounded-2xl font-black gap-2 border-2">
+                  <Copy className="w-4 h-4" /> مشاركة رابط الغرفة
                 </Button>
                 <Button onClick={handleEnterRoom} className="w-full h-13 rounded-2xl font-black gap-2 bg-gradient-to-l from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-200/50 text-base">
                   <Play className="w-5 h-5" /> دخول الغرفة
@@ -258,6 +304,37 @@ const BattleCreate = () => {
                   الغرفة صالحة 3 ساعات · حد أقصى {maxPlayers} لاعبين
                 </p>
               </div>
+
+              {/* Share Modal */}
+              {showShareModal && (
+                <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowShareModal(false)}>
+                  <div className="w-full max-w-sm bg-white dark:bg-card rounded-t-3xl p-6 space-y-4 animate-in slide-in-from-bottom-4 duration-300" onClick={e => e.stopPropagation()} dir="rtl">
+                    <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-2" />
+                    <h3 className="font-black text-slate-900 dark:text-white text-center text-base">مشاركة الغرفة</h3>
+                    <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 text-xs text-slate-600 dark:text-slate-300 font-bold leading-relaxed whitespace-pre-line border border-slate-100 dark:border-slate-700">
+                      {getRoomShareMessage()}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button onClick={handleShareWhatsApp}
+                        className="h-11 rounded-xl bg-green-500/15 border border-green-400/30 text-green-700 dark:text-green-300 text-sm font-black flex items-center justify-center gap-2 hover:bg-green-500/25 transition-all">
+                        واتساب
+                      </button>
+                      <button onClick={handleShareTelegram}
+                        className="h-11 rounded-xl bg-blue-500/15 border border-blue-400/30 text-blue-700 dark:text-blue-300 text-sm font-black flex items-center justify-center gap-2 hover:bg-blue-500/25 transition-all">
+                        تيليجرام
+                      </button>
+                      <button onClick={handleShareFacebook}
+                        className="h-11 rounded-xl bg-blue-700/15 border border-blue-600/30 text-blue-800 dark:text-blue-200 text-sm font-black flex items-center justify-center gap-2 hover:bg-blue-700/25 transition-all">
+                        فيسبوك
+                      </button>
+                      <button onClick={handleCopyMessage}
+                        className={`h-11 rounded-xl text-sm font-black flex items-center justify-center gap-2 transition-all border ${copied ? 'bg-emerald-500/15 border-emerald-400/30 text-emerald-700 dark:text-emerald-300' : 'bg-slate-100 dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'}`}>
+                        {copied ? <><Check className="w-4 h-4" /> تم النسخ!</> : <><Copy className="w-4 h-4" /> نسخ الرسالة</>}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </section>
