@@ -46,6 +46,11 @@ const AdminSubjects         = lazy(() => import("./pages/admin/AdminSubjects"));
 const AdminReports          = lazy(() => import("./pages/admin/AdminReports"));
 const AdminSuggestions      = lazy(() => import("./pages/admin/AdminSuggestions"));
 
+// صفحات المنافسة الجماعية
+const BattleCreate = lazy(() => import("./pages/BattleCreate"));
+const BattleRoom   = lazy(() => import("./pages/BattleRoom"));
+const BattleJoin   = lazy(() => import("./pages/BattleJoin"));
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -95,6 +100,11 @@ const App = () => (
                     <Route path="/challenge/:sessionId" element={<ChallengePage />} />
                     <Route path="/features"            element={<FeaturesPage />} />
                     <Route path="/suggest"             element={<SuggestQuestion />} />
+
+                    {/* ── غرف المنافسة الجماعية ── */}
+                    <Route path="/battle/create"  element={<BattleCreate />} />
+                    <Route path="/battle/join"    element={<BattleJoin />} />
+                    <Route path="/battle/:code"   element={<BattleRoom />} />
 
                     {/* ── صفحات الإدارة ── */}
                     <Route path="/admin/login"             element={<AdminLogin />} />
