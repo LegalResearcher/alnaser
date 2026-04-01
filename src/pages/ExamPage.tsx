@@ -531,8 +531,13 @@ const ExamPage = () => {
 
   // دوال المشاركة
   const getShareData = () => {
-    const url = `${window.location.origin}/exam/${subjectId}`;
-    const text = `📚 سؤال من ${state?.subjectName || 'اختبار قانوني'}\n\n${questions[currentIndex]?.question_text || ''}\n\nجرب إجابته على منصة الناصر القانونية:\n${url}`;
+    const currentQuestion = questions[currentIndex];
+    const questionId = currentQuestion?.id;
+    // الرابط يشير لصفحة السؤال المشارك مع questionId
+    const url = questionId
+      ? `${window.location.origin}/question/${questionId}`
+      : `${window.location.origin}/exam/${subjectId}`;
+    const text = `📚 سؤال من ${state?.subjectName || 'اختبار قانوني'}\n\n${currentQuestion?.question_text || ''}\n\nجرب إجابته على منصة الناصر القانونية:\n${url}`;
     return { url, text };
   };
 
