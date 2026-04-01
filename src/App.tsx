@@ -45,6 +45,7 @@ const AdminLevels           = lazy(() => import("./pages/admin/AdminLevels"));
 const AdminSubjects         = lazy(() => import("./pages/admin/AdminSubjects"));
 const AdminReports          = lazy(() => import("./pages/admin/AdminReports"));
 const AdminSuggestions      = lazy(() => import("./pages/admin/AdminSuggestions"));
+const AdminBattleRooms      = lazy(() => import("./pages/admin/AdminBattleRooms"));
 
 // صفحات المنافسة الجماعية
 const BattleCreate = lazy(() => import("./pages/BattleCreate"));
@@ -117,6 +118,7 @@ const App = () => (
                     <Route path="/admin/subjects"          element={<AdminSubjects />} />
                     <Route path="/admin/reports"           element={<AdminReports />} />
                     <Route path="/admin/suggestions"       element={<AdminSuggestions />} />
+                    <Route path="/admin/battle-rooms"      element={<AdminBattleRooms />} />
                     <Route path="/admin/settings"          element={<AdminSettings />} />
 
                     {/* ── 404 ── */}
