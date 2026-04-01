@@ -14,6 +14,124 @@ export type Database = {
   }
   public: {
     Tables: {
+      battle_players: {
+        Row: {
+          correct_count: number | null
+          finished_at: string | null
+          id: string
+          is_creator: boolean | null
+          joined_at: string | null
+          percentage: number | null
+          player_name: string
+          progress: number | null
+          room_id: string
+          score: number | null
+          status: string
+          time_seconds: number | null
+          total_answered: number | null
+        }
+        Insert: {
+          correct_count?: number | null
+          finished_at?: string | null
+          id?: string
+          is_creator?: boolean | null
+          joined_at?: string | null
+          percentage?: number | null
+          player_name: string
+          progress?: number | null
+          room_id: string
+          score?: number | null
+          status?: string
+          time_seconds?: number | null
+          total_answered?: number | null
+        }
+        Update: {
+          correct_count?: number | null
+          finished_at?: string | null
+          id?: string
+          is_creator?: boolean | null
+          joined_at?: string | null
+          percentage?: number | null
+          player_name?: string
+          progress?: number | null
+          room_id?: string
+          score?: number | null
+          status?: string
+          time_seconds?: number | null
+          total_answered?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_players_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "battle_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      battle_rooms: {
+        Row: {
+          code: string
+          created_at: string | null
+          creator_name: string
+          exam_form: string | null
+          exam_year: number | null
+          expires_at: string | null
+          finished_at: string | null
+          id: string
+          max_players: number
+          question_ids: Json
+          questions_count: number
+          started_at: string | null
+          status: string
+          subject_id: string
+          time_minutes: number
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          creator_name: string
+          exam_form?: string | null
+          exam_year?: number | null
+          expires_at?: string | null
+          finished_at?: string | null
+          id?: string
+          max_players?: number
+          question_ids?: Json
+          questions_count?: number
+          started_at?: string | null
+          status?: string
+          subject_id: string
+          time_minutes?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          creator_name?: string
+          exam_form?: string | null
+          exam_year?: number | null
+          expires_at?: string | null
+          finished_at?: string | null
+          id?: string
+          max_players?: number
+          question_ids?: Json
+          questions_count?: number
+          started_at?: string | null
+          status?: string
+          subject_id?: string
+          time_minutes?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_rooms_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       challenge_results: {
         Row: {
           challenger_name: string
