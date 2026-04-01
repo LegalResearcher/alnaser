@@ -645,6 +645,8 @@ const BattleRoom = () => {
   const handleRoomShareTelegram = () => { const url = `${window.location.origin}/battle/${room?.code}`; window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(getRoomInviteMessage())}`, '_blank'); };
   const handleRoomShareFacebook = () => { const url = `${window.location.origin}/battle/${room?.code}`; window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(getRoomInviteMessage())}`, '_blank'); };
   const handleRoomCopyMessage = () => { navigator.clipboard.writeText(getRoomInviteMessage()); setCopied(true); setTimeout(() => setCopied(false), 2000); };
+
+  const handleShareWhatsApp = async () => {
     const me = sortedPlayers.find(p => p.id === myPlayerId.current);
     if (!me || !room) return;
     const rank = sortedPlayers.indexOf(me) + 1;
