@@ -237,7 +237,7 @@ export default function SharedQuestion() {
                 <span className="inline-flex items-center px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-[10px] font-black tracking-widest">
                   {subject.name}
                   {question.exam_year && ` · ${question.exam_year}`}
-                  {question.exam_form === 'Parallel' ? ' · موازي' : question.exam_form === 'General' ? ' · عام' : ''}
+                  {(question as any).exam_form === 'Parallel' ? ' · موازي' : (question as any).exam_form === 'General' ? ' · عام' : ''}
                 </span>
               )}
 
