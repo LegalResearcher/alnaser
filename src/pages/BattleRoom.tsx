@@ -10,7 +10,7 @@ import {
   Loader2, ChevronLeft, Flame, Target, CheckCircle2, XCircle,
   Share2, RotateCcw, Star, Zap, AlertCircle, Lock, UserX,
   TimerReset, BarChart3, Users2, Shield, Sparkles, ChevronRight,
-  Award, Wifi, WifiOff
+  Award, Wifi, WifiOff, Download, MessageCircle
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import logoImage from '@/assets/logo.jpg';
 
 // ── Types ──────────────────────────────────────────
 interface BattleRoom {
@@ -501,11 +502,179 @@ const BattleRoom = () => {
     }
   };
 
-  const handleShare = () => {
-    const me = myPlayer;
+  // ── Share state ──
+  const [isShareLoading, setIsShareLoading] = useState<string | null>(null);
+
+  // ── Canvas result image generator ──
+  const generateBattleResultCanvas = async (
+    me: BattlePlayer,
+    rank: number,
+    totalPlayers: number,
+    subjectNameStr: string,
+  ): Promise<HTMLCanvasElement> => {
+    const W = 600, H = 820, SC = 2;
+    const canvas = document.createElement('canvas');
+    canvas.width = W * SC; canvas.height = H * SC;
+    const ctx = canvas.getContext('2d')!;
+    ctx.scale(SC, SC);
+    ctx.direction = 'rtl'; ctx.textAlign = 'center';
+
+    const isFirst = rank === 1;
+    const pct = Math.round(me.percentage);
+
+    // background gradient
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    if (isFirst) {
+      grad.addColorStop(0, '#f59e0b'); grad.addColorStop(0.4, '#d97706'); grad.addColorStop(1, '#1e293b');
+    } else if (rank <= 3) {
+      grad.addColorStop(0, '#64748b'); grad.addColorStop(0.4, '#475569'); grad.addColorStop(1, '#1e293b');
+    } else {
+      grad.addColorStop(0, '#334155'); grad.addColorStop(0.4, '#1e293b'); grad.addColorStop(1, '#0f172a');
+    }
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+
+    // dot pattern overlay
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    for (let x = 0; x < W; x += 20) for (let y = 0; y < H; y += 20) {
+      ctx.beginPath(); ctx.arc(x, y, 1, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // trophy/medal emoji
+    const emoji = isFirst ? '🏆' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '🎯';
+    ctx.font = 'bold 70px Arial'; ctx.fillText(emoji, W / 2, 110);
+
+    // platform name
+    ctx.font = 'bold 16px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.fillText('منصة الباحث القانوني — غرفة المنافسة', W / 2, 165);
+
+    // subject
+    ctx.font = '13px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.65)';
+    ctx.fillText(subjectNameStr, W / 2, 192);
+
+    // rank badge
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.beginPath(); ctx.roundRect(W / 2 - 80, 208, 160, 44, 22); ctx.fill();
+    ctx.font = 'bold 14px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillText(`المركز ${rank} من ${totalPlayers}`, W / 2, 235);
+
+    // big percentage
+    ctx.font = `bold 110px Arial`;
+    ctx.fillStyle = isFirst ? '#fde68a' : 'white';
+    ctx.fillText(`${pct}%`, W / 2, 375);
+
+    // divider
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(60, 400); ctx.lineTo(W - 60, 400); ctx.stroke();
+
+    // stats boxes
+    const stats = [
+      { label: 'إجابات صحيحة', val: `${me.correct_count}/${room?.questions_count || '—'}` },
+      { label: 'إجابات خاطئة', val: String((me.total_answered || 0) - me.correct_count) },
+      { label: 'الوقت المستغرق', val: me.time_seconds ? `${Math.floor(me.time_seconds / 60)}د ${me.time_seconds % 60}ث` : '—' },
+    ];
+    const bW = 150, bH = 78, gap = 20;
+    const totalW = stats.length * bW + (stats.length - 1) * gap;
+    const startX = (W - totalW) / 2;
+    stats.forEach((s, i) => {
+      const bx = startX + i * (bW + gap);
+      ctx.fillStyle = 'rgba(255,255,255,0.09)';
+      ctx.beginPath(); ctx.roundRect(bx, 420, bW, bH, 14); ctx.fill();
+      ctx.font = 'bold 26px Arial'; ctx.fillStyle = 'white';
+      ctx.fillText(s.val, bx + bW / 2, 452);
+      ctx.font = '11px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.fillText(s.label, bx + bW / 2, 472);
+    });
+
+    // winner star row
+    if (isFirst) {
+      const stars = '★ ★ ★ ★ ★';
+      ctx.font = 'bold 22px Arial'; ctx.fillStyle = '#fde68a';
+      ctx.fillText(stars, W / 2, 530);
+    }
+
+    // player name
+    ctx.font = 'bold 20px Arial'; ctx.fillStyle = 'white';
+    ctx.fillText(`الطالب: ${me.player_name}`, W / 2, 570);
+
+    // date
+    ctx.font = '13px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fillText(new Date().toLocaleDateString('ar-SA'), W / 2, 595);
+
+    // join text
+    ctx.font = 'bold 13px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fillText(`🎯 تحدَّ أصدقاءك: alnaseer.org`, W / 2, 630);
+
+    // logo
+    const logo = new Image(); logo.crossOrigin = 'anonymous'; logo.src = logoImage;
+    await new Promise<void>(res => {
+      logo.onload = () => {
+        const ls = 56, pad = 20, x = W - ls - pad, y = H - ls - pad;
+        ctx.save(); ctx.globalAlpha = 0.95;
+        ctx.beginPath(); ctx.arc(x + ls / 2, y + ls / 2, ls / 2 + 3, 0, Math.PI * 2);
+        ctx.fillStyle = 'white'; ctx.fill(); ctx.restore();
+        ctx.save(); ctx.beginPath(); ctx.arc(x + ls / 2, y + ls / 2, ls / 2, 0, Math.PI * 2);
+        ctx.clip(); ctx.drawImage(logo, x, y, ls, ls); ctx.restore();
+        res();
+      };
+      logo.onerror = () => res();
+    });
+
+    return canvas;
+  };
+
+  const getShareText = (me: BattlePlayer, rank: number) => {
+    if (!room) return '';
+    return `🏆 حصلت على المركز ${rank} في ${subjectName} على منصة الباحث القانوني!\nنتيجتي: ${Math.round(me.percentage)}% ✅ (${me.correct_count}/${room.questions_count})\n\n🎯 تحدَّ أصدقاءك: ${window.location.origin}/battle/${room.code}`;
+  };
+
+  const handleShareWhatsApp = async () => {
+    const me = sortedPlayers.find(p => p.id === myPlayerId.current);
     if (!me || !room) return;
-    const rank = sortedPlayers.findIndex(p => p.id === me.id) + 1;
-    const text = `🏆 حصلت على المركز ${rank} في ${(room as any).subjects?.name} على منصة الناصر!\nنتيجتي: ${Math.round(me.percentage)}% ✅ (${me.correct_count}/${room.questions_count})\n\n🎯 انضم للتحدي: ${window.location.origin}/battle/${room.code}`;
+    const rank = sortedPlayers.indexOf(me) + 1;
+    setIsShareLoading('whatsapp');
+    try {
+      const canvas = await generateBattleResultCanvas(me, rank, sortedPlayers.length, subjectName);
+      const blob = await new Promise<Blob>(res => canvas.toBlob(b => res(b!), 'image/png'));
+      const file = new File([blob], 'نتيجة-المنافسة.png', { type: 'image/png' });
+      const text = getShareText(me, rank);
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], text });
+      } else {
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+      }
+    } catch {
+      const me2 = sortedPlayers.find(p => p.id === myPlayerId.current);
+      if (me2) window.open(`https://wa.me/?text=${encodeURIComponent(getShareText(me2, rank))}`, '_blank');
+    } finally { setIsShareLoading(null); }
+  };
+
+  const handleShareTwitter = () => {
+    const me = sortedPlayers.find(p => p.id === myPlayerId.current);
+    if (!me) return;
+    const rank = sortedPlayers.indexOf(me) + 1;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(getShareText(me, rank))}`, '_blank', 'width=550,height=420');
+  };
+
+  const handleSaveImage = async () => {
+    const me = sortedPlayers.find(p => p.id === myPlayerId.current);
+    if (!me || !room) return;
+    const rank = sortedPlayers.indexOf(me) + 1;
+    setIsShareLoading('save');
+    try {
+      const canvas = await generateBattleResultCanvas(me, rank, sortedPlayers.length, subjectName);
+      const link = document.createElement('a');
+      link.download = `نتيجة-منافسة-${subjectName}-${Math.round(me.percentage)}%.png`;
+      link.href = canvas.toDataURL('image/png'); link.click();
+      toast({ title: '✅ تم حفظ الصورة!' });
+    } catch { toast({ title: 'حدث خطأ', variant: 'destructive' }); }
+    finally { setIsShareLoading(null); }
+  };
+
+  const handleShare = () => {
+    const me = sortedPlayers.find(p => p.id === myPlayerId.current);
+    if (!me || !room) return;
+    const rank = sortedPlayers.indexOf(me) + 1;
+    const text = getShareText(me, rank);
     if (navigator.share) navigator.share({ text });
     else { navigator.clipboard.writeText(text); toast({ title: '✅ تم نسخ النتيجة!' }); }
   };
@@ -878,14 +1047,55 @@ const BattleRoom = () => {
             )}
 
             {/* Actions */}
-            <div className="grid grid-cols-2 gap-3 pb-4">
-              <Button onClick={handleShare} variant="outline" className="h-12 rounded-2xl font-black gap-2 border-2">
-                <Share2 className="w-4 h-4" /> مشاركة
-              </Button>
-              <Button onClick={() => navigate('/battle/create')}
-                className="h-12 rounded-2xl font-black gap-2 bg-gradient-to-l from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-200/50">
-                <RotateCcw className="w-4 h-4" /> غرفة جديدة
-              </Button>
+            <div className="space-y-3 pb-4">
+              {/* Share buttons row */}
+              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest text-center">مشاركة النتيجة</p>
+              <div className="grid grid-cols-3 gap-2">
+                {/* WhatsApp */}
+                <button
+                  onClick={handleShareWhatsApp}
+                  disabled={!!isShareLoading}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 border-emerald-100 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-800/30 hover:bg-emerald-100 transition-all disabled:opacity-50"
+                >
+                  {isShareLoading === 'whatsapp'
+                    ? <Loader2 className="w-5 h-5 text-emerald-600 animate-spin" />
+                    : <MessageCircle className="w-5 h-5 text-emerald-600" />}
+                  <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-400">واتساب</span>
+                </button>
+                {/* Twitter / X */}
+                <button
+                  onClick={handleShareTwitter}
+                  disabled={!!isShareLoading}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 border-slate-100 bg-slate-50 dark:bg-slate-800/30 dark:border-slate-700 hover:bg-slate-100 transition-all disabled:opacity-50"
+                >
+                  <svg className="w-5 h-5 text-slate-800 dark:text-slate-200" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.737-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                  </svg>
+                  <span className="text-[10px] font-black text-slate-600 dark:text-slate-300">X / تويتر</span>
+                </button>
+                {/* Save image */}
+                <button
+                  onClick={handleSaveImage}
+                  disabled={!!isShareLoading}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 border-blue-100 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800/30 hover:bg-blue-100 transition-all disabled:opacity-50"
+                >
+                  {isShareLoading === 'save'
+                    ? <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                    : <Download className="w-5 h-5 text-blue-600" />}
+                  <span className="text-[10px] font-black text-blue-700 dark:text-blue-400">حفظ صورة</span>
+                </button>
+              </div>
+
+              {/* Action buttons row */}
+              <div className="grid grid-cols-2 gap-3">
+                <Button onClick={handleShare} variant="outline" className="h-12 rounded-2xl font-black gap-2 border-2">
+                  <Share2 className="w-4 h-4" /> مشاركة نصية
+                </Button>
+                <Button onClick={() => navigate('/battle/create')}
+                  className="h-12 rounded-2xl font-black gap-2 bg-gradient-to-l from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-200/50">
+                  <RotateCcw className="w-4 h-4" /> غرفة جديدة
+                </Button>
+              </div>
             </div>
           </div>
         </section>
