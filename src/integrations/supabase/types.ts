@@ -14,49 +14,130 @@ export type Database = {
   }
   public: {
     Tables: {
+      battle_history: {
+        Row: {
+          creator_name: string
+          id: string
+          played_at: string | null
+          players_count: number | null
+          room_code: string
+          settings: Json | null
+          stored_by: string
+          subject_name: string
+          winner_name: string | null
+        }
+        Insert: {
+          creator_name: string
+          id?: string
+          played_at?: string | null
+          players_count?: number | null
+          room_code: string
+          settings?: Json | null
+          stored_by: string
+          subject_name: string
+          winner_name?: string | null
+        }
+        Update: {
+          creator_name?: string
+          id?: string
+          played_at?: string | null
+          players_count?: number | null
+          room_code?: string
+          settings?: Json | null
+          stored_by?: string
+          subject_name?: string
+          winner_name?: string | null
+        }
+        Relationships: []
+      }
+      battle_leaderboard: {
+        Row: {
+          badges: Json | null
+          best_pct: number | null
+          id: string
+          player_name: string
+          total_games: number | null
+          total_score: number | null
+          total_wins: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          badges?: Json | null
+          best_pct?: number | null
+          id?: string
+          player_name: string
+          total_games?: number | null
+          total_score?: number | null
+          total_wins?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          badges?: Json | null
+          best_pct?: number | null
+          id?: string
+          player_name?: string
+          total_games?: number | null
+          total_score?: number | null
+          total_wins?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       battle_players: {
         Row: {
+          answers_json: Json | null
+          avatar_color: string | null
           correct_count: number | null
           finished_at: string | null
           id: string
           is_creator: boolean | null
           joined_at: string | null
+          kicked: boolean | null
           percentage: number | null
           player_name: string
           progress: number | null
           room_id: string
           score: number | null
           status: string
+          team: string | null
           time_seconds: number | null
           total_answered: number | null
         }
         Insert: {
+          answers_json?: Json | null
+          avatar_color?: string | null
           correct_count?: number | null
           finished_at?: string | null
           id?: string
           is_creator?: boolean | null
           joined_at?: string | null
+          kicked?: boolean | null
           percentage?: number | null
           player_name: string
           progress?: number | null
           room_id: string
           score?: number | null
           status?: string
+          team?: string | null
           time_seconds?: number | null
           total_answered?: number | null
         }
         Update: {
+          answers_json?: Json | null
+          avatar_color?: string | null
           correct_count?: number | null
           finished_at?: string | null
           id?: string
           is_creator?: boolean | null
           joined_at?: string | null
+          kicked?: boolean | null
           percentage?: number | null
           player_name?: string
           progress?: number | null
           room_id?: string
           score?: number | null
           status?: string
+          team?: string | null
           time_seconds?: number | null
           total_answered?: number | null
         }
@@ -72,54 +153,87 @@ export type Database = {
       }
       battle_rooms: {
         Row: {
+          allow_teams: boolean | null
           code: string
           created_at: string | null
           creator_name: string
           exam_form: string | null
+          exam_form_id: string | null
           exam_year: number | null
           expires_at: string | null
+          extra_time_minutes: number | null
           finished_at: string | null
           id: string
+          is_private: boolean | null
+          locked: boolean | null
           max_players: number
+          password: string | null
           question_ids: Json
+          question_type: string | null
           questions_count: number
+          scheduled_at: string | null
+          settings: Json | null
           started_at: string | null
           status: string
           subject_id: string
+          team1_name: string | null
+          team2_name: string | null
           time_minutes: number
         }
         Insert: {
+          allow_teams?: boolean | null
           code: string
           created_at?: string | null
           creator_name: string
           exam_form?: string | null
+          exam_form_id?: string | null
           exam_year?: number | null
           expires_at?: string | null
+          extra_time_minutes?: number | null
           finished_at?: string | null
           id?: string
+          is_private?: boolean | null
+          locked?: boolean | null
           max_players?: number
+          password?: string | null
           question_ids?: Json
+          question_type?: string | null
           questions_count?: number
+          scheduled_at?: string | null
+          settings?: Json | null
           started_at?: string | null
           status?: string
           subject_id: string
+          team1_name?: string | null
+          team2_name?: string | null
           time_minutes?: number
         }
         Update: {
+          allow_teams?: boolean | null
           code?: string
           created_at?: string | null
           creator_name?: string
           exam_form?: string | null
+          exam_form_id?: string | null
           exam_year?: number | null
           expires_at?: string | null
+          extra_time_minutes?: number | null
           finished_at?: string | null
           id?: string
+          is_private?: boolean | null
+          locked?: boolean | null
           max_players?: number
+          password?: string | null
           question_ids?: Json
+          question_type?: string | null
           questions_count?: number
+          scheduled_at?: string | null
+          settings?: Json | null
           started_at?: string | null
           status?: string
           subject_id?: string
+          team1_name?: string | null
+          team2_name?: string | null
           time_minutes?: number
         }
         Relationships: [
