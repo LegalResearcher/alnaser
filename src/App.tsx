@@ -31,6 +31,7 @@ const About            = lazy(() => import("./pages/About"));
 const ChallengePage    = lazy(() => import("./pages/ChallengePage"));
 const FeaturesPage     = lazy(() => import("./pages/Features"));
 const SuggestQuestion  = lazy(() => import("./pages/SuggestQuestion"));
+const SharedQuestion   = lazy(() => import("./pages/SharedQuestion"));
 
 // صفحات الإدارة — Lazy Loading
 const AdminLogin            = lazy(() => import("./pages/admin/AdminLogin"));
@@ -84,6 +85,7 @@ const App = () => (
                     <Route path="/levels"         element={<Levels />} />
                     <Route path="/levels/:levelId" element={<LevelSubjects />} />
                     <Route path="/exam/:subjectId" element={<ExamStart />} />
+                    <Route path="/question/:questionId" element={<SharedQuestion />} />
                     <Route path="/exam/:subjectId/start"  element={<ExamPage />} />
                     <Route path="/exam/:subjectId/result" element={<ExamResult />} />
                     <Route path="/about" element={<About />} />
