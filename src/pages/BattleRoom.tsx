@@ -199,6 +199,7 @@ const BattleRoom = () => {
   const [joining, setJoining] = useState(false);
   const [starting, setStarting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [myName, setMyName] = useState(locationState?.playerName || localStorage.getItem('alnaseer_student_name') || '');
   const [joinName, setJoinName] = useState('');
   const [joinPassword, setJoinPassword] = useState('');
@@ -624,10 +625,26 @@ const BattleRoom = () => {
 
   const getShareText = (me: BattlePlayer, rank: number) => {
     if (!room) return '';
-    return `🏆 حصلت على المركز ${rank} في ${subjectName} على منصة الباحث القانوني!\nنتيجتي: ${Math.round(me.percentage)}% ✅ (${me.correct_count}/${room.questions_count})\n\n🎯 تحدَّ أصدقاءك: ${window.location.origin}/battle/${room.code}`;
+    const subjectNameStr = (room as any).subjects?.name || '';
+    const examYear = (room as any).exam_year ? ` | ${(room as any).exam_year}` : '';
+    const examForm = (room as any).exam_form_name ? ` | ${(room as any).exam_form_name}` : '';
+    const url = `${window.location.origin}/battle/${room.code}`;
+    return `🏆 تحدَّ نفسك وأثبت تميّزك!\n\n📚 المادة: ${subjectNameStr}${examYear}${examForm}\n👨‍🏫 المنشئ: ${room.creator_name}\n\n🥇 مركزي: #${rank} من ${sortedPlayers.length}\n💪 نتيجتي: ${Math.round(me.percentage)}% ✅ (${me.correct_count}/${room.questions_count})\n\n🔥 هل تستطيع التفوق عليّ؟ انضم الآن!\n🔗 ${url}`;
   };
 
-  const handleShareWhatsApp = async () => {
+  const getRoomInviteMessage = () => {
+    if (!room) return '';
+    const url = `${window.location.origin}/battle/${room.code}`;
+    const subjectNameStr = (room as any).subjects?.name || '';
+    const examYear = (room as any).exam_year ? ` | ${(room as any).exam_year}` : '';
+    const examForm = (room as any).exam_form_name ? ` | ${(room as any).exam_form_name}` : '';
+    return `⚔️ تحدٍّ قانوني مباشر!\n\n📚 المادة: ${subjectNameStr}${examYear}${examForm}\n❓ الأسئلة: ${room.questions_count} سؤال\n👨‍🏫 المنشئ: ${room.creator_name}\n\n🔥 هل أنت مستعد للمنافسة؟ انضم الآن!\n🔗 ${url}`;
+  };
+
+  const handleRoomShareWhatsApp = () => { window.open(`https://wa.me/?text=${encodeURIComponent(getRoomInviteMessage())}`, '_blank'); };
+  const handleRoomShareTelegram = () => { const url = `${window.location.origin}/battle/${room?.code}`; window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(getRoomInviteMessage())}`, '_blank'); };
+  const handleRoomShareFacebook = () => { const url = `${window.location.origin}/battle/${room?.code}`; window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(getRoomInviteMessage())}`, '_blank'); };
+  const handleRoomCopyMessage = () => { navigator.clipboard.writeText(getRoomInviteMessage()); setCopied(true); setTimeout(() => setCopied(false), 2000); };
     const me = sortedPlayers.find(p => p.id === myPlayerId.current);
     if (!me || !room) return;
     const rank = sortedPlayers.indexOf(me) + 1;
@@ -1046,6 +1063,38 @@ const BattleRoom = () => {
               </div>
             )}
 
+            {/* تحدَّ أصدقاءك */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 to-blue-950 rounded-3xl p-5 shadow-2xl">
+              <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.5) 1px, transparent 1px)', backgroundSize: '18px 18px' }} />
+              <div className="relative z-10 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center"><Swords className="w-5 h-5 text-blue-300" /></div>
+                  <div><h3 className="font-black text-white text-sm">تحدَّ أصدقاءك!</h3><p className="text-white/50 text-xs font-bold">شارك نتيجتك وادعهم للمنافسة</p></div>
+                </div>
+                <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs text-white/70 font-bold leading-relaxed whitespace-pre-line">
+                  {getShareText(sortedPlayers.find(p => p.id === myPlayerId.current)!, myRank)}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={handleShareWhatsApp}
+                    className="h-11 rounded-xl bg-green-500/20 border border-green-400/30 text-green-300 text-sm font-black flex items-center justify-center gap-2 hover:bg-green-500/30 transition-all">
+                    واتساب
+                  </button>
+                  <button onClick={() => { const me = sortedPlayers.find(p => p.id === myPlayerId.current); if (!me) return; const rank = sortedPlayers.indexOf(me) + 1; window.open(`https://t.me/share/url?url=${encodeURIComponent(`${window.location.origin}/battle/${room.code}`)}&text=${encodeURIComponent(getShareText(me, rank))}`, '_blank'); }}
+                    className="h-11 rounded-xl bg-blue-500/20 border border-blue-400/30 text-blue-300 text-sm font-black flex items-center justify-center gap-2 hover:bg-blue-500/30 transition-all">
+                    تيليجرام
+                  </button>
+                  <button onClick={() => { const me = sortedPlayers.find(p => p.id === myPlayerId.current); if (!me) return; const rank = sortedPlayers.indexOf(me) + 1; window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${window.location.origin}/battle/${room.code}`)}&quote=${encodeURIComponent(getShareText(me, rank))}`, '_blank'); }}
+                    className="h-11 rounded-xl bg-blue-700/20 border border-blue-600/30 text-blue-200 text-sm font-black flex items-center justify-center gap-2 hover:bg-blue-700/30 transition-all">
+                    فيسبوك
+                  </button>
+                  <button onClick={handleShare}
+                    className="h-11 rounded-xl bg-white/10 border border-white/20 text-white text-sm font-black flex items-center justify-center gap-2 hover:bg-white/20 transition-all">
+                    <Copy className="w-4 h-4" /> نسخ الرسالة
+                  </button>
+                </div>
+              </div>
+            </div>
+
             {/* Actions */}
             <div className="space-y-3 pb-4">
               {/* Share buttons row */}
@@ -1235,11 +1284,42 @@ const BattleRoom = () => {
                 </div>
               </div>
 
-              {/* Copy link */}
-              <Button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/battle/${room.code}`); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+              {/* Share link */}
+              <Button onClick={() => setShowShareModal(true)}
                 variant="outline" className="w-full h-11 rounded-xl font-black gap-2 border-2">
-                {copied ? <><Check className="w-4 h-4 text-emerald-500" /> تم النسخ!</> : <><Copy className="w-4 h-4" /> مشاركة رابط الغرفة</>}
+                <Copy className="w-4 h-4" /> مشاركة رابط الغرفة
               </Button>
+
+              {/* Share Modal */}
+              {showShareModal && (
+                <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowShareModal(false)}>
+                  <div className="w-full max-w-sm bg-white dark:bg-card rounded-t-3xl p-6 space-y-4 animate-in slide-in-from-bottom-4 duration-300" onClick={e => e.stopPropagation()} dir="rtl">
+                    <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-2" />
+                    <h3 className="font-black text-slate-900 dark:text-white text-center text-base">مشاركة الغرفة</h3>
+                    <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 text-xs text-slate-600 dark:text-slate-300 font-bold leading-relaxed whitespace-pre-line border border-slate-100 dark:border-slate-700">
+                      {getRoomInviteMessage()}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button onClick={handleRoomShareWhatsApp}
+                        className="h-11 rounded-xl bg-green-500/15 border border-green-400/30 text-green-700 dark:text-green-300 text-sm font-black flex items-center justify-center gap-2 hover:bg-green-500/25 transition-all">
+                        واتساب
+                      </button>
+                      <button onClick={handleRoomShareTelegram}
+                        className="h-11 rounded-xl bg-blue-500/15 border border-blue-400/30 text-blue-700 dark:text-blue-300 text-sm font-black flex items-center justify-center gap-2 hover:bg-blue-500/25 transition-all">
+                        تيليجرام
+                      </button>
+                      <button onClick={handleRoomShareFacebook}
+                        className="h-11 rounded-xl bg-blue-700/15 border border-blue-600/30 text-blue-800 dark:text-blue-200 text-sm font-black flex items-center justify-center gap-2 hover:bg-blue-700/25 transition-all">
+                        فيسبوك
+                      </button>
+                      <button onClick={handleRoomCopyMessage}
+                        className={`h-11 rounded-xl text-sm font-black flex items-center justify-center gap-2 transition-all border ${copied ? 'bg-emerald-500/15 border-emerald-400/30 text-emerald-700 dark:text-emerald-300' : 'bg-slate-100 dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-200'}`}>
+                        {copied ? <><Check className="w-4 h-4" /> تم النسخ!</> : <><Copy className="w-4 h-4" /> نسخ الرسالة</>}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Start button (creator) */}
               {isCreator && isJoined && (
