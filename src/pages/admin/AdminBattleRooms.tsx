@@ -303,12 +303,8 @@ const AdminBattleRooms = () => {
       query = query.in('subject_id', levelSubjectIds);
     }
 
-    // فقط الغرف النشطة أو المنتظرة
-    if (action === 'stop') {
-      query = query.in('status', ['waiting', 'active']);
-    } else {
-      query = query.eq('status', 'locked');
-    }
+    // لا نقيّد بالحالة الحالية — نطبق على الكل ضمن النطاق
+    // (الغرف المنتهية تُترك كما هي بمنطق العرض فقط)
 
     const { error } = await query;
     if (error) {
