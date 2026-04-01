@@ -159,6 +159,7 @@ export type Database = {
           creator_name: string
           exam_form: string | null
           exam_form_id: string | null
+          exam_form_name: string | null
           exam_year: number | null
           expires_at: string | null
           extra_time_minutes: number | null
@@ -187,6 +188,7 @@ export type Database = {
           creator_name: string
           exam_form?: string | null
           exam_form_id?: string | null
+          exam_form_name?: string | null
           exam_year?: number | null
           expires_at?: string | null
           extra_time_minutes?: number | null
@@ -215,6 +217,7 @@ export type Database = {
           creator_name?: string
           exam_form?: string | null
           exam_form_id?: string | null
+          exam_form_name?: string | null
           exam_year?: number | null
           expires_at?: string | null
           extra_time_minutes?: number | null

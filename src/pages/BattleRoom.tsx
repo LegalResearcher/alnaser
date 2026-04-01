@@ -218,7 +218,7 @@ const BattleRoom = () => {
   const [examStarted, setExamStarted] = useState(false);
   const [examFinished, setExamFinished] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const myPlayerId = useRef<string | null>(null);
 
   // ── Fetch room ──
