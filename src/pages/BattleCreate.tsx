@@ -36,6 +36,14 @@ interface ExamForm {
   form_name: string;
 }
 
+const EXAM_FORMS = [
+  { id: 'General',  name: 'نموذج العام' },
+  { id: 'Parallel', name: 'نموذج الموازي' },
+  { id: 'Mixed',    name: 'نموذج مختلط' },
+];
+
+const EXAM_YEARS = [2020, 2021, 2022, 2023, 2024, 2025, 2026] as const;
+
 const BattleCreate = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -85,14 +93,29 @@ const BattleCreate = () => {
     enabled: !!selectedSubject,
   });
 
+  // نماذج تجريبية: افتراضي 15 نموذج + أي نماذج مخصصة من قاعدة البيانات
+  const defaultTrialForms = useMemo(() =>
+    Array.from({ length: 15 }, (_, i) => ({ id: `Model_${i + 1}`, name: `نموذج ${i + 1}` })),
+  []);
+
+  const activeTrialForms = useMemo(() => [
+    ...defaultTrialForms,
+    ...examForms.map(f => ({ id: f.form_id, name: f.form_name })),
+  ], [defaultTrialForms, examForms]);
+
   const { data: availableCount = 0 } = useQuery({
     queryKey: ['battle-q-count', selectedSubject, questionType, selectedExamYear, selectedExamForm, selectedTrialForm],
     queryFn: async () => {
       let q = supabase.from('questions').select('*', { count: 'exact', head: true })
         .eq('subject_id', selectedSubject).eq('status', 'active');
-      if (questionType === 'exam' && selectedExamYear) q = q.eq('exam_year', parseInt(selectedExamYear));
-      if (questionType === 'exam' && selectedExamForm) q = q.eq('exam_form', selectedExamForm);
-      if (questionType === 'trial' && selectedTrialForm) q = q.eq('exam_form', selectedTrialForm);
+      if (questionType === 'exam') {
+        q = q.not('exam_year', 'is', null);
+        if (selectedExamYear) q = q.eq('exam_year', parseInt(selectedExamYear));
+        if (selectedExamForm) q = q.eq('exam_form', selectedExamForm);
+      } else if (questionType === 'trial') {
+        q = q.is('exam_year', null);
+        if (selectedTrialForm && selectedTrialForm !== 'all') q = q.eq('exam_form', selectedTrialForm);
+      }
       const { count } = await q;
       return count || 0;
     },
@@ -101,17 +124,8 @@ const BattleCreate = () => {
 
   const maxQ = Math.min(availableCount, 60);
 
-  // الحصول على سنوات الاختبارات المتاحة
-  const { data: examYears = [] } = useQuery({
-    queryKey: ['exam-years', selectedSubject],
-    queryFn: async () => {
-      const { data } = await supabase.from('questions').select('exam_year')
-        .eq('subject_id', selectedSubject).eq('status', 'active').not('exam_year', 'is', null);
-      const years = [...new Set((data || []).map((r: any) => r.exam_year))].sort((a, b) => b - a);
-      return years as number[];
-    },
-    enabled: !!selectedSubject && questionType === 'exam',
-  });
+  // سنوات الاختبارات - ثابتة
+  const examYears = [...EXAM_YEARS].reverse();
 
   const handleCreate = async () => {
     if (!creatorName.trim()) { toast({ title: 'أدخل اسمك', variant: 'destructive' }); return; }
@@ -123,9 +137,14 @@ const BattleCreate = () => {
     try {
       let query = supabase.from('questions').select('id')
         .eq('subject_id', selectedSubject).eq('status', 'active');
-      if (questionType === 'exam' && selectedExamYear) query = query.eq('exam_year', parseInt(selectedExamYear));
-      if (questionType === 'exam' && selectedExamForm) query = query.eq('exam_form', selectedExamForm);
-      if (questionType === 'trial' && selectedTrialForm) query = query.eq('exam_form', selectedTrialForm);
+      if (questionType === 'exam') {
+        query = query.not('exam_year', 'is', null);
+        if (selectedExamYear) query = query.eq('exam_year', parseInt(selectedExamYear));
+        if (selectedExamForm) query = query.eq('exam_form', selectedExamForm);
+      } else if (questionType === 'trial') {
+        query = query.is('exam_year', null);
+        if (selectedTrialForm && selectedTrialForm !== 'all') query = query.eq('exam_form', selectedTrialForm);
+      }
 
       const { data: questions } = await query;
       const shuffled = (questions || []).sort(() => Math.random() - 0.5).slice(0, questionsCount);
@@ -133,6 +152,12 @@ const BattleCreate = () => {
 
       const code = generateCode();
       const avatarColor = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
+
+      const examFormName = questionType === 'exam'
+        ? (EXAM_FORMS.find(f => f.id === selectedExamForm)?.name || 'نموذج العام')
+        : questionType === 'trial'
+        ? (activeTrialForms.find(f => f.id === selectedTrialForm)?.name || 'كل النماذج')
+        : '';
 
       const { data: room, error } = await (supabase.from('battle_rooms' as any) as any).insert({
         code,
@@ -150,7 +175,8 @@ const BattleCreate = () => {
         team2_name: allowTeams ? team2Name : null,
         question_type: questionType,
         exam_year: selectedExamYear ? parseInt(selectedExamYear) : null,
-        exam_form_id: selectedExamForm || selectedTrialForm || null,
+        exam_form_id: selectedExamForm || (selectedTrialForm !== 'all' ? selectedTrialForm : null) || null,
+        exam_form_name: examFormName || null,
         locked: false,
         expires_at: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
       }).select().single();
@@ -320,35 +346,62 @@ const BattleCreate = () => {
                     ))}
                   </div>
 
-                  {/* سنة الاختبار */}
-                  {questionType === 'exam' && examYears.length > 0 && (
+                  {/* ── اختبار سنوي: نموذج السنة + نموذج الاختبار ── */}
+                  {questionType === 'exam' && (
                     <div className="space-y-2 pt-1">
-                      <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">سنة الاختبار</Label>
-                      <Select value={selectedExamYear} onValueChange={setSelectedExamYear}>
-                        <SelectTrigger className="h-10 rounded-xl bg-white dark:bg-card border-slate-200 font-bold text-sm"><SelectValue placeholder="اختر السنة (اختياري)" /></SelectTrigger>
-                        <SelectContent className="z-[9999] bg-white dark:bg-card rounded-2xl shadow-2xl">
-                          {examYears.map(y => <SelectItem key={y} value={String(y)} className="font-bold">{y}</SelectItem>)}
+                      {/* نموذج سنة الاختبار */}
+                      <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">نموذج سنة الاختبار</Label>
+                      <Select value={selectedExamYear} onValueChange={v => { setSelectedExamYear(v); setSelectedExamForm(''); }}>
+                        <SelectTrigger className="h-11 rounded-xl bg-white dark:bg-card border-slate-200 font-bold text-sm">
+                          <SelectValue placeholder="اختر السنة" />
+                        </SelectTrigger>
+                        <SelectContent className="z-[9999] bg-white dark:bg-card rounded-2xl shadow-2xl max-h-[260px]">
+                          {examYears.map(y => (
+                            <SelectItem key={y} value={String(y)} className="font-bold rounded-xl">دورة عام {y}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
-                      {selectedExamYear && examForms.length > 0 && (
-                        <Select value={selectedExamForm} onValueChange={setSelectedExamForm}>
-                          <SelectTrigger className="h-10 rounded-xl bg-white dark:bg-card border-slate-200 font-bold text-sm"><SelectValue placeholder="النموذج (عام / موازي / مختلط)" /></SelectTrigger>
-                          <SelectContent className="z-[9999] bg-white dark:bg-card rounded-2xl shadow-2xl">
-                            {examForms.map((f: ExamForm) => <SelectItem key={f.id} value={f.form_id} className="font-bold">{f.form_name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
+
+                      {/* نموذج الاختبار: عام / موازي / مختلط */}
+                      {selectedExamYear && (
+                        <>
+                          <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest pt-1 block">نموذج الاختبار</Label>
+                          <Select value={selectedExamForm} onValueChange={setSelectedExamForm}>
+                            <SelectTrigger className="h-11 rounded-xl bg-white dark:bg-card border-slate-200 font-bold text-sm">
+                              <SelectValue placeholder="نموذج العام" />
+                            </SelectTrigger>
+                            <SelectContent className="z-[9999] bg-white dark:bg-card rounded-2xl shadow-2xl">
+                              {EXAM_FORMS.map(f => (
+                                <SelectItem key={f.id} value={f.id} className="font-bold rounded-xl">{f.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </>
                       )}
                     </div>
                   )}
 
-                  {/* نموذج تجريبي */}
-                  {questionType === 'trial' && examForms.length > 0 && (
+                  {/* ── أسئلة تجريبية: نموذج 1 - 2 - ... ── */}
+                  {questionType === 'trial' && (
                     <div className="space-y-2 pt-1">
-                      <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">النموذج التجريبي</Label>
+                      {/* بطاقة وصف */}
+                      <div className="flex items-center gap-3 bg-violet-50 dark:bg-violet-950/20 border border-violet-100 dark:border-violet-800/30 rounded-xl px-3 py-2.5">
+                        <span className="text-xl">🧪</span>
+                        <div>
+                          <p className="text-xs font-black text-violet-700 dark:text-violet-400">أسئلة تجريبية</p>
+                          <p className="text-[10px] text-violet-500 font-bold">أسئلة تدريبية إضافية شاملة من المقرر</p>
+                        </div>
+                      </div>
+                      <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">اختر النموذج</Label>
                       <Select value={selectedTrialForm} onValueChange={setSelectedTrialForm}>
-                        <SelectTrigger className="h-10 rounded-xl bg-white dark:bg-card border-slate-200 font-bold text-sm"><SelectValue placeholder="اختر النموذج" /></SelectTrigger>
-                        <SelectContent className="z-[9999] bg-white dark:bg-card rounded-2xl shadow-2xl">
-                          {examForms.map((f: ExamForm) => <SelectItem key={f.id} value={f.form_id} className="font-bold">{f.form_name}</SelectItem>)}
+                        <SelectTrigger className="h-11 rounded-xl bg-white dark:bg-card border-slate-200 font-bold text-sm">
+                          <SelectValue placeholder="كل النماذج" />
+                        </SelectTrigger>
+                        <SelectContent className="z-[9999] bg-white dark:bg-card rounded-2xl shadow-2xl max-h-[260px]">
+                          <SelectItem value="all" className="font-bold rounded-xl text-emerald-600">كل النماذج</SelectItem>
+                          {activeTrialForms.map(f => (
+                            <SelectItem key={f.id} value={f.id} className="font-bold rounded-xl">{f.name}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
