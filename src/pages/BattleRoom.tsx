@@ -249,7 +249,7 @@ const BattleRoom = () => {
   const fetchRoom = useCallback(async () => {
     if (!code) return;
     const { data } = await (supabase.from('battle_rooms' as any) as any)
-      .select('*, subjects(name)').eq('code', code).maybeSingle();
+      .select('*, subjects(name, battle_password)').eq('code', code).maybeSingle();
     if (data) {
       setRoom({ ...data, question_ids: data.question_ids as string[] });
       if (data.status === 'active' && !examStarted && isJoined) {
@@ -289,7 +289,7 @@ const BattleRoom = () => {
       setLoading(true);
       if (!code) return;
       const { data } = await (supabase.from('battle_rooms' as any) as any)
-        .select('*, subjects(name)').eq('code', code).maybeSingle();
+        .select('*, subjects(name, battle_password)').eq('code', code).maybeSingle();
       if (data) {
         const r = { ...data, question_ids: data.question_ids as string[] } as BattleRoom;
         setRoom(r);
@@ -386,14 +386,22 @@ const BattleRoom = () => {
 
     if (room.locked) { toast({ title: '🔒 الغرفة مغلقة، لا يمكن الانضمام بعد البدء', variant: 'destructive' }); return; }
 
-    // ✅ التحقق من كلمة المرور عبر RPC (server-side) لأن عمود password محمي بـ RLS
-    if (room.is_private) {
-      const { data: pwCheck, error: pwError } = await (supabase.rpc as any)('check_battle_room_password', {
-        p_room_id: room.id,
-        p_password: joinPassword.trim(),
-      });
-      if (pwError || !pwCheck) {
-        toast({ title: '🔑 كلمة المرور غير صحيحة', variant: 'destructive' }); return;
+    // ✅ التحقق من كلمة المرور — سواء من is_private أو من battle_password الأدمن
+    const adminPassword: string | null = (room.subjects as any)?.battle_password || null;
+    const requiresPassword = room.is_private || !!adminPassword;
+    if (requiresPassword) {
+      // أولاً: مقارنة مع كلمة مرور الأدمن مباشرة (إذا وُجدت)
+      if (adminPassword && joinPassword.trim() === adminPassword) {
+        // ✅ مطابق لكلمة مرور الأدمن — المرور
+      } else {
+        // ثانياً: مقارنة عبر RPC مع password الغرفة نفسها
+        const { data: pwCheck, error: pwError } = await (supabase.rpc as any)('check_battle_room_password', {
+          p_room_id: room.id,
+          p_password: joinPassword.trim(),
+        });
+        if (pwError || !pwCheck) {
+          toast({ title: '🔑 كلمة المرور غير صحيحة', variant: 'destructive' }); return;
+        }
       }
     }
     if (players.filter(p => !p.kicked).length >= room.max_players) {
@@ -1551,7 +1559,7 @@ const BattleRoom = () => {
                   <span className="flex items-center gap-1 text-xs font-bold text-white/60"><Target className="w-3.5 h-3.5" />{room.questions_count} سؤال</span>
                   <span className="flex items-center gap-1 text-xs font-bold text-white/60"><Clock className="w-3.5 h-3.5" />{room.time_minutes} دقيقة</span>
                   <span className="flex items-center gap-1 text-xs font-bold text-white/60"><Users className="w-3.5 h-3.5" />{activePlayers.length}/{room.max_players}</span>
-                  {room.is_private && <span className="flex items-center gap-1 text-xs font-bold text-amber-300"><Lock className="w-3.5 h-3.5" />خاصة</span>}
+                  {(room.is_private || !!(room.subjects as any)?.battle_password) && <span className="flex items-center gap-1 text-xs font-bold text-amber-300"><Lock className="w-3.5 h-3.5" />خاصة</span>}
                   {room.allow_teams && <span className="flex items-center gap-1 text-xs font-bold text-indigo-300"><Users2 className="w-3.5 h-3.5" />فرق</span>}
                 </div>
               </div>
@@ -1567,7 +1575,7 @@ const BattleRoom = () => {
                     onKeyDown={e => e.key === 'Enter' && handleJoin()}
                     className="h-12 rounded-xl font-bold bg-white dark:bg-card text-right" />
 
-                  {room.is_private && (
+                  {(room.is_private || !!(room.subjects as any)?.battle_password) && (
                     <Input placeholder="🔑 كلمة مرور الغرفة" value={joinPassword} onChange={e => setJoinPassword(e.target.value)}
                       className="h-11 rounded-xl font-bold bg-white dark:bg-card text-right" />
                   )}
