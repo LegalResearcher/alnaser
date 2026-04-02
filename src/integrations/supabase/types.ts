@@ -849,6 +849,8 @@ export type Database = {
         Row: {
           allow_time_modification: boolean
           author_name: string | null
+          battle_disabled: boolean | null
+          battle_password: string | null
           created_at: string
           default_time_minutes: number
           description: string | null
@@ -867,6 +869,8 @@ export type Database = {
         Insert: {
           allow_time_modification?: boolean
           author_name?: string | null
+          battle_disabled?: boolean | null
+          battle_password?: string | null
           created_at?: string
           default_time_minutes?: number
           description?: string | null
@@ -885,6 +889,8 @@ export type Database = {
         Update: {
           allow_time_modification?: boolean
           author_name?: string | null
+          battle_disabled?: boolean | null
+          battle_password?: string | null
           created_at?: string
           default_time_minutes?: number
           description?: string | null
