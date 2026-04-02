@@ -119,7 +119,7 @@ export function initializeCache(): void {
   
   if (storedVersion !== cacheVersion) {
     clearAppCache();
-    localStorage.setItem('app_cache_version', cacheVersion);
+    localStorage.setItem('alnaser_cache_version', cacheVersion);
     console.log('🚀 Alnaser Cache Initialized:', cacheVersion);
   }
 }
