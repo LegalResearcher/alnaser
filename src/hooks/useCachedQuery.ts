@@ -2,7 +2,7 @@ import { useQuery, QueryKey, UseQueryOptions } from '@tanstack/react-query';
 import { useRef, useCallback, useMemo } from 'react';
 
 // المحافظة على البادئة الأصلية لضمان عدم ضياع بيانات المستخدمين الحاليين
-const CACHE_PREFIX = 'app_cache_';
+const CACHE_PREFIX = 'alnaser_cache_v2_';
 const CACHE_EXPIRY_MS = 1000 * 60 * 60 * 24; // 24 ساعة
 
 interface CacheEntry<T> {
@@ -114,12 +114,12 @@ export function clearAppCache(): void {
 export function initializeCache(): void {
   if (typeof window === 'undefined') return;
 
-  const cacheVersion = 'v2'; // نفس إصدارك الأصلي
-  const storedVersion = localStorage.getItem('app_cache_version');
+  const cacheVersion = 'v3'; // updated with unified prefix
+  const storedVersion = localStorage.getItem('alnaser_cache_version');
   
   if (storedVersion !== cacheVersion) {
     clearAppCache();
-    localStorage.setItem('app_cache_version', cacheVersion);
+    localStorage.setItem('alnaser_cache_version', cacheVersion);
     console.log('🚀 Alnaser Cache Initialized:', cacheVersion);
   }
 }
