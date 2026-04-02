@@ -84,6 +84,12 @@ const BattleCreate = () => {
     },
   });
 
+  // بيانات المادة المختارة (تشمل battle_disabled و battle_password)
+  const selectedSubjectData = useMemo(
+    () => (subjects as any[]).find((s: any) => s.id === selectedSubject) || null,
+    [subjects, selectedSubject]
+  );
+
   const { data: examForms = [] } = useQuery<ExamForm[]>({
     queryKey: ['exam-forms', selectedSubject],
     queryFn: async () => {
@@ -134,6 +140,16 @@ const BattleCreate = () => {
     if (availableCount < 5) { toast({ title: 'لا توجد أسئلة كافية', variant: 'destructive' }); return; }
     if (isPrivate && !password.trim()) { toast({ title: 'أدخل كلمة مرور للغرفة الخاصة', variant: 'destructive' }); return; }
 
+    // ── التحقق من إيقاف الغرف في هذه المادة ──
+    if ((selectedSubjectData as any)?.battle_disabled) {
+      toast({
+        title: 'غرف التحدي موقوفة',
+        description: 'تم إيقاف إنشاء غرف التحدي لهذه المادة من قِبل الإدارة.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setCreating(true);
     try {
       let query = supabase.from('questions').select('id')
@@ -154,6 +170,11 @@ const BattleCreate = () => {
       const code = generateCode();
       const avatarColor = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
 
+      // كلمة مرور الغرفة: إما من الأدمن (battle_password) أو من المستخدم إذا اختار خاصة
+      const adminPassword: string | null = (selectedSubjectData as any)?.battle_password || null;
+      const finalPassword = adminPassword || (isPrivate ? password.trim() : null);
+      const finalIsPrivate = !!finalPassword;
+
       const examFormName = questionType === 'exam'
         ? (EXAM_FORMS.find(f => f.id === selectedExamForm)?.name || 'نموذج العام')
         : questionType === 'trial'
@@ -169,8 +190,8 @@ const BattleCreate = () => {
         questions_count: questionsCount,
         time_minutes: timeMinutes,
         question_ids: questionIds,
-        is_private: isPrivate,
-        password: isPrivate ? password.trim() : null,
+        is_private: finalIsPrivate,
+        password: finalPassword,
         allow_teams: allowTeams,
         team1_name: allowTeams ? team1Name : null,
         team2_name: allowTeams ? team2Name : null,
