@@ -337,6 +337,7 @@ const BattleRoom = () => {
           setRoom(prev => prev ? { ...prev, ...updated } : prev);
           if (updated.status === 'active' && !examStarted) {
             await loadQuestions(updated.question_ids as string[]);
+            setTimeLeft((updated.time_minutes + (updated.extra_time_minutes || 0)) * 60);
             setExamStarted(true);
             toast({ title: '🚀 انطلقت المنافسة!' });
           }
@@ -411,6 +412,7 @@ const BattleRoom = () => {
       await (supabase.from('battle_players' as any) as any).update({ status: 'playing' }).eq('id', myPlayerId.current);
     }
     const loadedQs = await loadQuestions(room.question_ids);
+    setTimeLeft((room.time_minutes + (room.extra_time_minutes || 0)) * 60);
     setExamStarted(true);
     setStarting(false);
     // Wait longer to ensure all players have received the room update and loaded questions
