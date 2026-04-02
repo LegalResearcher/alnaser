@@ -23,11 +23,26 @@ const BattleJoin = () => {
     if (code.trim().length !== 6) { toast({ title: 'الكود يجب أن يكون 6 أرقام', variant: 'destructive' }); return; }
     setChecking(true);
     const { data, error } = await (supabase.from('battle_rooms' as any) as any)
-      .select('id, code, status, expires_at').eq('code', code.trim()).maybeSingle();
+      .select('id, code, status, expires_at, subject_id').eq('code', code.trim()).maybeSingle();
 
     if (error || !data) { toast({ title: 'الغرفة غير موجودة', variant: 'destructive' }); setChecking(false); return; }
     if (new Date(data.expires_at) < new Date()) { toast({ title: 'انتهت صلاحية هذه الغرفة', variant: 'destructive' }); setChecking(false); return; }
     if (data.status === 'finished') { toast({ title: 'انتهى الاختبار في هذه الغرفة', variant: 'destructive' }); setChecking(false); return; }
+
+    // ✅ فحص إيقاف غرف التحدي من الأدمن
+    const { data: subjectData } = await (supabase.from('subjects' as any) as any)
+      .select('battle_disabled')
+      .eq('id', data.subject_id)
+      .maybeSingle();
+    if (subjectData?.battle_disabled) {
+      toast({
+        title: '⛔ غرف التحدي موقوفة',
+        description: 'غرف التحدي لهذه المادة موقوفة حالياً من قِبَل الإدارة',
+        variant: 'destructive',
+      });
+      setChecking(false);
+      return;
+    }
 
     navigate(`/battle/${data.code}`);
     setChecking(false);
