@@ -410,14 +410,11 @@ const BattleRoom = () => {
     if (players.some(p => p.player_name === name && !p.kicked)) {
       toast({ title: '⚠️ هذا الاسم مستخدم بالفعل', variant: 'destructive' }); return;
     }
-    if (room.status === 'active') {
-      toast({ title: '⛔ الاختبار بدأ بالفعل، لا يمكن الانضمام', variant: 'destructive' }); return;
-    }
-
     setJoining(true);
     const avatarColor = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
     const { data } = await (supabase.from('battle_players' as any) as any).insert({
-      room_id: room.id, player_name: name, is_creator: false, status: 'waiting',
+      room_id: room.id, player_name: name, is_creator: false,
+      status: room.status === 'active' ? 'playing' : 'waiting',
       avatar_color: avatarColor,
       team: room.allow_teams ? selectedTeam : null,
     }).select().single();
@@ -428,6 +425,18 @@ const BattleRoom = () => {
       setIsJoined(true);
       setShowWelcome(true);
       localStorage.setItem('alnaseer_student_name', name);
+      // ✅ الانضمام المتأخر — ابدأ الاختبار فوراً إذا كان نشطاً
+      if (room.status === 'active') {
+        await loadQuestions(room.question_ids);
+        setTimeLeft((room.time_minutes + (room.extra_time_minutes || 0)) * 60);
+        setExamStarted(true);
+        // اطلب الـ state الحالي من المنشئ بعد ثانية (حتى يتم الاشتراك بالـ channel أولاً)
+        setTimeout(() => {
+          syncChannelRef.current?.send({
+            type: 'broadcast', event: 'request_sync', payload: {}
+          });
+        }, 1000);
+      }
     }
     setJoining(false);
   };
@@ -519,10 +528,22 @@ const BattleRoom = () => {
           if (t <= 0) clearInterval(syncTimerRef.current!);
         }, 1000);
       }
+    }).on('broadcast', { event: 'request_sync' }, () => {
+      // ✅ المنشئ فقط يرد — يبعث الـ state الحالي للمنضم المتأخر
+      if (!myPlayer?.is_creator) return;
+      syncChannelRef.current?.send({
+        type: 'broadcast', event: 'quiz_state',
+        payload: {
+          questionIndex: syncCurrentQ,
+          phase: syncPhase,
+          timeLeft: syncTimeLeft,
+          totalQs: questions.length,
+        }
+      });
     }).subscribe();
     syncChannelRef.current = syncChannel;
     return () => { supabase.removeChannel(syncChannel); };
-  }, [room?.id]);
+  }, [room?.id, myPlayer?.is_creator, syncCurrentQ, syncPhase, syncTimeLeft, questions.length]);
 
   const handleSendChat = () => {
     const text = chatInput.trim();
@@ -1599,10 +1620,10 @@ const BattleRoom = () => {
                     </div>
                   )}
 
-                  <Button onClick={handleJoin} disabled={joining || !joinName.trim() || room.status === 'active'}
+                  <Button onClick={handleJoin} disabled={joining || !joinName.trim()}
                     className="w-full h-11 rounded-xl font-black bg-gradient-to-l from-amber-500 to-orange-600 text-white">
                     {joining ? <Loader2 className="w-4 h-4 animate-spin" /> :
-                      room.status === 'active' ? '⛔ الاختبار جارٍ' : 'انضم الآن 🚀'}
+                      room.status === 'active' ? '⚡ انضم الآن (جارٍ) 🚀' : 'انضم الآن 🚀'}
                   </Button>
                 </div>
               )}
