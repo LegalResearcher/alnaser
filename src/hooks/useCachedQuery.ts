@@ -114,8 +114,8 @@ export function clearAppCache(): void {
 export function initializeCache(): void {
   if (typeof window === 'undefined') return;
 
-  const cacheVersion = 'v2'; // نفس إصدارك الأصلي
-  const storedVersion = localStorage.getItem('app_cache_version');
+  const cacheVersion = 'v3'; // updated with unified prefix
+  const storedVersion = localStorage.getItem('alnaser_cache_version');
   
   if (storedVersion !== cacheVersion) {
     clearAppCache();
