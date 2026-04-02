@@ -180,6 +180,7 @@ export type Database = {
           team1_name: string | null
           team2_name: string | null
           time_minutes: number
+          time_per_question: number | null
         }
         Insert: {
           allow_teams?: boolean | null
@@ -209,6 +210,7 @@ export type Database = {
           team1_name?: string | null
           team2_name?: string | null
           time_minutes?: number
+          time_per_question?: number | null
         }
         Update: {
           allow_teams?: boolean | null
@@ -238,6 +240,7 @@ export type Database = {
           team1_name?: string | null
           team2_name?: string | null
           time_minutes?: number
+          time_per_question?: number | null
         }
         Relationships: [
           {
