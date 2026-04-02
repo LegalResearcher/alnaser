@@ -48,6 +48,15 @@ interface Question {
   correct_option: 'A' | 'B' | 'C' | 'D';
 }
 
+interface ChatMessage {
+  id: string;
+  sender: string;
+  text: string;
+  time: string;
+  isCreator: boolean;
+  avatarColor: string;
+}
+
 const formatTime = (s: number) => {
   const m = Math.floor(s / 60), sec = s % 60;
   return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
@@ -219,6 +228,12 @@ const BattleRoom = () => {
   const [examStarted, setExamStarted] = useState(false);
   const [examFinished, setExamFinished] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [showChat, setShowChat] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatChannelRef = useRef<any>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const myPlayerId = useRef<string | null>(null);
 
@@ -409,6 +424,39 @@ const BattleRoom = () => {
     await (supabase.from('battle_rooms' as any) as any).update({
       status: 'finished', finished_at: new Date().toISOString()
     }).eq('id', room.id);
+  };
+
+  // ── Chat Channel ──
+  useEffect(() => {
+    if (!room?.id) return;
+    const chatChannel = supabase.channel(`battle-chat-${room.id}`, {
+      config: { broadcast: { self: true } }
+    }).on('broadcast', { event: 'chat_message' }, ({ payload }) => {
+      const msg = payload as ChatMessage;
+      setChatMessages(prev => [...prev, msg]);
+      setShowChat(prev => {
+        if (!prev) setUnreadCount(c => c + 1);
+        return prev;
+      });
+      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+    }).subscribe();
+    chatChannelRef.current = chatChannel;
+    return () => { supabase.removeChannel(chatChannel); };
+  }, [room?.id]);
+
+  const handleSendChat = () => {
+    const text = chatInput.trim();
+    if (!text || !chatChannelRef.current || !myName) return;
+    const msg: ChatMessage = {
+      id: `${Date.now()}-${Math.random()}`,
+      sender: myName,
+      text,
+      time: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
+      isCreator: !!myPlayer?.is_creator,
+      avatarColor: myPlayer?.avatar_color || '#6366f1',
+    };
+    chatChannelRef.current.send({ type: 'broadcast', event: 'chat_message', payload: msg });
+    setChatInput('');
   };
 
   // ── Exam ──
@@ -698,6 +746,118 @@ const BattleRoom = () => {
     else { navigator.clipboard.writeText(text); toast({ title: '✅ تم نسخ النتيجة!' }); }
   };
 
+  // ── Chat Panel ──
+  const renderChatPanel = (amCreator: boolean) => (
+    <>
+      <button
+        onClick={() => { setShowChat(c => !c); setUnreadCount(0); setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100); }}
+        className="fixed bottom-4 right-4 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 shadow-2xl shadow-indigo-300/40 flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+      >
+        <MessageCircle className="w-6 h-6 text-white" />
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shadow-lg">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        )}
+      </button>
+      {showChat && (
+        <div className="fixed inset-0 z-[60] flex items-end justify-end p-4 pointer-events-none" dir="rtl">
+          <div className="pointer-events-auto w-full max-w-sm h-[70vh] flex flex-col rounded-3xl overflow-hidden shadow-2xl border border-white/10"
+            style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)' }}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-white/5">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center shadow-lg">
+                  <MessageCircle className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <p className="font-black text-white text-sm">دردشة الغرفة</p>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <p className="text-[10px] text-white/50 font-bold">{players.filter(p => !p.kicked).length} مشارك</p>
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => setShowChat(false)}
+                className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
+                <XCircle className="w-4 h-4 text-white/70" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+              {chatMessages.length === 0 && (
+                <div className="flex flex-col items-center justify-center h-full gap-3 opacity-40">
+                  <MessageCircle className="w-10 h-10 text-white/30" />
+                  <p className="text-white/50 text-xs font-bold text-center">لا توجد رسائل بعد{`
+`}كن أول من يبدأ المحادثة!</p>
+                </div>
+              )}
+              {chatMessages.map(msg => {
+                const isMe = msg.sender === myName;
+                return (
+                  <div key={msg.id} className={cn('flex gap-2 items-end', isMe ? 'flex-row-reverse' : 'flex-row')}>
+                    {!isMe && (
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0 shadow-md"
+                        style={{ backgroundColor: msg.avatarColor }}>
+                        {msg.sender.charAt(0)}
+                      </div>
+                    )}
+                    <div className={cn('flex flex-col gap-1 max-w-[75%]', isMe ? 'items-end' : 'items-start')}>
+                      {!isMe && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-white/50 font-bold">{msg.sender}</span>
+                          {msg.isCreator && (
+                            <span className="text-[8px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded-full">👑 منشئ</span>
+                          )}
+                        </div>
+                      )}
+                      <div className={cn('px-4 py-2.5 rounded-2xl text-sm font-bold leading-relaxed shadow-lg',
+                        isMe
+                          ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-tl-none'
+                          : msg.isCreator
+                            ? 'bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-amber-100 rounded-tr-none'
+                            : 'bg-white/10 border border-white/10 text-white/90 rounded-tr-none'
+                      )}>
+                        {msg.text}
+                      </div>
+                      <span className="text-[9px] text-white/30 font-bold px-1">{msg.time}</span>
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={chatEndRef} />
+            </div>
+            <div className="px-4 py-3 border-t border-white/10 bg-white/5">
+              {amCreator && (
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Crown className="w-3 h-3 text-amber-400" />
+                  <span className="text-[10px] text-amber-400 font-black">أنت المنشئ — رسائلك مميزة للجميع</span>
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <input
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendChat()}
+                  placeholder="اكتب رسالتك..."
+                  maxLength={200}
+                  className="flex-1 bg-white/10 border border-white/10 rounded-2xl px-4 py-2.5 text-sm text-white placeholder-white/30 font-bold outline-none focus:border-indigo-400/50 focus:bg-white/15 transition-all"
+                />
+                <button
+                  onClick={handleSendChat}
+                  disabled={!chatInput.trim()}
+                  className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all disabled:opacity-40 disabled:scale-100"
+                >
+                  <svg className="w-4 h-4 text-white rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
   // ── Analytics ──
   const getQuestionAnalytics = () => {
     if (!questions.length || !players.length) return [];
@@ -870,6 +1030,7 @@ const BattleRoom = () => {
                 </button>
               </div>
             )}
+            {renderChatPanel(!!isCreator)}
           </div>
         </section>
       </MainLayout>
@@ -1353,6 +1514,7 @@ const BattleRoom = () => {
             تنتهي الغرفة في {new Date(room.expires_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}
           </p>
         </div>
+        {isJoined && renderChatPanel(!!myPlayer?.is_creator)}
       </section>
     </MainLayout>
   );
