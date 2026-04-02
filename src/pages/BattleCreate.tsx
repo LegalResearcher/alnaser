@@ -136,26 +136,6 @@ const BattleCreate = () => {
 
     setCreating(true);
     try {
-      // ─── تحقق من إعدادات غرف التحدي لهذه المادة ───
-      const { data: subjectData } = await supabase
-        .from('subjects')
-        .select('battle_disabled, battle_password')
-        .eq('id', selectedSubject)
-        .single();
-
-      if ((subjectData as any)?.battle_disabled) {
-        toast({
-          title: 'غرف التحدي موقوفة مؤقتاً',
-          description: 'قام المسؤول بإيقاف غرف التحدي لهذه المادة. يرجى المحاولة لاحقاً.',
-          variant: 'destructive',
-        });
-        setCreating(false);
-        return;
-      }
-
-      // كلمة المرور العامة من المسؤول (تتغلب على كلمة مرور المنشئ)
-      const adminPassword: string | null = (subjectData as any)?.battle_password || null;
-
       let query = supabase.from('questions').select('id')
         .eq('subject_id', selectedSubject).eq('status', 'active');
       if (questionType === 'exam') {
@@ -189,8 +169,8 @@ const BattleCreate = () => {
         questions_count: questionsCount,
         time_minutes: timeMinutes,
         question_ids: questionIds,
-        is_private: adminPassword ? true : isPrivate,
-        password: adminPassword || (isPrivate ? password.trim() : null),
+        is_private: isPrivate,
+        password: isPrivate ? password.trim() : null,
         allow_teams: allowTeams,
         team1_name: allowTeams ? team1Name : null,
         team2_name: allowTeams ? team2Name : null,
@@ -198,6 +178,7 @@ const BattleCreate = () => {
         exam_year: selectedExamYear ? parseInt(selectedExamYear) : null,
         exam_form_id: selectedExamForm || (selectedTrialForm !== 'all' ? selectedTrialForm : null) || null,
         exam_form_name: examFormName || null,
+        time_per_question: timeMinutes,
         locked: false,
         expires_at: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
       }).select().single();
@@ -521,13 +502,19 @@ const BattleCreate = () => {
                 <Slider value={[questionsCount]} onValueChange={([v]) => setQuestionsCount(v)} min={5} max={Math.max(maxQ, 5)} step={5} disabled={!selectedSubject} className="py-1" />
               </div>
 
-              {/* الوقت */}
+              {/* وقت السؤال */}
               <div className="space-y-3 p-4 bg-slate-50 dark:bg-muted rounded-[1.25rem] border border-slate-100 dark:border-border">
                 <div className="flex items-center justify-between">
-                  <Label className="text-[11px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> وقت الاختبار</Label>
-                  <span className="text-primary font-black text-sm bg-primary/10 px-3 py-1 rounded-xl">{timeMinutes} دقيقة</span>
+                  <Label className="text-[11px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> وقت كل سؤال</Label>
+                  <span className="text-primary font-black text-sm bg-primary/10 px-3 py-1 rounded-xl">
+                    {timeMinutes >= 60 ? `${timeMinutes / 60} دقيقة` : `${timeMinutes} ثانية`}
+                  </span>
                 </div>
-                <Slider value={[timeMinutes]} onValueChange={([v]) => setTimeMinutes(v)} min={10} max={120} step={5} className="py-1" />
+                <Slider value={[timeMinutes]} onValueChange={([v]) => setTimeMinutes(v)} min={30} max={300} step={30} className="py-1" />
+                <div className="flex justify-between text-[9px] text-slate-400 font-bold">
+                  <span>30 ثانية</span>
+                  <span>5 دقائق</span>
+                </div>
               </div>
 
               {/* الحد الأقصى */}
