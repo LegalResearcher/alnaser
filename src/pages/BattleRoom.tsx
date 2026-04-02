@@ -369,9 +369,32 @@ const BattleRoom = () => {
   const handleJoin = async () => {
     const name = joinName.trim() || myName.trim();
     if (!name || !room) return;
+
+    // ✅ فحص إيقاف غرف التحدي من الأدمن
+    const { data: subjectData } = await (supabase.from('subjects' as any) as any)
+      .select('battle_disabled')
+      .eq('id', room.subject_id)
+      .maybeSingle();
+    if (subjectData?.battle_disabled) {
+      toast({
+        title: '⛔ غرف التحدي موقوفة',
+        description: 'غرف التحدي لهذه المادة موقوفة حالياً من قِبَل الإدارة',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (room.locked) { toast({ title: '🔒 الغرفة مغلقة، لا يمكن الانضمام بعد البدء', variant: 'destructive' }); return; }
-    if (room.is_private && joinPassword.trim() !== room.password) {
-      toast({ title: '🔑 كلمة المرور غير صحيحة', variant: 'destructive' }); return;
+
+    // ✅ التحقق من كلمة المرور عبر RPC (server-side) لأن عمود password محمي بـ RLS
+    if (room.is_private) {
+      const { data: pwCheck, error: pwError } = await (supabase.rpc as any)('check_battle_room_password', {
+        p_room_id: room.id,
+        p_password: joinPassword.trim(),
+      });
+      if (pwError || !pwCheck) {
+        toast({ title: '🔑 كلمة المرور غير صحيحة', variant: 'destructive' }); return;
+      }
     }
     if (players.filter(p => !p.kicked).length >= room.max_players) {
       toast({ title: '⚠️ الغرفة ممتلئة!', variant: 'destructive' }); return;
