@@ -228,10 +228,18 @@ const BattleRoom = () => {
   const [examStarted, setExamStarted] = useState(false);
   const [examFinished, setExamFinished] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  // ── Sync Quiz State ──
+  const [syncCurrentQ, setSyncCurrentQ] = useState(0);
+  const [syncPhase, setSyncPhase] = useState<'question' | 'reveal'>('question');
+  const [syncTimeLeft, setSyncTimeLeft] = useState(0);
+  const [myAnswerGiven, setMyAnswerGiven] = useState(false);
+  const syncTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const syncChannelRef = useRef<any>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [showChat, setShowChat] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [chatDisabled, setChatDisabled] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatChannelRef = useRef<any>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -400,10 +408,14 @@ const BattleRoom = () => {
     if (myPlayerId.current) {
       await (supabase.from('battle_players' as any) as any).update({ status: 'playing' }).eq('id', myPlayerId.current);
     }
-    await loadQuestions(room.question_ids);
-    setTimeLeft((room.time_minutes + (room.extra_time_minutes || 0)) * 60);
+    const qs = await loadQuestions(room.question_ids);
     setExamStarted(true);
     setStarting(false);
+    // Start sync quiz after short delay to ensure channel is ready
+    setTimeout(() => {
+      const tpq = (room as any)?.time_per_question || 60;
+      startSyncQuestion(0, tpq);
+    }, 800);
   };
 
   const handleKickPlayer = async (playerId: string) => {
@@ -439,9 +451,38 @@ const BattleRoom = () => {
         return prev;
       });
       setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+    }).on('broadcast', { event: 'chat_control' }, ({ payload }) => {
+      setChatDisabled(payload.disabled);
     }).subscribe();
     chatChannelRef.current = chatChannel;
     return () => { supabase.removeChannel(chatChannel); };
+  }, [room?.id]);
+
+  // ── Sync Quiz Channel ──
+  useEffect(() => {
+    if (!room?.id) return;
+    const syncChannel = supabase.channel(`battle-sync-${room.id}`, {
+      config: { broadcast: { self: false } }
+    }).on('broadcast', { event: 'quiz_state' }, ({ payload }) => {
+      const { questionIndex, phase, timeLeft: tl } = payload;
+      setSyncCurrentQ(questionIndex);
+      setSyncPhase(phase);
+      setSyncTimeLeft(tl);
+      setMyAnswerGiven(false);
+      setSelectedAnswer(null);
+      setShowFeedback(false);
+      if (syncTimerRef.current) clearInterval(syncTimerRef.current);
+      if (phase === 'question' && tl > 0) {
+        let t = tl;
+        syncTimerRef.current = setInterval(() => {
+          t -= 1;
+          setSyncTimeLeft(t);
+          if (t <= 0) clearInterval(syncTimerRef.current!);
+        }, 1000);
+      }
+    }).subscribe();
+    syncChannelRef.current = syncChannel;
+    return () => { supabase.removeChannel(syncChannel); };
   }, [room?.id]);
 
   const handleSendChat = () => {
@@ -457,6 +498,69 @@ const BattleRoom = () => {
     };
     chatChannelRef.current.send({ type: 'broadcast', event: 'chat_message', payload: msg });
     setChatInput('');
+  };
+
+  const handleToggleChat = () => {
+    if (!chatChannelRef.current) return;
+    const newDisabled = !chatDisabled;
+    chatChannelRef.current.send({ type: 'broadcast', event: 'chat_control', payload: { disabled: newDisabled } });
+  };
+
+  // ── Sync Quiz Logic (Creator Only) ──
+  const broadcastQuizState = (questionIndex: number, phase: 'question' | 'reveal', timeLeft: number) => {
+    if (!syncChannelRef.current) return;
+    syncChannelRef.current.send({
+      type: 'broadcast', event: 'quiz_state',
+      payload: { questionIndex, phase, timeLeft }
+    });
+  };
+
+  const startSyncQuestion = (qIndex: number, timePerQuestion: number) => {
+    setSyncCurrentQ(qIndex);
+    setSyncPhase('question');
+    setSyncTimeLeft(timePerQuestion);
+    setMyAnswerGiven(false);
+    setSelectedAnswer(null);
+    setShowFeedback(false);
+    broadcastQuizState(qIndex, 'question', timePerQuestion);
+    if (syncTimerRef.current) clearInterval(syncTimerRef.current);
+    let t = timePerQuestion;
+    syncTimerRef.current = setInterval(() => {
+      t -= 1;
+      setSyncTimeLeft(t);
+      if (t <= 0) {
+        clearInterval(syncTimerRef.current!);
+        revealAnswer(qIndex);
+      }
+    }, 1000);
+  };
+
+  const revealAnswer = (qIndex: number) => {
+    setSyncPhase('reveal');
+    setShowFeedback(true);
+    broadcastQuizState(qIndex, 'reveal', 0);
+    setTimeout(() => {
+      if (qIndex + 1 >= questions.length) {
+        handleFinishExam();
+      } else {
+        const tpq = (room as any)?.time_per_question || 60;
+        startSyncQuestion(qIndex + 1, tpq);
+      }
+    }, 2500);
+  };
+
+  const handleSyncAnswer = async (option: string) => {
+    if (myAnswerGiven || syncPhase !== 'question' || !questions[syncCurrentQ]) return;
+    setMyAnswerGiven(true);
+    setSelectedAnswer(option);
+    const q = questions[syncCurrentQ];
+    const newAnswers = { ...answers, [q.id]: option };
+    setAnswers(newAnswers);
+    const correctCount = Object.keys(newAnswers).filter(id => {
+      const qObj = questions.find(q => q.id === id);
+      return qObj && newAnswers[id] === qObj.correct_option;
+    }).length;
+    await updateProgress(correctCount, questions.length, syncCurrentQ + 1, newAnswers);
   };
 
   // ── Exam ──
@@ -746,116 +850,133 @@ const BattleRoom = () => {
     else { navigator.clipboard.writeText(text); toast({ title: '✅ تم نسخ النتيجة!' }); }
   };
 
-  // ── Chat Panel ──
+  // ── Chat Panel (Inline) ──
   const renderChatPanel = (amCreator: boolean) => (
-    <>
-      <button
-        onClick={() => { setShowChat(c => !c); setUnreadCount(0); setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100); }}
-        className="fixed bottom-4 right-4 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 shadow-2xl shadow-indigo-300/40 flex items-center justify-center transition-all hover:scale-110 active:scale-95"
-      >
-        <MessageCircle className="w-6 h-6 text-white" />
-        {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shadow-lg">
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
-        )}
-      </button>
-      {showChat && (
-        <div className="fixed inset-0 z-[60] flex items-end justify-end p-4 pointer-events-none" dir="rtl">
-          <div className="pointer-events-auto w-full max-w-sm h-[70vh] flex flex-col rounded-3xl overflow-hidden shadow-2xl border border-white/10"
-            style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)' }}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-white/5">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center shadow-lg">
-                  <MessageCircle className="w-4 h-4 text-white" />
-                </div>
-                <div>
-                  <p className="font-black text-white text-sm">دردشة الغرفة</p>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <p className="text-[10px] text-white/50 font-bold">{players.filter(p => !p.kicked).length} مشارك</p>
-                  </div>
-                </div>
-              </div>
-              <button onClick={() => setShowChat(false)}
-                className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
-                <XCircle className="w-4 h-4 text-white/70" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-              {chatMessages.length === 0 && (
-                <div className="flex flex-col items-center justify-center h-full gap-3 opacity-40">
-                  <MessageCircle className="w-10 h-10 text-white/30" />
-                  <p className="text-white/50 text-xs font-bold text-center">لا توجد رسائل بعد{`
-`}كن أول من يبدأ المحادثة!</p>
-                </div>
-              )}
-              {chatMessages.map(msg => {
-                const isMe = msg.sender === myName;
-                return (
-                  <div key={msg.id} className={cn('flex gap-2 items-end', isMe ? 'flex-row-reverse' : 'flex-row')}>
-                    {!isMe && (
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0 shadow-md"
-                        style={{ backgroundColor: msg.avatarColor }}>
-                        {msg.sender.charAt(0)}
-                      </div>
-                    )}
-                    <div className={cn('flex flex-col gap-1 max-w-[75%]', isMe ? 'items-end' : 'items-start')}>
-                      {!isMe && (
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] text-white/50 font-bold">{msg.sender}</span>
-                          {msg.isCreator && (
-                            <span className="text-[8px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded-full">👑 منشئ</span>
-                          )}
-                        </div>
-                      )}
-                      <div className={cn('px-4 py-2.5 rounded-2xl text-sm font-bold leading-relaxed shadow-lg',
-                        isMe
-                          ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-tl-none'
-                          : msg.isCreator
-                            ? 'bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-amber-100 rounded-tr-none'
-                            : 'bg-white/10 border border-white/10 text-white/90 rounded-tr-none'
-                      )}>
-                        {msg.text}
-                      </div>
-                      <span className="text-[9px] text-white/30 font-bold px-1">{msg.time}</span>
-                    </div>
-                  </div>
-                );
-              })}
-              <div ref={chatEndRef} />
-            </div>
-            <div className="px-4 py-3 border-t border-white/10 bg-white/5">
-              {amCreator && (
-                <div className="flex items-center gap-1.5 mb-2">
-                  <Crown className="w-3 h-3 text-amber-400" />
-                  <span className="text-[10px] text-amber-400 font-black">أنت المنشئ — رسائلك مميزة للجميع</span>
-                </div>
-              )}
-              <div className="flex items-center gap-2">
-                <input
-                  value={chatInput}
-                  onChange={e => setChatInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendChat()}
-                  placeholder="اكتب رسالتك..."
-                  maxLength={200}
-                  className="flex-1 bg-white/10 border border-white/10 rounded-2xl px-4 py-2.5 text-sm text-white placeholder-white/30 font-bold outline-none focus:border-indigo-400/50 focus:bg-white/15 transition-all"
-                />
-                <button
-                  onClick={handleSendChat}
-                  disabled={!chatInput.trim()}
-                  className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all disabled:opacity-40 disabled:scale-100"
-                >
-                  <svg className="w-4 h-4 text-white rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                  </svg>
-                </button>
-              </div>
-            </div>
+    <div className="rounded-2xl overflow-hidden shadow-2xl mb-4" style={{background:'linear-gradient(135deg,#0f172a 0%,#1e1b4b 100%)',border:`1px solid ${chatDisabled ? 'rgba(239,68,68,0.3)' : 'rgba(99,102,241,0.25)'}`}}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-2.5" style={{background:'rgba(255,255,255,0.04)',borderBottom:'1px solid rgba(255,255,255,0.07)'}}>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <MessageCircle className="w-4 h-4 text-indigo-400" />
+            <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full border border-slate-900 ${chatDisabled ? 'bg-rose-500' : 'bg-emerald-400'}`} />
           </div>
+          <span className="text-xs font-black text-white/80">دردشة المنافسة</span>
+          {chatDisabled
+            ? <span className="text-[10px] font-black text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded-full">موقوفة</span>
+            : <span className="text-[10px] font-bold text-white/30">{players.filter(p=>!p.kicked).length} مشارك</span>
+          }
         </div>
-      )}
-    </>
+        <div className="flex items-center gap-2">
+          {amCreator && (
+            <button
+              onClick={handleToggleChat}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-[10px] font-black transition-all ${chatDisabled ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30' : 'bg-rose-500/20 border border-rose-500/30 text-rose-400 hover:bg-rose-500/30'}`}
+            >
+              {chatDisabled ? <><Zap className="w-3 h-3" /> تفعيل</> : <><Shield className="w-3 h-3" /> إيقاف</>}
+            </button>
+          )}
+          {amCreator && (
+            <div className="flex items-center gap-1 bg-amber-500/10 border border-amber-500/20 rounded-full px-2 py-0.5">
+              <Crown className="w-2.5 h-2.5 text-amber-400" />
+              <span className="text-[9px] font-black text-amber-400">منشئ</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Messages - آخر 4 رسائل مع تمرير */}
+      <div
+        className="overflow-y-auto px-3 py-2 space-y-2"
+        style={{maxHeight:'160px',scrollbarWidth:'thin',scrollbarColor:'rgba(99,102,241,0.3) transparent'}}
+      >
+        {chatMessages.length === 0 ? (
+          <div className="flex items-center justify-center gap-2 py-3 opacity-40">
+            <MessageCircle className="w-4 h-4 text-white/30" />
+            <span className="text-[11px] text-white/40 font-bold">كن أول من يبدأ المحادثة!</span>
+          </div>
+        ) : (
+          chatMessages.map((msg, idx) => {
+            const isMe = msg.sender === myName;
+            const isLast4 = idx >= Math.max(0, chatMessages.length - 4);
+            return (
+              <div key={msg.id} className={cn('flex items-end gap-1.5 transition-all duration-300', isMe ? 'flex-row-reverse' : 'flex-row', !isLast4 && 'opacity-50')}>
+                {/* Avatar */}
+                {!isMe && (
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0 shadow-md ring-1 ring-white/10"
+                    style={{backgroundColor: msg.avatarColor}}>
+                    {msg.sender.charAt(0)}
+                  </div>
+                )}
+                <div className={cn('flex flex-col gap-0.5 max-w-[78%]', isMe ? 'items-end' : 'items-start')}>
+                  {/* Name row */}
+                  {!isMe && (
+                    <div className="flex items-center gap-1 px-1">
+                      <span className="text-[9px] font-black text-white/40">{msg.sender}</span>
+                      {msg.isCreator && <span className="text-[8px] font-black bg-amber-500/20 text-amber-400 border border-amber-400/20 px-1 rounded-full">👑</span>}
+                    </div>
+                  )}
+                  {/* Bubble */}
+                  <div className={cn('px-3 py-1.5 rounded-2xl text-xs font-bold leading-snug shadow-lg',
+                    isMe
+                      ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-br-sm'
+                      : msg.isCreator
+                        ? 'text-amber-100 rounded-bl-sm'
+                        : 'text-white/85 rounded-bl-sm'
+                  )}
+                  style={!isMe ? {
+                    background: msg.isCreator
+                      ? 'linear-gradient(135deg,rgba(245,158,11,0.18),rgba(234,88,12,0.12))'
+                      : 'rgba(255,255,255,0.07)',
+                    border: msg.isCreator ? '1px solid rgba(245,158,11,0.25)' : '1px solid rgba(255,255,255,0.08)'
+                  } : {}}>
+                    {msg.text}
+                  </div>
+                  <span className="text-[8px] text-white/20 font-bold px-1">{msg.time}</span>
+                </div>
+              </div>
+            );
+          })
+        )}
+        <div ref={chatEndRef} />
+      </div>
+
+      {/* Input */}
+      <div className="px-3 pb-3 pt-2" style={{borderTop:'1px solid rgba(255,255,255,0.06)'}}>
+        {chatDisabled ? (
+          <div className="flex items-center justify-center gap-2 py-2 rounded-xl bg-rose-500/10 border border-rose-500/20">
+            <Shield className="w-3.5 h-3.5 text-rose-400" />
+            <span className="text-[11px] font-black text-rose-400">الدردشة موقوفة من قِبل المنشئ</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0 shadow-md"
+              style={{backgroundColor: myPlayer?.avatar_color || '#6366f1'}}>
+              {myName.charAt(0)}
+            </div>
+            <input
+              value={chatInput}
+              onChange={e => setChatInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendChat()}
+              placeholder={amCreator ? '👑 أرسل رسالة للمتسابقين...' : 'اكتب رسالتك...'}
+              maxLength={150}
+              className="flex-1 rounded-xl px-3 py-2 text-xs text-white font-bold outline-none transition-all"
+              style={{background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)'}}
+              onFocus={e => { e.target.style.border='1px solid rgba(99,102,241,0.5)'; e.target.style.background='rgba(255,255,255,0.1)'; }}
+              onBlur={e => { e.target.style.border='1px solid rgba(255,255,255,0.1)'; e.target.style.background='rgba(255,255,255,0.07)'; }}
+            />
+            <button
+              onClick={handleSendChat}
+              disabled={!chatInput.trim()}
+              className="w-8 h-8 rounded-xl flex items-center justify-center transition-all disabled:opacity-30 disabled:scale-100 hover:scale-105 active:scale-95 shadow-lg"
+              style={{background:'linear-gradient(135deg,#6366f1,#8b5cf6)'}}>
+              <svg className="w-3.5 h-3.5 text-white rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 
   // ── Analytics ──
@@ -915,9 +1036,9 @@ const BattleRoom = () => {
   const team1Score = team1Players.reduce((s, p) => s + p.correct_count, 0);
   const team2Score = team2Players.reduce((s, p) => s + p.correct_count, 0);
 
-  // ── EXAM VIEW ──
+  // ── EXAM VIEW (Sync QuizBot Mode) ──
   if (examStarted && !examFinished && questions.length > 0) {
-    const q = questions[currentQ];
+    const q = questions[syncCurrentQ] || questions[0];
     const options = [
       { key: 'A', label: 'أ', text: q.option_a },
       { key: 'B', label: 'ب', text: q.option_b },
@@ -925,25 +1046,39 @@ const BattleRoom = () => {
       { key: 'D', label: 'د', text: q.option_d },
     ].filter(o => o.text);
 
-    const progressPct = ((currentQ) / questions.length) * 100;
-    const urgentTime = timeLeft < 60;
+    const tpq = (room as any)?.time_per_question || 60;
+    const timerPct = tpq > 0 ? (syncTimeLeft / tpq) * 100 : 0;
+    const urgentTime = syncTimeLeft <= 10 && syncPhase === 'question';
+    const progressPct = ((syncCurrentQ) / questions.length) * 100;
+    const isRevealing = syncPhase === 'reveal';
 
     return (
       <MainLayout>
         <section className="min-h-[calc(100vh-80px)] bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900 py-4" dir="rtl">
           <div className="container mx-auto px-4 max-w-lg">
 
-            {/* Top bar */}
-            <div className={cn("flex items-center justify-between mb-4 rounded-2xl px-4 py-3 border shadow-sm transition-all",
-              urgentTime ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800' : 'bg-white dark:bg-card border-border')}>
+            {/* ── Top Bar ── */}
+            <div className="flex items-center justify-between mb-3 rounded-2xl px-4 py-2.5 bg-white dark:bg-card border border-border shadow-sm">
               <div className="flex flex-col items-start">
                 <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">سؤال</span>
-                <span className="text-sm font-black">{currentQ + 1} / {questions.length}</span>
+                <span className="text-sm font-black">{syncCurrentQ + 1} / {questions.length}</span>
               </div>
-              <div className={cn('flex items-center gap-1.5 font-black text-2xl tabular-nums transition-all',
-                urgentTime ? 'text-rose-500 animate-pulse scale-110' : 'text-slate-700 dark:text-white')}>
-                <Clock className="w-5 h-5" />
-                {formatTime(timeLeft)}
+              {/* Circular Timer */}
+              <div className="relative w-16 h-16 flex items-center justify-center">
+                <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 56 56">
+                  <circle cx="28" cy="28" r="24" fill="none" stroke="currentColor" strokeWidth="4"
+                    className="text-slate-100 dark:text-slate-800" />
+                  <circle cx="28" cy="28" r="24" fill="none" strokeWidth="4"
+                    strokeDasharray={`${2 * Math.PI * 24}`}
+                    strokeDashoffset={`${2 * Math.PI * 24 * (1 - timerPct / 100)}`}
+                    strokeLinecap="round"
+                    className="transition-all duration-1000"
+                    stroke={urgentTime ? '#ef4444' : isRevealing ? '#10b981' : '#6366f1'} />
+                </svg>
+                <span className={cn('font-black text-lg tabular-nums z-10 transition-all',
+                  urgentTime ? 'text-rose-500 animate-pulse' : isRevealing ? 'text-emerald-600' : 'text-slate-700 dark:text-white')}>
+                  {isRevealing ? '✓' : syncTimeLeft}
+                </span>
               </div>
               <div className="flex flex-col items-end">
                 <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">ترتيبك</span>
@@ -953,84 +1088,119 @@ const BattleRoom = () => {
               </div>
             </div>
 
-            {/* Progress */}
-            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 mb-4 overflow-hidden">
-              <div className="h-full rounded-full bg-gradient-to-l from-amber-500 to-orange-600 transition-all duration-700"
+            {/* Progress bar */}
+            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 mb-3 overflow-hidden">
+              <div className="h-full rounded-full bg-gradient-to-l from-indigo-500 to-purple-600 transition-all duration-700"
                 style={{ width: `${progressPct}%` }} />
             </div>
 
-            {/* Live leaderboard */}
-            <div className="bg-white dark:bg-card rounded-2xl border border-border p-3 mb-4 shadow-sm">
+            {/* ── Live Leaderboard ── */}
+            <div className="bg-white dark:bg-card rounded-2xl border border-border p-3 mb-3 shadow-sm">
               <div className="flex items-center gap-1.5 mb-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">المتسابقون الآن</p>
               </div>
               <div className="space-y-1.5">
-                {sortedPlayers.slice(0, 6).map((p, i) => (
+                {sortedPlayers.slice(0, 5).map((p, i) => (
                   <div key={p.id} className={cn('flex items-center gap-2 px-2 py-1.5 rounded-xl text-xs font-bold transition-all',
-                    p.id === myPlayerId.current ? 'bg-primary/10 text-primary' : 'text-slate-600 dark:text-slate-300')}>
+                    p.id === myPlayerId.current ? 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600' : 'text-slate-600 dark:text-slate-300')}>
                     <span className="w-4 text-center font-black text-slate-400">{i + 1}</span>
                     <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[8px] font-black shrink-0"
                       style={{ backgroundColor: p.avatar_color || '#6366f1' }}>
                       {p.player_name.charAt(0)}
                     </div>
                     <span className="flex-1 truncate">{p.player_name}</span>
-                    <span className="text-[10px] font-bold text-slate-400">{p.total_answered} أجاب</span>
-                    <div className="w-14 bg-slate-100 dark:bg-slate-800 rounded-full h-1.5">
-                      <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${p.progress}%` }} />
+                    <span className="text-[10px] font-bold text-emerald-600">{p.correct_count} ✓</span>
+                    <div className="w-12 bg-slate-100 dark:bg-slate-800 rounded-full h-1.5">
+                      <div className="h-full rounded-full bg-indigo-500 transition-all duration-500" style={{ width: `${p.progress}%` }} />
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Question */}
-            <div className="bg-white dark:bg-card rounded-2xl border-2 border-border p-6 shadow-sm mb-4 relative overflow-hidden">
-              <div className="absolute top-3 left-3 w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-xs font-black text-slate-400">
-                {currentQ + 1}
+            {/* ── Question Card ── */}
+            <div className={cn('rounded-2xl border-2 p-5 mb-3 shadow-lg transition-all duration-500 relative overflow-hidden',
+              isRevealing ? 'border-emerald-300 dark:border-emerald-700 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20' : 'bg-white dark:bg-card border-border')}>
+              {/* Question number badge */}
+              <div className="flex items-center gap-2 mb-3">
+                <span className="w-7 h-7 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-xs font-black text-indigo-600">
+                  {syncCurrentQ + 1}
+                </span>
+                {myAnswerGiven && syncPhase === 'question' && (
+                  <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> أجبت — انتظر بقية المتسابقين
+                  </span>
+                )}
               </div>
-              <p className="font-black text-slate-900 dark:text-white text-lg leading-relaxed text-right mt-2">{q.question_text}</p>
+              <p className="font-black text-slate-900 dark:text-white text-base leading-relaxed text-right">{q.question_text}</p>
             </div>
 
-            {/* Options */}
-            <div className="space-y-3 pb-6">
+            {/* ── Options ── */}
+            <div className="space-y-2.5 mb-3">
               {options.map(opt => {
                 const isSelected = selectedAnswer === opt.key;
                 const isCorrect = opt.key === q.correct_option;
-                let style = 'bg-white dark:bg-card border-border hover:border-primary hover:bg-primary/5 hover:shadow-md';
-                if (showFeedback) {
-                  if (isCorrect) style = 'bg-emerald-50 border-emerald-400 dark:bg-emerald-950/30 dark:border-emerald-700 shadow-emerald-100';
-                  else if (isSelected) style = 'bg-rose-50 border-rose-400 dark:bg-rose-950/30 dark:border-rose-700';
-                } else if (isSelected) style = 'bg-primary/10 border-primary shadow-md';
-
+                const isAnswered = myAnswerGiven || isRevealing;
+                let style = 'bg-white dark:bg-card border-slate-200 dark:border-border';
+                if (!isAnswered) style += ' hover:border-indigo-400 hover:bg-indigo-50/50 hover:shadow-md cursor-pointer';
+                if (isRevealing || (myAnswerGiven && isSelected)) {
+                  if (isCorrect) style = 'bg-emerald-50 border-emerald-400 dark:bg-emerald-950/30 dark:border-emerald-600 shadow-emerald-100 shadow-lg';
+                  else if (isSelected) style = 'bg-rose-50 border-rose-400 dark:bg-rose-950/30 dark:border-rose-600';
+                  else if (isRevealing) style = 'bg-slate-50 dark:bg-card border-slate-200 dark:border-border opacity-60';
+                } else if (isSelected) style = 'bg-indigo-50 border-indigo-400 dark:bg-indigo-950/30 dark:border-indigo-500 shadow-md';
                 return (
-                  <button key={opt.key} onClick={() => handleAnswer(opt.key)} disabled={!!selectedAnswer}
-                    className={cn('w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-right font-bold', style)}>
-                    <span className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs font-black shrink-0">
+                  <button key={opt.key}
+                    onClick={() => handleSyncAnswer(opt.key)}
+                    disabled={isAnswered}
+                    className={cn('w-full flex items-center gap-3 p-4 rounded-2xl border-2 transition-all duration-300 text-right font-bold', style)}>
+                    <span className={cn('w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 transition-all',
+                      isRevealing && isCorrect ? 'bg-emerald-500 text-white' :
+                      isSelected && !isCorrect ? 'bg-rose-200 text-rose-700 dark:bg-rose-800 dark:text-rose-300' :
+                      'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300')}>
                       {opt.label}
                     </span>
                     <span className="flex-1 text-sm leading-snug">{opt.text}</span>
-                    {showFeedback && isCorrect && <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />}
-                    {showFeedback && isSelected && !isCorrect && <XCircle className="w-5 h-5 text-rose-500 shrink-0" />}
+                    {(isRevealing || myAnswerGiven) && isCorrect && <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 animate-in zoom-in-50 duration-300" />}
+                    {(isRevealing || myAnswerGiven) && isSelected && !isCorrect && <XCircle className="w-5 h-5 text-rose-500 shrink-0" />}
                   </button>
                 );
               })}
             </div>
 
-            {/* Creator controls during exam */}
+            {/* ── Reveal Banner ── */}
+            {isRevealing && (
+              <div className="rounded-2xl p-4 mb-3 flex items-center gap-3 animate-in slide-in-from-bottom-2 duration-400"
+                style={{background:'linear-gradient(135deg,rgba(16,185,129,0.15),rgba(5,150,105,0.1))',border:'1px solid rgba(16,185,129,0.3)'}}>
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                </div>
+                <div>
+                  <p className="font-black text-emerald-700 dark:text-emerald-400 text-sm">الإجابة الصحيحة</p>
+                  <p className="text-xs font-bold text-emerald-600 dark:text-emerald-500 opacity-80">
+                    {syncCurrentQ + 1 < questions.length ? 'السؤال التالي خلال ثانيتين...' : 'انتهى الاختبار!'}
+                  </p>
+                </div>
+                {syncCurrentQ + 1 < questions.length && (
+                  <div className="mr-auto w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                    <ChevronRight className="w-4 h-4 text-emerald-500" />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Live Chat ── */}
+            {renderChatPanel(!!isCreator)}
+
+            {/* Creator controls */}
             {isCreator && (
               <div className="fixed bottom-4 left-4 flex flex-col gap-2 z-50">
-                <button onClick={() => handleAddTime(5)}
-                  className="flex items-center gap-1.5 bg-indigo-600 text-white text-xs font-black px-3 py-2 rounded-xl shadow-lg hover:bg-indigo-700 transition-colors">
-                  <TimerReset className="w-3.5 h-3.5" /> +5 دقائق
-                </button>
                 <button onClick={handleForceFinish}
                   className="flex items-center gap-1.5 bg-rose-600 text-white text-xs font-black px-3 py-2 rounded-xl shadow-lg hover:bg-rose-700 transition-colors">
                   <XCircle className="w-3.5 h-3.5" /> إنهاء
                 </button>
               </div>
             )}
-            {renderChatPanel(!!isCreator)}
           </div>
         </section>
       </MainLayout>
@@ -1507,6 +1677,9 @@ const BattleRoom = () => {
                   <p className="text-xs font-black text-amber-600">في انتظار المنشئ للبدء...</p>
                 </div>
               )}
+
+              {/* ── Live Chat in Waiting Room ── */}
+              {isJoined && renderChatPanel(!!myPlayer?.is_creator)}
             </div>
           </div>
 
@@ -1514,7 +1687,6 @@ const BattleRoom = () => {
             تنتهي الغرفة في {new Date(room.expires_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}
           </p>
         </div>
-        {isJoined && renderChatPanel(!!myPlayer?.is_creator)}
       </section>
     </MainLayout>
   );
