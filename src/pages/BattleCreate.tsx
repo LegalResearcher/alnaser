@@ -136,6 +136,26 @@ const BattleCreate = () => {
 
     setCreating(true);
     try {
+      // ─── تحقق من إعدادات غرف التحدي لهذه المادة ───
+      const { data: subjectData } = await supabase
+        .from('subjects')
+        .select('battle_disabled, battle_password')
+        .eq('id', selectedSubject)
+        .single();
+
+      if ((subjectData as any)?.battle_disabled) {
+        toast({
+          title: 'غرف التحدي موقوفة مؤقتاً',
+          description: 'قام المسؤول بإيقاف غرف التحدي لهذه المادة. يرجى المحاولة لاحقاً.',
+          variant: 'destructive',
+        });
+        setCreating(false);
+        return;
+      }
+
+      // كلمة المرور العامة من المسؤول (تتغلب على كلمة مرور المنشئ)
+      const adminPassword: string | null = (subjectData as any)?.battle_password || null;
+
       let query = supabase.from('questions').select('id')
         .eq('subject_id', selectedSubject).eq('status', 'active');
       if (questionType === 'exam') {
@@ -169,8 +189,8 @@ const BattleCreate = () => {
         questions_count: questionsCount,
         time_minutes: timeMinutes,
         question_ids: questionIds,
-        is_private: isPrivate,
-        password: isPrivate ? password.trim() : null,
+        is_private: adminPassword ? true : isPrivate,
+        password: adminPassword || (isPrivate ? password.trim() : null),
         allow_teams: allowTeams,
         team1_name: allowTeams ? team1Name : null,
         team2_name: allowTeams ? team2Name : null,
