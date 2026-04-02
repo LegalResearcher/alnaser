@@ -277,7 +277,8 @@ const BattleRoom = () => {
 
   const loadQuestions = async (ids: string[]) => {
     const { data } = await supabase.from('questions').select('*').in('id', ids).eq('status', 'active');
-    const sorted = (data || []).sort(() => Math.random() - 0.5) as Question[];
+    // Sort by the original ids order to ensure all players see the same question order
+    const sorted = (data || []).sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id)) as Question[];
     if (sorted.length) setQuestions(sorted);
     return sorted;
   };
@@ -412,11 +413,15 @@ const BattleRoom = () => {
     const loadedQs = await loadQuestions(room.question_ids);
     setExamStarted(true);
     setStarting(false);
-    // Start sync quiz after delay to ensure all channels subscribed
+    // Wait longer to ensure all players have received the room update and loaded questions
     setTimeout(() => {
+      if (!loadedQs.length) {
+        toast({ title: '⚠️ لم يتم تحميل الأسئلة', variant: 'destructive' });
+        return;
+      }
       const tpq = (room as any)?.time_per_question || 60;
       startSyncQuestionWithList(0, tpq, loadedQs);
-    }, 1200);
+    }, 2500);
   };
 
   const handleKickPlayer = async (playerId: string) => {
@@ -545,7 +550,7 @@ const BattleRoom = () => {
     setShowFeedback(true);
     broadcastQuizState(qIndex, 'reveal', 0, qList.length);
     setTimeout(() => {
-      if (qIndex + 1 >= qList.length) {
+      if (!qList.length || qIndex + 1 >= qList.length) {
         handleFinishExam();
       } else {
         startSyncQuestionWithList(qIndex + 1, tpq, qList);
