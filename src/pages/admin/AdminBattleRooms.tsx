@@ -287,34 +287,44 @@ const AdminBattleRooms = () => {
     return { total, active, finished, totalPlayers: allPlayers.length, avgSuccess };
   }, [rooms]);
 
-  // ─── وظيفة تشغيل/إيقاف ──────────────────────────────────
-  const toggleRooms = async (action: 'start' | 'stop') => {
-    let query = supabase.from('battle_rooms').update({
-      status: action === 'start' ? 'waiting' : 'locked',
-      locked: action === 'stop',
-    });
-
-    if (controlSubject) {
-      query = query.eq('subject_id', controlSubject);
-    } else if (controlLevel) {
-      const levelSubjectIds = subjects
+  // ─── بناء شرط الفلتر المشترك ─────────────────────────────
+  const buildSubjectIds = (): string[] | 'all' | null => {
+    if (controlSubject) return [controlSubject];
+    if (controlLevel) {
+      const ids = subjects
         .filter((s: any) => s.level_id === controlLevel)
         .map((s: any) => s.id);
-      query = query.in('subject_id', levelSubjectIds);
+      if (ids.length === 0) return null;
+      return ids;
+    }
+    return 'all';
+  };
+
+  // ─── وظيفة تشغيل/إيقاف ──────────────────────────────────
+  const toggleRooms = async (action: 'start' | 'stop') => {
+    const ids = buildSubjectIds();
+    if (ids === null) {
+      toast({ title: 'تنبيه', description: 'لا توجد مواد لهذا المستوى', variant: 'destructive' });
+      return;
     }
 
-    // لا نقيّد بالحالة الحالية — نطبق على الكل ضمن النطاق
-    // (الغرف المنتهية تُترك كما هي بمنطق العرض فقط)
+    // نحدّث حقل battle_disabled في جدول subjects
+    let query = supabase.from('subjects').update({ battle_disabled: action === 'stop' } as any);
+    if (ids === 'all') {
+      query = query.gte('created_at', '2000-01-01');
+    } else {
+      query = query.in('id', ids);
+    }
 
     const { error } = await query;
     if (error) {
       toast({ title: 'خطأ', description: error.message, variant: 'destructive' });
     } else {
       toast({
-        title: action === 'start' ? 'تم التشغيل' : 'تم الإيقاف',
+        title: action === 'start' ? 'تم التشغيل ✅' : 'تم الإيقاف ⏸',
         description: action === 'start'
-          ? 'تم تفعيل غرف التحدي المحددة'
-          : 'تم إيقاف غرف التحدي المحددة',
+          ? 'تم السماح بإنشاء غرف التحدي'
+          : 'تم منع إنشاء غرف تحدي جديدة',
       });
       queryClient.invalidateQueries({ queryKey: ['admin-battle-rooms'] });
     }
@@ -324,32 +334,46 @@ const AdminBattleRooms = () => {
   const applyGlobalPassword = async () => {
     setIsApplyingPassword(true);
 
-    let query = supabase.from('battle_rooms').update({
+    const ids = buildSubjectIds();
+    if (ids === null) {
+      toast({ title: 'تنبيه', description: 'لا توجد مواد لهذا المستوى', variant: 'destructive' });
+      setIsApplyingPassword(false);
+      return;
+    }
+
+    // 1) حفظ كلمة المرور في subjects (للغرف الجديدة)
+    let subjectsQuery = supabase.from('subjects').update({ battle_password: globalPassword || null } as any);
+    if (ids === 'all') {
+      subjectsQuery = subjectsQuery.gte('created_at', '2000-01-01');
+    } else {
+      subjectsQuery = subjectsQuery.in('id', ids);
+    }
+    await subjectsQuery;
+
+    // 2) تطبيق كلمة المرور على الغرف الموجودة في battle_rooms
+    let roomsQuery = supabase.from('battle_rooms').update({
       password: globalPassword || null,
       is_private: !!globalPassword,
     });
-
-    if (controlSubject) {
-      query = query.eq('subject_id', controlSubject);
-    } else if (controlLevel) {
-      const levelSubjectIds = subjects
-        .filter((s: any) => s.level_id === controlLevel)
-        .map((s: any) => s.id);
-      query = query.in('subject_id', levelSubjectIds);
+    if (ids === 'all') {
+      roomsQuery = roomsQuery.gte('created_at', '2000-01-01');
+    } else if (ids.length === 1) {
+      roomsQuery = roomsQuery.eq('subject_id', ids[0]);
+    } else {
+      roomsQuery = roomsQuery.in('subject_id', ids);
     }
-    // بدون تحديد = تطبيق على الكل
+    const { error } = await roomsQuery;
 
-    const { error } = await query;
     setIsApplyingPassword(false);
 
     if (error) {
       toast({ title: 'خطأ', description: error.message, variant: 'destructive' });
     } else {
       toast({
-        title: 'تم التطبيق',
+        title: 'تم التطبيق ✅',
         description: globalPassword
-          ? `تم تعيين كلمة المرور "${globalPassword}" على الغرف المحددة`
-          : 'تم إزالة كلمة المرور من الغرف المحددة',
+          ? 'تم تعيين كلمة المرور على الغرف الحالية والجديدة'
+          : 'تم إزالة كلمة المرور من جميع الغرف',
       });
       queryClient.invalidateQueries({ queryKey: ['admin-battle-rooms'] });
     }
