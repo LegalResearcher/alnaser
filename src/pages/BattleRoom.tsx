@@ -277,7 +277,9 @@ const BattleRoom = () => {
 
   const loadQuestions = async (ids: string[]) => {
     const { data } = await supabase.from('questions').select('*').in('id', ids).eq('status', 'active');
-    if (data) setQuestions(data.sort(() => Math.random() - 0.5) as Question[]);
+    const sorted = (data || []).sort(() => Math.random() - 0.5) as Question[];
+    if (sorted.length) setQuestions(sorted);
+    return sorted;
   };
 
   // ── Initial load ──
@@ -334,7 +336,6 @@ const BattleRoom = () => {
           setRoom(prev => prev ? { ...prev, ...updated } : prev);
           if (updated.status === 'active' && !examStarted) {
             await loadQuestions(updated.question_ids as string[]);
-            setTimeLeft((updated.time_minutes + (updated.extra_time_minutes || 0)) * 60);
             setExamStarted(true);
             toast({ title: '🚀 انطلقت المنافسة!' });
           }
@@ -408,14 +409,14 @@ const BattleRoom = () => {
     if (myPlayerId.current) {
       await (supabase.from('battle_players' as any) as any).update({ status: 'playing' }).eq('id', myPlayerId.current);
     }
-    const qs = await loadQuestions(room.question_ids);
+    const loadedQs = await loadQuestions(room.question_ids);
     setExamStarted(true);
     setStarting(false);
-    // Start sync quiz after short delay to ensure channel is ready
+    // Start sync quiz after delay to ensure all channels subscribed
     setTimeout(() => {
       const tpq = (room as any)?.time_per_question || 60;
-      startSyncQuestion(0, tpq);
-    }, 800);
+      startSyncQuestionWithList(0, tpq, loadedQs);
+    }, 1200);
   };
 
   const handleKickPlayer = async (playerId: string) => {
@@ -464,13 +465,13 @@ const BattleRoom = () => {
     const syncChannel = supabase.channel(`battle-sync-${room.id}`, {
       config: { broadcast: { self: false } }
     }).on('broadcast', { event: 'quiz_state' }, ({ payload }) => {
-      const { questionIndex, phase, timeLeft: tl } = payload;
+      const { questionIndex, phase, timeLeft: tl, totalQs } = payload;
       setSyncCurrentQ(questionIndex);
       setSyncPhase(phase);
       setSyncTimeLeft(tl);
       setMyAnswerGiven(false);
       setSelectedAnswer(null);
-      setShowFeedback(false);
+      setShowFeedback(phase === 'reveal');
       if (syncTimerRef.current) clearInterval(syncTimerRef.current);
       if (phase === 'question' && tl > 0) {
         let t = tl;
@@ -507,22 +508,22 @@ const BattleRoom = () => {
   };
 
   // ── Sync Quiz Logic (Creator Only) ──
-  const broadcastQuizState = (questionIndex: number, phase: 'question' | 'reveal', timeLeft: number) => {
+  const broadcastQuizState = (questionIndex: number, phase: 'question' | 'reveal', timeLeft: number, totalQs: number) => {
     if (!syncChannelRef.current) return;
     syncChannelRef.current.send({
       type: 'broadcast', event: 'quiz_state',
-      payload: { questionIndex, phase, timeLeft }
+      payload: { questionIndex, phase, timeLeft, totalQs }
     });
   };
 
-  const startSyncQuestion = (qIndex: number, timePerQuestion: number) => {
+  const startSyncQuestionWithList = (qIndex: number, timePerQuestion: number, qList: Question[]) => {
     setSyncCurrentQ(qIndex);
     setSyncPhase('question');
     setSyncTimeLeft(timePerQuestion);
     setMyAnswerGiven(false);
     setSelectedAnswer(null);
     setShowFeedback(false);
-    broadcastQuizState(qIndex, 'question', timePerQuestion);
+    broadcastQuizState(qIndex, 'question', timePerQuestion, qList.length);
     if (syncTimerRef.current) clearInterval(syncTimerRef.current);
     let t = timePerQuestion;
     syncTimerRef.current = setInterval(() => {
@@ -530,23 +531,31 @@ const BattleRoom = () => {
       setSyncTimeLeft(t);
       if (t <= 0) {
         clearInterval(syncTimerRef.current!);
-        revealAnswer(qIndex);
+        revealAnswerWithList(qIndex, timePerQuestion, qList);
       }
     }, 1000);
   };
 
-  const revealAnswer = (qIndex: number) => {
+  const startSyncQuestion = (qIndex: number, timePerQuestion: number) => {
+    startSyncQuestionWithList(qIndex, timePerQuestion, questions);
+  };
+
+  const revealAnswerWithList = (qIndex: number, tpq: number, qList: Question[]) => {
     setSyncPhase('reveal');
     setShowFeedback(true);
-    broadcastQuizState(qIndex, 'reveal', 0);
+    broadcastQuizState(qIndex, 'reveal', 0, qList.length);
     setTimeout(() => {
-      if (qIndex + 1 >= questions.length) {
+      if (qIndex + 1 >= qList.length) {
         handleFinishExam();
       } else {
-        const tpq = (room as any)?.time_per_question || 60;
-        startSyncQuestion(qIndex + 1, tpq);
+        startSyncQuestionWithList(qIndex + 1, tpq, qList);
       }
     }, 2500);
+  };
+
+  const revealAnswer = (qIndex: number) => {
+    const tpq = (room as any)?.time_per_question || 60;
+    revealAnswerWithList(qIndex, tpq, questions);
   };
 
   const handleSyncAnswer = async (option: string) => {
