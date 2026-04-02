@@ -1,0 +1,1 @@
+ALTER TABLE public.battle_rooms ADD COLUMN IF NOT EXISTS time_per_question integer DEFAULT 60;
