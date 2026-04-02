@@ -2,7 +2,7 @@ import { useQuery, QueryKey, UseQueryOptions } from '@tanstack/react-query';
 import { useRef, useCallback, useMemo } from 'react';
 
 // المحافظة على البادئة الأصلية لضمان عدم ضياع بيانات المستخدمين الحاليين
-const CACHE_PREFIX = 'app_cache_';
+const CACHE_PREFIX = 'alnaser_cache_v2_';
 const CACHE_EXPIRY_MS = 1000 * 60 * 60 * 24; // 24 ساعة
 
 interface CacheEntry<T> {
