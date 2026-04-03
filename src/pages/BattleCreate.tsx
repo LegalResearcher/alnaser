@@ -117,8 +117,10 @@ const BattleCreate = () => {
         .eq('subject_id', selectedSubject).eq('status', 'active');
       if (questionType === 'exam') {
         q = q.not('exam_year', 'is', null);
-        if (selectedExamYear) q = q.eq('exam_year', parseInt(selectedExamYear));
-        if (selectedExamForm) q = q.eq('exam_form', selectedExamForm);
+        // "all" means no year filter
+        if (selectedExamYear && selectedExamYear !== 'all') q = q.eq('exam_year', parseInt(selectedExamYear));
+        // "Mixed" means General + Parallel (no exam_form filter)
+        if (selectedExamForm && selectedExamForm !== 'Mixed') q = q.eq('exam_form', selectedExamForm);
       } else if (questionType === 'trial') {
         q = q.is('exam_year', null);
         if (selectedTrialForm && selectedTrialForm !== 'all') q = q.eq('exam_form', selectedTrialForm);
@@ -156,8 +158,10 @@ const BattleCreate = () => {
         .eq('subject_id', selectedSubject).eq('status', 'active');
       if (questionType === 'exam') {
         query = query.not('exam_year', 'is', null);
-        if (selectedExamYear) query = query.eq('exam_year', parseInt(selectedExamYear));
-        if (selectedExamForm) query = query.eq('exam_form', selectedExamForm);
+        // "all" means no year filter
+        if (selectedExamYear && selectedExamYear !== 'all') query = query.eq('exam_year', parseInt(selectedExamYear));
+        // "Mixed" means General + Parallel (no exam_form filter)
+        if (selectedExamForm && selectedExamForm !== 'Mixed') query = query.eq('exam_form', selectedExamForm);
       } else if (questionType === 'trial') {
         query = query.is('exam_year', null);
         if (selectedTrialForm && selectedTrialForm !== 'all') query = query.eq('exam_form', selectedTrialForm);
@@ -196,7 +200,7 @@ const BattleCreate = () => {
         team1_name: allowTeams ? team1Name : null,
         team2_name: allowTeams ? team2Name : null,
         question_type: questionType,
-        exam_year: selectedExamYear ? parseInt(selectedExamYear) : null,
+        exam_year: (selectedExamYear && selectedExamYear !== 'all') ? parseInt(selectedExamYear) : null,
         exam_form_id: selectedExamForm || (selectedTrialForm !== 'all' ? selectedTrialForm : null) || null,
         exam_form_name: examFormName || null,
         time_per_question: timeMinutes,
@@ -236,7 +240,7 @@ const BattleCreate = () => {
       : questionType === 'trial'
       ? (activeTrialForms.find(f => f.id === selectedTrialForm)?.name || '')
       : '';
-    const yearStr = selectedExamYear ? ` | ${selectedExamYear}` : '';
+    const yearStr = selectedExamYear && selectedExamYear !== 'all' ? ` | ${selectedExamYear}` : selectedExamYear === 'all' ? ' | كل السنوات' : '';
     const formStr = examFormName ? ` | ${examFormName}` : '';
 
     return `⚔️ تحدٍّ قانوني مباشر!
@@ -455,6 +459,7 @@ const BattleCreate = () => {
                           <SelectValue placeholder="اختر السنة" />
                         </SelectTrigger>
                         <SelectContent className="z-[9999] bg-white dark:bg-card rounded-2xl shadow-2xl max-h-[260px]">
+                          <SelectItem value="all" className="font-bold rounded-xl text-emerald-600">كل السنوات</SelectItem>
                           {examYears.map(y => (
                             <SelectItem key={y} value={String(y)} className="font-bold rounded-xl">دورة عام {y}</SelectItem>
                           ))}
