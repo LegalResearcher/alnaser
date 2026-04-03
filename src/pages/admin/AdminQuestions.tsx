@@ -10,7 +10,8 @@ import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { 
   Plus, Search, Edit2, Trash2, BookOpen, CheckCircle2, FileUp, 
-  Loader2, FileText, AlertCircle, Eye, Save, X, PencilLine, ScanLine
+  Loader2, FileText, AlertCircle, Eye, Save, X, PencilLine, ScanLine,
+  ChevronUp, ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -455,6 +456,26 @@ const AdminQuestions = () => {
       queryClient.invalidateQueries({ queryKey: ['subject-exam-forms'] });
       toast({ title: 'تم حذف النموذج' });
     },
+  });
+
+  const reorderFormMutation = useMutation({
+    mutationFn: async ({ id, direction }: { id: string; direction: 'up' | 'down' }) => {
+      const idx = customForms.findIndex((f: any) => f.id === id);
+      if (idx === -1) return;
+      if (direction === 'up' && idx === 0) return;
+      if (direction === 'down' && idx === customForms.length - 1) return;
+      const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+      const current = customForms[idx];
+      const swap = customForms[swapIdx];
+      await Promise.all([
+        (supabase.from('subject_exam_forms' as any) as any).update({ order_index: swap.order_index }).eq('id', current.id),
+        (supabase.from('subject_exam_forms' as any) as any).update({ order_index: current.order_index }).eq('id', swap.id),
+      ]);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subject-exam-forms'] });
+    },
+    onError: (err: any) => toast({ title: 'خطأ', description: err.message, variant: 'destructive' }),
   });
 
   const activeExamForms = useMemo(() => {
@@ -1005,16 +1026,32 @@ const AdminQuestions = () => {
             {customForms.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs text-slate-500 font-black">النماذج المضافة:</p>
-                {customForms.map((f: any) => (
+                {customForms.map((f: any, idx: number) => (
                   <div key={f.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
                     <span className="text-sm font-bold text-slate-700">{f.form_name}</span>
-                    <button
-                      onClick={() => deleteFormMutation.mutate(f.id)}
-                      disabled={deleteFormMutation.isPending}
-                      className="w-7 h-7 rounded-lg text-destructive hover:bg-destructive/10 flex items-center justify-center transition-colors"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => reorderFormMutation.mutate({ id: f.id, direction: 'up' })}
+                        disabled={idx === 0 || reorderFormMutation.isPending}
+                        className="w-7 h-7 rounded-lg text-slate-500 hover:bg-slate-200 flex items-center justify-center transition-colors disabled:opacity-30"
+                      >
+                        <ChevronUp className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => reorderFormMutation.mutate({ id: f.id, direction: 'down' })}
+                        disabled={idx === customForms.length - 1 || reorderFormMutation.isPending}
+                        className="w-7 h-7 rounded-lg text-slate-500 hover:bg-slate-200 flex items-center justify-center transition-colors disabled:opacity-30"
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => deleteFormMutation.mutate(f.id)}
+                        disabled={deleteFormMutation.isPending}
+                        className="w-7 h-7 rounded-lg text-destructive hover:bg-destructive/10 flex items-center justify-center transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
