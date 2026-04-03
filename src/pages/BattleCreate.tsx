@@ -7,8 +7,8 @@ import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Swords, Users, BookOpen, Hash, Clock, ChevronLeft, Loader2,
-  Copy, Check, Play, Lock, Unlock, Calendar, Users2, Shuffle,
-  Shield, Zap, FlaskConical, ListOrdered, Trophy
+  Copy, Check, Play, Lock, Unlock, Users2,
+  Zap, FlaskConical
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,6 @@ import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 
 const generateCode = () => Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -28,7 +27,7 @@ const AVATAR_COLORS = [
   '#6366f1','#f59e0b','#10b981','#ef4444','#3b82f6','#8b5cf6','#ec4899','#14b8a6'
 ];
 
-type QuestionType = 'general' | 'exam' | 'trial';
+type QuestionType = 'general' | 'exam' | 'trial' | 'all';
 
 interface ExamForm {
   id: string;
@@ -67,8 +66,8 @@ const BattleCreate = () => {
   const [team2Name, setTeam2Name] = useState('الفريق الصقور 🦅');
   const [questionType, setQuestionType] = useState<QuestionType>('general');
   const [selectedExamYear, setSelectedExamYear] = useState('');
-  const [selectedExamForm, setSelectedExamForm] = useState('');
-  const [selectedTrialForm, setSelectedTrialForm] = useState('');
+  const [selectedExamForm, setSelectedExamForm] = useState('General');
+  const [selectedTrialForm, setSelectedTrialForm] = useState('all');
 
   const { data: levels = [] } = useQuery({
     queryKey: ['levels'],
@@ -102,29 +101,28 @@ const BattleCreate = () => {
 
   // نماذج تجريبية: افتراضي 15 نموذج + أي نماذج مخصصة من قاعدة البيانات
   const defaultTrialForms = useMemo(() =>
-    Array.from({ length: 15 }, (_, i) => ({ id: `Model_${i + 1}`, name: `نموذج ${i + 1}`, order_index: i + 1 })),
+    Array.from({ length: 15 }, (_, i) => ({ id: `Model_${i + 1}`, name: `نموذج ${i + 1}` })),
   []);
 
-  const activeTrialForms = useMemo(() => {
-    const customs = examForms.map((f: any) => ({ id: f.form_id, name: f.form_name, order_index: f.order_index }));
-    return [...defaultTrialForms, ...customs].sort((a, b) => a.order_index - b.order_index).map(({ id, name }) => ({ id, name }));
-  }, [defaultTrialForms, examForms]);
+  const activeTrialForms = useMemo(() => [
+    ...defaultTrialForms,
+    ...examForms.map(f => ({ id: f.form_id, name: f.form_name })),
+  ], [defaultTrialForms, examForms]);
 
   const { data: availableCount = 0 } = useQuery({
-    queryKey: ['battle-q-count', selectedSubject, questionType, selectedExamYear, selectedExamForm, selectedTrialForm],
+    queryKey: ['battle-q-count', selectedSubject, selectedExamYear, selectedExamForm, selectedTrialForm],
     queryFn: async () => {
       let q = supabase.from('questions').select('*', { count: 'exact', head: true })
         .eq('subject_id', selectedSubject).eq('status', 'active');
-      if (questionType === 'exam') {
-        q = q.not('exam_year', 'is', null);
-        // "all" means no year filter
-        if (selectedExamYear && selectedExamYear !== 'all') q = q.eq('exam_year', parseInt(selectedExamYear));
-        // "Mixed" means General + Parallel (no exam_form filter)
-        if (selectedExamForm && selectedExamForm !== 'Mixed') q = q.eq('exam_form', selectedExamForm);
-      } else if (questionType === 'trial') {
+      if (selectedExamYear === 'trial') {
         q = q.is('exam_year', null);
-        if (selectedTrialForm && selectedTrialForm !== 'all') q = q.eq('exam_form', selectedTrialForm);
+        if (selectedTrialForm !== 'all') q = q.eq('exam_form', selectedTrialForm);
+      } else if (selectedExamYear !== 'all' && selectedExamYear) {
+        q = q.not('exam_year', 'is', null);
+        q = q.eq('exam_year', parseInt(selectedExamYear));
+        if (selectedExamForm && selectedExamForm !== 'Mixed') q = q.eq('exam_form', selectedExamForm);
       }
+      // 'all' → no extra filters
       const { count } = await q;
       return count || 0;
     },
@@ -146,6 +144,7 @@ const BattleCreate = () => {
   const handleCreate = async () => {
     if (!creatorName.trim()) { toast({ title: 'أدخل اسمك', variant: 'destructive' }); return; }
     if (!selectedSubject) { toast({ title: 'اختر المادة', variant: 'destructive' }); return; }
+    if (!selectedExamYear) { toast({ title: 'اختر نموذج سنة الاختبار', variant: 'destructive' }); return; }
     if (availableCount < 5) { toast({ title: 'لا توجد أسئلة كافية', variant: 'destructive' }); return; }
     if (isPrivate && !password.trim()) { toast({ title: 'أدخل كلمة مرور للغرفة الخاصة', variant: 'destructive' }); return; }
 
@@ -163,16 +162,15 @@ const BattleCreate = () => {
     try {
       let query = supabase.from('questions').select('id')
         .eq('subject_id', selectedSubject).eq('status', 'active');
-      if (questionType === 'exam') {
-        query = query.not('exam_year', 'is', null);
-        // "all" means no year filter
-        if (selectedExamYear && selectedExamYear !== 'all') query = query.eq('exam_year', parseInt(selectedExamYear));
-        // "Mixed" means General + Parallel (no exam_form filter)
-        if (selectedExamForm && selectedExamForm !== 'Mixed') query = query.eq('exam_form', selectedExamForm);
-      } else if (questionType === 'trial') {
+      if (selectedExamYear === 'trial') {
         query = query.is('exam_year', null);
-        if (selectedTrialForm && selectedTrialForm !== 'all') query = query.eq('exam_form', selectedTrialForm);
+        if (selectedTrialForm !== 'all') query = query.eq('exam_form', selectedTrialForm);
+      } else if (selectedExamYear !== 'all' && selectedExamYear) {
+        query = query.not('exam_year', 'is', null);
+        query = query.eq('exam_year', parseInt(selectedExamYear));
+        if (selectedExamForm && selectedExamForm !== 'Mixed') query = query.eq('exam_form', selectedExamForm);
       }
+      // 'all' → no extra filters
 
       const { data: questions } = await query;
       const shuffled = (questions || []).sort(() => Math.random() - 0.5).slice(0, questionsCount);
@@ -186,11 +184,13 @@ const BattleCreate = () => {
       const finalPassword = adminPassword || (isPrivate ? password.trim() : null);
       const finalIsPrivate = !!finalPassword;
 
-      const examFormName = questionType === 'exam'
-        ? (EXAM_FORMS.find(f => f.id === selectedExamForm)?.name || 'نموذج العام')
-        : questionType === 'trial'
+      const examFormName = selectedExamYear === 'trial'
         ? (activeTrialForms.find(f => f.id === selectedTrialForm)?.name || 'كل النماذج')
-        : '';
+        : selectedExamYear === 'all'
+        ? 'جميع الأسئلة'
+        : (EXAM_FORMS.find(f => f.id === selectedExamForm)?.name || 'نموذج العام');
+
+      const qType = selectedExamYear === 'trial' ? 'trial' : selectedExamYear === 'all' ? 'general' : 'exam';
 
       const { data: room, error } = await (supabase.from('battle_rooms' as any) as any).insert({
         code,
@@ -206,9 +206,9 @@ const BattleCreate = () => {
         allow_teams: allowTeams,
         team1_name: allowTeams ? team1Name : null,
         team2_name: allowTeams ? team2Name : null,
-        question_type: questionType,
-        exam_year: (selectedExamYear && selectedExamYear !== 'all') ? parseInt(selectedExamYear) : null,
-        exam_form_id: selectedExamForm || (selectedTrialForm !== 'all' ? selectedTrialForm : null) || null,
+        question_type: qType,
+        exam_year: (selectedExamYear && selectedExamYear !== 'all' && selectedExamYear !== 'trial') ? parseInt(selectedExamYear) : null,
+        exam_form_id: selectedExamYear === 'trial' ? (selectedTrialForm !== 'all' ? selectedTrialForm : null) : (selectedExamForm && selectedExamForm !== 'Mixed' ? selectedExamForm : null),
         exam_form_name: examFormName || null,
         time_per_question: timeMinutes,
         locked: false,
@@ -242,12 +242,12 @@ const BattleCreate = () => {
     const levelObj = levels.find((l: any) => l.id === selectedLevel);
     const subjectNameStr = subjectObj?.name || '';
     const levelNameStr = levelObj?.name || '';
-    const examFormName = questionType === 'exam'
-      ? (EXAM_FORMS.find(f => f.id === selectedExamForm)?.name || '')
-      : questionType === 'trial'
-      ? (activeTrialForms.find(f => f.id === selectedTrialForm)?.name || '')
-      : '';
-    const yearStr = selectedExamYear && selectedExamYear !== 'all' ? ` | ${selectedExamYear}` : selectedExamYear === 'all' ? ' | كل السنوات' : '';
+    const examFormName = selectedExamYear === 'trial'
+      ? (activeTrialForms.find(f => f.id === selectedTrialForm)?.name || 'كل النماذج')
+      : selectedExamYear === 'all'
+      ? 'جميع الأسئلة'
+      : (EXAM_FORMS.find(f => f.id === selectedExamForm)?.name || '');
+    const yearStr = selectedExamYear === 'all' ? ' | كل السنوات' : selectedExamYear === 'trial' ? ' | تجريبي' : selectedExamYear ? ` | ${selectedExamYear}` : '';
     const formStr = examFormName ? ` | ${examFormName}` : '';
 
     return `⚔️ تحدٍّ قانوني مباشر!
@@ -434,68 +434,43 @@ const BattleCreate = () => {
                 </Select>
               </div>
 
-              {/* نوع الأسئلة */}
+              {/* نموذج سنة الاختبار */}
               {selectedSubject && (
                 <div className="space-y-3 p-4 bg-slate-50 dark:bg-muted rounded-[1.25rem] border border-slate-100 dark:border-border">
-                  <Label className="text-[11px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                    <FlaskConical className="w-3.5 h-3.5" /> نوع الأسئلة
-                  </Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { key: 'general', label: 'عام', sub: 'كل الأسئلة', icon: <Shuffle className="w-4 h-4" /> },
-                      { key: 'exam', label: 'اختبار سنوي', sub: 'حسب السنة', icon: <ListOrdered className="w-4 h-4" /> },
-                      { key: 'trial', label: 'تجريبي', sub: 'نموذج محدد', icon: <FlaskConical className="w-4 h-4" /> },
-                    ].map(opt => (
-                      <button key={opt.key} onClick={() => { setQuestionType(opt.key as QuestionType); setSelectedExamYear(''); setSelectedExamForm(''); setSelectedTrialForm(''); }}
-                        className={cn('flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all text-xs font-black',
-                          questionType === opt.key ? 'border-primary bg-primary/5 text-primary' : 'border-slate-200 dark:border-border text-slate-500 hover:border-slate-300')}>
-                        {opt.icon}
-                        <span>{opt.label}</span>
-                        <span className="text-[9px] font-semibold opacity-70">{opt.sub}</span>
-                      </button>
-                    ))}
-                  </div>
+                  <Label className="text-[11px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest">نموذج سنة الاختبار</Label>
+                  <Select value={selectedExamYear} onValueChange={v => { setSelectedExamYear(v); setSelectedExamForm('General'); setSelectedTrialForm('all'); }}>
+                    <SelectTrigger className="h-12 rounded-[1rem] bg-white dark:bg-card border-slate-200 font-bold">
+                      <SelectValue placeholder="اختر السنة" />
+                    </SelectTrigger>
+                    <SelectContent className="z-[9999] bg-white dark:bg-card rounded-2xl shadow-2xl max-h-[280px]">
+                      <SelectItem value="trial" className="h-11 rounded-xl font-bold cursor-pointer text-violet-600">🧪 أسئلة تجريبية</SelectItem>
+                      {examYears.map(y => (
+                        <SelectItem key={y} value={String(y)} className="h-11 rounded-xl font-bold cursor-pointer">دورة عام {y}</SelectItem>
+                      ))}
+                      <SelectItem value="all" className="h-11 rounded-xl font-bold cursor-pointer text-emerald-600">📚 الكل</SelectItem>
+                    </SelectContent>
+                  </Select>
 
-                  {/* ── اختبار سنوي: نموذج السنة + نموذج الاختبار ── */}
-                  {questionType === 'exam' && (
-                    <div className="space-y-2 pt-1">
-                      {/* نموذج سنة الاختبار */}
-                      <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">نموذج سنة الاختبار</Label>
-                      <Select value={selectedExamYear} onValueChange={v => { setSelectedExamYear(v); setSelectedExamForm(''); }}>
+                  {/* نموذج الاختبار — يظهر عند اختيار سنة محددة */}
+                  {selectedExamYear && selectedExamYear !== 'trial' && selectedExamYear !== 'all' && (
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">نموذج الاختبار</Label>
+                      <Select value={selectedExamForm} onValueChange={setSelectedExamForm}>
                         <SelectTrigger className="h-11 rounded-xl bg-white dark:bg-card border-slate-200 font-bold text-sm">
-                          <SelectValue placeholder="اختر السنة" />
+                          <SelectValue placeholder="اختر النموذج" />
                         </SelectTrigger>
-                        <SelectContent className="z-[9999] bg-white dark:bg-card rounded-2xl shadow-2xl max-h-[260px]">
-                          <SelectItem value="all" className="font-bold rounded-xl text-emerald-600">كل السنوات</SelectItem>
-                          {examYears.map(y => (
-                            <SelectItem key={y} value={String(y)} className="font-bold rounded-xl">دورة عام {y}</SelectItem>
+                        <SelectContent className="z-[9999] bg-white dark:bg-card rounded-2xl shadow-2xl">
+                          {EXAM_FORMS.map(f => (
+                            <SelectItem key={f.id} value={f.id} className="font-bold rounded-xl">{f.name}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-
-                      {/* نموذج الاختبار: عام / موازي / مختلط */}
-                      {selectedExamYear && (
-                        <>
-                          <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest pt-1 block">نموذج الاختبار</Label>
-                          <Select value={selectedExamForm} onValueChange={setSelectedExamForm}>
-                            <SelectTrigger className="h-11 rounded-xl bg-white dark:bg-card border-slate-200 font-bold text-sm">
-                              <SelectValue placeholder="نموذج العام" />
-                            </SelectTrigger>
-                            <SelectContent className="z-[9999] bg-white dark:bg-card rounded-2xl shadow-2xl">
-                              {EXAM_FORMS.map(f => (
-                                <SelectItem key={f.id} value={f.id} className="font-bold rounded-xl">{f.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </>
-                      )}
                     </div>
                   )}
 
-                  {/* ── أسئلة تجريبية: نموذج 1 - 2 - ... ── */}
-                  {questionType === 'trial' && (
-                    <div className="space-y-2 pt-1">
-                      {/* بطاقة وصف */}
+                  {/* أسئلة تجريبية */}
+                  {selectedExamYear === 'trial' && (
+                    <div className="space-y-2">
                       <div className="flex items-center gap-3 bg-violet-50 dark:bg-violet-950/20 border border-violet-100 dark:border-violet-800/30 rounded-xl px-3 py-2.5">
                         <span className="text-xl">🧪</span>
                         <div>
@@ -518,11 +493,20 @@ const BattleCreate = () => {
                     </div>
                   )}
 
-                  {selectedSubject && (
-                    <p className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
-                      <Hash className="w-3 h-3" /> {availableCount} سؤال متاح بهذه الفلاتر
-                    </p>
+                  {/* الكل */}
+                  {selectedExamYear === 'all' && (
+                    <div className="flex items-center gap-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-800/30 rounded-xl px-3 py-2.5">
+                      <span className="text-xl">📚</span>
+                      <div>
+                        <p className="text-xs font-black text-emerald-700 dark:text-emerald-400">جميع الأسئلة</p>
+                        <p className="text-[10px] text-emerald-500 font-bold">جميع أسئلة المادة من كل الدورات مخلوطة عشوائياً</p>
+                      </div>
+                    </div>
                   )}
+
+                  <p className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
+                    <Hash className="w-3 h-3" /> {availableCount} سؤال متاح بهذه الفلاتر
+                  </p>
                 </div>
               )}
 
@@ -598,7 +582,7 @@ const BattleCreate = () => {
 
               <Button
                 onClick={handleCreate}
-                disabled={creating || !creatorName.trim() || !selectedSubject}
+                disabled={creating || !creatorName.trim() || !selectedSubject || !selectedExamYear}
                 className="w-full h-14 rounded-[1.25rem] font-black text-white text-base gap-2 bg-gradient-to-l from-amber-500 to-orange-600 shadow-lg shadow-amber-200/50 hover:-translate-y-0.5 transition-all"
               >
                 {creating ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Swords className="w-5 h-5" /> إنشاء الغرفة</>}
