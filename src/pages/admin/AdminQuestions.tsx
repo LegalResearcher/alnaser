@@ -212,6 +212,7 @@ const AdminQuestions = () => {
   // حالات نماذج ثالث ثانوي
   const [isAddFormDialogOpen, setIsAddFormDialogOpen] = useState(false);
   const [newFormName, setNewFormName] = useState('');
+  const [newFormPosition, setNewFormPosition] = useState<number>(16);
 
   const [formData, setFormData] = useState({
     question_text: '', option_a: '', option_b: '', option_c: '', option_d: '',
@@ -411,9 +412,6 @@ const AdminQuestions = () => {
   // --- منطق النماذج (أسئلة تجريبية لجميع المستويات) ---
   const isTrialSelected = selectedExamForm === 'Trial';
 
-  const defaultTrialForms = useMemo(() =>
-    Array.from({ length: 15 }, (_, i) => ({ id: `Model_${i + 1}`, name: `نموذج ${i + 1}` })),
-  []);
 
   const { data: customForms = [] } = useQuery({
     queryKey: ['subject-exam-forms', selectedSubject],
@@ -428,13 +426,13 @@ const AdminQuestions = () => {
   });
 
   const addFormMutation = useMutation({
-    mutationFn: async (name: string) => {
+    mutationFn: async ({ name, position }: { name: string; position: number }) => {
       const formId = name.replace(/\s+/g, '_');
       const { error } = await (supabase.from('subject_exam_forms' as any) as any).insert({
         subject_id: selectedSubject,
         form_id: formId,
         form_name: name,
-        order_index: (customForms.length || 0) + 16,
+        order_index: position,
         created_by: user?.id,
       });
       if (error) throw error;
@@ -442,6 +440,7 @@ const AdminQuestions = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subject-exam-forms'] });
       setNewFormName('');
+      setNewFormPosition(16);
       toast({ title: 'تمت إضافة النموذج ✅' });
     },
     onError: (err: any) => toast({ title: 'خطأ', description: err.message, variant: 'destructive' }),
@@ -460,17 +459,14 @@ const AdminQuestions = () => {
 
   const reorderFormMutation = useMutation({
     mutationFn: async ({ id, direction }: { id: string; direction: 'up' | 'down' }) => {
-      const idx = customForms.findIndex((f: any) => f.id === id);
-      if (idx === -1) return;
-      if (direction === 'up' && idx === 0) return;
-      if (direction === 'down' && idx === customForms.length - 1) return;
-      const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-      const current = customForms[idx];
-      const swap = customForms[swapIdx];
-      await Promise.all([
-        (supabase.from('subject_exam_forms' as any) as any).update({ order_index: swap.order_index }).eq('id', current.id),
-        (supabase.from('subject_exam_forms' as any) as any).update({ order_index: current.order_index }).eq('id', swap.id),
-      ]);
+      const form = customForms.find((f: any) => f.id === id);
+      if (!form) return;
+      const newIndex = direction === 'up' ? form.order_index - 1 : form.order_index + 1;
+      if (newIndex < 1) return;
+      const { error } = await (supabase.from('subject_exam_forms' as any) as any)
+        .update({ order_index: newIndex })
+        .eq('id', id);
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subject-exam-forms'] });
@@ -480,9 +476,20 @@ const AdminQuestions = () => {
 
   const activeExamForms = useMemo(() => {
     if (!isTrialSelected) return EXAM_FORMS;
-    const custom = customForms.map((f: any) => ({ id: f.form_id, name: f.form_name }));
-    return [...defaultTrialForms, ...custom];
-  }, [isTrialSelected, customForms, defaultTrialForms]);
+    // دمج النماذج الافتراضية مع المضافة وترتيبها حسب order_index
+    const defaultWithIndex = Array.from({ length: 15 }, (_, i) => ({
+      id: `Model_${i + 1}`,
+      name: `نموذج ${i + 1}`,
+      order_index: i + 1,
+    }));
+    const customWithIndex = customForms.map((f: any) => ({
+      id: f.form_id,
+      name: f.form_name,
+      order_index: f.order_index,
+    }));
+    const merged = [...defaultWithIndex, ...customWithIndex].sort((a, b) => a.order_index - b.order_index);
+    return merged.map(({ id, name }) => ({ id, name }));
+  }, [isTrialSelected, customForms]);
 
   // --- حفظ جماعي ---
   const bulkSave = useMutation({
@@ -1011,35 +1018,53 @@ const AdminQuestions = () => {
               <Input
                 value={newFormName}
                 onChange={(e) => setNewFormName(e.target.value)}
-                placeholder="اسم النموذج الجديد (مثال: نموذج 16)"
+                placeholder="اسم النموذج (مثال: اسئلة مهمة)"
                 className="rounded-xl h-11 text-right flex-1"
                 dir="rtl"
               />
               <Button
-                onClick={() => { if (newFormName.trim()) addFormMutation.mutate(newFormName.trim()); }}
+                onClick={() => { if (newFormName.trim()) addFormMutation.mutate({ name: newFormName.trim(), position: newFormPosition }); }}
                 disabled={!newFormName.trim() || addFormMutation.isPending}
                 className="gradient-primary text-white rounded-xl px-6 font-black"
               >
                 {addFormMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'إضافة'}
               </Button>
             </div>
+            <div className="flex items-center gap-3">
+              <label className="text-xs text-slate-600 font-black shrink-0">الموضع في القائمة:</label>
+              <div className="flex items-center gap-2 flex-1">
+                <input
+                  type="range"
+                  min={1}
+                  max={50}
+                  value={newFormPosition}
+                  onChange={(e) => setNewFormPosition(parseInt(e.target.value))}
+                  className="flex-1 accent-violet-500"
+                />
+                <span className="text-sm font-black text-violet-600 w-8 text-center">{newFormPosition}</span>
+              </div>
+            </div>
+            <p className="text-xs text-slate-400 font-bold text-right">
+              النماذج 1-15 لها مواضع 1-15 — ضع النموذج قبل رقم معين لإدراجه قبله
+            </p>
             {customForms.length > 0 && (
               <div className="space-y-2">
-                <p className="text-xs text-slate-500 font-black">النماذج المضافة:</p>
-                {customForms.map((f: any, idx: number) => (
+                <p className="text-xs text-slate-500 font-black">النماذج المضافة (الموضع الحالي):</p>
+                {customForms.map((f: any) => (
                   <div key={f.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
                     <span className="text-sm font-bold text-slate-700">{f.form_name}</span>
                     <div className="flex items-center gap-1">
+                      <span className="text-xs text-violet-500 font-black ml-1">#{f.order_index}</span>
                       <button
                         onClick={() => reorderFormMutation.mutate({ id: f.id, direction: 'up' })}
-                        disabled={idx === 0 || reorderFormMutation.isPending}
+                        disabled={f.order_index <= 1 || reorderFormMutation.isPending}
                         className="w-7 h-7 rounded-lg text-slate-500 hover:bg-slate-200 flex items-center justify-center transition-colors disabled:opacity-30"
                       >
                         <ChevronUp className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => reorderFormMutation.mutate({ id: f.id, direction: 'down' })}
-                        disabled={idx === customForms.length - 1 || reorderFormMutation.isPending}
+                        disabled={reorderFormMutation.isPending}
                         className="w-7 h-7 rounded-lg text-slate-500 hover:bg-slate-200 flex items-center justify-center transition-colors disabled:opacity-30"
                       >
                         <ChevronDown className="w-4 h-4" />
