@@ -3,7 +3,7 @@
  * إنشاء غرفة منافسة متقدمة: فرق، خصوصية، جدولة، نوع الأسئلة
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Swords, Users, BookOpen, Hash, Clock, ChevronLeft, Loader2,
@@ -131,7 +131,14 @@ const BattleCreate = () => {
     enabled: !!selectedSubject,
   });
 
-  const maxQ = Math.min(availableCount, 60);
+  const maxQ = availableCount;
+
+  // عند تغيير الفلاتر: اضبط عدد الأسئلة تلقائياً ليكون كل الأسئلة المتاحة
+  useEffect(() => {
+    if (availableCount > 0) {
+      setQuestionsCount(availableCount);
+    }
+  }, [availableCount]);
 
   // سنوات الاختبارات - ثابتة
   const examYears = [...EXAM_YEARS].reverse();
