@@ -101,13 +101,13 @@ const BattleCreate = () => {
 
   // نماذج تجريبية: افتراضي 15 نموذج + أي نماذج مخصصة من قاعدة البيانات
   const defaultTrialForms = useMemo(() =>
-    Array.from({ length: 15 }, (_, i) => ({ id: `Model_${i + 1}`, name: `نموذج ${i + 1}` })),
+    Array.from({ length: 15 }, (_, i) => ({ id: `Model_${i + 1}`, name: `نموذج ${i + 1}`, order_index: i + 1 })),
   []);
 
-  const activeTrialForms = useMemo(() => [
-    ...defaultTrialForms,
-    ...examForms.map(f => ({ id: f.form_id, name: f.form_name })),
-  ], [defaultTrialForms, examForms]);
+  const activeTrialForms = useMemo(() => {
+    const customs = examForms.map((f: any) => ({ id: f.form_id, name: f.form_name, order_index: (f as any).order_index ?? 999 }));
+    return [...defaultTrialForms, ...customs].sort((a, b) => a.order_index - b.order_index).map(({ id, name }) => ({ id, name }));
+  }, [defaultTrialForms, examForms]);
 
   const { data: availableCount = 0 } = useQuery({
     queryKey: ['battle-q-count', selectedSubject, selectedExamYear, selectedExamForm, selectedTrialForm],
