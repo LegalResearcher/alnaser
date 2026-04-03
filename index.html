@@ -99,8 +99,8 @@
         direction: rtl;
         scroll-behavior: smooth;
         overflow-x: hidden;
-        /* منع القفز عند ظهور الـ scrollbar */
         scrollbar-gutter: stable;
+        overscroll-behavior-x: none;
       }
 
       body {
@@ -108,6 +108,7 @@
         background: hsl(210 20% 98%);
         color: hsl(222 47% 11%);
         overflow-x: hidden;
+        overscroll-behavior-x: none;
       }
 
       @media (prefers-color-scheme: dark) {
