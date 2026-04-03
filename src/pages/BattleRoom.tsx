@@ -410,9 +410,7 @@ const BattleRoom = () => {
     if (players.some(p => p.player_name === name && !p.kicked)) {
       toast({ title: '⚠️ هذا الاسم مستخدم بالفعل', variant: 'destructive' }); return;
     }
-    if (room.status === 'active') {
-      toast({ title: '⛔ الاختبار بدأ بالفعل، لا يمكن الانضمام', variant: 'destructive' }); return;
-    }
+    
 
     setJoining(true);
     const avatarColor = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
