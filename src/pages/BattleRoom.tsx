@@ -202,6 +202,12 @@ const BattleRoom = () => {
 
   const locationState = location.state as { playerName?: string; isCreator?: boolean } | null;
 
+  // ── Session restore key (per room code) ──
+  const SESSION_KEY = `alnaseer_battle_session_${code}`;
+  const savedSession = (() => {
+    try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { return null; }
+  })();
+
   const [room, setRoom] = useState<BattleRoom | null>(null);
   const [players, setPlayers] = useState<BattlePlayer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -209,11 +215,11 @@ const BattleRoom = () => {
   const [starting, setStarting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
-  const [myName, setMyName] = useState(locationState?.playerName || localStorage.getItem('alnaseer_student_name') || '');
+  const [myName, setMyName] = useState(locationState?.playerName || savedSession?.playerName || localStorage.getItem('alnaseer_student_name') || '');
   const [joinName, setJoinName] = useState('');
   const [joinPassword, setJoinPassword] = useState('');
   const [myPlayer, setMyPlayer] = useState<BattlePlayer | null>(null);
-  const [isJoined, setIsJoined] = useState(!!locationState?.playerName);
+  const [isJoined, setIsJoined] = useState(!!(locationState?.playerName || savedSession?.playerId));
   const [showWelcome, setShowWelcome] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<'team1' | 'team2'>('team1');
   const [kickedOut, setKickedOut] = useState(false);
@@ -296,9 +302,57 @@ const BattleRoom = () => {
         const { data: pData } = await (supabase.from('battle_players' as any) as any)
           .select('*').eq('room_id', data.id).order('percentage', { ascending: false });
         if (pData) setPlayers(pData);
+
+        // ── Restore from locationState: creator ──
         if (locationState?.isCreator && locationState.playerName) {
           const me = pData?.find((p: BattlePlayer) => p.player_name === locationState.playerName && p.is_creator);
-          if (me) { myPlayerId.current = me.id; setMyPlayer(me); }
+          if (me) {
+            myPlayerId.current = me.id;
+            setMyPlayer(me);
+            localStorage.setItem(SESSION_KEY, JSON.stringify({ playerId: me.id, playerName: me.player_name }));
+          }
+        }
+        // ── Restore from locationState: regular join ──
+        else if (locationState?.playerName && !locationState.isCreator) {
+          const me = pData?.find((p: BattlePlayer) => p.player_name === locationState.playerName && !p.kicked);
+          if (me) {
+            myPlayerId.current = me.id;
+            setMyPlayer(me);
+            localStorage.setItem(SESSION_KEY, JSON.stringify({ playerId: me.id, playerName: me.player_name }));
+          }
+        }
+        // ── Restore from localStorage: page refresh / reconnect ──
+        else if (savedSession?.playerId) {
+          const me = pData?.find((p: BattlePlayer) => p.id === savedSession.playerId && !p.kicked);
+          if (me) {
+            myPlayerId.current = me.id;
+            setMyPlayer(me);
+            setMyName(me.player_name);
+            setIsJoined(true);
+            if (data.status === 'active') {
+              await loadQuestions(data.question_ids as string[]);
+              if (me.answers_json && Object.keys(me.answers_json).length > 0) {
+                setAnswers(me.answers_json as Record<string, string>);
+              }
+              setTimeLeft((data.time_minutes + (data.extra_time_minutes || 0)) * 60);
+              setExamStarted(true);
+              // جلب السؤال الحالي الفعلي من DB — نفس ما يراه بقية المتسابقين الآن
+              const currentQIndex = data.current_question_index ?? 0;
+              setSyncCurrentQ(currentQIndex);
+            } else if (data.status === 'finished') {
+              await loadQuestions(data.question_ids as string[]);
+              if (me.answers_json && Object.keys(me.answers_json).length > 0) {
+                setAnswers(me.answers_json as Record<string, string>);
+              }
+              setExamStarted(true);
+              setExamFinished(true);
+            }
+            toast({ title: 'مرحباً مجدداً ' + me.player_name + ' 👋', description: 'تم استئناف جلستك تلقائياً' });
+          } else {
+            // طُرد أو لا يوجد — امسح الجلسة
+            localStorage.removeItem(SESSION_KEY);
+            setIsJoined(false);
+          }
         }
       }
       setLoading(false);
@@ -326,6 +380,7 @@ const BattleRoom = () => {
               setMyPlayer(updated);
               if (updated.kicked && !kickedOut) {
                 setKickedOut(true);
+                localStorage.removeItem(SESSION_KEY);
                 toast({ title: '⛔ تم طردك من الغرفة!', variant: 'destructive' });
               }
             }
@@ -428,6 +483,8 @@ const BattleRoom = () => {
       setIsJoined(true);
       setShowWelcome(true);
       localStorage.setItem('alnaseer_student_name', name);
+      // ── حفظ جلسة غرفة المنافسة لاستئنافها عند العودة ──
+      localStorage.setItem(SESSION_KEY, JSON.stringify({ playerId: data.id, playerName: name }));
 
       // Late joiner: load questions and start exam from current synced question
       if (isLateJoin) {
@@ -518,6 +575,11 @@ const BattleRoom = () => {
       const { questionIndex, phase, timeLeft: tl, totalQs } = payload;
       setSyncCurrentQ(questionIndex);
       setSyncPhase(phase);
+      // حفظ السؤال الحالي للاستئناف عند العودة
+      try {
+        const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+        if (s) localStorage.setItem(SESSION_KEY, JSON.stringify({ ...s, currentQ: questionIndex, phase }));
+      } catch {}
       setSyncTimeLeft(tl);
       setMyAnswerGiven(false);
       setSelectedAnswer(null);
@@ -558,17 +620,28 @@ const BattleRoom = () => {
   };
 
   // ── Sync Quiz Logic (Creator Only) ──
-  const broadcastQuizState = (questionIndex: number, phase: 'question' | 'reveal', timeLeft: number, totalQs: number) => {
+  const broadcastQuizState = async (questionIndex: number, phase: 'question' | 'reveal', timeLeft: number, totalQs: number) => {
     if (!syncChannelRef.current) return;
     syncChannelRef.current.send({
       type: 'broadcast', event: 'quiz_state',
       payload: { questionIndex, phase, timeLeft, totalQs }
     });
+    // حفظ السؤال الحالي في DB حتى يراه العائدون فور رجوعهم
+    if (room?.id) {
+      await (supabase.from('battle_rooms' as any) as any)
+        .update({ current_question_index: questionIndex })
+        .eq('id', room.id);
+    }
   };
 
   const startSyncQuestionWithList = (qIndex: number, timePerQuestion: number, qList: Question[]) => {
     setSyncCurrentQ(qIndex);
     setSyncPhase('question');
+    // حفظ السؤال الحالي للاستئناف (المنشئ)
+    try {
+      const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+      if (s) localStorage.setItem(SESSION_KEY, JSON.stringify({ ...s, currentQ: qIndex, phase: 'question' }));
+    } catch {}
     setSyncTimeLeft(timePerQuestion);
     setMyAnswerGiven(false);
     setSelectedAnswer(null);
@@ -666,6 +739,8 @@ const BattleRoom = () => {
     if (examFinished || !myPlayerId.current || !room) return;
     clearInterval(timerRef.current!);
     setExamFinished(true);
+    // مسح جلسة الغرفة بعد الانتهاء النهائي
+    localStorage.removeItem(SESSION_KEY);
 
     const elapsed = (room.time_minutes + (room.extra_time_minutes || 0)) * 60 - timeLeft;
     const usedAnswers = finalAnswers || answers;
