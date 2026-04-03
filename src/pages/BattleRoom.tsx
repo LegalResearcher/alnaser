@@ -384,7 +384,7 @@ const BattleRoom = () => {
       return;
     }
 
-    if (room.locked) { toast({ title: '🔒 الغرفة مغلقة، لا يمكن الانضمام بعد البدء', variant: 'destructive' }); return; }
+    
 
     // ✅ التحقق من كلمة المرور — سواء من is_private أو من battle_password الأدمن
     const adminPassword: string | null = (room.subjects as any)?.battle_password || null;
