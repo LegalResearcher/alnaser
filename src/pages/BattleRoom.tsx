@@ -414,8 +414,10 @@ const BattleRoom = () => {
 
     setJoining(true);
     const avatarColor = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
+    const isLateJoin = room.status === 'active';
     const { data } = await (supabase.from('battle_players' as any) as any).insert({
-      room_id: room.id, player_name: name, is_creator: false, status: 'waiting',
+      room_id: room.id, player_name: name, is_creator: false,
+      status: isLateJoin ? 'playing' : 'waiting',
       avatar_color: avatarColor,
       team: room.allow_teams ? selectedTeam : null,
     }).select().single();
@@ -426,6 +428,18 @@ const BattleRoom = () => {
       setIsJoined(true);
       setShowWelcome(true);
       localStorage.setItem('alnaseer_student_name', name);
+
+      // Late joiner: load questions and start exam from current synced question
+      if (isLateJoin) {
+        const loadedQs = await loadQuestions(room.question_ids);
+        setTimeLeft((room.time_minutes + (room.extra_time_minutes || 0)) * 60);
+        setExamStarted(true);
+        if (loadedQs.length) {
+          // syncCurrentQ is already being updated via the realtime broadcast channel
+          // The late joiner will automatically see the current question from the sync channel
+          toast({ title: '⚡ انضممت للمنافسة الجارية!', description: `ستبدأ من السؤال الحالي` });
+        }
+      }
     }
     setJoining(false);
   };
