@@ -292,20 +292,21 @@ const ExamStart = () => {
   );
 
   const isTrialSelected = selectedYear === 'trial';
-  const defaultTrialForms = useMemo(() => Array.from({ length: 15 }, (_, i) => ({ id: `Model_${i + 1}`, name: `نموذج ${i + 1}` })), []);
+  const defaultTrialForms = useMemo(() => Array.from({ length: 15 }, (_, i) => ({ id: `Model_${i + 1}`, name: `نموذج ${i + 1}`, order_index: i + 1 })), []);
 
   const { data: customForms = [] } = useQuery({
     queryKey: ['subject-exam-forms', subjectId],
     queryFn: async () => {
       const { data } = await (supabase.from('subject_exam_forms' as any) as any).select('*').eq('subject_id', subjectId).order('order_index');
-      return (data || []) as { form_id: string; form_name: string }[];
+      return (data || []) as { form_id: string; form_name: string; order_index: number }[];
     },
     enabled: isTrialSelected && !!subjectId,
   });
 
-  const activeTrialForms = useMemo(() =>
-    [...defaultTrialForms, ...customForms.map(f => ({ id: f.form_id, name: f.form_name }))],
-  [defaultTrialForms, customForms]);
+  const activeTrialForms = useMemo(() => {
+    const customs = customForms.map(f => ({ id: f.form_id, name: f.form_name, order_index: f.order_index }));
+    return [...defaultTrialForms, ...customs].sort((a, b) => a.order_index - b.order_index).map(({ id, name }) => ({ id, name }));
+  }, [defaultTrialForms, customForms]);
 
   const activeExamForms = useMemo(() => EXAM_FORMS, []);
 
