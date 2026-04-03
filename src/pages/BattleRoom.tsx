@@ -1602,7 +1602,7 @@ const BattleRoom = () => {
                   <Button onClick={handleJoin} disabled={joining || !joinName.trim()}
                     className="w-full h-11 rounded-xl font-black bg-gradient-to-l from-amber-500 to-orange-600 text-white">
                     {joining ? <Loader2 className="w-4 h-4 animate-spin" /> :
-                      room.status === 'active' ? '⛔ الاختبار جارٍ' : 'انضم الآن 🚀'}
+                      room.status === 'active' ? '⚡ انضم الآن (جارٍ) 🚀' : 'انضم الآن 🚀'}
                   </Button>
                 </div>
               )}
