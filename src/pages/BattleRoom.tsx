@@ -384,7 +384,7 @@ const BattleRoom = () => {
       return;
     }
 
-    if (room.locked) { toast({ title: '🔒 الغرفة مغلقة، لا يمكن الانضمام بعد البدء', variant: 'destructive' }); return; }
+    
 
     // ✅ التحقق من كلمة المرور — سواء من is_private أو من battle_password الأدمن
     const adminPassword: string | null = (room.subjects as any)?.battle_password || null;
@@ -437,7 +437,7 @@ const BattleRoom = () => {
     if (!room) return;
     setStarting(true);
     await (supabase.from('battle_rooms' as any) as any).update({
-      status: 'active', started_at: new Date().toISOString(), locked: true,
+      status: 'active', started_at: new Date().toISOString(), locked: false,
     }).eq('id', room.id);
     if (myPlayerId.current) {
       await (supabase.from('battle_players' as any) as any).update({ status: 'playing' }).eq('id', myPlayerId.current);

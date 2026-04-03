@@ -531,9 +531,9 @@ const BattleCreate = () => {
                     {timeMinutes >= 60 ? `${timeMinutes / 60} دقيقة` : `${timeMinutes} ثانية`}
                   </span>
                 </div>
-                <Slider value={[timeMinutes]} onValueChange={([v]) => setTimeMinutes(v)} min={30} max={300} step={30} className="py-1" />
+                <Slider value={[timeMinutes]} onValueChange={([v]) => setTimeMinutes(v)} min={15} max={300} step={15} className="py-1" />
                 <div className="flex justify-between text-[9px] text-slate-400 font-bold">
-                  <span>30 ثانية</span>
+                  <span>15 ثانية</span>
                   <span>5 دقائق</span>
                 </div>
               </div>
