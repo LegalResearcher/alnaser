@@ -437,7 +437,7 @@ const BattleRoom = () => {
     if (!room) return;
     setStarting(true);
     await (supabase.from('battle_rooms' as any) as any).update({
-      status: 'active', started_at: new Date().toISOString(), locked: true,
+      status: 'active', started_at: new Date().toISOString(), locked: false,
     }).eq('id', room.id);
     if (myPlayerId.current) {
       await (supabase.from('battle_players' as any) as any).update({ status: 'playing' }).eq('id', myPlayerId.current);
