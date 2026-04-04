@@ -129,13 +129,24 @@ const AdminStatistics = () => {
         .select('id, name')
         .order('order_index');
 
-      const { data: analytics } = await supabase
-        .from('site_analytics')
-        .select('page_path').limit(50000)
-        .like('page_path', '/levels/%');
+      // جلب جميع بيانات التحليلات عبر التصفح
+      let allAnalytics: any[] = [];
+      let from = 0;
+      const PAGE_SIZE = 1000;
+      while (true) {
+        const { data: batch } = await supabase
+          .from('site_analytics')
+          .select('page_path')
+          .like('page_path', '/levels/%')
+          .range(from, from + PAGE_SIZE - 1);
+        if (!batch || batch.length === 0) break;
+        allAnalytics = [...allAnalytics, ...batch];
+        if (batch.length < PAGE_SIZE) break;
+        from += PAGE_SIZE;
+      }
 
       const visitMap: Record<string, number> = {};
-      analytics?.forEach((row) => {
+      allAnalytics.forEach((row) => {
         const parts = row.page_path.split('/');
         const levelId = parts[2];
         if (levelId) {
