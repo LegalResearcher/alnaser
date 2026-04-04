@@ -289,15 +289,15 @@ const BattleRoom = () => {
       const batch = ids.slice(i, i + BATCH_SIZE);
       const { data } = await supabase
         .from('questions')
-        .select('*')
+        .select('id, question_text, option_a, option_b, option_c, option_d, correct_option')
         .in('id', batch)
         .eq('status', 'active')
         .limit(BATCH_SIZE);
-      if (data) allData = [...allData, ...data];
+      if (data) allData = [...allData, ...(data as unknown as Question[])];
     }
 
     // Sort by the original ids order to ensure all players see the same question order
-    const sorted = allData.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id)) as Question[];
+    const sorted = allData.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
     if (sorted.length) setQuestions(sorted);
     return sorted;
   };
