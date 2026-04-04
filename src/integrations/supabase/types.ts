@@ -157,6 +157,7 @@ export type Database = {
           code: string
           created_at: string | null
           creator_name: string
+          current_question_index: number
           exam_form: string | null
           exam_form_id: string | null
           exam_form_name: string | null
@@ -187,6 +188,7 @@ export type Database = {
           code: string
           created_at?: string | null
           creator_name: string
+          current_question_index?: number
           exam_form?: string | null
           exam_form_id?: string | null
           exam_form_name?: string | null
@@ -217,6 +219,7 @@ export type Database = {
           code?: string
           created_at?: string | null
           creator_name?: string
+          current_question_index?: number
           exam_form?: string | null
           exam_form_id?: string | null
           exam_form_name?: string | null
