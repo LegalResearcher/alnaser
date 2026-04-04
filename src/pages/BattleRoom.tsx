@@ -282,7 +282,7 @@ const BattleRoom = () => {
   }, [room?.id]);
 
   const loadQuestions = async (ids: string[]) => {
-    const { data } = await supabase.from('questions').select('*').in('id', ids).eq('status', 'active');
+    const { data } = await supabase.from('questions').select('*').in('id', ids).eq('status', 'active').limit(10000);
     // Sort by the original ids order to ensure all players see the same question order
     const sorted = (data || []).sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id)) as Question[];
     if (sorted.length) setQuestions(sorted);
