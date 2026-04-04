@@ -282,9 +282,22 @@ const BattleRoom = () => {
   }, [room?.id]);
 
   const loadQuestions = async (ids: string[]) => {
-    const { data } = await supabase.from('questions').select('*').in('id', ids).eq('status', 'active').limit(10000);
+    const BATCH_SIZE = 100;
+    let allData: Question[] = [];
+
+    for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+      const batch = ids.slice(i, i + BATCH_SIZE);
+      const { data } = await supabase
+        .from('questions')
+        .select('*')
+        .in('id', batch)
+        .eq('status', 'active')
+        .limit(BATCH_SIZE);
+      if (data) allData = [...allData, ...data];
+    }
+
     // Sort by the original ids order to ensure all players see the same question order
-    const sorted = (data || []).sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id)) as Question[];
+    const sorted = allData.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id)) as Question[];
     if (sorted.length) setQuestions(sorted);
     return sorted;
   };
