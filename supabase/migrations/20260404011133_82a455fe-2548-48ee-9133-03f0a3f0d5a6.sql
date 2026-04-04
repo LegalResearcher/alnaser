@@ -1,0 +1,1 @@
+ALTER TABLE public.battle_rooms ADD COLUMN current_question_index integer NOT NULL DEFAULT 0;
