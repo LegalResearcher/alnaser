@@ -1185,7 +1185,8 @@ const BattleRoom = () => {
 
   // ── EXAM VIEW (Sync QuizBot Mode) ──
   if (examStarted && !examFinished && questions.length > 0) {
-    const q = questions[syncCurrentQ] || questions[0];
+    const q = questions[syncCurrentQ];
+    if (!q) return <MainLayout><div className="min-h-[calc(100vh-80px)] flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div></MainLayout>;
     const options = [
       { key: 'A', label: 'أ', text: q.option_a },
       { key: 'B', label: 'ب', text: q.option_b },
