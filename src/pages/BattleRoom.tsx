@@ -289,15 +289,15 @@ const BattleRoom = () => {
       const batch = ids.slice(i, i + BATCH_SIZE);
       const { data } = await supabase
         .from('questions')
-        .select('*')
+        .select('id, question_text, option_a, option_b, option_c, option_d, correct_option')
         .in('id', batch)
         .eq('status', 'active')
         .limit(BATCH_SIZE);
-      if (data) allData = [...allData, ...data];
+      if (data) allData = [...allData, ...(data as unknown as Question[])];
     }
 
     // Sort by the original ids order to ensure all players see the same question order
-    const sorted = allData.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id)) as Question[];
+    const sorted = allData.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
     if (sorted.length) setQuestions(sorted);
     return sorted;
   };
@@ -373,6 +373,12 @@ const BattleRoom = () => {
     init();
   }, [code]);
 
+  // ── Ref to track examStarted without stale closures ──
+  const examStartedRef = useRef(false);
+  useEffect(() => { examStartedRef.current = examStarted; }, [examStarted]);
+  const kickedOutRef = useRef(false);
+  useEffect(() => { kickedOutRef.current = kickedOut; }, [kickedOut]);
+
   // ── Realtime ──
   useEffect(() => {
     if (!room?.id) return;
@@ -391,7 +397,7 @@ const BattleRoom = () => {
               .sort((a, b) => b.percentage - a.percentage));
             if (updated.id === myPlayerId.current) {
               setMyPlayer(updated);
-              if (updated.kicked && !kickedOut) {
+              if (updated.kicked && !kickedOutRef.current) {
                 setKickedOut(true);
                 localStorage.removeItem(SESSION_KEY);
                 toast({ title: '⛔ تم طردك من الغرفة!', variant: 'destructive' });
@@ -403,23 +409,17 @@ const BattleRoom = () => {
         async (payload) => {
           const updated = payload.new as any;
           setRoom(prev => prev ? { ...prev, ...updated } : prev);
-          if (updated.status === 'active' && !examStarted) {
+          if (updated.status === 'active' && !examStartedRef.current) {
             await loadQuestions(updated.question_ids as string[]);
             setTimeLeft((updated.time_minutes + (updated.extra_time_minutes || 0)) * 60);
             setExamStarted(true);
             toast({ title: '🚀 انطلقت المنافسة!' });
           }
           if (updated.status === 'finished') setExamFinished(true);
-          // Extra time added
-          if (updated.extra_time_minutes > (room?.extra_time_minutes || 0)) {
-            const added = (updated.extra_time_minutes - (room?.extra_time_minutes || 0)) * 60;
-            setTimeLeft(prev => prev + added);
-            toast({ title: `⏱ تمت إضافة ${updated.extra_time_minutes - (room?.extra_time_minutes || 0)} دقيقة للوقت!` });
-          }
         })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [room?.id, myName, examStarted, kickedOut]);
+  }, [room?.id, myName]);
 
   // ── Timer ──
   useEffect(() => {

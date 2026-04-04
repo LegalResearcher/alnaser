@@ -20,21 +20,35 @@ const AdminStatistics = () => {
   const { data: stats, isLoading } = useQuery({
     queryKey: ['statistics'],
     queryFn: async () => {
-      // إصلاح: جلب العدد الكامل بدون حد الـ 1000 الافتراضي
-      const [analytics, results, subjects] = await Promise.all([
-        supabase.from('site_analytics').select('id', { count: 'exact', head: true }),
-        supabase.from('exam_results').select('id, passed, subject_id, created_at, exam_form').limit(10000),
-        supabase.from('subjects').select('id, name, level_id, levels(name)').limit(1000),
-      ]);
+      // جلب العدد الكامل للزيارات
+      const analyticsCount = await supabase.from('site_analytics').select('id', { count: 'exact', head: true });
 
-      const subjectMap = new Map(subjects.data?.map(s => [s.id, s.name]) || []);
-      const levelMap = new Map(subjects.data?.map(s => [s.id, (s.levels as any)?.name || '']) || []);
+      // جلب المواد
+      const { data: subjectsData } = await supabase.from('subjects').select('id, name, level_id, levels(name)').limit(1000);
+
+      // جلب جميع نتائج الاختبارات عبر التصفح (pagination) لتجاوز حد 1000
+      let allResults: any[] = [];
+      let from = 0;
+      const PAGE_SIZE = 1000;
+      while (true) {
+        const { data: batch, error } = await supabase
+          .from('exam_results')
+          .select('id, passed, subject_id, created_at, exam_form')
+          .range(from, from + PAGE_SIZE - 1);
+        if (error || !batch || batch.length === 0) break;
+        allResults = [...allResults, ...batch];
+        if (batch.length < PAGE_SIZE) break;
+        from += PAGE_SIZE;
+      }
+
+      const subjectMap = new Map(subjectsData?.map(s => [s.id, s.name]) || []);
+      const levelMap = new Map(subjectsData?.map(s => [s.id, (s.levels as any)?.name || '']) || []);
       const examsBySubject: Record<string, number> = {};
       const passedBySubject: Record<string, number> = {};
       const failedBySubject: Record<string, number> = {};
       const subjectLevelMap: Record<string, string> = {};
 
-      results.data?.forEach((r: any) => {
+      allResults.forEach((r: any) => {
         const name = subjectMap.get(r.subject_id) || 'غير معروف';
         const level = levelMap.get(r.subject_id) || '';
         examsBySubject[name] = (examsBySubject[name] || 0) + 1;
@@ -43,7 +57,6 @@ const AdminStatistics = () => {
         } else {
           failedBySubject[name] = (failedBySubject[name] || 0) + 1;
         }
-        // حفظ اسم المستوى لكل مادة
         if (!subjectLevelMap[name]) subjectLevelMap[name] = level;
       });
 
@@ -52,38 +65,34 @@ const AdminStatistics = () => {
         .sort((a, b) => b.count - a.count)
         .slice(0, 6);
 
-      // أكثر المواد رسوباً (top 5)
       const topFailed = Object.entries(failedBySubject)
         .map(([name, count]) => ({ name, count, level: subjectLevelMap[name] || '' }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
 
-      // أكثر المواد نجاحاً (top 5)
       const topPassed = Object.entries(passedBySubject)
         .map(([name, count]) => ({ name, count, level: subjectLevelMap[name] || '' }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
 
-      // إصلاح: ترتيب التواريخ قبل slice لضمان أحدث 7 أيام فعلاً
       const dailyExams: Record<string, { label: string; count: number }> = {};
-      results.data?.forEach((r: any) => {
+      allResults.forEach((r: any) => {
         const d = new Date(r.created_at);
-        const key = d.toISOString().split('T')[0]; // YYYY-MM-DD للترتيب الصحيح
+        const key = d.toISOString().split('T')[0];
         const label = d.toLocaleDateString('ar-SA');
         if (!dailyExams[key]) dailyExams[key] = { label, count: 0 };
         dailyExams[key].count += 1;
       });
 
       const dailyData = Object.entries(dailyExams)
-        .sort(([a], [b]) => a.localeCompare(b)) // ترتيب تصاعدي حسب التاريخ
+        .sort(([a], [b]) => a.localeCompare(b))
         .slice(-7)
         .map(([, val]) => ({ date: val.label, count: val.count }));
 
-      const passed = results.data?.filter((r: any) => r.passed).length || 0;
-      const failed = (results.data?.length || 0) - passed;
+      const passed = allResults.filter((r: any) => r.passed).length;
+      const failed = allResults.length - passed;
 
-      // آخر 10 اختبارات مرتبة حسب التاريخ
-      const recentExams = [...(results.data || [])]
+      const recentExams = [...allResults]
         .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
         .slice(0, 10)
         .map((r: any) => ({
@@ -95,9 +104,9 @@ const AdminStatistics = () => {
         }));
 
       return {
-        totalVisits: analytics.count || 0,
-        totalExams: results.data?.length || 0,
-        passRate: results.data?.length ? Math.round((passed / results.data.length) * 100) : 0,
+        totalVisits: analyticsCount.count || 0,
+        totalExams: allResults.length,
+        passRate: allResults.length ? Math.round((passed / allResults.length) * 100) : 0,
         subjectData,
         dailyData,
         topFailed,
@@ -120,13 +129,24 @@ const AdminStatistics = () => {
         .select('id, name')
         .order('order_index');
 
-      const { data: analytics } = await supabase
-        .from('site_analytics')
-        .select('page_path').limit(50000)
-        .like('page_path', '/levels/%');
+      // جلب جميع بيانات التحليلات عبر التصفح
+      let allAnalytics: any[] = [];
+      let from = 0;
+      const PAGE_SIZE = 1000;
+      while (true) {
+        const { data: batch } = await supabase
+          .from('site_analytics')
+          .select('page_path')
+          .like('page_path', '/levels/%')
+          .range(from, from + PAGE_SIZE - 1);
+        if (!batch || batch.length === 0) break;
+        allAnalytics = [...allAnalytics, ...batch];
+        if (batch.length < PAGE_SIZE) break;
+        from += PAGE_SIZE;
+      }
 
       const visitMap: Record<string, number> = {};
-      analytics?.forEach((row) => {
+      allAnalytics.forEach((row) => {
         const parts = row.page_path.split('/');
         const levelId = parts[2];
         if (levelId) {
