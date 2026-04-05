@@ -275,17 +275,45 @@ const AdminBattleRooms = () => {
   }, [rooms, filterLevel, filterSubject, filterStatus, searchQuery, subjects]);
 
   // ─── إحصائيات سريعة ────────────────────────────────────────
+  const { data: savedBattleStats } = useQuery({
+    queryKey: ['platform-battle-stats'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('platform_stats' as any)
+        .select('total_battle_rooms, total_battle_finished, total_battle_players')
+        .eq('id', 1)
+        .single();
+      return data as {
+        total_battle_rooms:    number;
+        total_battle_finished: number;
+        total_battle_players:  number;
+      } | null;
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
   const stats = useMemo(() => {
-    const total = rooms.length;
-    const active = rooms.filter((r: any) => r.status === 'active').length;
-    const finished = rooms.filter((r: any) => r.status === 'finished').length;
-    const allPlayers = rooms.flatMap((r: any) => r.battle_players || []);
+    const archivedRooms    = savedBattleStats?.total_battle_rooms    ?? 0;
+    const archivedFinished = savedBattleStats?.total_battle_finished ?? 0;
+    const archivedPlayers  = savedBattleStats?.total_battle_players  ?? 0;
+
+    const currentTotal    = rooms.length;
+    const currentActive   = rooms.filter((r: any) => r.status === 'active').length;
+    const currentFinished = rooms.filter((r: any) => r.status === 'finished').length;
+    const allPlayers      = rooms.flatMap((r: any) => r.battle_players || []);
     const finishedPlayers = allPlayers.filter((p: any) => p.status === 'finished');
-    const avgSuccess = finishedPlayers.length > 0
+    const avgSuccess      = finishedPlayers.length > 0
       ? Math.round(finishedPlayers.reduce((acc: number, p: any) => acc + (p.percentage || 0), 0) / finishedPlayers.length)
       : 0;
-    return { total, active, finished, totalPlayers: allPlayers.length, avgSuccess };
-  }, [rooms]);
+
+    return {
+      total:        archivedRooms    + currentTotal,
+      active:       currentActive,
+      finished:     archivedFinished + currentFinished,
+      totalPlayers: archivedPlayers  + allPlayers.length,
+      avgSuccess,
+    };
+  }, [rooms, savedBattleStats]);
 
   // ─── بناء شرط الفلتر المشترك ─────────────────────────────
   const buildSubjectIds = (): string[] | 'all' | null => {
