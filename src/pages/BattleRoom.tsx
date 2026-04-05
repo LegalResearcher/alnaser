@@ -415,7 +415,11 @@ const BattleRoom = () => {
             setExamStarted(true);
             toast({ title: '🚀 انطلقت المنافسة!' });
           }
-          if (updated.status === 'finished') setExamFinished(true);
+          if (updated.status === 'finished' && !examFinishedRef.current) {
+            // حفظ نتائج اللاعب الحالي قبل إظهار النتائج
+            if (syncTimerRef.current) clearInterval(syncTimerRef.current);
+            await handleFinishExam();
+          }
         })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
