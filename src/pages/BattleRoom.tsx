@@ -378,6 +378,8 @@ const BattleRoom = () => {
   useEffect(() => { examStartedRef.current = examStarted; }, [examStarted]);
   const kickedOutRef = useRef(false);
   useEffect(() => { kickedOutRef.current = kickedOut; }, [kickedOut]);
+  const examFinishedRef = useRef(false);
+  useEffect(() => { examFinishedRef.current = examFinished; }, [examFinished]);
 
   // ── Realtime ──
   useEffect(() => {
@@ -415,7 +417,11 @@ const BattleRoom = () => {
             setExamStarted(true);
             toast({ title: '🚀 انطلقت المنافسة!' });
           }
-          if (updated.status === 'finished') setExamFinished(true);
+          if (updated.status === 'finished' && !examFinishedRef.current) {
+            // حفظ نتائج اللاعب الحالي قبل إظهار النتائج
+            if (syncTimerRef.current) clearInterval(syncTimerRef.current);
+            await handleFinishExam();
+          }
         })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -554,6 +560,9 @@ const BattleRoom = () => {
 
   const handleForceFinish = async () => {
     if (!room) return;
+    // حفظ نتائج المنشئ أولاً قبل إنهاء الغرفة
+    if (syncTimerRef.current) clearInterval(syncTimerRef.current);
+    await handleFinishExam();
     await (supabase.from('battle_rooms' as any) as any).update({
       status: 'finished', finished_at: new Date().toISOString()
     }).eq('id', room.id);
