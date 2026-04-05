@@ -498,6 +498,54 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_stats: {
+        Row: {
+          exams_by_subject: Json
+          failed_by_subject: Json
+          id: number
+          level_visits: Json
+          passed_by_subject: Json
+          total_battle_finished: number
+          total_battle_players: number
+          total_battle_rooms: number
+          total_exams: number
+          total_failed: number
+          total_passed: number
+          total_visits: number
+          updated_at: string | null
+        }
+        Insert: {
+          exams_by_subject?: Json
+          failed_by_subject?: Json
+          id?: number
+          level_visits?: Json
+          passed_by_subject?: Json
+          total_battle_finished?: number
+          total_battle_players?: number
+          total_battle_rooms?: number
+          total_exams?: number
+          total_failed?: number
+          total_passed?: number
+          total_visits?: number
+          updated_at?: string | null
+        }
+        Update: {
+          exams_by_subject?: Json
+          failed_by_subject?: Json
+          id?: number
+          level_visits?: Json
+          passed_by_subject?: Json
+          total_battle_finished?: number
+          total_battle_players?: number
+          total_battle_rooms?: number
+          total_exams?: number
+          total_failed?: number
+          total_passed?: number
+          total_visits?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       question_reports: {
         Row: {
           created_at: string
