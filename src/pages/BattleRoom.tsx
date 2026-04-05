@@ -292,7 +292,6 @@ const BattleRoom = () => {
         .from('questions')
         .select('id, question_text, option_a, option_b, option_c, option_d, correct_option')
         .in('id', batch)
-        .eq('status', 'active')
         .limit(BATCH_SIZE);
       if (data) allData = [...allData, ...(data as unknown as Question[])];
     }
@@ -808,10 +807,12 @@ const BattleRoom = () => {
     } catch (_) {}
 
     const { data: allP } = await (supabase.from('battle_players' as any) as any)
-      .select('status, kicked').eq('room_id', room.id);
+      .select('status, kicked, is_creator').eq('room_id', room.id);
     const activePlayers = allP?.filter((p: any) => !p.kicked);
     const allDone = activePlayers?.every((p: any) => p.status === 'finished');
-    if (allDone) {
+    // فقط المنشئ هو من يُغلق الغرفة عند انتهاء الجميع، لمنع إغلاقها مبكراً
+    const creatorDone = activePlayers?.find((p: any) => p.is_creator)?.status === 'finished';
+    if (allDone && creatorDone) {
       await (supabase.from('battle_rooms' as any) as any).update({
         status: 'finished', finished_at: new Date().toISOString(),
       }).eq('id', room.id);
