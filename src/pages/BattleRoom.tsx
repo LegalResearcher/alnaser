@@ -378,6 +378,8 @@ const BattleRoom = () => {
   useEffect(() => { examStartedRef.current = examStarted; }, [examStarted]);
   const kickedOutRef = useRef(false);
   useEffect(() => { kickedOutRef.current = kickedOut; }, [kickedOut]);
+  const examFinishedRef = useRef(false);
+  useEffect(() => { examFinishedRef.current = examFinished; }, [examFinished]);
 
   // ── Realtime ──
   useEffect(() => {
