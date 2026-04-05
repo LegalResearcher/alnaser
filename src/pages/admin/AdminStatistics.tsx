@@ -20,13 +20,31 @@ const AdminStatistics = () => {
   const { data: stats, isLoading } = useQuery({
     queryKey: ['statistics'],
     queryFn: async () => {
-      // جلب العدد الكامل للزيارات
-      const analyticsCount = await supabase.from('site_analytics').select('id', { count: 'exact', head: true });
+      // جلب الإحصائيات التراكمية المحفوظة
+      const { data: savedStats } = await supabase
+        .from('platform_stats' as any)
+        .select('*')
+        .eq('id', 1)
+        .single();
 
-      // جلب المواد
-      const { data: subjectsData } = await supabase.from('subjects').select('id, name, level_id, levels(name)').limit(1000);
+      const archivedVisits      = (savedStats?.total_visits  ?? 0) as number;
+      const archivedExams       = (savedStats?.total_exams   ?? 0) as number;
+      const archivedPassed      = (savedStats?.total_passed  ?? 0) as number;
+      const archivedFailed      = (savedStats?.total_failed  ?? 0) as number;
+      const archivedBySubjectE  = (savedStats?.exams_by_subject   ?? {}) as Record<string, number>;
+      const archivedBySubjectP  = (savedStats?.passed_by_subject  ?? {}) as Record<string, number>;
+      const archivedBySubjectF  = (savedStats?.failed_by_subject  ?? {}) as Record<string, number>;
 
-      // جلب جميع نتائج الاختبارات عبر التصفح (pagination) لتجاوز حد 1000
+      // جلب البيانات الحالية (المتبقية في Supabase)
+      const analyticsCount = await supabase
+        .from('site_analytics')
+        .select('id', { count: 'exact', head: true });
+
+      const { data: subjectsData } = await supabase
+        .from('subjects')
+        .select('id, name, level_id, levels(name)')
+        .limit(1000);
+
       let allResults: any[] = [];
       let from = 0;
       const PAGE_SIZE = 1000;
@@ -41,17 +59,21 @@ const AdminStatistics = () => {
         from += PAGE_SIZE;
       }
 
+      // دمج الأرقام الحالية مع المحفوظة
+      const totalVisits = archivedVisits + (analyticsCount.count ?? 0);
+
       const subjectMap = new Map(subjectsData?.map(s => [s.id, s.name]) || []);
-      const levelMap = new Map(subjectsData?.map(s => [s.id, (s.levels as any)?.name || '']) || []);
-      const examsBySubject: Record<string, number> = {};
-      const passedBySubject: Record<string, number> = {};
-      const failedBySubject: Record<string, number> = {};
-      const subjectLevelMap: Record<string, string> = {};
+      const levelMap   = new Map(subjectsData?.map(s => [s.id, (s.levels as any)?.name || '']) || []);
+
+      const examsBySubject:  Record<string, number> = { ...archivedBySubjectE };
+      const passedBySubject: Record<string, number> = { ...archivedBySubjectP };
+      const failedBySubject: Record<string, number> = { ...archivedBySubjectF };
+      const subjectLevelMap: Record<string, string>  = {};
 
       allResults.forEach((r: any) => {
-        const name = subjectMap.get(r.subject_id) || 'غير معروف';
-        const level = levelMap.get(r.subject_id) || '';
-        examsBySubject[name] = (examsBySubject[name] || 0) + 1;
+        const name  = subjectMap.get(r.subject_id) || 'غير معروف';
+        const level = levelMap.get(r.subject_id)   || '';
+        examsBySubject[name]  = (examsBySubject[name]  || 0) + 1;
         if (r.passed) {
           passedBySubject[name] = (passedBySubject[name] || 0) + 1;
         } else {
@@ -77,44 +99,47 @@ const AdminStatistics = () => {
 
       const dailyExams: Record<string, { label: string; count: number }> = {};
       allResults.forEach((r: any) => {
-        const d = new Date(r.created_at);
-        const key = d.toISOString().split('T')[0];
+        const d     = new Date(r.created_at);
+        const key   = d.toISOString().split('T')[0];
         const label = d.toLocaleDateString('ar-SA');
         if (!dailyExams[key]) dailyExams[key] = { label, count: 0 };
         dailyExams[key].count += 1;
       });
-
       const dailyData = Object.entries(dailyExams)
         .sort(([a], [b]) => a.localeCompare(b))
         .slice(-7)
         .map(([, val]) => ({ date: val.label, count: val.count }));
 
-      const passed = allResults.filter((r: any) => r.passed).length;
-      const failed = allResults.length - passed;
+      const currentPassed = allResults.filter((r: any) => r.passed).length;
+      const currentFailed = allResults.length - currentPassed;
+      const totalPassed   = archivedPassed + currentPassed;
+      const totalFailed   = archivedFailed + currentFailed;
+      const totalExams    = archivedExams  + allResults.length;
+      const passRate      = totalExams > 0 ? Math.round((totalPassed / totalExams) * 100) : 0;
 
       const recentExams = [...allResults]
         .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
         .slice(0, 10)
         .map((r: any) => ({
-          name: subjectMap.get(r.subject_id) || 'غير معروف',
-          passed: r.passed,
-          date: new Date(r.created_at).toLocaleDateString('ar-SA'),
-          time: new Date(r.created_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
+          name:      subjectMap.get(r.subject_id) || 'غير معروف',
+          passed:    r.passed,
+          date:      new Date(r.created_at).toLocaleDateString('ar-SA'),
+          time:      new Date(r.created_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
           exam_form: r.exam_form || null,
         }));
 
       return {
-        totalVisits: analyticsCount.count || 0,
-        totalExams: allResults.length,
-        passRate: allResults.length ? Math.round((passed / allResults.length) * 100) : 0,
+        totalVisits,
+        totalExams,
+        passRate,
         subjectData,
         dailyData,
         topFailed,
         topPassed,
         recentExams,
         passFailData: [
-          { name: 'ناجح', value: passed },
-          { name: 'راسب', value: failed },
+          { name: 'ناجح', value: totalPassed },
+          { name: 'راسب', value: totalFailed },
         ],
       };
     },
@@ -129,7 +154,15 @@ const AdminStatistics = () => {
         .select('id, name')
         .order('order_index');
 
-      // جلب جميع بيانات التحليلات عبر التصفح
+      // جلب الأرقام المحفوظة من platform_stats
+      const { data: savedStats } = await supabase
+        .from('platform_stats' as any)
+        .select('level_visits')
+        .eq('id', 1)
+        .single();
+      const archivedLevelVisits = (savedStats?.level_visits ?? {}) as Record<string, number>;
+
+      // جلب الزيارات الحالية
       let allAnalytics: any[] = [];
       let from = 0;
       const PAGE_SIZE = 1000;
@@ -145,19 +178,18 @@ const AdminStatistics = () => {
         from += PAGE_SIZE;
       }
 
-      const visitMap: Record<string, number> = {};
+      const currentVisitMap: Record<string, number> = {};
       allAnalytics.forEach((row) => {
-        const parts = row.page_path.split('/');
+        const parts   = row.page_path.split('/');
         const levelId = parts[2];
-        if (levelId) {
-          visitMap[levelId] = (visitMap[levelId] || 0) + 1;
-        }
+        if (levelId) currentVisitMap[levelId] = (currentVisitMap[levelId] || 0) + 1;
       });
 
+      // دمج الأرشيف مع الحالي
       return (levels || []).map((level) => ({
-        id: level.id,
-        name: level.name,
-        visits: visitMap[level.id] || 0,
+        id:     level.id,
+        name:   level.name,
+        visits: (archivedLevelVisits[level.id] ?? 0) + (currentVisitMap[level.id] ?? 0),
       })).sort((a, b) => b.visits - a.visits);
     },
   });
