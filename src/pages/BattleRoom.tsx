@@ -554,6 +554,9 @@ const BattleRoom = () => {
 
   const handleForceFinish = async () => {
     if (!room) return;
+    // حفظ نتائج المنشئ أولاً قبل إنهاء الغرفة
+    if (syncTimerRef.current) clearInterval(syncTimerRef.current);
+    await handleFinishExam();
     await (supabase.from('battle_rooms' as any) as any).update({
       status: 'finished', finished_at: new Date().toISOString()
     }).eq('id', room.id);
