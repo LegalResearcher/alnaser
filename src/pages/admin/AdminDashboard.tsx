@@ -129,23 +129,34 @@ const AdminDashboard = () => {
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['admin-stats-v2'],
     queryFn: async () => {
-      const [levels, subjects, questions, results] = await Promise.all([
+      const [levels, subjects, questions, results, savedStatsRes] = await Promise.all([
         supabase.from('levels').select('id', { count: 'exact', head: true }),
         supabase.from('subjects').select('id', { count: 'exact', head: true }),
         supabase.from('questions').select('id', { count: 'exact', head: true }).eq('status', 'active'),
         supabase.from('exam_results').select('id, passed, created_at', { count: 'exact' }).limit(10000),
+        supabase.from('platform_stats' as any).select('total_exams, total_passed, total_failed').eq('id', 1).single(),
       ]);
 
-      const passed  = results.data?.filter(r => r.passed).length ?? 0;
-      const total   = results.count ?? 0;
-      const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
+      const savedStats    = savedStatsRes.data as any;
+      const archivedExams  = (savedStats?.total_exams  ?? 0) as number;
+      const archivedPassed = (savedStats?.total_passed ?? 0) as number;
+      const archivedFailed = (savedStats?.total_failed ?? 0) as number;
 
-      // آخر 7 أيام
+      const currentPassed = results.data?.filter(r => r.passed).length ?? 0;
+      const currentTotal  = results.count ?? 0;
+      const totalExams    = archivedExams  + currentTotal;
+      const totalPassed   = archivedPassed + currentPassed;
+      const totalFailed   = archivedFailed + (currentTotal - currentPassed);
+      const passRate      = totalExams > 0 ? Math.round((totalPassed / totalExams) * 100) : 0;
+
       const dailyMap: Record<string, { label: string; count: number }> = {};
       results.data?.forEach((r: any) => {
         const d   = new Date(r.created_at);
         const key = d.toISOString().split('T')[0];
-        if (!dailyMap[key]) dailyMap[key] = { label: d.toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' }), count: 0 };
+        if (!dailyMap[key]) dailyMap[key] = {
+          label: d.toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' }),
+          count: 0,
+        };
         dailyMap[key].count++;
       });
       const dailyData = Object.entries(dailyMap)
@@ -154,13 +165,13 @@ const AdminDashboard = () => {
         .map(([, v]) => ({ date: v.label, count: v.count }));
 
       return {
-        levels:   levels.count   ?? 0,
-        subjects: subjects.count ?? 0,
+        levels:    levels.count   ?? 0,
+        subjects:  subjects.count ?? 0,
         questions: questions.count ?? 0,
-        exams:    total,
+        exams:     totalExams,
         passRate,
-        passed,
-        failed:   total - passed,
+        passed:    totalPassed,
+        failed:    totalFailed,
         dailyData,
       };
     },
