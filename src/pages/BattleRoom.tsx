@@ -228,6 +228,7 @@ const BattleRoom = () => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const answersRef = useRef<Record<string, string>>({});
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
@@ -322,6 +323,8 @@ const BattleRoom = () => {
           if (me) {
             myPlayerId.current = me.id;
             setMyPlayer(me);
+            setMyName(me.player_name);
+            setIsJoined(true);
             localStorage.setItem(SESSION_KEY, JSON.stringify({ playerId: me.id, playerName: me.player_name }));
           }
         }
@@ -346,6 +349,7 @@ const BattleRoom = () => {
               await loadQuestions(data.question_ids as string[]);
               if (me.answers_json && Object.keys(me.answers_json).length > 0) {
                 setAnswers(me.answers_json as Record<string, string>);
+                answersRef.current = me.answers_json as Record<string, string>;
               }
               setTimeLeft((data.time_minutes + (data.extra_time_minutes || 0)) * 60);
               setExamStarted(true);
@@ -356,6 +360,7 @@ const BattleRoom = () => {
               await loadQuestions(data.question_ids as string[]);
               if (me.answers_json && Object.keys(me.answers_json).length > 0) {
                 setAnswers(me.answers_json as Record<string, string>);
+                answersRef.current = me.answers_json as Record<string, string>;
               }
               setExamStarted(true);
               setExamFinished(true);
@@ -710,6 +715,7 @@ const BattleRoom = () => {
     const q = questions[syncCurrentQ];
     const newAnswers = { ...answers, [q.id]: option };
     setAnswers(newAnswers);
+    answersRef.current = newAnswers;
     const correctCount = Object.keys(newAnswers).filter(id => {
       const qObj = questions.find(q => q.id === id);
       return qObj && newAnswers[id] === qObj.correct_option;
@@ -738,6 +744,7 @@ const BattleRoom = () => {
     const q = questions[currentQ];
     const newAnswers = { ...answers, [q.id]: option };
     setAnswers(newAnswers);
+    answersRef.current = newAnswers;
 
     const correctCount = Object.keys(newAnswers).filter(id => {
       const qObj = questions.find(q => q.id === id);
@@ -765,7 +772,7 @@ const BattleRoom = () => {
     localStorage.removeItem(SESSION_KEY);
 
     const elapsed = (room.time_minutes + (room.extra_time_minutes || 0)) * 60 - timeLeft;
-    const usedAnswers = finalAnswers || answers;
+    const usedAnswers = finalAnswers || answersRef.current;
     const correct = finalCorrect ?? Object.keys(usedAnswers).filter(id => {
       const q = questions.find(q => q.id === id); return q && usedAnswers[id] === q.correct_option;
     }).length;
