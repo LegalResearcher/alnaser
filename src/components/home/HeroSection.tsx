@@ -256,6 +256,31 @@ export function HeroSection() {
                   تعرّف على المنصة
                 </button>
               </Link>
+
+              {/* زر تحميل التطبيق */}
+              <a
+                href="https://github.com/LegalResearcher/alnaser-mobile/releases/latest/download/default.apk"
+                download="alnaser.apk"
+                className="group relative inline-flex items-center gap-3 px-6 py-3.5 rounded-2xl font-bold text-sm transition-all duration-300 overflow-hidden border-2 border-white/20 hover:border-white/40 bg-white/5 hover:bg-white/10 text-white backdrop-blur-sm hover:scale-105 active:scale-95 shadow-lg hover:shadow-white/10"
+              >
+                {/* توهج خلفي */}
+                <span className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                {/* أيقونة أندرويد */}
+                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-emerald-400 shrink-0 relative z-10" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M17.523 15.341a.673.673 0 0 1-.672.672.673.673 0 0 1-.673-.672V10.16a.673.673 0 0 1 .673-.672.673.673 0 0 1 .672.672v5.181zm-10.37 0a.673.673 0 0 1-.672.672.673.673 0 0 1-.673-.672V10.16a.673.673 0 0 1 .673-.672.673.673 0 0 1 .672.672v5.181zM8.818 2.146l-.96-1.664a.2.2 0 0 0-.274-.073.2.2 0 0 0-.073.274l.977 1.692A6.14 6.14 0 0 0 5.9 5.6h12.2a6.14 6.14 0 0 0-2.588-3.225l.977-1.692a.2.2 0 0 0-.073-.274.2.2 0 0 0-.274.073l-.96 1.664A6.08 6.08 0 0 0 12 1.6a6.08 6.08 0 0 0-3.182.546zM10.4 4a.6.6 0 1 1-1.2 0 .6.6 0 0 1 1.2 0zm4.4 0a.6.6 0 1 1-1.2 0 .6.6 0 0 1 1.2 0zM5.9 6.8v10.4c0 .88.72 1.6 1.6 1.6h.8v2.527a.873.873 0 0 0 .873.873.873.873 0 0 0 .873-.873V18.8h1.908v2.527a.873.873 0 0 0 .873.873.873.873 0 0 0 .873-.873V18.8h.8c.88 0 1.6-.72 1.6-1.6V6.8H5.9z"/>
+                </svg>
+
+                <span className="relative z-10 flex flex-col items-start">
+                  <span className="text-[10px] text-white/60 font-medium leading-none mb-0.5">حمّل التطبيق مجاناً</span>
+                  <span className="text-sm font-black leading-none">Android APK</span>
+                </span>
+
+                {/* سهم تحميل */}
+                <svg viewBox="0 0 24 24" className="w-4 h-4 fill-none stroke-white/60 stroke-2 relative z-10 group-hover:translate-y-0.5 transition-transform" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </a>
             </div>
 
             {/* FEATURE CARDS */}
