@@ -1,5 +1,5 @@
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { BarChart3, TrendingUp, Users, BookOpen, Calendar, Eye, Layers, XCircle, CheckCircle2, Clock } from 'lucide-react';
+import { BarChart3, TrendingUp, Users, BookOpen, Calendar, Eye, Layers, XCircle, CheckCircle2, Clock, Smartphone } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -21,12 +21,11 @@ const AdminStatistics = () => {
     queryKey: ['statistics'],
     queryFn: async () => {
       // جلب الإحصائيات التراكمية المحفوظة
-      const { data: savedStatsRaw } = await supabase
+      const { data: savedStats } = await supabase
         .from('platform_stats' as any)
         .select('*')
         .eq('id', 1)
         .single();
-      const savedStats = savedStatsRaw as unknown as Record<string, any> | null;
 
       const archivedVisits      = (savedStats?.total_visits  ?? 0) as number;
       const archivedExams       = (savedStats?.total_exams   ?? 0) as number;
@@ -156,13 +155,12 @@ const AdminStatistics = () => {
         .order('order_index');
 
       // جلب الأرقام المحفوظة من platform_stats
-      const { data: savedStatsLvRaw } = await supabase
+      const { data: savedStats } = await supabase
         .from('platform_stats' as any)
         .select('level_visits')
         .eq('id', 1)
         .single();
-      const savedStatsLv = savedStatsLvRaw as unknown as Record<string, any> | null;
-      const archivedLevelVisits = (savedStatsLv?.level_visits ?? {}) as Record<string, number>;
+      const archivedLevelVisits = (savedStats?.level_visits ?? {}) as Record<string, number>;
 
       // جلب الزيارات الحالية
       let allAnalytics: any[] = [];
@@ -194,6 +192,30 @@ const AdminStatistics = () => {
         visits: (archivedLevelVisits[level.id] ?? 0) + (currentVisitMap[level.id] ?? 0),
       })).sort((a, b) => b.visits - a.visits);
     },
+  });
+
+  // إحصائيات التطبيق
+  const { data: appStats } = useQuery({
+    queryKey: ['app-stats'],
+    queryFn: async () => {
+      const [installs, todaySessions, monthSessions] = await Promise.all([
+        (supabase as any).from('app_installs').select('id', { count: 'exact', head: true }),
+        (supabase as any)
+          .from('app_sessions')
+          .select('device_id', { count: 'exact', head: true })
+          .gte('opened_at', new Date(new Date().setHours(0,0,0,0)).toISOString()),
+        (supabase as any)
+          .from('app_sessions')
+          .select('device_id', { count: 'exact', head: true })
+          .gte('opened_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()),
+      ]);
+      return {
+        totalInstalls:   installs.count      ?? 0,
+        activeToday:     todaySessions.count  ?? 0,
+        activeThisMonth: monthSessions.count  ?? 0,
+      };
+    },
+    staleTime: 1000 * 60 * 5,
   });
 
   if (isLoading) {
@@ -258,6 +280,34 @@ const AdminStatistics = () => {
                 <p className="text-xl sm:text-2xl font-bold">{stats?.passRate}%</p>
                 <p className="text-xs sm:text-sm text-muted-foreground">نسبة النجاح</p>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* إحصائيات التطبيق */}
+        <div className="bg-card rounded-xl border p-4 sm:p-5">
+          <h3 className="font-bold mb-4 flex items-center gap-2 text-sm sm:text-base">
+            <Smartphone className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+            إحصائيات تطبيق الموبايل
+          </h3>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-blue-50 dark:bg-blue-950/30 rounded-xl p-3 text-center border border-blue-100 dark:border-blue-900/30">
+              <p className="text-2xl font-black text-blue-600">
+                {(appStats?.totalInstalls ?? 0).toLocaleString()}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">إجمالي التحميلات</p>
+            </div>
+            <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-xl p-3 text-center border border-emerald-100 dark:border-emerald-900/30">
+              <p className="text-2xl font-black text-emerald-600">
+                {(appStats?.activeToday ?? 0).toLocaleString()}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">نشطون اليوم</p>
+            </div>
+            <div className="bg-amber-50 dark:bg-amber-950/30 rounded-xl p-3 text-center border border-amber-100 dark:border-amber-900/30">
+              <p className="text-2xl font-black text-amber-600">
+                {(appStats?.activeThisMonth ?? 0).toLocaleString()}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">نشطون الشهر</p>
             </div>
           </div>
         </div>
