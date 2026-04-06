@@ -156,12 +156,13 @@ const AdminStatistics = () => {
         .order('order_index');
 
       // جلب الأرقام المحفوظة من platform_stats
-      const { data: savedStats } = await supabase
+      const { data: savedStatsLvRaw } = await supabase
         .from('platform_stats' as any)
         .select('level_visits')
         .eq('id', 1)
         .single();
-      const archivedLevelVisits = (savedStats?.level_visits ?? {}) as Record<string, number>;
+      const savedStatsLv = savedStatsLvRaw as unknown as Record<string, any> | null;
+      const archivedLevelVisits = (savedStatsLv?.level_visits ?? {}) as Record<string, number>;
 
       // جلب الزيارات الحالية
       let allAnalytics: any[] = [];
