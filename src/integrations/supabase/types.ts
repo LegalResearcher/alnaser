@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_installs: {
+        Row: {
+          device_id: string
+          id: string
+          installed_at: string | null
+          platform: string | null
+        }
+        Insert: {
+          device_id: string
+          id?: string
+          installed_at?: string | null
+          platform?: string | null
+        }
+        Update: {
+          device_id?: string
+          id?: string
+          installed_at?: string | null
+          platform?: string | null
+        }
+        Relationships: []
+      }
+      app_sessions: {
+        Row: {
+          device_id: string
+          id: string
+          opened_at: string | null
+        }
+        Insert: {
+          device_id: string
+          id?: string
+          opened_at?: string | null
+        }
+        Update: {
+          device_id?: string
+          id?: string
+          opened_at?: string | null
+        }
+        Relationships: []
+      }
       battle_history: {
         Row: {
           creator_name: string
@@ -505,6 +544,8 @@ export type Database = {
           id: number
           level_visits: Json
           passed_by_subject: Json
+          total_app_installs: number
+          total_app_sessions: number
           total_battle_finished: number
           total_battle_players: number
           total_battle_rooms: number
@@ -520,6 +561,8 @@ export type Database = {
           id?: number
           level_visits?: Json
           passed_by_subject?: Json
+          total_app_installs?: number
+          total_app_sessions?: number
           total_battle_finished?: number
           total_battle_players?: number
           total_battle_rooms?: number
@@ -535,6 +578,8 @@ export type Database = {
           id?: number
           level_visits?: Json
           passed_by_subject?: Json
+          total_app_installs?: number
+          total_app_sessions?: number
           total_battle_finished?: number
           total_battle_players?: number
           total_battle_rooms?: number
