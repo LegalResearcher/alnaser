@@ -21,11 +21,12 @@ const AdminStatistics = () => {
     queryKey: ['statistics'],
     queryFn: async () => {
       // جلب الإحصائيات التراكمية المحفوظة
-      const { data: savedStats } = await supabase
+      const { data: savedStatsRaw } = await supabase
         .from('platform_stats' as any)
         .select('*')
         .eq('id', 1)
         .single();
+      const savedStats = savedStatsRaw as unknown as Record<string, any> | null;
 
       const archivedVisits      = (savedStats?.total_visits  ?? 0) as number;
       const archivedExams       = (savedStats?.total_exams   ?? 0) as number;
