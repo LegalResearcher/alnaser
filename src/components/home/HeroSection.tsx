@@ -259,7 +259,7 @@ export function HeroSection() {
 
               {/* زر تحميل التطبيق */}
               <a
-                href="https://yuo/LegalResearcher/alnaser-mobile/releases/latest/download/default.apk"
+                href="https://yuo/Legal/alnaser-mobile/s/la/download/default.apk"
                 download="alnaser.apk"
                 className="group relative inline-flex items-center gap-3 px-6 py-3.5 rounded-2xl font-bold text-sm transition-all duration-300 overflow-hidden border-2 border-white/20 hover:border-white/40 bg-white/5 hover:bg-white/10 text-white backdrop-blur-sm hover:scale-105 active:scale-95 shadow-lg hover:shadow-white/10"
               >
