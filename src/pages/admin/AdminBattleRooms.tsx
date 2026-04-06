@@ -283,7 +283,7 @@ const AdminBattleRooms = () => {
         .select('total_battle_rooms, total_battle_finished, total_battle_players')
         .eq('id', 1)
         .single();
-      return data as {
+      return (data as unknown) as {
         total_battle_rooms:    number;
         total_battle_finished: number;
         total_battle_players:  number;
