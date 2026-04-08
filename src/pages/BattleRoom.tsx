@@ -849,15 +849,14 @@ const BattleRoom = () => {
     } catch (_) {}
 
     const { data: allP } = await (supabase.from('battle_players' as any) as any)
-      .select('status, kicked, is_creator').eq('room_id', room.id);
-    const activePlayers = allP?.filter((p: any) => !p.kicked);
-    const allDone = activePlayers?.every((p: any) => p.status === 'finished');
-    // فقط المنشئ هو من يُغلق الغرفة عند انتهاء الجميع، لمنع إغلاقها مبكراً
-    const creatorDone = activePlayers?.find((p: any) => p.is_creator)?.status === 'finished';
+      .select('status, kicked, is_creator').eq('room_id', currentRoom.id);
+    const activeP = allP?.filter((p: any) => !p.kicked);
+    const allDone = activeP?.every((p: any) => p.status === 'finished');
+    const creatorDone = activeP?.find((p: any) => p.is_creator)?.status === 'finished';
     if (allDone && creatorDone) {
       await (supabase.from('battle_rooms' as any) as any).update({
         status: 'finished', finished_at: new Date().toISOString(),
-      }).eq('id', room.id);
+      }).eq('id', currentRoom.id);
     }
   };
 
