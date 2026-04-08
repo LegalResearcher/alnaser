@@ -320,6 +320,7 @@ const BattleRoom = () => {
       if (data) {
         const r = { ...data, question_ids: data.question_ids as string[] } as BattleRoom;
         setRoom(r);
+        roomRef.current = r;
         const { data: pData } = await (supabase.from('battle_players' as any) as any)
           .select('*').eq('room_id', data.id).order('percentage', { ascending: false });
         if (pData) setPlayers(pData);
@@ -332,7 +333,8 @@ const BattleRoom = () => {
             setMyPlayer(me);
             setMyName(me.player_name);
             setIsJoined(true);
-            localStorage.setItem(SESSION_KEY, JSON.stringify({ playerId: me.id, playerName: me.player_name }));
+            isCreatorRef.current = true;
+            localStorage.setItem(SESSION_KEY, JSON.stringify({ playerId: me.id, playerName: me.player_name, isCreator: true }));
           }
         }
         // ── Restore from locationState: regular join ──
@@ -341,7 +343,8 @@ const BattleRoom = () => {
           if (me) {
             myPlayerId.current = me.id;
             setMyPlayer(me);
-            localStorage.setItem(SESSION_KEY, JSON.stringify({ playerId: me.id, playerName: me.player_name }));
+            isCreatorRef.current = !!me.is_creator;
+            localStorage.setItem(SESSION_KEY, JSON.stringify({ playerId: me.id, playerName: me.player_name, isCreator: !!me.is_creator }));
           }
         }
         // ── Restore from localStorage: page refresh / reconnect ──
@@ -352,17 +355,26 @@ const BattleRoom = () => {
             setMyPlayer(me);
             setMyName(me.player_name);
             setIsJoined(true);
+            isCreatorRef.current = !!me.is_creator;
             if (data.status === 'active') {
-              await loadQuestions(data.question_ids as string[]);
+              const loadedQs = await loadQuestions(data.question_ids as string[]);
               if (me.answers_json && Object.keys(me.answers_json).length > 0) {
                 setAnswers(me.answers_json as Record<string, string>);
                 answersRef.current = me.answers_json as Record<string, string>;
               }
               setTimeLeft((data.time_minutes + (data.extra_time_minutes || 0)) * 60);
               setExamStarted(true);
-              // جلب السؤال الحالي الفعلي من DB — نفس ما يراه بقية المتسابقين الآن
               const currentQIndex = data.current_question_index ?? 0;
               setSyncCurrentQ(currentQIndex);
+
+              // ── KEY FIX: Creator must resume driving the sync quiz after refresh ──
+              if (me.is_creator && loadedQs.length > 0 && me.status !== 'finished') {
+                const tpq = data.time_per_question || 60;
+                // Small delay to let channels subscribe
+                setTimeout(() => {
+                  startSyncQuestionWithList(currentQIndex, tpq, loadedQs);
+                }, 1500);
+              }
             } else if (data.status === 'finished') {
               await loadQuestions(data.question_ids as string[]);
               if (me.answers_json && Object.keys(me.answers_json).length > 0) {
