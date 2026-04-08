@@ -342,7 +342,9 @@ const ExamResult = () => {
     : { from:'#64748b', to:'#475569', glow:'rgba(100,116,139,0.2)', text:'#94a3b8' };
 
   // ── رسالة التحدي الموحّدة لجميع الاختبارات ──
-  const getChallengeMessage = () => {
+  // withLink: true  → تضاف في نهاية الرسالة (واتساب والنسخ)
+  // withLink: false → الرابط يُمرَّر منفصلاً في الـ URL (تيليجرام، فيسبوك)
+  const getChallengeMessage = (withLink = true) => {
     const subject   = state?.subjectName  ?? 'الاختبار';
     const level     = state?.levelName    ?? '';
     const year      = state?.examYear     ?? new Date().getFullYear();
@@ -351,21 +353,12 @@ const ExamResult = () => {
     const creator   = state?.studentName  ?? '';
     const result    = state?.scorePercentage ?? scorePercentage;
 
-    // بناء سطر المستوى: المستوى | السنة | النموذج
     const levelParts = [level, String(year), examForm ? `نموذج ${examForm}` : ''].filter(Boolean);
     const levelLine  = levelParts.join(' | ');
 
-    return (
-`📚 المادة: ${subject}
-🎓 المستوى: ${levelLine}
-❓ الأسئلة: ${questions} سؤال
-👨‍🏫 منشئ التحدي: ${creator}
-نتيجته: ${result}%
+    const body = `📚 المادة: ${subject}\n🎓 المستوى: ${levelLine}\n❓ الأسئلة: ${questions} سؤال\n👨‍🏫 منشئ التحدي: ${creator}\nنتيجته: ${result}%\n\n🔥 هل أنت مستعد للتحدي والتفوق؟ انضم الآن!`;
 
-🔥 هل أنت مستعد للتحدي والتفوق؟ انضم الآن!
-
-${challengeLink}`
-    );
+    return withLink ? `${body}\n\n${challengeLink}` : body;
   };
 
   return (
@@ -598,15 +591,15 @@ ${challengeLink}`
                             copiedChallenge ? 'bg-emerald-500/20 border border-emerald-400/30 text-emerald-300' : 'bg-white/15 border border-white/20 text-white hover:bg-white/25')}>
                           {copiedChallenge ? <><Check className="w-4 h-4" /> تم النسخ!</> : <><Copy className="w-4 h-4" /> نسخ الرابط</>}
                         </button>
-                        <button onClick={() => { const text = getChallengeMessage(); window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank'); }}
+                        <button onClick={() => { const text = getChallengeMessage(true); window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank'); }}
                           className="h-11 rounded-xl bg-green-500/20 border border-green-400/30 text-green-300 text-sm font-black flex items-center justify-center gap-2 hover:bg-green-500/30 transition-all">
                           واتساب
                         </button>
-                        <button onClick={() => { const text = getChallengeMessage(); window.open(`https://t.me/share/url?url=${encodeURIComponent(challengeLink!)}&text=${encodeURIComponent(text)}`, '_blank'); }}
+                        <button onClick={() => { const text = getChallengeMessage(false); window.open(`https://t.me/share/url?url=${encodeURIComponent(challengeLink!)}&text=${encodeURIComponent(text)}`, '_blank'); }}
                           className="h-11 rounded-xl bg-blue-500/20 border border-blue-400/30 text-blue-300 text-sm font-black flex items-center justify-center gap-2 hover:bg-blue-500/30 transition-all">
                           تيليجرام
                         </button>
-                        <button onClick={() => { const text = getChallengeMessage(); window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(challengeLink!)}&quote=${encodeURIComponent(text)}`, '_blank'); }}
+                        <button onClick={() => { const text = getChallengeMessage(false); window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(challengeLink!)}&quote=${encodeURIComponent(text)}`, '_blank'); }}
                           className="h-11 rounded-xl bg-blue-700/20 border border-blue-600/30 text-blue-200 text-sm font-black flex items-center justify-center gap-2 hover:bg-blue-700/30 transition-all">
                           فيسبوك
                         </button>
