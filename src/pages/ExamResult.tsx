@@ -192,7 +192,8 @@ const ExamResult = () => {
 
   const handleCopyChallengeLink = () => {
     if (!challengeLink) return;
-    navigator.clipboard.writeText(challengeLink).then(() => { setCopiedChallenge(true); setTimeout(() => setCopiedChallenge(false), 2500); });
+    const text = getChallengeMessage();
+    navigator.clipboard.writeText(text).then(() => { setCopiedChallenge(true); setTimeout(() => setCopiedChallenge(false), 2500); });
   };
 
   useEffect(() => {
@@ -340,27 +341,31 @@ const ExamResult = () => {
     ? { from:'#10b981', to:'#059669', glow:'rgba(16,185,129,0.3)', text:'#10b981' }
     : { from:'#64748b', to:'#475569', glow:'rgba(100,116,139,0.2)', text:'#94a3b8' };
 
-  // ── رسائل التحدي المخصصة — القانون التجاري رابع / أسئلة تجريبية ──
+  // ── رسالة التحدي الموحّدة لجميع الاختبارات ──
   const getChallengeMessage = () => {
-    const isCommercialLaw4 =
-      state?.isTrial === true &&
-      state?.subjectName?.includes('القانون التجاري') &&
-      state?.levelName?.includes('الرابع');
+    const subject   = state?.subjectName  ?? 'الاختبار';
+    const level     = state?.levelName    ?? '';
+    const year      = state?.examYear     ?? new Date().getFullYear();
+    const examForm  = state?.examForm     ?? '';
+    const questions = state?.questionsCount ?? state?.totalQuestions ?? 0;
+    const creator   = state?.studentName  ?? '';
+    const result    = state?.scorePercentage ?? scorePercentage;
 
-    if (!isCommercialLaw4) {
-      return `تحداني ${state.studentName} في ${state.subjectName}!\nنتيجته: ${state.scorePercentage ?? scorePercentage}%\nهل تستطيع التفوق عليه؟ 🔥\n${challengeLink}`;
-    }
+    // بناء سطر المستوى: المستوى | السنة | النموذج
+    const levelParts = [level, String(year), examForm ? `نموذج ${examForm}` : ''].filter(Boolean);
+    const levelLine  = levelParts.join(' | ');
 
-    const messages: Record<string, string> = {
-      Model_1: `🚢 بيوع بحرية | عقود تجارية | رهن تجاري\n\n50 سؤالاً مركّزاً يغطي أنواع البيوع البحرية (فوب، سيف، فاس، سي اند اف) والبيع بالتقسيط والتصفية والمزاد — كلها بأسلوب الاختبار الحقيقي.\n\nتدرّب الآن قبل فوات الأوان 👇\n${challengeLink}`,
-      Model_2: `📜 الكمبيالة | إنشاء | قبول | وفاء | بروتستو | تقادم\n\n50 سؤالاً يختبرك في كل تفاصيل الكمبيالة من أول بياناتها حتى مدد التقادم — لا يفوتك سؤال واحد.\n\nاختبر نفسك الآن 👇\n${challengeLink}`,
-      Model_3: `✍️ تظهير | شيك | سند لأمر | مدد قانونية\n\n50 سؤالاً تغطي أنواع التظهير الثلاثة وكامل أحكام الشيك والسند لأمر والمدد القانونية — هي الأسئلة التي تتكرّر دائماً في الامتحان.\n\nلا تتردد، ابدأ الآن 👇\n${challengeLink}`,
-      Model_4: `⚠️ إفلاس | رهن تجاري | ضمانات | فترة الريبة\n\n50 سؤالاً يغطي شروط الإفلاس وآثاره وجرائمه وفترة الريبة وأحكام الرهن التجاري — من أكثر المواضيع وروداً في الامتحان.\n\nحضّر نفسك جيداً وابدأ 👇\n${challengeLink}`,
-      Model_5: `🤝 وكالة تجارية | وكالة بعمولة | سمسرة | نقل\n\n50 سؤالاً يفرّق بدقة بين أنواع الوكالات وأحكام النقل بأنواعه — فاختبر نفسك قبل أن يختبرك الدكتور.\n\nابدأ التدريب الآن 👇\n${challengeLink}`,
-      Model_6: `🏦 بنوك | اعتماد مستندي | ودائع | مصارف إسلامية\n\n50 سؤالاً يغطي عمليات البنوك والاعتماد المستندي وخطابات الضمان وأحكام المصارف الإسلامية — أسئلة دقيقة بأسلوب الامتحان الحقيقي.\n\nاختبر نفسك وتأكد من جاهزيتك 👇\n${challengeLink}`,
-    };
+    return (
+`📚 المادة: ${subject}
+🎓 المستوى: ${levelLine}
+❓ الأسئلة: ${questions} سؤال
+👨‍🏫 منشئ التحدي: ${creator}
+نتيجته: ${result}%
 
-    return messages[state?.examForm ?? ''] ?? `تحداني ${state.studentName} في ${state.subjectName}!\nنتيجته: ${state.scorePercentage ?? scorePercentage}%\nهل تستطيع التفوق عليه؟ 🔥\n${challengeLink}`;
+🔥 هل أنت مستعد للتحدي والتفوق؟ انضم الآن!
+
+${challengeLink}`
+    );
   };
 
   return (
