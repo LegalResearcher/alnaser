@@ -22,6 +22,7 @@ interface ChallengeSession {
   question_ids: string[];
   exam_year: number | null;
   exam_form: string | null;
+  level_name: string | null;
   expires_at: string;
   subjects?: { name: string; default_time_minutes: number };
 }
@@ -262,6 +263,43 @@ const ChallengePage = () => {
                   <p className="text-[10px] text-muted-foreground font-semibold">متوسط</p>
                 </div>
               </div>
+
+              {/* ── تفاصيل التحدي ── */}
+              {(session.level_name || session.exam_year || session.exam_form) && (
+                <div className="mt-4 pt-4 border-t border-border/60">
+                  <div className="grid grid-cols-1 gap-2">
+                    {session.level_name && (
+                      <div className="flex items-center gap-3 bg-muted/40 rounded-xl px-3 py-2.5">
+                        <span className="text-base">🎓</span>
+                        <div className="text-right flex-1">
+                          <p className="text-[10px] text-muted-foreground font-semibold">المستوى</p>
+                          <p className="text-xs font-black text-foreground">{session.level_name}</p>
+                        </div>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-2">
+                      {session.exam_year && (
+                        <div className="flex items-center gap-2 bg-muted/40 rounded-xl px-3 py-2.5">
+                          <span className="text-base">📅</span>
+                          <div className="text-right flex-1">
+                            <p className="text-[10px] text-muted-foreground font-semibold">السنة</p>
+                            <p className="text-xs font-black text-foreground">{session.exam_year}</p>
+                          </div>
+                        </div>
+                      )}
+                      {session.exam_form && (
+                        <div className="flex items-center gap-2 bg-muted/40 rounded-xl px-3 py-2.5">
+                          <span className="text-base">📋</span>
+                          <div className="text-right flex-1">
+                            <p className="text-[10px] text-muted-foreground font-semibold">النموذج</p>
+                            <p className="text-xs font-black text-foreground">{session.exam_form}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
