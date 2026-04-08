@@ -180,7 +180,8 @@ const ExamResult = () => {
         creator_time_seconds: state.timeTaken,
         question_ids: state.questions.map(q => q.id),
         exam_year: state.examYear || null,
-        exam_form: null,
+        exam_form: state.examForm || null,
+        level_name: state.levelName || null,
       }).select('id').single();
       if (error || !data) throw error;
       const link = `${window.location.origin}/challenge/${data.id}`;
