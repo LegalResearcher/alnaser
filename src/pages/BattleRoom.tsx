@@ -804,19 +804,21 @@ const BattleRoom = () => {
   };
 
   const handleFinishExam = async (finalCorrect?: number, finalTotal?: number, finalAnswers?: Record<string, string>) => {
-    if (examFinished || !myPlayerId.current || !room) return;
+    if (examFinishedRef.current || !myPlayerId.current) return;
+    const currentRoom = roomRef.current;
+    if (!currentRoom) return;
     clearInterval(timerRef.current!);
     setExamFinished(true);
-    // مسح جلسة الغرفة بعد الانتهاء النهائي
     localStorage.removeItem(SESSION_KEY);
 
-    const elapsed = (room.time_minutes + (room.extra_time_minutes || 0)) * 60 - timeLeft;
+    const elapsed = (currentRoom.time_minutes + (currentRoom.extra_time_minutes || 0)) * 60 - timeLeft;
     const usedAnswers = finalAnswers || answersRef.current;
+    const qList = questionsRef.current;
     const correct = finalCorrect ?? Object.keys(usedAnswers).filter(id => {
-      const q = questions.find(q => q.id === id); return q && usedAnswers[id] === q.correct_option;
+      const q = qList.find(q => q.id === id); return q && usedAnswers[id] === q.correct_option;
     }).length;
     const total = finalTotal ?? Object.keys(usedAnswers).length;
-    const pct = room.questions_count > 0 ? (correct / room.questions_count) * 100 : 0;
+    const pct = currentRoom.questions_count > 0 ? (correct / currentRoom.questions_count) * 100 : 0;
 
     await (supabase.from('battle_players' as any) as any).update({
       status: 'finished', correct_count: correct, total_answered: total,
