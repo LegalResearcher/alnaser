@@ -226,6 +226,7 @@ const BattleRoom = () => {
 
   // Exam state
   const [questions, setQuestions] = useState<Question[]>([]);
+  const questionsRef = useRef<Question[]>([]);
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const answersRef = useRef<Record<string, string>>({});
@@ -242,6 +243,8 @@ const BattleRoom = () => {
   const [myAnswerGiven, setMyAnswerGiven] = useState(false);
   const syncTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const syncChannelRef = useRef<any>(null);
+  const roomRef = useRef<BattleRoom | null>(null);
+  const isCreatorRef = useRef(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [showChat, setShowChat] = useState(false);
@@ -251,6 +254,11 @@ const BattleRoom = () => {
   const chatChannelRef = useRef<any>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const myPlayerId = useRef<string | null>(null);
+
+  // Keep refs in sync
+  useEffect(() => { questionsRef.current = questions; }, [questions]);
+  useEffect(() => { roomRef.current = room; }, [room]);
+  useEffect(() => { isCreatorRef.current = !!myPlayer?.is_creator; }, [myPlayer]);
 
   // ── Fetch room ──
   const fetchRoom = useCallback(async () => {
@@ -312,6 +320,7 @@ const BattleRoom = () => {
       if (data) {
         const r = { ...data, question_ids: data.question_ids as string[] } as BattleRoom;
         setRoom(r);
+        roomRef.current = r;
         const { data: pData } = await (supabase.from('battle_players' as any) as any)
           .select('*').eq('room_id', data.id).order('percentage', { ascending: false });
         if (pData) setPlayers(pData);
@@ -324,7 +333,8 @@ const BattleRoom = () => {
             setMyPlayer(me);
             setMyName(me.player_name);
             setIsJoined(true);
-            localStorage.setItem(SESSION_KEY, JSON.stringify({ playerId: me.id, playerName: me.player_name }));
+            isCreatorRef.current = true;
+            localStorage.setItem(SESSION_KEY, JSON.stringify({ playerId: me.id, playerName: me.player_name, isCreator: true }));
           }
         }
         // ── Restore from locationState: regular join ──
@@ -333,7 +343,8 @@ const BattleRoom = () => {
           if (me) {
             myPlayerId.current = me.id;
             setMyPlayer(me);
-            localStorage.setItem(SESSION_KEY, JSON.stringify({ playerId: me.id, playerName: me.player_name }));
+            isCreatorRef.current = !!me.is_creator;
+            localStorage.setItem(SESSION_KEY, JSON.stringify({ playerId: me.id, playerName: me.player_name, isCreator: !!me.is_creator }));
           }
         }
         // ── Restore from localStorage: page refresh / reconnect ──
@@ -344,17 +355,26 @@ const BattleRoom = () => {
             setMyPlayer(me);
             setMyName(me.player_name);
             setIsJoined(true);
+            isCreatorRef.current = !!me.is_creator;
             if (data.status === 'active') {
-              await loadQuestions(data.question_ids as string[]);
+              const loadedQs = await loadQuestions(data.question_ids as string[]);
               if (me.answers_json && Object.keys(me.answers_json).length > 0) {
                 setAnswers(me.answers_json as Record<string, string>);
                 answersRef.current = me.answers_json as Record<string, string>;
               }
               setTimeLeft((data.time_minutes + (data.extra_time_minutes || 0)) * 60);
               setExamStarted(true);
-              // جلب السؤال الحالي الفعلي من DB — نفس ما يراه بقية المتسابقين الآن
               const currentQIndex = data.current_question_index ?? 0;
               setSyncCurrentQ(currentQIndex);
+
+              // ── KEY FIX: Creator must resume driving the sync quiz after refresh ──
+              if (me.is_creator && loadedQs.length > 0 && me.status !== 'finished') {
+                const tpq = data.time_per_question || 60;
+                // Small delay to let channels subscribe
+                setTimeout(() => {
+                  startSyncQuestionWithList(currentQIndex, tpq, loadedQs);
+                }, 1500);
+              }
             } else if (data.status === 'finished') {
               await loadQuestions(data.question_ids as string[]);
               if (me.answers_json && Object.keys(me.answers_json).length > 0) {
@@ -414,15 +434,27 @@ const BattleRoom = () => {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'battle_rooms', filter: `id=eq.${room.id}` },
         async (payload) => {
           const updated = payload.new as any;
-          setRoom(prev => prev ? { ...prev, ...updated } : prev);
+          const updatedRoom = { ...updated, question_ids: updated.question_ids as string[] };
+          setRoom(prev => prev ? { ...prev, ...updatedRoom } : prev);
+          roomRef.current = roomRef.current ? { ...roomRef.current, ...updatedRoom } : null;
+
           if (updated.status === 'active' && !examStartedRef.current) {
-            await loadQuestions(updated.question_ids as string[]);
+            // ── FIX: Competitors auto-join the exam immediately ──
+            const loadedQs = await loadQuestions(updated.question_ids as string[]);
             setTimeLeft((updated.time_minutes + (updated.extra_time_minutes || 0)) * 60);
             setExamStarted(true);
+            
+            // Also update player status to 'playing' if still waiting
+            if (myPlayerId.current) {
+              await (supabase.from('battle_players' as any) as any)
+                .update({ status: 'playing' })
+                .eq('id', myPlayerId.current)
+                .eq('status', 'waiting');
+            }
+
             toast({ title: '🚀 انطلقت المنافسة!' });
           }
           if (updated.status === 'finished' && !examFinishedRef.current) {
-            // حفظ نتائج اللاعب الحالي قبل إظهار النتائج
             if (syncTimerRef.current) clearInterval(syncTimerRef.current);
             await handleFinishExam();
           }
@@ -528,25 +560,35 @@ const BattleRoom = () => {
   const handleStartRoom = async () => {
     if (!room) return;
     setStarting(true);
+    
+    // Load questions first before updating room status
+    const loadedQs = await loadQuestions(room.question_ids);
+    if (!loadedQs.length) {
+      toast({ title: '⚠️ لم يتم تحميل الأسئلة', variant: 'destructive' });
+      setStarting(false);
+      return;
+    }
+    
+    // Update all waiting players to 'playing' status
+    await (supabase.from('battle_players' as any) as any)
+      .update({ status: 'playing' })
+      .eq('room_id', room.id)
+      .eq('status', 'waiting');
+    
+    // Now set room to active - this triggers realtime for all competitors
     await (supabase.from('battle_rooms' as any) as any).update({
       status: 'active', started_at: new Date().toISOString(), locked: false,
     }).eq('id', room.id);
-    if (myPlayerId.current) {
-      await (supabase.from('battle_players' as any) as any).update({ status: 'playing' }).eq('id', myPlayerId.current);
-    }
-    const loadedQs = await loadQuestions(room.question_ids);
+    
     setTimeLeft((room.time_minutes + (room.extra_time_minutes || 0)) * 60);
     setExamStarted(true);
     setStarting(false);
-    // Wait longer to ensure all players have received the room update and loaded questions
+    
+    // Start sync quiz with minimal delay (just enough for broadcast channel to be ready)
+    const tpq = (room as any)?.time_per_question || 60;
     setTimeout(() => {
-      if (!loadedQs.length) {
-        toast({ title: '⚠️ لم يتم تحميل الأسئلة', variant: 'destructive' });
-        return;
-      }
-      const tpq = (room as any)?.time_per_question || 60;
       startSyncQuestionWithList(0, tpq, loadedQs);
-    }, 2500);
+    }, 800);
   };
 
   const handleKickPlayer = async (playerId: string) => {
@@ -653,17 +695,22 @@ const BattleRoom = () => {
       payload: { questionIndex, phase, timeLeft, totalQs }
     });
     // حفظ السؤال الحالي في DB حتى يراه العائدون فور رجوعهم
-    if (room?.id) {
+    const currentRoom = roomRef.current;
+    if (currentRoom?.id) {
       await (supabase.from('battle_rooms' as any) as any)
         .update({ current_question_index: questionIndex })
-        .eq('id', room.id);
+        .eq('id', currentRoom.id);
     }
   };
 
   const startSyncQuestionWithList = (qIndex: number, timePerQuestion: number, qList: Question[]) => {
+    // Use qList for the initial call, but always reference questionsRef for subsequent calls
+    // to avoid stale closure issues
+    const activeQList = qList.length > 0 ? qList : questionsRef.current;
+    if (!activeQList.length) return;
+    
     setSyncCurrentQ(qIndex);
     setSyncPhase('question');
-    // حفظ السؤال الحالي للاستئناف (المنشئ)
     try {
       const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
       if (s) localStorage.setItem(SESSION_KEY, JSON.stringify({ ...s, currentQ: qIndex, phase: 'question' }));
@@ -672,7 +719,7 @@ const BattleRoom = () => {
     setMyAnswerGiven(false);
     setSelectedAnswer(null);
     setShowFeedback(false);
-    broadcastQuizState(qIndex, 'question', timePerQuestion, qList.length);
+    broadcastQuizState(qIndex, 'question', timePerQuestion, activeQList.length);
     if (syncTimerRef.current) clearInterval(syncTimerRef.current);
     let t = timePerQuestion;
     syncTimerRef.current = setInterval(() => {
@@ -680,16 +727,14 @@ const BattleRoom = () => {
       setSyncTimeLeft(t);
       if (t <= 0) {
         clearInterval(syncTimerRef.current!);
-        revealAnswerWithList(qIndex, timePerQuestion, qList);
+        // ── FIX: Use questionsRef to avoid stale closure ──
+        revealAnswerFromRef(qIndex, timePerQuestion);
       }
     }, 1000);
   };
 
-  const startSyncQuestion = (qIndex: number, timePerQuestion: number) => {
-    startSyncQuestionWithList(qIndex, timePerQuestion, questions);
-  };
-
-  const revealAnswerWithList = (qIndex: number, tpq: number, qList: Question[]) => {
+  const revealAnswerFromRef = (qIndex: number, tpq: number) => {
+    const qList = questionsRef.current;
     setSyncPhase('reveal');
     setShowFeedback(true);
     broadcastQuizState(qIndex, 'reveal', 0, qList.length);
@@ -700,11 +745,6 @@ const BattleRoom = () => {
         startSyncQuestionWithList(qIndex + 1, tpq, qList);
       }
     }, 2500);
-  };
-
-  const revealAnswer = (qIndex: number) => {
-    const tpq = (room as any)?.time_per_question || 60;
-    revealAnswerWithList(qIndex, tpq, questions);
   };
 
   const handleSyncAnswer = async (option: string) => {
@@ -764,19 +804,21 @@ const BattleRoom = () => {
   };
 
   const handleFinishExam = async (finalCorrect?: number, finalTotal?: number, finalAnswers?: Record<string, string>) => {
-    if (examFinished || !myPlayerId.current || !room) return;
+    if (examFinishedRef.current || !myPlayerId.current) return;
+    const currentRoom = roomRef.current;
+    if (!currentRoom) return;
     clearInterval(timerRef.current!);
     setExamFinished(true);
-    // مسح جلسة الغرفة بعد الانتهاء النهائي
     localStorage.removeItem(SESSION_KEY);
 
-    const elapsed = (room.time_minutes + (room.extra_time_minutes || 0)) * 60 - timeLeft;
+    const elapsed = (currentRoom.time_minutes + (currentRoom.extra_time_minutes || 0)) * 60 - timeLeft;
     const usedAnswers = finalAnswers || answersRef.current;
+    const qList = questionsRef.current;
     const correct = finalCorrect ?? Object.keys(usedAnswers).filter(id => {
-      const q = questions.find(q => q.id === id); return q && usedAnswers[id] === q.correct_option;
+      const q = qList.find(q => q.id === id); return q && usedAnswers[id] === q.correct_option;
     }).length;
     const total = finalTotal ?? Object.keys(usedAnswers).length;
-    const pct = room.questions_count > 0 ? (correct / room.questions_count) * 100 : 0;
+    const pct = currentRoom.questions_count > 0 ? (correct / currentRoom.questions_count) * 100 : 0;
 
     await (supabase.from('battle_players' as any) as any).update({
       status: 'finished', correct_count: correct, total_answered: total,
@@ -807,15 +849,14 @@ const BattleRoom = () => {
     } catch (_) {}
 
     const { data: allP } = await (supabase.from('battle_players' as any) as any)
-      .select('status, kicked, is_creator').eq('room_id', room.id);
-    const activePlayers = allP?.filter((p: any) => !p.kicked);
-    const allDone = activePlayers?.every((p: any) => p.status === 'finished');
-    // فقط المنشئ هو من يُغلق الغرفة عند انتهاء الجميع، لمنع إغلاقها مبكراً
-    const creatorDone = activePlayers?.find((p: any) => p.is_creator)?.status === 'finished';
+      .select('status, kicked, is_creator').eq('room_id', currentRoom.id);
+    const activeP = allP?.filter((p: any) => !p.kicked);
+    const allDone = activeP?.every((p: any) => p.status === 'finished');
+    const creatorDone = activeP?.find((p: any) => p.is_creator)?.status === 'finished';
     if (allDone && creatorDone) {
       await (supabase.from('battle_rooms' as any) as any).update({
         status: 'finished', finished_at: new Date().toISOString(),
-      }).eq('id', room.id);
+      }).eq('id', currentRoom.id);
     }
   };
 
