@@ -226,6 +226,7 @@ const BattleRoom = () => {
 
   // Exam state
   const [questions, setQuestions] = useState<Question[]>([]);
+  const questionsRef = useRef<Question[]>([]);
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const answersRef = useRef<Record<string, string>>({});
@@ -242,6 +243,8 @@ const BattleRoom = () => {
   const [myAnswerGiven, setMyAnswerGiven] = useState(false);
   const syncTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const syncChannelRef = useRef<any>(null);
+  const roomRef = useRef<BattleRoom | null>(null);
+  const isCreatorRef = useRef(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [showChat, setShowChat] = useState(false);
@@ -251,6 +254,11 @@ const BattleRoom = () => {
   const chatChannelRef = useRef<any>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const myPlayerId = useRef<string | null>(null);
+
+  // Keep refs in sync
+  useEffect(() => { questionsRef.current = questions; }, [questions]);
+  useEffect(() => { roomRef.current = room; }, [room]);
+  useEffect(() => { isCreatorRef.current = !!myPlayer?.is_creator; }, [myPlayer]);
 
   // ── Fetch room ──
   const fetchRoom = useCallback(async () => {
