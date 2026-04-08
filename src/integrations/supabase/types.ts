@@ -346,6 +346,7 @@ export type Database = {
           exam_year: number | null
           expires_at: string
           id: string
+          level_name: string | null
           question_ids: Json
           subject_id: string
         }
@@ -359,6 +360,7 @@ export type Database = {
           exam_year?: number | null
           expires_at?: string
           id?: string
+          level_name?: string | null
           question_ids: Json
           subject_id: string
         }
@@ -372,6 +374,7 @@ export type Database = {
           exam_year?: number | null
           expires_at?: string
           id?: string
+          level_name?: string | null
           question_ids?: Json
           subject_id?: string
         }

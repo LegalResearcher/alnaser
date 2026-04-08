@@ -21,11 +21,12 @@ const AdminStatistics = () => {
     queryKey: ['statistics'],
     queryFn: async () => {
       // جلب الإحصائيات التراكمية المحفوظة
-      const { data: savedStats } = await supabase
-        .from('platform_stats' as any)
+      const { data: savedStatsRaw } = await supabase
+        .from('platform_stats')
         .select('*')
         .eq('id', 1)
         .single();
+      const savedStats = savedStatsRaw as Record<string, any> | null;
 
       const archivedVisits      = (savedStats?.total_visits  ?? 0) as number;
       const archivedExams       = (savedStats?.total_exams   ?? 0) as number;
@@ -155,12 +156,12 @@ const AdminStatistics = () => {
         .order('order_index');
 
       // جلب الأرقام المحفوظة من platform_stats
-      const { data: savedStats } = await supabase
-        .from('platform_stats' as any)
+      const { data: savedStatsLV } = await supabase
+        .from('platform_stats')
         .select('level_visits')
         .eq('id', 1)
         .single();
-      const archivedLevelVisits = (savedStats?.level_visits ?? {}) as Record<string, number>;
+      const archivedLevelVisits = ((savedStatsLV as Record<string, any> | null)?.level_visits ?? {}) as Record<string, number>;
 
       // جلب الزيارات الحالية
       let allAnalytics: any[] = [];
