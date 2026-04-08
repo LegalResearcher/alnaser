@@ -595,7 +595,7 @@ const ExamResult = () => {
                           className="h-11 rounded-xl bg-green-500/20 border border-green-400/30 text-green-300 text-sm font-black flex items-center justify-center gap-2 hover:bg-green-500/30 transition-all">
                           واتساب
                         </button>
-                        <button onClick={() => { const text = getChallengeMessage(false); window.open(`https://t.me/share/url?url=${encodeURIComponent(challengeLink!)}&text=${encodeURIComponent(text)}`, '_blank'); }}
+                        <button onClick={() => { const text = getChallengeMessage(true); window.open(`https://t.me/share/url?url=${encodeURIComponent(text)}`, '_blank'); }}
                           className="h-11 rounded-xl bg-blue-500/20 border border-blue-400/30 text-blue-300 text-sm font-black flex items-center justify-center gap-2 hover:bg-blue-500/30 transition-all">
                           تيليجرام
                         </button>
