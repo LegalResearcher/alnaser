@@ -560,25 +560,35 @@ const BattleRoom = () => {
   const handleStartRoom = async () => {
     if (!room) return;
     setStarting(true);
+    
+    // Load questions first before updating room status
+    const loadedQs = await loadQuestions(room.question_ids);
+    if (!loadedQs.length) {
+      toast({ title: '⚠️ لم يتم تحميل الأسئلة', variant: 'destructive' });
+      setStarting(false);
+      return;
+    }
+    
+    // Update all waiting players to 'playing' status
+    await (supabase.from('battle_players' as any) as any)
+      .update({ status: 'playing' })
+      .eq('room_id', room.id)
+      .eq('status', 'waiting');
+    
+    // Now set room to active - this triggers realtime for all competitors
     await (supabase.from('battle_rooms' as any) as any).update({
       status: 'active', started_at: new Date().toISOString(), locked: false,
     }).eq('id', room.id);
-    if (myPlayerId.current) {
-      await (supabase.from('battle_players' as any) as any).update({ status: 'playing' }).eq('id', myPlayerId.current);
-    }
-    const loadedQs = await loadQuestions(room.question_ids);
+    
     setTimeLeft((room.time_minutes + (room.extra_time_minutes || 0)) * 60);
     setExamStarted(true);
     setStarting(false);
-    // Wait longer to ensure all players have received the room update and loaded questions
+    
+    // Start sync quiz with minimal delay (just enough for broadcast channel to be ready)
+    const tpq = (room as any)?.time_per_question || 60;
     setTimeout(() => {
-      if (!loadedQs.length) {
-        toast({ title: '⚠️ لم يتم تحميل الأسئلة', variant: 'destructive' });
-        return;
-      }
-      const tpq = (room as any)?.time_per_question || 60;
       startSyncQuestionWithList(0, tpq, loadedQs);
-    }, 2500);
+    }, 800);
   };
 
   const handleKickPlayer = async (playerId: string) => {
