@@ -695,17 +695,22 @@ const BattleRoom = () => {
       payload: { questionIndex, phase, timeLeft, totalQs }
     });
     // حفظ السؤال الحالي في DB حتى يراه العائدون فور رجوعهم
-    if (room?.id) {
+    const currentRoom = roomRef.current;
+    if (currentRoom?.id) {
       await (supabase.from('battle_rooms' as any) as any)
         .update({ current_question_index: questionIndex })
-        .eq('id', room.id);
+        .eq('id', currentRoom.id);
     }
   };
 
   const startSyncQuestionWithList = (qIndex: number, timePerQuestion: number, qList: Question[]) => {
+    // Use qList for the initial call, but always reference questionsRef for subsequent calls
+    // to avoid stale closure issues
+    const activeQList = qList.length > 0 ? qList : questionsRef.current;
+    if (!activeQList.length) return;
+    
     setSyncCurrentQ(qIndex);
     setSyncPhase('question');
-    // حفظ السؤال الحالي للاستئناف (المنشئ)
     try {
       const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
       if (s) localStorage.setItem(SESSION_KEY, JSON.stringify({ ...s, currentQ: qIndex, phase: 'question' }));
@@ -714,7 +719,7 @@ const BattleRoom = () => {
     setMyAnswerGiven(false);
     setSelectedAnswer(null);
     setShowFeedback(false);
-    broadcastQuizState(qIndex, 'question', timePerQuestion, qList.length);
+    broadcastQuizState(qIndex, 'question', timePerQuestion, activeQList.length);
     if (syncTimerRef.current) clearInterval(syncTimerRef.current);
     let t = timePerQuestion;
     syncTimerRef.current = setInterval(() => {
@@ -722,16 +727,14 @@ const BattleRoom = () => {
       setSyncTimeLeft(t);
       if (t <= 0) {
         clearInterval(syncTimerRef.current!);
-        revealAnswerWithList(qIndex, timePerQuestion, qList);
+        // ── FIX: Use questionsRef to avoid stale closure ──
+        revealAnswerFromRef(qIndex, timePerQuestion);
       }
     }, 1000);
   };
 
-  const startSyncQuestion = (qIndex: number, timePerQuestion: number) => {
-    startSyncQuestionWithList(qIndex, timePerQuestion, questions);
-  };
-
-  const revealAnswerWithList = (qIndex: number, tpq: number, qList: Question[]) => {
+  const revealAnswerFromRef = (qIndex: number, tpq: number) => {
+    const qList = questionsRef.current;
     setSyncPhase('reveal');
     setShowFeedback(true);
     broadcastQuizState(qIndex, 'reveal', 0, qList.length);
@@ -742,11 +745,6 @@ const BattleRoom = () => {
         startSyncQuestionWithList(qIndex + 1, tpq, qList);
       }
     }, 2500);
-  };
-
-  const revealAnswer = (qIndex: number) => {
-    const tpq = (room as any)?.time_per_question || 60;
-    revealAnswerWithList(qIndex, tpq, questions);
   };
 
   const handleSyncAnswer = async (option: string) => {
