@@ -434,15 +434,27 @@ const BattleRoom = () => {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'battle_rooms', filter: `id=eq.${room.id}` },
         async (payload) => {
           const updated = payload.new as any;
-          setRoom(prev => prev ? { ...prev, ...updated } : prev);
+          const updatedRoom = { ...updated, question_ids: updated.question_ids as string[] };
+          setRoom(prev => prev ? { ...prev, ...updatedRoom } : prev);
+          roomRef.current = roomRef.current ? { ...roomRef.current, ...updatedRoom } : null;
+
           if (updated.status === 'active' && !examStartedRef.current) {
-            await loadQuestions(updated.question_ids as string[]);
+            // ── FIX: Competitors auto-join the exam immediately ──
+            const loadedQs = await loadQuestions(updated.question_ids as string[]);
             setTimeLeft((updated.time_minutes + (updated.extra_time_minutes || 0)) * 60);
             setExamStarted(true);
+            
+            // Also update player status to 'playing' if still waiting
+            if (myPlayerId.current) {
+              await (supabase.from('battle_players' as any) as any)
+                .update({ status: 'playing' })
+                .eq('id', myPlayerId.current)
+                .eq('status', 'waiting');
+            }
+
             toast({ title: '🚀 انطلقت المنافسة!' });
           }
           if (updated.status === 'finished' && !examFinishedRef.current) {
-            // حفظ نتائج اللاعب الحالي قبل إظهار النتائج
             if (syncTimerRef.current) clearInterval(syncTimerRef.current);
             await handleFinishExam();
           }
