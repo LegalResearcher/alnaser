@@ -339,7 +339,7 @@ const AdminBattleRooms = () => {
     // نحدّث حقل battle_disabled في جدول subjects
     let query = supabase.from('subjects').update({ battle_disabled: action === 'stop' } as any);
     if (ids === 'all') {
-      query = query.gte('created_at', '2000-01-01');
+      query = (query as any).neq('id', '00000000-0000-0000-0000-000000000000');
     } else {
       query = query.in('id', ids);
     }
@@ -369,39 +369,53 @@ const AdminBattleRooms = () => {
       return;
     }
 
-    // 1) حفظ كلمة المرور في subjects (للغرف الجديدة)
-    let subjectsQuery = supabase.from('subjects').update({ battle_password: globalPassword || null } as any);
-    if (ids === 'all') {
-      subjectsQuery = subjectsQuery.gte('created_at', '2000-01-01');
-    } else {
-      subjectsQuery = subjectsQuery.in('id', ids);
-    }
-    await subjectsQuery;
+    const pwValue = globalPassword.trim() || null;
 
-    // 2) تطبيق كلمة المرور على الغرف الموجودة في battle_rooms
-    let roomsQuery = supabase.from('battle_rooms').update({
-      password: globalPassword || null,
-      is_private: !!globalPassword,
-    });
+    // 1) حفظ كلمة المرور في subjects (للغرف الجديدة)
+    let subjectsError: any = null;
     if (ids === 'all') {
-      roomsQuery = roomsQuery.gte('created_at', '2000-01-01');
-    } else if (ids.length === 1) {
-      roomsQuery = roomsQuery.eq('subject_id', ids[0]);
+      // تحديث جميع السجلات بدون فلتر — نستخدم neq بقيمة مستحيلة لضمان شمول الكل
+      const { error } = await (supabase.from('subjects').update({ battle_password: pwValue } as any) as any)
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+      subjectsError = error;
     } else {
-      roomsQuery = roomsQuery.in('subject_id', ids);
+      const { error } = await (supabase.from('subjects').update({ battle_password: pwValue } as any) as any)
+        .in('id', ids);
+      subjectsError = error;
     }
-    const { error } = await roomsQuery;
+
+    if (subjectsError) {
+      toast({ title: 'خطأ في تحديث المواد', description: subjectsError.message, variant: 'destructive' });
+      setIsApplyingPassword(false);
+      return;
+    }
+
+    // 2) تطبيق كلمة المرور على الغرف الموجودة (النشطة فقط)
+    let roomsError: any = null;
+    if (ids === 'all') {
+      const { error } = await (supabase.from('battle_rooms').update({
+        password: pwValue,
+        is_private: !!pwValue,
+      }) as any).neq('id', '00000000-0000-0000-0000-000000000000');
+      roomsError = error;
+    } else {
+      const { error } = await (supabase.from('battle_rooms').update({
+        password: pwValue,
+        is_private: !!pwValue,
+      }) as any).in('subject_id', ids);
+      roomsError = error;
+    }
 
     setIsApplyingPassword(false);
 
-    if (error) {
-      toast({ title: 'خطأ', description: error.message, variant: 'destructive' });
+    if (roomsError) {
+      toast({ title: 'خطأ في تحديث الغرف', description: roomsError.message, variant: 'destructive' });
     } else {
       toast({
         title: 'تم التطبيق ✅',
-        description: globalPassword
-          ? 'تم تعيين كلمة المرور على الغرف الحالية والجديدة'
-          : 'تم إزالة كلمة المرور من جميع الغرف',
+        description: pwValue
+          ? `تم تعيين كلمة المرور "${pwValue}" على جميع المواد والغرف`
+          : 'تم إزالة كلمة المرور من جميع المواد والغرف',
       });
       queryClient.invalidateQueries({ queryKey: ['admin-battle-rooms'] });
     }
