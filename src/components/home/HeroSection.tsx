@@ -5,8 +5,9 @@
  */
 
 import { Link } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Users, Award, CheckCircle, Scale, ChevronDown } from 'lucide-react';
+import { ArrowLeft, BookOpen, Users, Award, CheckCircle, Scale, ChevronDown, Eye } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 // عداد متحرك
 function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: string }) {
@@ -44,6 +45,114 @@ function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: str
     <span ref={ref}>
       {count.toLocaleString('ar-EG')}{suffix}
     </span>
+  );
+}
+
+// جلب إجمالي الزيارات من Supabase (أرشيف + حالية)
+function useTotalVisits() {
+  const [total, setTotal] = useState<number | null>(null);
+
+  useEffect(() => {
+    const fetchVisits = async () => {
+      try {
+        // الأرشيف من platform_stats
+        const { data: savedStats } = await supabase
+          .from('platform_stats')
+          .select('total_visits')
+          .eq('id', 1)
+          .single();
+        const archivedVisits = (savedStats as any)?.total_visits ?? 0;
+
+        // الزيارات الحالية من site_analytics
+        const { count: currentCount } = await supabase
+          .from('site_analytics')
+          .select('id', { count: 'exact', head: true });
+
+        setTotal(archivedVisits + (currentCount ?? 0));
+      } catch {
+        setTotal(null);
+      }
+    };
+    fetchVisits();
+  }, []);
+
+  return total;
+}
+
+// عداد الزيارات البارز
+function VisitsCounter() {
+  const total = useTotalVisits();
+  const [displayed, setDisplayed] = useState(0);
+  const started = useRef(false);
+
+  useEffect(() => {
+    if (total === null || started.current) return;
+    started.current = true;
+    const duration = 2200;
+    const steps = 80;
+    const increment = total / steps;
+    let current = 0;
+    const timer = setInterval(() => {
+      current += increment;
+      if (current >= total) {
+        setDisplayed(total);
+        clearInterval(timer);
+      } else {
+        setDisplayed(Math.floor(current));
+      }
+    }, duration / steps);
+    return () => clearInterval(timer);
+  }, [total]);
+
+  return (
+    <div
+      className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl mb-6"
+      style={{
+        background: 'linear-gradient(135deg, rgba(59,130,246,0.12), rgba(16,185,129,0.08))',
+        border: '1px solid rgba(59,130,246,0.25)',
+        backdropFilter: 'blur(12px)',
+        animation: 'fadeSlideUp 0.8s 0.15s cubic-bezier(0.16,1,0.3,1) both',
+      }}
+    >
+      {/* نقطة نابضة */}
+      <span className="relative flex h-2.5 w-2.5">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400" />
+      </span>
+
+      <Eye className="w-4 h-4" style={{ color: 'hsl(217 91% 75%)' }} />
+
+      <div className="flex items-baseline gap-1.5" dir="rtl">
+        <span
+          className="font-cairo font-black tabular-nums"
+          style={{
+            fontSize: 'clamp(1.4rem, 3.5vw, 2rem)',
+            background: 'linear-gradient(135deg, #fff 40%, hsl(217 91% 75%))',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+          }}
+        >
+          {total === null ? '...' : displayed.toLocaleString('ar-EG')}+
+        </span>
+        <span
+          className="font-bold text-sm"
+          style={{ color: 'rgba(255,255,255,0.65)' }}
+        >
+          زيارة موثّقة
+        </span>
+      </div>
+
+      {/* فاصل */}
+      <div className="w-px h-5" style={{ background: 'rgba(255,255,255,0.12)' }} />
+
+      <span
+        className="text-[10px] font-black uppercase tracking-widest"
+        style={{ color: 'rgba(255,255,255,0.3)' }}
+      >
+        منذ الإطلاق
+      </span>
+    </div>
   );
 }
 
@@ -204,6 +313,8 @@ export function HeroSection() {
             </h1>
 
             {/* DESCRIPTION */}
+            <VisitsCounter />
+
             <p
               className="text-center max-w-2xl mx-auto mb-10 leading-relaxed"
               style={{
