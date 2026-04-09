@@ -630,6 +630,12 @@ const ExamStart = () => {
                 <h1 className="text-3xl font-black tracking-tight leading-snug" style={{ background: 'linear-gradient(90deg, #60a5fa, #a5b4fc, #60a5fa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                   {subject.name}
                 </h1>
+                {subject.author_name && (
+                  <div className="flex items-center justify-center gap-1.5 mt-3">
+                    <span className="text-white/30 text-[10px]">✏️</span>
+                    <span className="text-white/50 text-[11px] font-black tracking-wide">إعداد: {subject.author_name}</span>
+                  </div>
+                )}
               </div>
             </div>
 
