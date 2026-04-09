@@ -156,23 +156,32 @@ function VisitsCounter() {
   );
 }
 
-const STATS = [
-  { value: 10000, suffix: '+', label: 'سؤال قانوني', sub: 'مراجع ومحدّث' },
-  { value: 43,   suffix: '',  label: 'مادة تخصصية', sub: 'في كل فروع القانون' },
-  { value: 4,    suffix: '',  label: 'مستويات دراسية', sub: 'من المبتدئ للمحترف' },
-  { value: 98,   suffix: '%', label: 'رضا المستخدمين', sub: 'بناءً على التقييمات' },
-];
-
-const FEATURES = [
-  { icon: BookOpen,    label: '+10000 سؤال',   sublabel: 'متنوع ومحدث' },
-  { icon: Users,       label: '4 مستويات',     sublabel: 'تدريجية' },
-  { icon: Award,       label: '43 مادة',        sublabel: 'قانونية' },
-  { icon: CheckCircle, label: 'نتائج فورية',   sublabel: 'مع التصحيح' },
-];
-
 export function HeroSection() {
   const dotGridRef = useRef<HTMLDivElement>(null);
   const glowTopRef = useRef<HTMLDivElement>(null);
+  const [questionsCount, setQuestionsCount] = useState(10000);
+
+  useEffect(() => {
+    supabase
+      .from('questions')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'active')
+      .then(({ count }) => { if (count) setQuestionsCount(count); });
+  }, []);
+
+  const STATS = [
+    { value: questionsCount, suffix: '+', label: 'سؤال قانوني', sub: 'مراجع ومحدّث' },
+    { value: 43,   suffix: '',  label: 'مادة تخصصية', sub: 'في كل فروع القانون' },
+    { value: 4,    suffix: '',  label: 'مستويات دراسية', sub: 'من المبتدئ للمحترف' },
+    { value: 98,   suffix: '%', label: 'رضا المستخدمين', sub: 'بناءً على التقييمات' },
+  ];
+
+  const FEATURES = [
+    { icon: BookOpen,    label: `+${questionsCount.toLocaleString('ar-EG')} سؤال`, sublabel: 'متنوع ومحدث' },
+    { icon: Users,       label: '4 مستويات',   sublabel: 'تدريجية' },
+    { icon: Award,       label: '43 مادة',      sublabel: 'قانونية' },
+    { icon: CheckCircle, label: 'نتائج فورية', sublabel: 'مع التصحيح' },
+  ];
 
   useEffect(() => {
     const handleScroll = () => {
@@ -324,7 +333,7 @@ export function HeroSection() {
               }}
             >
               منصة تفاعلية متكاملة تضم أكثر من{' '}
-              <span style={{ color: 'hsl(217 91% 75%)', fontWeight: 700 }}>10000 سؤال</span>
+              <span style={{ color: 'hsl(217 91% 75%)', fontWeight: 700 }}>{questionsCount.toLocaleString('ar-EG')}+ سؤال</span>
               {' '}في مختلف مجالات القانون — مصممة لمساعدتك في التحضير للامتحانات والارتقاء بمستواك المهني.
             </p>
 
