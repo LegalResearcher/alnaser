@@ -505,6 +505,7 @@ const AdminQuestions = () => {
         option_c: q.option_c || "",
         option_d: q.option_d || "",
         correct_option: q.correct_option || 'A',
+        hint: q.hint || null,
         exam_year: (importExamForm === 'Trial') ? null : (selectedYear ? parseInt(selectedYear) : null),
         exam_form: importExamForm,
         created_by: user.id,
@@ -835,6 +836,21 @@ const AdminQuestions = () => {
                       </div>
                     ))}
                   </div>
+
+                  {/* حقل الملاحظة في الاستيراد */}
+                  <div className="mt-4 space-y-1.5 font-cairo">
+                    <Label className="text-[10px] font-black text-amber-600 flex items-center gap-1">
+                      💡 ملاحظة / تفسير (اختياري — تظهر عند الإجابة الخاطئة)
+                    </Label>
+                    <Textarea
+                      value={q.hint || ''}
+                      onChange={(e) => { const up = [...previewQuestions]; const i = up.findIndex(x => x.id === q.id); up[i].hint = e.target.value; setPreviewQuestions(up); }}
+                      placeholder="اكتب شرحاً أو تلميحاً للطالب عند الإجابة الخاطئة..."
+                      className="rounded-xl border-amber-200 bg-amber-50/40 font-bold text-xs md:text-sm min-h-[64px] text-right resize-none placeholder:text-amber-300 focus:border-amber-400"
+                      dir="rtl"
+                      lang="ar"
+                    />
+                  </div>
                 </div>
               ))}
             </div>
@@ -962,6 +978,24 @@ const AdminQuestions = () => {
                   <Input placeholder="نص الخيار..." value={formData[`option_${l}` as keyof typeof formData] as string} onChange={(e) => setFormData({ ...formData, [`option_${l}`]: e.target.value })} className="rounded-xl h-12 text-right" dir="rtl" lang="ar" />
                 </div>
               ))}
+            </div>
+
+            {/* حقل الملاحظة/التفسير */}
+            <div className="space-y-2.5">
+              <Label className="font-black text-slate-700 flex items-center gap-2">
+                <span>💡</span> ملاحظة / تفسير (اختياري)
+              </Label>
+              <Textarea
+                value={formData.hint}
+                onChange={(e) => setFormData({ ...formData, hint: e.target.value })}
+                placeholder="اكتب شرحاً أو تلميحاً يظهر للطالب عند الإجابة الخاطئة فقط..."
+                className="rounded-2xl border-amber-200 bg-amber-50/40 min-h-[90px] text-right focus:border-amber-400 focus:ring-amber-200 placeholder:text-amber-300"
+                dir="rtl"
+                lang="ar"
+              />
+              <p className="text-[11px] text-amber-500 font-bold text-right">
+                ⚠️ تظهر هذه الملاحظة للطالب فقط عند اختياره إجابة خاطئة
+              </p>
             </div>
 
             <div className="grid grid-cols-3 gap-4">
