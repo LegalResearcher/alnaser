@@ -254,6 +254,8 @@ const BattleRoom = () => {
   const chatChannelRef = useRef<any>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const myPlayerId = useRef<string | null>(null);
+  // ── Debounce progress writes to avoid DB write storm with 10+ players ──
+  const progressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Keep refs in sync
   useEffect(() => { questionsRef.current = questions; }, [questions]);
@@ -419,8 +421,20 @@ const BattleRoom = () => {
             }
           } else if (payload.eventType === 'UPDATE') {
             const updated = payload.new as BattlePlayer;
-            setPlayers(prev => prev.map(p => p.id === updated.id ? updated : p)
-              .sort((a, b) => b.percentage - a.percentage));
+            // ── FIX: Throttle leaderboard re-renders — only update if meaningful change ──
+            setPlayers(prev => {
+              const existing = prev.find(p => p.id === updated.id);
+              // Skip if only answers_json changed (internal data, not displayed in leaderboard)
+              if (existing &&
+                existing.correct_count === updated.correct_count &&
+                existing.total_answered === updated.total_answered &&
+                existing.status === updated.status &&
+                existing.kicked === updated.kicked) {
+                return prev; // No visible change — skip re-render
+              }
+              return prev.map(p => p.id === updated.id ? updated : p)
+                .sort((a, b) => b.percentage - a.percentage);
+            });
             if (updated.id === myPlayerId.current) {
               setMyPlayer(updated);
               if (updated.kicked && !kickedOutRef.current) {
@@ -688,18 +702,21 @@ const BattleRoom = () => {
   };
 
   // ── Sync Quiz Logic (Creator Only) ──
-  const broadcastQuizState = async (questionIndex: number, phase: 'question' | 'reveal', timeLeft: number, totalQs: number) => {
+  const broadcastQuizState = (questionIndex: number, phase: 'question' | 'reveal', timeLeft: number, totalQs: number) => {
     if (!syncChannelRef.current) return;
     syncChannelRef.current.send({
       type: 'broadcast', event: 'quiz_state',
       payload: { questionIndex, phase, timeLeft, totalQs }
     });
-    // حفظ السؤال الحالي في DB حتى يراه العائدون فور رجوعهم
+    // ── FIX: fire-and-forget DB update — never await inside timer loop ──
+    // Awaiting here was blocking the setInterval and causing freeze at Q40+ with 10+ players
     const currentRoom = roomRef.current;
     if (currentRoom?.id) {
-      await (supabase.from('battle_rooms' as any) as any)
+      (supabase.from('battle_rooms' as any) as any)
         .update({ current_question_index: questionIndex })
-        .eq('id', currentRoom.id);
+        .eq('id', currentRoom.id)
+        .then(() => {}) // intentional fire-and-forget
+        .catch(() => {}); // silent fail — not critical for quiz flow
     }
   };
 
@@ -738,13 +755,15 @@ const BattleRoom = () => {
     setSyncPhase('reveal');
     setShowFeedback(true);
     broadcastQuizState(qIndex, 'reveal', 0, qList.length);
+    // ── FIX: increased from 2500ms to 3000ms to give Supabase realtime room to breathe
+    // with 10+ players all receiving broadcasts simultaneously
     setTimeout(() => {
       if (!qList.length || qIndex + 1 >= qList.length) {
         handleFinishExam();
       } else {
         startSyncQuestionWithList(qIndex + 1, tpq, qList);
       }
-    }, 2500);
+    }, 3000);
   };
 
   const handleSyncAnswer = async (option: string) => {
@@ -759,20 +778,29 @@ const BattleRoom = () => {
       const qObj = questions.find(q => q.id === id);
       return qObj && newAnswers[id] === qObj.correct_option;
     }).length;
-    await updateProgress(correctCount, questions.length, syncCurrentQ + 1, newAnswers);
+    // ── FIX: non-blocking call (debounced internally) — don't await ──
+    updateProgress(correctCount, questions.length, syncCurrentQ + 1, newAnswers);
   };
 
   // ── Exam ──
-  const updateProgress = async (correct: number, total: number, answered: number, answersJson: Record<string, string>) => {
+  const updateProgress = (correct: number, total: number, answered: number, answersJson: Record<string, string>) => {
     if (!myPlayerId.current || !room) return;
-    const pct = room.questions_count > 0 ? (correct / room.questions_count) * 100 : 0;
-    const progress = (answered / room.questions_count) * 100;
-    await (supabase.from('battle_players' as any) as any).update({
-      correct_count: correct, total_answered: answered,
-      score: correct, percentage: pct, progress,
-      answers_json: answersJson,
-      status: answered >= room.questions_count ? 'finished' : 'playing',
-    }).eq('id', myPlayerId.current);
+    // ── FIX: Debounce DB writes to prevent write storm with 10+ players ──
+    if (progressDebounceRef.current) clearTimeout(progressDebounceRef.current);
+    progressDebounceRef.current = setTimeout(async () => {
+      if (!myPlayerId.current || !roomRef.current) return;
+      const currentRoom = roomRef.current;
+      const pct = currentRoom.questions_count > 0 ? (correct / currentRoom.questions_count) * 100 : 0;
+      const progress = (answered / currentRoom.questions_count) * 100;
+      // ── FIX: Do NOT write answers_json on every answer — only write stats ──
+      // answers_json grows with every question (40+ entries × 10+ players = massive payload)
+      // It will be written once at exam finish
+      await (supabase.from('battle_players' as any) as any).update({
+        correct_count: correct, total_answered: answered,
+        score: correct, percentage: pct, progress,
+        status: answered >= currentRoom.questions_count ? 'finished' : 'playing',
+      }).eq('id', myPlayerId.current);
+    }, 300); // 300ms debounce: batches rapid answers, prevents flood
   };
 
   const handleAnswer = async (option: string) => {
@@ -790,7 +818,8 @@ const BattleRoom = () => {
       return qObj && newAnswers[id] === qObj.correct_option;
     }).length;
 
-    await updateProgress(correctCount, questions.length, currentQ + 1, newAnswers);
+    // ── FIX: non-blocking (debounced internally) ──
+    updateProgress(correctCount, questions.length, currentQ + 1, newAnswers);
 
     setTimeout(() => {
       if (currentQ + 1 >= questions.length) {
@@ -808,6 +837,8 @@ const BattleRoom = () => {
     const currentRoom = roomRef.current;
     if (!currentRoom) return;
     clearInterval(timerRef.current!);
+    // ── FIX: cancel any pending debounced progress write before final save ──
+    if (progressDebounceRef.current) clearTimeout(progressDebounceRef.current);
     setExamFinished(true);
     localStorage.removeItem(SESSION_KEY);
 
