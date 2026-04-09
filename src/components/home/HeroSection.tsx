@@ -5,7 +5,7 @@
  */
 
 import { Link } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Users, Award, CheckCircle, Scale, ChevronDown, Eye } from 'lucide-react';
+import { ArrowLeft, BookOpen, Scale, ChevronDown, Eye } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -176,12 +176,7 @@ export function HeroSection() {
     { value: 98,   suffix: '%', label: 'رضا المستخدمين', sub: 'بناءً على التقييمات' },
   ];
 
-  const FEATURES = [
-    { icon: BookOpen,    label: `+${questionsCount.toLocaleString('ar-EG')} سؤال`, sublabel: 'متنوع ومحدث' },
-    { icon: Users,       label: '4 مستويات',   sublabel: 'تدريجية' },
-    { icon: Award,       label: '43 مادة',      sublabel: 'قانونية' },
-    { icon: CheckCircle, label: 'نتائج فورية', sublabel: 'مع التصحيح' },
-  ];
+
 
   useEffect(() => {
     const handleScroll = () => {
@@ -403,36 +398,7 @@ export function HeroSection() {
               </a>
             </div>
 
-            {/* FEATURE CARDS */}
-            <div
-              className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full mb-8"
-              style={{ animation: 'fadeSlideUp 0.8s 0.4s cubic-bezier(0.16,1,0.3,1) both' }}
-            >
-              {FEATURES.map((item, i) => (
-                <div
-                  key={i}
-                  className="group flex flex-col items-center text-center p-4 md:p-5 rounded-2xl transition-all duration-300 hover:scale-[1.03] cursor-default"
-                  style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    backdropFilter: 'blur(10px)',
-                    animationDelay: `${0.4 + i * 0.07}s`,
-                  }}
-                >
-                  <div
-                    className="w-11 h-11 rounded-xl flex items-center justify-center mb-3 transition-transform duration-300 group-hover:-translate-y-1"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(59,130,246,0.25), rgba(16,185,129,0.15))',
-                      border: '1px solid rgba(59,130,246,0.3)',
-                    }}
-                  >
-                    <item.icon className="w-5 h-5" style={{ color: 'hsl(217 91% 75%)' }} />
-                  </div>
-                  <p className="font-black text-white text-sm md:text-base">{item.label}</p>
-                  <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>{item.sublabel}</p>
-                </div>
-              ))}
-            </div>
+
 
           </div>
         </div>
