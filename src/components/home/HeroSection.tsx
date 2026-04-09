@@ -280,17 +280,53 @@ export function HeroSection() {
 
             {/* اسم صاحب المنصة */}
             <div
-              className="inline-flex items-center gap-2 mb-8 px-4 py-2 rounded-full text-xs font-black"
+              className="inline-flex items-center gap-3 mb-8 px-5 py-2.5 rounded-full relative overflow-hidden"
               style={{
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                color: 'rgba(255,255,255,0.5)',
+                background: 'linear-gradient(135deg, rgba(251,191,36,0.12), rgba(245,158,11,0.06))',
+                border: '1px solid rgba(251,191,36,0.4)',
+                boxShadow: '0 0 24px rgba(251,191,36,0.15), inset 0 0 12px rgba(251,191,36,0.04)',
                 animation: 'fadeSlideDown 0.7s 0.1s cubic-bezier(0.16,1,0.3,1) both',
               }}
             >
-              <span>✍️</span>
-              <span>إعداد وتطوير: </span>
-              <span style={{ color: 'hsl(217 91% 75%)', fontWeight: 900 }}>أ. معين الناصر</span>
+              {/* shimmer متحرك */}
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: 'linear-gradient(105deg, transparent 30%, rgba(251,191,36,0.12) 50%, transparent 70%)',
+                  animation: 'badgeShimmer 3s ease-in-out infinite',
+                }}
+              />
+
+              {/* أفاتار */}
+              <div
+                className="relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-sm font-black shrink-0"
+                style={{
+                  background: 'linear-gradient(135deg, #f59e0b, #fbbf24)',
+                  boxShadow: '0 0 10px rgba(251,191,36,0.5)',
+                  color: '#000',
+                }}
+              >
+                م
+              </div>
+
+              {/* النص */}
+              <div className="relative z-10 flex flex-col items-start gap-0.5">
+                <span className="text-[10px] font-bold tracking-wider uppercase flex items-center gap-1" style={{ color: 'rgba(251,191,36,0.6)' }}>
+                  <span>⚖️</span>
+                  <span>مؤسس ومطور المنصة</span>
+                </span>
+                <span
+                  className="text-sm font-black"
+                  style={{
+                    background: 'linear-gradient(135deg, #fbbf24, #f59e0b, #fcd34d)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                  }}
+                >
+                  أ. معين الناصر
+                </span>
+              </div>
             </div>
 
             {/* HEADLINE */}
@@ -459,6 +495,11 @@ export function HeroSection() {
         @keyframes fadeSlideUp {
           from { opacity: 0; transform: translateY(24px); }
           to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes badgeShimmer {
+          0%   { transform: translateX(-100%); }
+          60%  { transform: translateX(100%); }
+          100% { transform: translateX(100%); }
         }
       `}</style>
     </section>
