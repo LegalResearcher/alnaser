@@ -631,9 +631,20 @@ const ExamStart = () => {
                   {subject.name}
                 </h1>
                 {subject.author_name && (
-                  <div className="flex items-center justify-center gap-1.5 mt-3">
-                    <span className="text-white/30 text-[10px]">✏️</span>
-                    <span className="text-white/50 text-[11px] font-black tracking-wide">إعداد: {subject.author_name}</span>
+                  <div className="flex items-center justify-center mt-4">
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-2xl"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(99,102,241,0.18), rgba(168,85,247,0.13))',
+                        border: '1px solid rgba(139,92,246,0.30)',
+                        backdropFilter: 'blur(8px)',
+                      }}>
+                      <span style={{ fontSize: 13 }}>✍️</span>
+                      <span className="text-[11px] font-black tracking-widest uppercase" style={{ color: 'rgba(196,181,253,0.75)', letterSpacing: '0.15em' }}>إعداد</span>
+                      <div className="w-px h-3 mx-0.5" style={{ background: 'rgba(139,92,246,0.4)' }} />
+                      <span className="text-[13px] font-black" style={{ background: 'linear-gradient(90deg, #c4b5fd, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                        {subject.author_name}
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>
