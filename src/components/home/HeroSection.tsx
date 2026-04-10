@@ -1,7 +1,7 @@
 /**
  * Alnasser Tech Digital Solutions
  * Component: HeroSection — World-Class Redesign
- * Version: 3.0
+ * Version: 3.1 — PWA Install Support
  */
 
 import { Link } from 'react-router-dom';
@@ -48,14 +48,13 @@ function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: str
   );
 }
 
-// جلب إجمالي الزيارات من Supabase (أرشيف + حالية)
+// جلب إجمالي الزيارات من Supabase
 function useTotalVisits() {
   const [total, setTotal] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchVisits = async () => {
       try {
-        // الأرشيف من platform_stats
         const { data: savedStats } = await supabase
           .from('platform_stats')
           .select('total_visits')
@@ -63,7 +62,6 @@ function useTotalVisits() {
           .single();
         const archivedVisits = (savedStats as any)?.total_visits ?? 0;
 
-        // الزيارات الحالية من site_analytics
         const { count: currentCount } = await supabase
           .from('site_analytics')
           .select('id', { count: 'exact', head: true });
@@ -114,7 +112,6 @@ function VisitsCounter() {
         animation: 'fadeSlideUp 0.8s 0.15s cubic-bezier(0.16,1,0.3,1) both',
       }}
     >
-      {/* نقطة نابضة */}
       <span className="relative flex h-2.5 w-2.5">
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
         <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400" />
@@ -135,27 +132,189 @@ function VisitsCounter() {
         >
           {total === null ? '...' : displayed.toLocaleString('ar-EG')}+
         </span>
-        <span
-          className="font-bold text-sm"
-          style={{ color: 'rgba(255,255,255,0.65)' }}
-        >
+        <span className="font-bold text-sm" style={{ color: 'rgba(255,255,255,0.65)' }}>
           زيارة موثّقة
         </span>
       </div>
 
-      {/* فاصل */}
       <div className="w-px h-5" style={{ background: 'rgba(255,255,255,0.12)' }} />
 
-      <span
-        className="text-[10px] font-black uppercase tracking-widest"
-        style={{ color: 'rgba(255,255,255,0.3)' }}
-      >
+      <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.3)' }}>
         منذ الإطلاق
       </span>
     </div>
   );
 }
 
+// ══════════════════════════════════════════════
+// زر تثبيت PWA — يستبدل زر APK
+// ══════════════════════════════════════════════
+function PWAInstallButton() {
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  const [showHint, setShowHint] = useState(false);
+  const [installing, setInstalling] = useState(false);
+
+  useEffect(() => {
+    // كشف iOS
+    const ios =
+      /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase()) &&
+      !(window as any).MSStream;
+    setIsIOS(ios);
+
+    // كشف إذا مثبّت بالفعل
+    if (
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (navigator as any).standalone === true
+    ) {
+      setIsInstalled(true);
+    }
+
+    // استقبال حدث beforeinstallprompt (Chrome / Android / Desktop)
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', () => {
+      setIsInstalled(true);
+      setDeferredPrompt(null);
+    });
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+    };
+  }, []);
+
+  const handleInstall = async () => {
+    if (isInstalled || installing) return;
+
+    // iOS — أظهر تعليمات يدوية
+    if (isIOS) {
+      setShowHint((v) => !v);
+      return;
+    }
+
+    // Android/Desktop — شغّل نافذة التثبيت الأصلية
+    if (deferredPrompt) {
+      setInstalling(true);
+      try {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          setIsInstalled(true);
+          setDeferredPrompt(null);
+        }
+      } finally {
+        setInstalling(false);
+      }
+    } else {
+      // Fallback إذا لم يتوفر الحدث
+      setShowHint((v) => !v);
+    }
+  };
+
+  // حالة: مثبّت
+  if (isInstalled) {
+    return (
+      <div
+        className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl text-sm font-bold"
+        style={{
+          background: 'rgba(16,185,129,0.1)',
+          border: '1.5px solid rgba(16,185,129,0.35)',
+          color: '#34d399',
+        }}
+      >
+        <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
+          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+        </svg>
+        <span>التطبيق مثبّت</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <button
+        onClick={handleInstall}
+        disabled={installing}
+        className="group relative inline-flex items-center gap-3 px-6 py-3.5 rounded-2xl font-bold text-sm transition-all duration-300 overflow-hidden border-2 border-white/20 hover:border-white/40 bg-white/5 hover:bg-white/10 text-white backdrop-blur-sm hover:scale-105 active:scale-95 shadow-lg hover:shadow-white/10 disabled:opacity-60 disabled:cursor-wait"
+      >
+        {/* توهج خلفي */}
+        <span className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+        {/* أيقونة أندرويد */}
+        <svg
+          viewBox="0 0 24 24"
+          className="w-5 h-5 fill-emerald-400 shrink-0 relative z-10"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path d="M17.523 15.341a.673.673 0 0 1-.672.672.673.673 0 0 1-.673-.672V10.16a.673.673 0 0 1 .673-.672.673.673 0 0 1 .672.672v5.181zm-10.37 0a.673.673 0 0 1-.672.672.673.673 0 0 1-.673-.672V10.16a.673.673 0 0 1 .673-.672.673.673 0 0 1 .672.672v5.181zM8.818 2.146l-.96-1.664a.2.2 0 0 0-.274-.073.2.2 0 0 0-.073.274l.977 1.692A6.14 6.14 0 0 0 5.9 5.6h12.2a6.14 6.14 0 0 0-2.588-3.225l.977-1.692a.2.2 0 0 0-.073-.274.2.2 0 0 0-.274.073l-.96 1.664A6.08 6.08 0 0 0 12 1.6a6.08 6.08 0 0 0-3.182.546zM10.4 4a.6.6 0 1 1-1.2 0 .6.6 0 0 1 1.2 0zm4.4 0a.6.6 0 1 1-1.2 0 .6.6 0 0 1 1.2 0zM5.9 6.8v10.4c0 .88.72 1.6 1.6 1.6h.8v2.527a.873.873 0 0 0 .873.873.873.873 0 0 0 .873-.873V18.8h1.908v2.527a.873.873 0 0 0 .873.873.873.873 0 0 0 .873-.873V18.8h.8c.88 0 1.6-.72 1.6-1.6V6.8H5.9z" />
+        </svg>
+
+        <span className="relative z-10 flex flex-col items-start">
+          <span className="text-[10px] text-white/60 font-medium leading-none mb-0.5">
+            {installing ? 'جارٍ التثبيت...' : 'حمّل التطبيق مجاناً'}
+          </span>
+          <span className="text-sm font-black leading-none">Android APK</span>
+        </span>
+
+        {/* سهم تحميل */}
+        <svg
+          viewBox="0 0 24 24"
+          className="w-4 h-4 fill-none stroke-white/60 stroke-2 relative z-10 group-hover:translate-y-0.5 transition-transform"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      {/* تلميح التثبيت اليدوي (iOS أو fallback) */}
+      {showHint && (
+        <div
+          className="absolute bottom-full mb-3 right-0 w-72 p-4 rounded-2xl text-xs text-right leading-relaxed z-50"
+          style={{
+            background: 'rgba(10,22,40,0.97)',
+            border: '1px solid rgba(255,255,255,0.15)',
+            backdropFilter: 'blur(20px)',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+          }}
+          dir="rtl"
+        >
+          {isIOS ? (
+            <>
+              <p className="text-white font-black mb-2 text-sm">تثبيت على iPhone / iPad:</p>
+              <ol className="text-white/70 space-y-1.5 list-decimal list-inside">
+                <li>اضغط أيقونة <strong className="text-white">المشاركة ↑</strong> في Safari</li>
+                <li>اختر <strong className="text-white">"إضافة إلى الشاشة الرئيسية"</strong></li>
+                <li>اضغط <strong className="text-white">إضافة</strong></li>
+              </ol>
+            </>
+          ) : (
+            <>
+              <p className="text-white font-black mb-2 text-sm">لتثبيت التطبيق:</p>
+              <p className="text-white/70">
+                افتح الموقع في <strong className="text-white">Chrome</strong>، ثم من قائمة ⋮
+                اختر <strong className="text-white">"إضافة إلى الشاشة الرئيسية"</strong>
+              </p>
+            </>
+          )}
+          <button
+            onClick={() => setShowHint(false)}
+            className="mt-3 text-blue-400 font-bold hover:text-blue-300 transition-colors"
+          >
+            حسناً ✕
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════
+// HeroSection الرئيسي
+// ══════════════════════════════════════════════
 export function HeroSection() {
   const dotGridRef = useRef<HTMLDivElement>(null);
   const glowTopRef = useRef<HTMLDivElement>(null);
@@ -170,23 +329,17 @@ export function HeroSection() {
   }, []);
 
   const STATS = [
-    { value: questionsCount, suffix: '+', label: 'سؤال قانوني', sub: 'مراجع ومحدّث' },
-    { value: 43,   suffix: '',  label: 'مادة تخصصية', sub: 'في كل فروع القانون' },
-    { value: 4,    suffix: '',  label: 'مستويات دراسية', sub: 'من المبتدئ للمحترف' },
-    { value: 98,   suffix: '%', label: 'رضا المستخدمين', sub: 'بناءً على التقييمات' },
+    { value: questionsCount, suffix: '+', label: 'سؤال قانوني',    sub: 'مراجع ومحدّث' },
+    { value: 43,             suffix: '',  label: 'مادة تخصصية',    sub: 'في كل فروع القانون' },
+    { value: 4,              suffix: '',  label: 'مستويات دراسية', sub: 'من المبتدئ للمحترف' },
+    { value: 98,             suffix: '%', label: 'رضا المستخدمين', sub: 'بناءً على التقييمات' },
   ];
-
-
 
   useEffect(() => {
     const handleScroll = () => {
       const y = window.scrollY;
-      if (dotGridRef.current) {
-        dotGridRef.current.style.transform = `translateY(${y * 0.075}px)`;
-      }
-      if (glowTopRef.current) {
-        glowTopRef.current.style.transform = `translateX(-50%) translateY(${y * 0.125}px)`;
-      }
+      if (dotGridRef.current) dotGridRef.current.style.transform = `translateY(${y * 0.075}px)`;
+      if (glowTopRef.current) glowTopRef.current.style.transform = `translateX(-50%) translateY(${y * 0.125}px)`;
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
@@ -195,14 +348,9 @@ export function HeroSection() {
   return (
     <section className="relative overflow-hidden min-h-[100svh] flex flex-col" dir="rtl">
 
-      {/* ═══════════════════════════════════════════
-          BACKGROUND LAYERS
-      ═══════════════════════════════════════════ */}
-
-      {/* طبقة أساسية متدرجة */}
+      {/* BACKGROUND LAYERS */}
       <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-[#0a1628] to-slate-950" />
 
-      {/* نسيج نقطي خفيف */}
       <div
         ref={dotGridRef}
         className="absolute inset-0 opacity-[0.18]"
@@ -213,7 +361,6 @@ export function HeroSection() {
         }}
       />
 
-      {/* توهج أزرق علوي */}
       <div
         ref={glowTopRef}
         className="absolute -top-40 left-1/2 w-[900px] h-[500px] rounded-full opacity-30 pointer-events-none"
@@ -225,7 +372,6 @@ export function HeroSection() {
         }}
       />
 
-      {/* توهج أخضر سفلي */}
       <div
         className="absolute bottom-0 -left-20 w-[500px] h-[400px] opacity-20 pointer-events-none"
         style={{
@@ -234,13 +380,12 @@ export function HeroSection() {
         }}
       />
 
-      {/* خطوط هندسية خلفية */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-10">
         <svg className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="hsl(217 91% 60%)" stopOpacity="0" />
-              <stop offset="50%" stopColor="hsl(217 91% 60%)" stopOpacity="0.8" />
+              <stop offset="0%"   stopColor="hsl(217 91% 60%)" stopOpacity="0" />
+              <stop offset="50%"  stopColor="hsl(217 91% 60%)" stopOpacity="0.8" />
               <stop offset="100%" stopColor="hsl(160 84% 39%)" stopOpacity="0" />
             </linearGradient>
           </defs>
@@ -248,7 +393,7 @@ export function HeroSection() {
             <line
               key={i}
               x1={`${-10 + i * 22}%`} y1="0%"
-              x2={`${20 + i * 22}%`} y2="100%"
+              x2={`${20 + i * 22}%`}  y2="100%"
               stroke="url(#lineGrad)"
               strokeWidth="0.5"
             />
@@ -256,9 +401,7 @@ export function HeroSection() {
         </svg>
       </div>
 
-      {/* ═══════════════════════════════════════════
-          MAIN CONTENT
-      ═══════════════════════════════════════════ */}
+      {/* MAIN CONTENT */}
       <div className="relative z-10 flex-1 flex flex-col">
         <div className="container mx-auto px-4 md:px-6 pt-24 pb-12 md:pt-32 md:pb-16 flex-1 flex flex-col">
           <div className="max-w-5xl mx-auto w-full flex-1 flex flex-col items-center justify-center">
@@ -288,7 +431,6 @@ export function HeroSection() {
                 animation: 'fadeSlideDown 0.7s 0.1s cubic-bezier(0.16,1,0.3,1) both',
               }}
             >
-              {/* shimmer متحرك */}
               <div
                 className="absolute inset-0 pointer-events-none"
                 style={{
@@ -296,8 +438,6 @@ export function HeroSection() {
                   animation: 'badgeShimmer 3s ease-in-out infinite',
                 }}
               />
-
-              {/* أفاتار */}
               <div
                 className="relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-sm font-black shrink-0"
                 style={{
@@ -308,8 +448,6 @@ export function HeroSection() {
               >
                 م
               </div>
-
-              {/* النص */}
               <div className="relative z-10 flex flex-col items-start gap-0.5">
                 <span className="text-[10px] font-bold tracking-wider uppercase flex items-center gap-1" style={{ color: 'rgba(251,191,36,0.6)' }}>
                   <span>⚖️</span>
@@ -352,7 +490,6 @@ export function HeroSection() {
               </span>
             </h1>
 
-            {/* DESCRIPTION */}
             <VisitsCounter />
 
             <p
@@ -383,12 +520,9 @@ export function HeroSection() {
                 >
                   <span className="relative z-10">ابدأ الاختبار الآن</span>
                   <ArrowLeft className="w-5 h-5 relative z-10 group-hover:-translate-x-1 transition-transform duration-200" />
-                  {/* shimmer */}
                   <div
                     className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                    style={{
-                      background: 'linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.15) 50%, transparent 70%)',
-                    }}
+                    style={{ background: 'linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.15) 50%, transparent 70%)' }}
                   />
                 </button>
               </Link>
@@ -408,40 +542,14 @@ export function HeroSection() {
                 </button>
               </Link>
 
-              {/* زر تحميل التطبيق */}
-              <a
-                href="https://yuo/Legal/alnaser-mobile/s/la/download/default.apk"
-                download="alnaser.apk"
-                className="group relative inline-flex items-center gap-3 px-6 py-3.5 rounded-2xl font-bold text-sm transition-all duration-300 overflow-hidden border-2 border-white/20 hover:border-white/40 bg-white/5 hover:bg-white/10 text-white backdrop-blur-sm hover:scale-105 active:scale-95 shadow-lg hover:shadow-white/10"
-              >
-                {/* توهج خلفي */}
-                <span className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-                {/* أيقونة أندرويد */}
-                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-emerald-400 shrink-0 relative z-10" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M17.523 15.341a.673.673 0 0 1-.672.672.673.673 0 0 1-.673-.672V10.16a.673.673 0 0 1 .673-.672.673.673 0 0 1 .672.672v5.181zm-10.37 0a.673.673 0 0 1-.672.672.673.673 0 0 1-.673-.672V10.16a.673.673 0 0 1 .673-.672.673.673 0 0 1 .672.672v5.181zM8.818 2.146l-.96-1.664a.2.2 0 0 0-.274-.073.2.2 0 0 0-.073.274l.977 1.692A6.14 6.14 0 0 0 5.9 5.6h12.2a6.14 6.14 0 0 0-2.588-3.225l.977-1.692a.2.2 0 0 0-.073-.274.2.2 0 0 0-.274.073l-.96 1.664A6.08 6.08 0 0 0 12 1.6a6.08 6.08 0 0 0-3.182.546zM10.4 4a.6.6 0 1 1-1.2 0 .6.6 0 0 1 1.2 0zm4.4 0a.6.6 0 1 1-1.2 0 .6.6 0 0 1 1.2 0zM5.9 6.8v10.4c0 .88.72 1.6 1.6 1.6h.8v2.527a.873.873 0 0 0 .873.873.873.873 0 0 0 .873-.873V18.8h1.908v2.527a.873.873 0 0 0 .873.873.873.873 0 0 0 .873-.873V18.8h.8c.88 0 1.6-.72 1.6-1.6V6.8H5.9z"/>
-                </svg>
-
-                <span className="relative z-10 flex flex-col items-start">
-                  <span className="text-[10px] text-white/60 font-medium leading-none mb-0.5">حمّل التطبيق مجاناً</span>
-                  <span className="text-sm font-black leading-none">Android APK</span>
-                </span>
-
-                {/* سهم تحميل */}
-                <svg viewBox="0 0 24 24" className="w-4 h-4 fill-none stroke-white/60 stroke-2 relative z-10 group-hover:translate-y-0.5 transition-transform" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </a>
+              {/* ✅ زر تثبيت PWA */}
+              <PWAInstallButton />
             </div>
-
-
 
           </div>
         </div>
 
-        {/* ═══════════════════════════════════════════
-            STATS BAR — الجزء الأهم بصرياً
-        ═══════════════════════════════════════════ */}
+        {/* STATS BAR */}
         <div
           className="relative border-t"
           style={{
@@ -484,9 +592,7 @@ export function HeroSection() {
         </div>
       </div>
 
-      {/* ═══════════════════════════════════════════
-          CSS ANIMATIONS
-      ═══════════════════════════════════════════ */}
+      {/* CSS ANIMATIONS */}
       <style>{`
         @keyframes fadeSlideDown {
           from { opacity: 0; transform: translateY(-16px); }
