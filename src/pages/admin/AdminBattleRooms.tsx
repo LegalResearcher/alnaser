@@ -236,11 +236,22 @@ const AdminBattleRooms = () => {
   const { data: rooms = [], isLoading: roomsLoading, refetch } = useQuery({
     queryKey: ['admin-battle-rooms'],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('battle_rooms')
-        .select('*, battle_players(*)')
-        .order('created_at', { ascending: false });
-      return data || [];
+      // جلب جميع الغرف بدون حد الـ 1000 الافتراضي
+      let allRooms: any[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      while (true) {
+        const { data, error } = await supabase
+          .from('battle_rooms')
+          .select('*, battle_players(*)')
+          .order('created_at', { ascending: false })
+          .range(from, from + pageSize - 1);
+        if (error || !data || data.length === 0) break;
+        allRooms = [...allRooms, ...data];
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
+      return allRooms;
     },
     refetchInterval: 30000,
   });
@@ -274,46 +285,49 @@ const AdminBattleRooms = () => {
     });
   }, [rooms, filterLevel, filterSubject, filterStatus, searchQuery, subjects]);
 
-  // ─── إحصائيات سريعة ────────────────────────────────────────
-  const { data: savedBattleStats } = useQuery({
-    queryKey: ['platform-battle-stats'],
+  // ─── إحصائيات حقيقية مباشرة من قاعدة البيانات ─────────────
+  const { data: realStats, refetch: refetchStats } = useQuery({
+    queryKey: ['real-battle-stats'],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('platform_stats' as any)
-        .select('total_battle_rooms, total_battle_finished, total_battle_players')
-        .eq('id', 1)
-        .single();
-      return (data as unknown) as {
-        total_battle_rooms:    number;
-        total_battle_finished: number;
-        total_battle_players:  number;
-      } | null;
+      const [
+        { count: totalRooms },
+        { count: totalFinished },
+        { count: totalActive },
+        { count: totalPlayers },
+      ] = await Promise.all([
+        supabase.from('battle_rooms').select('*', { count: 'exact', head: true }),
+        supabase.from('battle_rooms').select('*', { count: 'exact', head: true }).eq('status', 'finished'),
+        supabase.from('battle_rooms').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+        supabase.from('battle_players').select('*', { count: 'exact', head: true }),
+      ]);
+      return {
+        totalRooms:    totalRooms    ?? 0,
+        totalFinished: totalFinished ?? 0,
+        totalActive:   totalActive   ?? 0,
+        totalPlayers:  totalPlayers  ?? 0,
+      };
     },
-    staleTime: 1000 * 60 * 5,
+    staleTime: Infinity,   // لا تُعاد تلقائياً أبداً
+    refetchOnWindowFocus: false,
+    refetchOnMount: true,  // مرة واحدة عند فتح الصفحة فقط
   });
 
   const stats = useMemo(() => {
-    const archivedRooms    = savedBattleStats?.total_battle_rooms    ?? 0;
-    const archivedFinished = savedBattleStats?.total_battle_finished ?? 0;
-    const archivedPlayers  = savedBattleStats?.total_battle_players  ?? 0;
+    // الإحصائيات الكلية من COUNT مباشر — حقيقية 100%
+    const total        = realStats?.totalRooms    ?? rooms.length;
+    const active       = realStats?.totalActive   ?? rooms.filter((r: any) => r.status === 'active').length;
+    const finished     = realStats?.totalFinished ?? rooms.filter((r: any) => r.status === 'finished').length;
+    const totalPlayers = realStats?.totalPlayers  ?? rooms.flatMap((r: any) => r.battle_players || []).length;
 
-    const currentTotal    = rooms.length;
-    const currentActive   = rooms.filter((r: any) => r.status === 'active').length;
-    const currentFinished = rooms.filter((r: any) => r.status === 'finished').length;
+    // متوسط النجاح يُحسب من البيانات الحية (الدقيقة المتاحة)
     const allPlayers      = rooms.flatMap((r: any) => r.battle_players || []);
     const finishedPlayers = allPlayers.filter((p: any) => p.status === 'finished');
     const avgSuccess      = finishedPlayers.length > 0
       ? Math.round(finishedPlayers.reduce((acc: number, p: any) => acc + (p.percentage || 0), 0) / finishedPlayers.length)
       : 0;
 
-    return {
-      total:        archivedRooms    + currentTotal,
-      active:       currentActive,
-      finished:     archivedFinished + currentFinished,
-      totalPlayers: archivedPlayers  + allPlayers.length,
-      avgSuccess,
-    };
-  }, [rooms, savedBattleStats]);
+    return { total, active, finished, totalPlayers, avgSuccess };
+  }, [rooms, realStats]);
 
   // ─── بناء شرط الفلتر المشترك ─────────────────────────────
   const buildSubjectIds = (): string[] | 'all' | null => {
@@ -440,7 +454,7 @@ const AdminBattleRooms = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => refetch()}
+            onClick={() => { refetch(); refetchStats(); }}
             className="gap-2 rounded-xl"
           >
             <RefreshCw className="w-4 h-4" />
