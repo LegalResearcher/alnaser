@@ -61,6 +61,7 @@ const BattleCreate = () => {
   // Advanced settings
   const [isPrivate, setIsPrivate] = useState(false);
   const [password, setPassword] = useState('');
+  const [adminPasswordInput, setAdminPasswordInput] = useState('');
   const [allowTeams, setAllowTeams] = useState(false);
   const [team1Name, setTeam1Name] = useState('الفريق النمور 🐯');
   const [team2Name, setTeam2Name] = useState('الفريق الصقور 🦅');
@@ -148,6 +149,19 @@ const BattleCreate = () => {
     if (availableCount < 5) { toast({ title: 'لا توجد أسئلة كافية', variant: 'destructive' }); return; }
     if (isPrivate && !password.trim()) { toast({ title: 'أدخل كلمة مرور للغرفة الخاصة', variant: 'destructive' }); return; }
 
+    // ── التحقق من كلمة مرور الأدمن إذا كانت المادة محمية ──
+    const adminPassword: string | null = (selectedSubjectData as any)?.battle_password || null;
+    if (adminPassword) {
+      if (!adminPasswordInput.trim()) {
+        toast({ title: '🔑 هذه المادة محمية', description: 'أدخل كلمة مرور غرف التحدي للمتابعة', variant: 'destructive' });
+        return;
+      }
+      if (adminPasswordInput.trim() !== adminPassword) {
+        toast({ title: '🔑 كلمة المرور غير صحيحة', description: 'تحقق من كلمة المرور وأعد المحاولة', variant: 'destructive' });
+        return;
+      }
+    }
+
     // ── التحقق من إيقاف الغرف في هذه المادة ──
     if ((selectedSubjectData as any)?.battle_disabled) {
       toast({
@@ -180,7 +194,6 @@ const BattleCreate = () => {
       const avatarColor = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
 
       // كلمة مرور الغرفة: إما من الأدمن (battle_password) أو من المستخدم إذا اختار خاصة
-      const adminPassword: string | null = (selectedSubjectData as any)?.battle_password || null;
       const finalPassword = adminPassword || (isPrivate ? password.trim() : null);
       const finalIsPrivate = !!finalPassword;
 
@@ -560,6 +573,24 @@ const BattleCreate = () => {
                 {isPrivate && (
                   <Input placeholder="كلمة مرور الغرفة" value={password} onChange={e => setPassword(e.target.value)}
                     className="h-10 rounded-xl bg-white dark:bg-card border-slate-200 font-bold text-right" />
+                )}
+
+                {/* كلمة مرور الأدمن — تظهر فقط إذا كانت المادة محمية */}
+                {(selectedSubjectData as any)?.battle_password && (
+                  <div className="space-y-2 p-3 rounded-2xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-700/40">
+                    <div className="flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-amber-500" />
+                      <span className="text-sm font-black text-amber-700 dark:text-amber-400">هذه المادة محمية بكلمة مرور</span>
+                    </div>
+                    <Input
+                      type="password"
+                      placeholder="أدخل كلمة مرور غرف التحدي للمتابعة..."
+                      value={adminPasswordInput}
+                      onChange={e => setAdminPasswordInput(e.target.value)}
+                      className="h-10 rounded-xl bg-white dark:bg-card border-amber-300 font-bold text-right"
+                      dir="rtl"
+                    />
+                  </div>
                 )}
 
                 {/* وضع الفرق */}
