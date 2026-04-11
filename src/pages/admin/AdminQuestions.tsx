@@ -322,6 +322,7 @@ const AdminQuestions = () => {
             option_d: q.option_d || "",
             correct_option: q.correct_option || "A",
             exam_form: q.exam_form || "General",
+            hint: q.hint || "",
             count: 4
           }));
 
