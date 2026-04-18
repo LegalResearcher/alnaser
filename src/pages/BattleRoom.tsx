@@ -1431,8 +1431,13 @@ const BattleRoom = () => {
 
             {/* Creator controls */}
             {isCreator && (
-              <div className="fixed bottom-4 left-4 flex flex-col gap-2 z-50">
-                <button onClick={handleForceFinish}
+              <div className="fixed bottom-20 left-4 flex flex-col gap-2 z-50">
+                <button
+                  onClick={() => {
+                    if (window.confirm('هل أنت متأكد من إنهاء المنافسة؟')) {
+                      handleForceFinish();
+                    }
+                  }}
                   className="flex items-center gap-1.5 bg-rose-600 text-white text-xs font-black px-3 py-2 rounded-xl shadow-lg hover:bg-rose-700 transition-colors">
                   <XCircle className="w-3.5 h-3.5" /> إنهاء
                 </button>
