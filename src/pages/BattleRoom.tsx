@@ -6,7 +6,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
-  Swords, Crown, Medal, Trophy, Clock, Users, Play, Copy, Check,
+  Swords, Crown, Medal, Trophy, Clock, Users, Play, Copy, Check, Hash,
   Loader2, ChevronLeft, Flame, Target, CheckCircle2, XCircle,
   Share2, RotateCcw, Star, Zap, AlertCircle, Lock, UserX,
   TimerReset, BarChart3, Users2, Shield, Sparkles, ChevronRight,
@@ -66,6 +66,16 @@ const AVATAR_COLORS = [
   '#6366f1','#f59e0b','#10b981','#ef4444','#3b82f6','#8b5cf6','#ec4899','#14b8a6',
   '#f97316','#06b6d4','#84cc16','#a855f7'
 ];
+
+const BATTLE_EXAM_FORMS = [
+  { id: 'General',  name: 'نموذج العام' },
+  { id: 'Parallel', name: 'نموذج الموازي' },
+  { id: 'Mixed',    name: 'نموذج مختلط' },
+];
+const BATTLE_EXAM_YEARS = [2026, 2025, 2024, 2023, 2022, 2021, 2020];
+const DEFAULT_TRIAL_FORMS = Array.from({ length: 15 }, (_, i) => ({
+  id: `Model_${i + 1}`, name: `نموذج ${i + 1}`
+}));
 
 const rankIcon = (rank: number) => {
   if (rank === 1) return <Crown className="w-5 h-5 text-yellow-500" />;
@@ -236,6 +246,15 @@ const BattleRoom = () => {
   const [examStarted, setExamStarted] = useState(false);
   const [examFinished, setExamFinished] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  // ── الاختبار التالي ──
+  const [showNextExamPanel, setShowNextExamPanel] = useState(false);
+  const [nextExamYear, setNextExamYear] = useState('');
+  const [nextExamForm, setNextExamForm] = useState('General');
+  const [nextTrialForm, setNextTrialForm] = useState('all');
+  const [nextTimePerQuestion, setNextTimePerQuestion] = useState(60);
+  const [nextAvailableCount, setNextAvailableCount] = useState(0);
+  const [loadingNextCount, setLoadingNextCount] = useState(false);
+  const [startingNext, setStartingNext] = useState(false);
   // ── Sync Quiz State ──
   const [syncCurrentQ, setSyncCurrentQ] = useState(0);
   const [syncPhase, setSyncPhase] = useState<'question' | 'reveal'>('question');
@@ -472,6 +491,23 @@ const BattleRoom = () => {
             if (syncTimerRef.current) clearInterval(syncTimerRef.current);
             await handleFinishExam();
           }
+          // ── إعادة ضبط للاختبار التالي (للاعبين غير المنشئ) ──
+          if (updated.status === 'waiting' && examFinishedRef.current && !isCreatorRef.current) {
+            setExamFinished(false);
+            setExamStarted(false);
+            setQuestions([]);
+            setAnswers({});
+            answersRef.current = {};
+            setCurrentQ(0);
+            setSyncCurrentQ(0);
+            setSelectedAnswer(null);
+            setShowFeedback(false);
+            setShowNextExamPanel(false);
+            masterTimerStateRef.current = null;
+            if (syncTimerRef.current) clearInterval(syncTimerRef.current);
+            if (timerRef.current) clearInterval(timerRef.current);
+            toast({ title: '🎯 جولة جديدة! في انتظار المنشئ...' });
+          }
         })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -616,6 +652,107 @@ const BattleRoom = () => {
     const newExtra = (room.extra_time_minutes || 0) + minutes;
     await (supabase.from('battle_rooms' as any) as any).update({ extra_time_minutes: newExtra }).eq('id', room.id);
     toast({ title: `✅ تمت إضافة ${minutes} دقيقة للوقت` });
+  };
+
+  // ── جلب عدد الأسئلة المتاحة للاختبار التالي ──
+  const fetchNextAvailableCount = async (year: string, form: string, trialForm: string) => {
+    if (!room?.subject_id) return;
+    setLoadingNextCount(true);
+    let q = supabase.from('questions').select('*', { count: 'exact', head: true })
+      .eq('subject_id', room.subject_id).eq('status', 'active');
+    if (year === 'trial') {
+      q = q.is('exam_year', null);
+      if (trialForm !== 'all') q = q.eq('exam_form', trialForm);
+    } else if (year !== 'all' && year) {
+      q = q.not('exam_year', 'is', null).eq('exam_year', parseInt(year));
+      if (form && form !== 'Mixed') q = q.eq('exam_form', form);
+    }
+    const { count } = await q;
+    setNextAvailableCount(count || 0);
+    setLoadingNextCount(false);
+  };
+
+  // ── بدء الاختبار التالي في نفس الغرفة ──
+  const handleStartNextExam = async () => {
+    if (!room || !nextExamYear) return;
+    setStartingNext(true);
+    try {
+      // 1. جلب الأسئلة
+      let q = supabase.from('questions').select('id')
+        .eq('subject_id', room.subject_id).eq('status', 'active');
+      if (nextExamYear === 'trial') {
+        q = q.is('exam_year', null);
+        if (nextTrialForm !== 'all') q = q.eq('exam_form', nextTrialForm);
+      } else if (nextExamYear !== 'all' && nextExamYear) {
+        q = q.not('exam_year', 'is', null).eq('exam_year', parseInt(nextExamYear));
+        if (nextExamForm && nextExamForm !== 'Mixed') q = q.eq('exam_form', nextExamForm);
+      }
+      const { data: qs } = await q;
+      if (!qs || qs.length < 2) {
+        toast({ title: 'لا توجد أسئلة كافية', variant: 'destructive' });
+        setStartingNext(false);
+        return;
+      }
+      const shuffled = qs.sort(() => Math.random() - 0.5);
+      const questionIds = shuffled.map((q: any) => q.id);
+
+      const examFormName = nextExamYear === 'trial'
+        ? (DEFAULT_TRIAL_FORMS.find(f => f.id === nextTrialForm)?.name || 'كل النماذج')
+        : nextExamYear === 'all' ? 'جميع الأسئلة'
+        : (BATTLE_EXAM_FORMS.find(f => f.id === nextExamForm)?.name || 'نموذج العام');
+      const qType = nextExamYear === 'trial' ? 'trial' : nextExamYear === 'all' ? 'general' : 'exam';
+
+      // 2. إعادة ضبط اللاعبين الحاليين
+      await (supabase.from('battle_players' as any) as any)
+        .update({
+          status: 'waiting', score: 0, correct_count: 0, total_answered: 0,
+          percentage: 0, progress: 0, time_seconds: null,
+          finished_at: null, answers_json: {}, kicked: false,
+        })
+        .eq('room_id', room.id)
+        .neq('kicked', true);
+
+      // 3. إعادة ضبط الغرفة
+      await (supabase.from('battle_rooms' as any) as any).update({
+        status: 'waiting',
+        question_ids: questionIds,
+        questions_count: questionIds.length,
+        time_per_question: nextTimePerQuestion,
+        time_minutes: nextTimePerQuestion,
+        current_question_index: 0,
+        started_at: null,
+        finished_at: null,
+        exam_year: (nextExamYear && nextExamYear !== 'all' && nextExamYear !== 'trial') ? parseInt(nextExamYear) : null,
+        exam_form_id: nextExamYear === 'trial' ? (nextTrialForm !== 'all' ? nextTrialForm : null) : (nextExamForm !== 'Mixed' ? nextExamForm : null),
+        exam_form_name: examFormName,
+        question_type: qType,
+        expires_at: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
+        locked: false,
+        extra_time_minutes: 0,
+      }).eq('id', room.id);
+
+      // 4. إعادة ضبط الحالة المحلية
+      setExamFinished(false);
+      setExamStarted(false);
+      setQuestions([]);
+      setAnswers({});
+      answersRef.current = {};
+      setCurrentQ(0);
+      setSyncCurrentQ(0);
+      setSelectedAnswer(null);
+      setShowFeedback(false);
+      setShowNextExamPanel(false);
+      setNextExamYear('');
+      masterTimerStateRef.current = null;
+      if (syncTimerRef.current) clearInterval(syncTimerRef.current);
+      if (timerRef.current) clearInterval(timerRef.current);
+
+      toast({ title: '✅ تم تحضير الاختبار التالي!' });
+    } catch (err: any) {
+      toast({ title: 'خطأ', description: err.message, variant: 'destructive' });
+    } finally {
+      setStartingNext(false);
+    }
   };
 
   const handleForceFinish = async () => {
@@ -1776,51 +1913,179 @@ const BattleRoom = () => {
               {/* Share buttons row */}
               <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest text-center">مشاركة النتيجة</p>
               <div className="grid grid-cols-3 gap-2">
-                {/* WhatsApp */}
-                <button
-                  onClick={handleShareWhatsApp}
-                  disabled={!!isShareLoading}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 border-emerald-100 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-800/30 hover:bg-emerald-100 transition-all disabled:opacity-50"
-                >
-                  {isShareLoading === 'whatsapp'
-                    ? <Loader2 className="w-5 h-5 text-emerald-600 animate-spin" />
-                    : <MessageCircle className="w-5 h-5 text-emerald-600" />}
+                <button onClick={handleShareWhatsApp} disabled={!!isShareLoading}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 border-emerald-100 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-800/30 hover:bg-emerald-100 transition-all disabled:opacity-50">
+                  {isShareLoading === 'whatsapp' ? <Loader2 className="w-5 h-5 text-emerald-600 animate-spin" /> : <MessageCircle className="w-5 h-5 text-emerald-600" />}
                   <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-400">واتساب</span>
                 </button>
-                {/* Twitter / X */}
-                <button
-                  onClick={handleShareTwitter}
-                  disabled={!!isShareLoading}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 border-slate-100 bg-slate-50 dark:bg-slate-800/30 dark:border-slate-700 hover:bg-slate-100 transition-all disabled:opacity-50"
-                >
+                <button onClick={handleShareTwitter} disabled={!!isShareLoading}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 border-slate-100 bg-slate-50 dark:bg-slate-800/30 dark:border-slate-700 hover:bg-slate-100 transition-all disabled:opacity-50">
                   <svg className="w-5 h-5 text-slate-800 dark:text-slate-200" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.737-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
                   </svg>
                   <span className="text-[10px] font-black text-slate-600 dark:text-slate-300">X / تويتر</span>
                 </button>
-                {/* Save image */}
-                <button
-                  onClick={handleSaveImage}
-                  disabled={!!isShareLoading}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 border-blue-100 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800/30 hover:bg-blue-100 transition-all disabled:opacity-50"
-                >
-                  {isShareLoading === 'save'
-                    ? <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
-                    : <Download className="w-5 h-5 text-blue-600" />}
+                <button onClick={handleSaveImage} disabled={!!isShareLoading}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 border-blue-100 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800/30 hover:bg-blue-100 transition-all disabled:opacity-50">
+                  {isShareLoading === 'save' ? <Loader2 className="w-5 h-5 text-blue-600 animate-spin" /> : <Download className="w-5 h-5 text-blue-600" />}
                   <span className="text-[10px] font-black text-blue-700 dark:text-blue-400">حفظ صورة</span>
                 </button>
               </div>
 
-              {/* Action buttons row */}
-              <div className="grid grid-cols-2 gap-3">
-                <Button onClick={handleShare} variant="outline" className="h-12 rounded-2xl font-black gap-2 border-2">
-                  <Share2 className="w-4 h-4" /> مشاركة نصية
-                </Button>
-                <Button onClick={() => navigate('/battle/create')}
-                  className="h-12 rounded-2xl font-black gap-2 bg-gradient-to-l from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-200/50">
-                  <RotateCcw className="w-4 h-4" /> غرفة جديدة
-                </Button>
-              </div>
+              {/* ── زر الاختبار التالي البارز ── */}
+              {!showNextExamPanel && (
+                <button
+                  onClick={() => isCreator ? setShowNextExamPanel(true) : setShowNextExamPanel(true)}
+                  className="w-full relative overflow-hidden rounded-[1.5rem] p-[2px] bg-gradient-to-l from-emerald-400 via-teal-500 to-cyan-500 shadow-2xl shadow-emerald-300/40 animate-pulse-slow"
+                >
+                  <div className="relative bg-gradient-to-l from-emerald-500 via-teal-600 to-cyan-600 rounded-[1.4rem] px-6 py-5 flex items-center justify-between gap-4">
+                    <div className="absolute inset-0 opacity-10 rounded-[1.4rem]"
+                      style={{backgroundImage:'radial-gradient(circle at 20% 50%, white 1px, transparent 1px)', backgroundSize:'16px 16px'}} />
+                    <div className="relative z-10 text-right">
+                      <p className="text-white font-black text-lg leading-tight">⚡ الاختبار التالي</p>
+                      <p className="text-white/70 text-xs font-bold mt-0.5">
+                        {isCreator ? 'اختر النموذج وابدأ الجولة القادمة' : 'انتظر المنشئ لبدء الجولة القادمة'}
+                      </p>
+                    </div>
+                    <div className="relative z-10 w-14 h-14 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center shrink-0">
+                      <ChevronRight className="w-7 h-7 text-white" />
+                    </div>
+                  </div>
+                </button>
+              )}
+
+              {/* ── لوحة اختيار الاختبار التالي (للمنشئ) ── */}
+              {showNextExamPanel && isCreator && (
+                <div className="rounded-[1.5rem] border-2 border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/50 dark:bg-emerald-950/20 p-5 space-y-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Zap className="w-4 h-4 text-emerald-600" />
+                    <p className="font-black text-emerald-700 dark:text-emerald-400 text-sm">اختر الاختبار التالي</p>
+                  </div>
+
+                  {/* سنة الاختبار */}
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">سنة الاختبار</p>
+                    <select
+                      value={nextExamYear}
+                      onChange={e => {
+                        setNextExamYear(e.target.value);
+                        setNextExamForm('General');
+                        setNextTrialForm('all');
+                        fetchNextAvailableCount(e.target.value, 'General', 'all');
+                      }}
+                      className="w-full h-11 rounded-xl bg-white dark:bg-card border border-slate-200 dark:border-border font-bold text-sm px-3 text-right"
+                    >
+                      <option value="">اختر السنة</option>
+                      <option value="trial">🧪 أسئلة تجريبية</option>
+                      {BATTLE_EXAM_YEARS.map(y => (
+                        <option key={y} value={String(y)}>دورة عام {y}</option>
+                      ))}
+                      <option value="all">📚 جميع الأسئلة</option>
+                    </select>
+                  </div>
+
+                  {/* نموذج الاختبار */}
+                  {nextExamYear && nextExamYear !== 'trial' && nextExamYear !== 'all' && (
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">نموذج الاختبار</p>
+                      <select
+                        value={nextExamForm}
+                        onChange={e => {
+                          setNextExamForm(e.target.value);
+                          fetchNextAvailableCount(nextExamYear, e.target.value, nextTrialForm);
+                        }}
+                        className="w-full h-11 rounded-xl bg-white dark:bg-card border border-slate-200 dark:border-border font-bold text-sm px-3 text-right"
+                      >
+                        {BATTLE_EXAM_FORMS.map(f => (
+                          <option key={f.id} value={f.id}>{f.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* نموذج تجريبي */}
+                  {nextExamYear === 'trial' && (
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">النموذج التجريبي</p>
+                      <select
+                        value={nextTrialForm}
+                        onChange={e => {
+                          setNextTrialForm(e.target.value);
+                          fetchNextAvailableCount(nextExamYear, nextExamForm, e.target.value);
+                        }}
+                        className="w-full h-11 rounded-xl bg-white dark:bg-card border border-slate-200 dark:border-border font-bold text-sm px-3 text-right"
+                      >
+                        <option value="all">كل النماذج</option>
+                        {DEFAULT_TRIAL_FORMS.map(f => (
+                          <option key={f.id} value={f.id}>{f.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* وقت كل سؤال */}
+                  {nextExamYear && (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> وقت كل سؤال
+                        </p>
+                        <span className="text-xs font-black text-primary bg-primary/10 px-2 py-0.5 rounded-lg">
+                          {nextTimePerQuestion >= 60 ? `${nextTimePerQuestion / 60} دقيقة` : `${nextTimePerQuestion} ثانية`}
+                        </span>
+                      </div>
+                      <input type="range" min={15} max={300} step={15} value={nextTimePerQuestion}
+                        onChange={e => setNextTimePerQuestion(Number(e.target.value))}
+                        className="w-full accent-emerald-500" />
+                      <div className="flex justify-between text-[9px] text-slate-400 font-bold">
+                        <span>15 ثانية</span><span>5 دقائق</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* عدد الأسئلة المتاح */}
+                  {nextExamYear && (
+                    <div className="flex items-center gap-2 bg-white dark:bg-card rounded-xl px-3 py-2 border border-slate-100 dark:border-border">
+                      <Hash className="w-3.5 h-3.5 text-slate-400" />
+                      {loadingNextCount
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />
+                        : <span className="text-xs font-black text-slate-600 dark:text-slate-300">{nextAvailableCount} سؤال متاح</span>
+                      }
+                    </div>
+                  )}
+
+                  {/* أزرار */}
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button onClick={() => setShowNextExamPanel(false)}
+                      className="h-11 rounded-xl border-2 border-slate-200 dark:border-border text-slate-600 dark:text-slate-300 font-black text-sm hover:bg-slate-50 transition-all">
+                      إلغاء
+                    </button>
+                    <button
+                      onClick={handleStartNextExam}
+                      disabled={!nextExamYear || nextAvailableCount < 2 || startingNext}
+                      className="h-11 rounded-xl bg-gradient-to-l from-emerald-500 to-teal-600 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-200/50 disabled:opacity-50 transition-all hover:-translate-y-0.5"
+                    >
+                      {startingNext ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Play className="w-4 h-4" /> ابدأ</>}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* لوحة انتظار اللاعبين (غير المنشئ) */}
+              {showNextExamPanel && !isCreator && (
+                <div className="rounded-[1.5rem] border-2 border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/50 dark:bg-emerald-950/20 p-5 text-center space-y-3">
+                  <div className="flex gap-1 justify-center">
+                    {[0,1,2].map(i => <div key={i} className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{animationDelay:`${i*0.2}s`}} />)}
+                  </div>
+                  <p className="font-black text-emerald-700 dark:text-emerald-400 text-sm">في انتظار المنشئ لاختيار الاختبار التالي...</p>
+                </div>
+              )}
+
+              {/* زر الخروج */}
+              <button onClick={() => navigate(-1)}
+                className="w-full h-12 rounded-2xl border-2 border-slate-200 dark:border-border text-slate-500 dark:text-slate-400 font-black text-sm flex items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all">
+                <ChevronLeft className="w-4 h-4" /> خروج من الغرفة
+              </button>
             </div>
           </div>
         </section>
