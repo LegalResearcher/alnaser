@@ -720,50 +720,105 @@ const BattleRoom = () => {
     }
   };
 
+  // ── Master Timer Engine (ساعة واحدة مستمرة لا تنكسر) ──
+  // بدل كسر وبناء interval جديد بين كل سؤال (كان يتسبب في التجمد تحت الضغط)،
+  // نستخدم interval واحد يعمل طوال المنافسة ويدير 3 حالات:
+  // question (N ثانية) → reveal (3 ثواني) → question التالي → ...
+  const masterTimerStateRef = useRef<{
+    qIndex: number;
+    tpq: number;
+    phase: 'question' | 'reveal';
+    tick: number; // العداد التنازلي الحالي بالثواني
+  } | null>(null);
+
   const startSyncQuestionWithList = (qIndex: number, timePerQuestion: number, qList: Question[]) => {
-    // Use qList for the initial call, but always reference questionsRef for subsequent calls
-    // to avoid stale closure issues
     const activeQList = qList.length > 0 ? qList : questionsRef.current;
     if (!activeQList.length) return;
-    
+
+    // أوقف أي interval سابق
+    if (syncTimerRef.current) clearInterval(syncTimerRef.current);
+
+    // اضبط الحالة الأولية
+    masterTimerStateRef.current = { qIndex, tpq: timePerQuestion, phase: 'question', tick: timePerQuestion };
+
     setSyncCurrentQ(qIndex);
     setSyncPhase('question');
-    try {
-      const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
-      if (s) localStorage.setItem(SESSION_KEY, JSON.stringify({ ...s, currentQ: qIndex, phase: 'question' }));
-    } catch {}
     setSyncTimeLeft(timePerQuestion);
     setMyAnswerGiven(false);
     setSelectedAnswer(null);
     setShowFeedback(false);
     broadcastQuizState(qIndex, 'question', timePerQuestion, activeQList.length);
-    if (syncTimerRef.current) clearInterval(syncTimerRef.current);
-    let t = timePerQuestion;
+
+    try {
+      const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+      if (s) localStorage.setItem(SESSION_KEY, JSON.stringify({ ...s, currentQ: qIndex, phase: 'question' }));
+    } catch {}
+
+    // ── الساعة الواحدة المستمرة ──
     syncTimerRef.current = setInterval(() => {
-      t -= 1;
-      setSyncTimeLeft(t);
-      if (t <= 0) {
-        clearInterval(syncTimerRef.current!);
-        // ── FIX: Use questionsRef to avoid stale closure ──
-        revealAnswerFromRef(qIndex, timePerQuestion);
+      const state = masterTimerStateRef.current;
+      if (!state) return;
+
+      state.tick -= 1;
+
+      if (state.phase === 'question') {
+        setSyncTimeLeft(state.tick);
+
+        if (state.tick <= 0) {
+          // انتهى وقت السؤال → انتقل لمرحلة الإجابة
+          state.phase = 'reveal';
+          state.tick = 3; // 3 ثواني لعرض الإجابة الصحيحة
+          const qList = questionsRef.current;
+          setSyncPhase('reveal');
+          setShowFeedback(true);
+          broadcastQuizState(state.qIndex, 'reveal', 0, qList.length);
+        }
+      } else {
+        // phase === 'reveal'
+        if (state.tick <= 0) {
+          // انتهت مرحلة الإجابة → السؤال التالي أو إنهاء
+          const qList = questionsRef.current;
+          const nextIndex = state.qIndex + 1;
+
+          if (!qList.length || nextIndex >= qList.length) {
+            // انتهت كل الأسئلة
+            clearInterval(syncTimerRef.current!);
+            masterTimerStateRef.current = null;
+            handleFinishExam();
+          } else {
+            // السؤال التالي — نحدّث الحالة بدون كسر الـ interval
+            state.qIndex = nextIndex;
+            state.phase = 'question';
+            state.tick = state.tpq;
+
+            setSyncCurrentQ(nextIndex);
+            setSyncPhase('question');
+            setSyncTimeLeft(state.tpq);
+            setMyAnswerGiven(false);
+            setSelectedAnswer(null);
+            setShowFeedback(false);
+            broadcastQuizState(nextIndex, 'question', state.tpq, qList.length);
+
+            try {
+              const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+              if (s) localStorage.setItem(SESSION_KEY, JSON.stringify({ ...s, currentQ: nextIndex, phase: 'question' }));
+            } catch {}
+          }
+        }
       }
     }, 1000);
   };
 
+  // revealAnswerFromRef محتفظ بها للاستئناف بعد refresh فقط
   const revealAnswerFromRef = (qIndex: number, tpq: number) => {
     const qList = questionsRef.current;
+    if (!masterTimerStateRef.current) {
+      // استئناف بعد refresh — ابدأ المحرك من مرحلة reveal
+      masterTimerStateRef.current = { qIndex, tpq, phase: 'reveal', tick: 3 };
+    }
     setSyncPhase('reveal');
     setShowFeedback(true);
     broadcastQuizState(qIndex, 'reveal', 0, qList.length);
-    // ── FIX: increased from 2500ms to 3000ms to give Supabase realtime room to breathe
-    // with 10+ players all receiving broadcasts simultaneously
-    setTimeout(() => {
-      if (!qList.length || qIndex + 1 >= qList.length) {
-        handleFinishExam();
-      } else {
-        startSyncQuestionWithList(qIndex + 1, tpq, qList);
-      }
-    }, 3000);
   };
 
   const handleSyncAnswer = async (option: string) => {
