@@ -649,15 +649,20 @@ const BattleRoom = () => {
   }, [room?.id]);
 
   // ── Sync Quiz Channel ──
+  // ── Heartbeat: المنشئ يُرسل نبضة كل 4 ثواني، اللاعبون يراقبون ──
+  const lastHeartbeatRef = useRef<number>(Date.now());
+  const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const watchdogIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   useEffect(() => {
     if (!room?.id) return;
     const syncChannel = supabase.channel(`battle-sync-${room.id}`, {
       config: { broadcast: { self: false } }
     }).on('broadcast', { event: 'quiz_state' }, ({ payload }) => {
       const { questionIndex, phase, timeLeft: tl, totalQs } = payload;
+      lastHeartbeatRef.current = Date.now();
       setSyncCurrentQ(questionIndex);
       setSyncPhase(phase);
-      // حفظ السؤال الحالي للاستئناف عند العودة
       try {
         const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
         if (s) localStorage.setItem(SESSION_KEY, JSON.stringify({ ...s, currentQ: questionIndex, phase }));
@@ -675,10 +680,41 @@ const BattleRoom = () => {
           if (t <= 0) clearInterval(syncTimerRef.current!);
         }, 1000);
       }
+    }).on('broadcast', { event: 'creator_heartbeat' }, () => {
+      lastHeartbeatRef.current = Date.now();
     }).subscribe();
     syncChannelRef.current = syncChannel;
-    return () => { supabase.removeChannel(syncChannel); };
+    return () => {
+      supabase.removeChannel(syncChannel);
+      if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
+      if (watchdogIntervalRef.current) clearInterval(watchdogIntervalRef.current);
+    };
   }, [room?.id]);
+
+  // ── Heartbeat sender: المنشئ يُرسل نبضة كل 4 ثواني أثناء المنافسة ──
+  useEffect(() => {
+    if (!examStarted || examFinished || !isCreatorRef.current) return;
+    heartbeatIntervalRef.current = setInterval(() => {
+      if (syncChannelRef.current) {
+        syncChannelRef.current.send({
+          type: 'broadcast', event: 'creator_heartbeat', payload: { ts: Date.now() }
+        });
+      }
+    }, 4000);
+    return () => { if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current); };
+  }, [examStarted, examFinished]);
+
+  // ── Watchdog: اللاعبون يراقبون — لو المنشئ اختفى أكثر من 10 ثواني يظهر تنبيه ──
+  const [creatorDisconnected, setCreatorDisconnected] = useState(false);
+  useEffect(() => {
+    if (!examStarted || examFinished || isCreatorRef.current) return;
+    lastHeartbeatRef.current = Date.now();
+    watchdogIntervalRef.current = setInterval(() => {
+      const silence = Date.now() - lastHeartbeatRef.current;
+      setCreatorDisconnected(silence > 10000);
+    }, 3000);
+    return () => { if (watchdogIntervalRef.current) clearInterval(watchdogIntervalRef.current); };
+  }, [examStarted, examFinished]);
 
   const handleSendChat = () => {
     const text = chatInput.trim();
@@ -1348,6 +1384,16 @@ const BattleRoom = () => {
       <MainLayout>
         <section className="min-h-[calc(100vh-80px)] bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900 py-4" dir="rtl">
           <div className="container mx-auto px-4 max-w-lg">
+
+            {/* ── تنبيه انقطاع المنشئ ── */}
+            {creatorDisconnected && !isCreator && (
+              <div className="mb-3 flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700 rounded-2xl px-4 py-3 animate-pulse">
+                <WifiOff className="w-4 h-4 text-amber-500 shrink-0" />
+                <p className="text-xs font-black text-amber-700 dark:text-amber-300">
+                  انقطع اتصال المنشئ مؤقتاً... في انتظار عودته
+                </p>
+              </div>
+            )}
 
             {/* ── Top Bar ── */}
             <div className="flex items-center justify-between mb-3 rounded-2xl px-4 py-2.5 bg-white dark:bg-card border border-border shadow-sm">
