@@ -237,6 +237,8 @@ const BattleRoom = () => {
   // Exam state
   const [questions, setQuestions] = useState<Question[]>([]);
   const questionsRef = useRef<Question[]>([]);
+  // ── Map للوصول الفوري للأسئلة O(1) بدل O(n) ──
+  const questionMapRef = useRef<Map<string, Question>>(new Map());
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const answersRef = useRef<Record<string, string>>({});
@@ -275,6 +277,15 @@ const BattleRoom = () => {
   const myPlayerId = useRef<string | null>(null);
   // ── Debounce progress writes to avoid DB write storm with 10+ players ──
   const progressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // ── Throttle: تجميع تحديثات اللاعبين لتقليل إعادة رسم الشاشة ──
+  const pendingPlayersUpdateRef = useRef<BattlePlayer[] | null>(null);
+  const playersThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flushPlayersUpdate = () => {
+    if (pendingPlayersUpdateRef.current) {
+      setPlayers(pendingPlayersUpdateRef.current);
+      pendingPlayersUpdateRef.current = null;
+    }
+  };
 
   // Keep refs in sync
   useEffect(() => { questionsRef.current = questions; }, [questions]);
@@ -315,6 +326,11 @@ const BattleRoom = () => {
     const BATCH_SIZE = 100;
     let allData: Question[] = [];
 
+    // ── Staggered loading: توزيع الطلبات عشوائياً لحماية Supabase ──
+    // 20 لاعب يطلبون في نفس اللحظة = اختناق — نؤخر كل لاعب 0-1.5 ثانية عشوائياً
+    const staggerDelay = Math.floor(Math.random() * 1500);
+    await new Promise(resolve => setTimeout(resolve, staggerDelay));
+
     for (let i = 0; i < ids.length; i += BATCH_SIZE) {
       const batch = ids.slice(i, i + BATCH_SIZE);
       const { data } = await supabase
@@ -325,8 +341,14 @@ const BattleRoom = () => {
       if (data) allData = [...allData, ...(data as unknown as Question[])];
     }
 
-    // Sort by the original ids order to ensure all players see the same question order
+    // ترتيب حسب ids الأصلي
     const sorted = allData.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+
+    // ── بناء Map للوصول الفوري O(1) ──
+    const map = new Map<string, Question>();
+    sorted.forEach(q => map.set(q.id, q));
+    questionMapRef.current = map;
+
     if (sorted.length) setQuestions(sorted);
     return sorted;
   };
@@ -355,7 +377,26 @@ const BattleRoom = () => {
             setMyName(me.player_name);
             setIsJoined(true);
             isCreatorRef.current = true;
+            // ── حفظ كامل في localStorage دائماً ──
             localStorage.setItem(SESSION_KEY, JSON.stringify({ playerId: me.id, playerName: me.player_name, isCreator: true }));
+            // ── إذا كانت الغرفة active (مثلاً بعد تحديث سريع) — استأنف المحرك ──
+            if (data.status === 'active' && me.status !== 'finished') {
+              const loadedQs = await loadQuestions(data.question_ids as string[]);
+              setTimeLeft((data.time_minutes + (data.extra_time_minutes || 0)) * 60);
+              setExamStarted(true);
+              const { data: freshRoom } = await (supabase.from('battle_rooms' as any) as any)
+                .select('current_question_index, current_phase')
+                .eq('id', data.id).single();
+              const resumeIndex = freshRoom?.current_question_index ?? 0;
+              const resumePhase = freshRoom?.current_phase ?? 'question';
+              setTimeout(() => {
+                if (resumePhase === 'reveal') {
+                  revealAnswerFromRef(resumeIndex, data.time_per_question || 60);
+                } else {
+                  startSyncQuestionWithList(resumeIndex, data.time_per_question || 60, loadedQs);
+                }
+              }, 1200);
+            }
           }
         }
         // ── Restore from locationState: regular join ──
@@ -366,6 +407,35 @@ const BattleRoom = () => {
             setMyPlayer(me);
             isCreatorRef.current = !!me.is_creator;
             localStorage.setItem(SESSION_KEY, JSON.stringify({ playerId: me.id, playerName: me.player_name, isCreator: !!me.is_creator }));
+            // ── إذا الغرفة active — استأنف فوراً من Supabase ──
+            if (data.status === 'active' && me.status !== 'finished') {
+              const loadedQs = await loadQuestions(data.question_ids as string[]);
+              if (me.answers_json && Object.keys(me.answers_json).length > 0) {
+                setAnswers(me.answers_json as Record<string, string>);
+                answersRef.current = me.answers_json as Record<string, string>;
+              }
+              setTimeLeft((data.time_minutes + (data.extra_time_minutes || 0)) * 60);
+              setExamStarted(true);
+              const currentQIndex = data.current_question_index ?? 0;
+              const { data: freshRoom } = await (supabase.from('battle_rooms' as any) as any)
+                .select('current_question_index, current_phase').eq('id', data.id).single();
+              const resumeIndex = freshRoom?.current_question_index ?? currentQIndex;
+              const resumePhase = freshRoom?.current_phase ?? 'question';
+              setSyncCurrentQ(resumeIndex);
+              setSyncPhase(resumePhase as 'question' | 'reveal');
+              setShowFeedback(resumePhase === 'reveal');
+              setMyAnswerGiven(resumePhase === 'reveal' || !!me.answers_json?.[loadedQs[resumeIndex]?.id]);
+              if (resumePhase === 'question') {
+                const tpq = data.time_per_question || 60;
+                setSyncTimeLeft(tpq);
+                let t = tpq;
+                syncTimerRef.current = setInterval(() => {
+                  t -= 1; setSyncTimeLeft(t);
+                  if (t <= 0) clearInterval(syncTimerRef.current!);
+                }, 1000);
+              }
+              toast({ title: 'مرحباً مجدداً 👋', description: 'استُؤنف الاختبار من السؤال الحالي' });
+            }
           }
         }
         // ── Restore from localStorage: page refresh / reconnect ──
@@ -388,13 +458,52 @@ const BattleRoom = () => {
               const currentQIndex = data.current_question_index ?? 0;
               setSyncCurrentQ(currentQIndex);
 
-              // ── KEY FIX: Creator must resume driving the sync quiz after refresh ──
+              // ── RESUME ENGINE: المنشئ يستأنف المحرك عند العودة ──
+              // نقرأ السؤال الحالي مباشرة من Supabase (المصدر الوحيد للحقيقة)
+              // ونستأنف المحرك من نفس السؤال الذي يراه اللاعبون
               if (me.is_creator && loadedQs.length > 0 && me.status !== 'finished') {
                 const tpq = data.time_per_question || 60;
-                // Small delay to let channels subscribe
+                // نجلب أحدث حالة للغرفة مباشرة (لا نثق بـ cache)
+                const { data: freshRoom } = await (supabase.from('battle_rooms' as any) as any)
+                  .select('current_question_index, current_phase')
+                  .eq('id', data.id)
+                  .single();
+                const resumeIndex = freshRoom?.current_question_index ?? currentQIndex;
+                const resumePhase = freshRoom?.current_phase ?? 'question';
+                // تأخير بسيط فقط لضمان اشتراك الـ channels
                 setTimeout(() => {
-                  startSyncQuestionWithList(currentQIndex, tpq, loadedQs);
-                }, 1500);
+                  if (resumePhase === 'reveal') {
+                    // كان في مرحلة عرض الإجابة — أكمل منها مباشرة
+                    revealAnswerFromRef(resumeIndex, tpq);
+                  } else {
+                    // كان في مرحلة السؤال — ابدأ السؤال من جديد (العد من الأول لهذا السؤال)
+                    startSyncQuestionWithList(resumeIndex, tpq, loadedQs);
+                  }
+                }, 1200);
+              }
+
+              // ── PLAYER RESUME: استئناف المتسابق من Supabase مباشرة ──
+              if (!me.is_creator && loadedQs.length > 0 && me.status !== 'finished') {
+                const { data: freshRoom } = await (supabase.from('battle_rooms' as any) as any)
+                  .select('current_question_index, current_phase')
+                  .eq('id', data.id).single();
+                const resumeIndex = freshRoom?.current_question_index ?? currentQIndex;
+                const resumePhase = freshRoom?.current_phase ?? 'question';
+                setSyncCurrentQ(resumeIndex);
+                setSyncPhase(resumePhase as 'question' | 'reveal');
+                setShowFeedback(resumePhase === 'reveal');
+                setMyAnswerGiven(resumePhase === 'reveal' || !!me.answers_json?.[loadedQs[resumeIndex]?.id]);
+                if (resumePhase === 'question') {
+                  const tpq = data.time_per_question || 60;
+                  setSyncTimeLeft(tpq);
+                  if (syncTimerRef.current) clearInterval(syncTimerRef.current);
+                  let t = tpq;
+                  syncTimerRef.current = setInterval(() => {
+                    t -= 1;
+                    setSyncTimeLeft(t);
+                    if (t <= 0) clearInterval(syncTimerRef.current!);
+                  }, 1000);
+                }
               }
             } else if (data.status === 'finished') {
               await loadQuestions(data.question_ids as string[]);
@@ -404,6 +513,20 @@ const BattleRoom = () => {
               }
               setExamStarted(true);
               setExamFinished(true);
+            } else if (data.status === 'waiting') {
+              // ── الغرفة في انتظار اختبار جديد (بين جولتين) ──
+              // امسح الجلسة القديمة وابقَ في غرفة الانتظار
+              setExamStarted(false);
+              setExamFinished(false);
+              setQuestions([]);
+              setAnswers({});
+              answersRef.current = {};
+              setCurrentQ(0);
+              setSyncCurrentQ(0);
+              masterTimerStateRef.current = null;
+              localStorage.setItem(SESSION_KEY, JSON.stringify({
+                playerId: me.id, playerName: me.player_name, isCreator: !!me.is_creator
+              }));
             }
             toast({ title: 'مرحباً مجدداً ' + me.player_name + ' 👋', description: 'تم استئناف جلستك تلقائياً' });
           } else {
@@ -441,18 +564,27 @@ const BattleRoom = () => {
           } else if (payload.eventType === 'UPDATE') {
             const updated = payload.new as BattlePlayer;
             // ── FIX: Throttle leaderboard re-renders — only update if meaningful change ──
+            // ── Throttle: نجمع التحديثات ونطبقها كل 800ms بدل كل تحديث ──
             setPlayers(prev => {
               const existing = prev.find(p => p.id === updated.id);
-              // Skip if only answers_json changed (internal data, not displayed in leaderboard)
               if (existing &&
                 existing.correct_count === updated.correct_count &&
                 existing.total_answered === updated.total_answered &&
                 existing.status === updated.status &&
                 existing.kicked === updated.kicked) {
-                return prev; // No visible change — skip re-render
+                return prev; // لا تغيير مرئي — تخطَّ
               }
-              return prev.map(p => p.id === updated.id ? updated : p)
+              const next = prev.map(p => p.id === updated.id ? updated : p)
                 .sort((a, b) => b.percentage - a.percentage);
+              // حفظ التحديث مؤقتاً وتطبيقه بعد 800ms
+              pendingPlayersUpdateRef.current = next;
+              if (!playersThrottleRef.current) {
+                playersThrottleRef.current = setTimeout(() => {
+                  flushPlayersUpdate();
+                  playersThrottleRef.current = null;
+                }, 800);
+              }
+              return prev; // لا نُحدّث الآن — ننتظر الـ throttle
             });
             if (updated.id === myPlayerId.current) {
               setMyPlayer(updated);
@@ -886,7 +1018,7 @@ const BattleRoom = () => {
     const currentRoom = roomRef.current;
     if (currentRoom?.id) {
       (supabase.from('battle_rooms' as any) as any)
-        .update({ current_question_index: questionIndex })
+        .update({ current_question_index: questionIndex, current_phase: phase })
         .eq('id', currentRoom.id)
         .then(() => {}) // intentional fire-and-forget
         .catch(() => {}); // silent fail — not critical for quiz flow
@@ -1002,8 +1134,9 @@ const BattleRoom = () => {
     const newAnswers = { ...answers, [q.id]: option };
     setAnswers(newAnswers);
     answersRef.current = newAnswers;
+    // ── O(1) بدل O(n²): نستخدم Map للوصول الفوري ──
     const correctCount = Object.keys(newAnswers).filter(id => {
-      const qObj = questions.find(q => q.id === id);
+      const qObj = questionMapRef.current.get(id);
       return qObj && newAnswers[id] === qObj.correct_option;
     }).length;
     // ── FIX: non-blocking call (debounced internally) — don't await ──
@@ -1041,8 +1174,9 @@ const BattleRoom = () => {
     setAnswers(newAnswers);
     answersRef.current = newAnswers;
 
+    // ── O(1) بدل O(n²): نستخدم Map للوصول الفوري ──
     const correctCount = Object.keys(newAnswers).filter(id => {
-      const qObj = questions.find(q => q.id === id);
+      const qObj = questionMapRef.current.get(id);
       return qObj && newAnswers[id] === qObj.correct_option;
     }).length;
 
@@ -1073,8 +1207,9 @@ const BattleRoom = () => {
     const elapsed = (currentRoom.time_minutes + (currentRoom.extra_time_minutes || 0)) * 60 - timeLeft;
     const usedAnswers = finalAnswers || answersRef.current;
     const qList = questionsRef.current;
+    // ── O(1) بدل O(n²) في الحساب النهائي ──
     const correct = finalCorrect ?? Object.keys(usedAnswers).filter(id => {
-      const q = qList.find(q => q.id === id); return q && usedAnswers[id] === q.correct_option;
+      const q = questionMapRef.current.get(id); return q && usedAnswers[id] === q.correct_option;
     }).length;
     const total = finalTotal ?? Object.keys(usedAnswers).length;
     const pct = currentRoom.questions_count > 0 ? (correct / currentRoom.questions_count) * 100 : 0;
