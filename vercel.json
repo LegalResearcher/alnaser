@@ -5,7 +5,18 @@
       "destination": "/api/sitemap"
     },
     {
-      "source": "/((?!api/).*)",
+      "source": "/((?!api/)(?!assets/).*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i).*(googlebot|google-inspectiontool|bingbot|yandexbot|baiduspider|facebookexternalhit|twitterbot|whatsapp|telegram|linkedinbot|slackbot|discordbot|applebot|duckduckbot).*"
+        }
+      ],
+      "destination": "/api/render?path=/$1"
+    },
+    {
+      "source": "/((?!api/)(?!assets/).*)",
       "destination": "/index.html"
     }
   ],
@@ -22,7 +33,8 @@
       "headers": [
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "X-XSS-Protection", "value": "1; mode=block" }
+        { "key": "X-XSS-Protection", "value": "1; mode=block" },
+        { "key": "Vary", "value": "User-Agent" }
       ]
     }
   ]
