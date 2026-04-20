@@ -6,7 +6,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
-  Swords, Crown, Medal, Trophy, Clock, Users, Play, Copy, Check, Hash,
+  Swords, Crown, Medal, Trophy, Clock, Users, Play, Copy, Check,
   Loader2, ChevronLeft, Flame, Target, CheckCircle2, XCircle,
   Share2, RotateCcw, Star, Zap, AlertCircle, Lock, UserX,
   TimerReset, BarChart3, Users2, Shield, Sparkles, ChevronRight,
@@ -66,16 +66,6 @@ const AVATAR_COLORS = [
   '#6366f1','#f59e0b','#10b981','#ef4444','#3b82f6','#8b5cf6','#ec4899','#14b8a6',
   '#f97316','#06b6d4','#84cc16','#a855f7'
 ];
-
-const BATTLE_EXAM_FORMS = [
-  { id: 'General',  name: 'نموذج العام' },
-  { id: 'Parallel', name: 'نموذج الموازي' },
-  { id: 'Mixed',    name: 'نموذج مختلط' },
-];
-const BATTLE_EXAM_YEARS = [2026, 2025, 2024, 2023, 2022, 2021, 2020];
-const DEFAULT_TRIAL_FORMS = Array.from({ length: 15 }, (_, i) => ({
-  id: `Model_${i + 1}`, name: `نموذج ${i + 1}`
-}));
 
 const rankIcon = (rank: number) => {
   if (rank === 1) return <Crown className="w-5 h-5 text-yellow-500" />;
@@ -237,8 +227,6 @@ const BattleRoom = () => {
   // Exam state
   const [questions, setQuestions] = useState<Question[]>([]);
   const questionsRef = useRef<Question[]>([]);
-  // ── Map للوصول الفوري للأسئلة O(1) بدل O(n) ──
-  const questionMapRef = useRef<Map<string, Question>>(new Map());
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const answersRef = useRef<Record<string, string>>({});
@@ -248,15 +236,6 @@ const BattleRoom = () => {
   const [examStarted, setExamStarted] = useState(false);
   const [examFinished, setExamFinished] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
-  // ── الاختبار التالي ──
-  const [showNextExamPanel, setShowNextExamPanel] = useState(false);
-  const [nextExamYear, setNextExamYear] = useState('');
-  const [nextExamForm, setNextExamForm] = useState('General');
-  const [nextTrialForm, setNextTrialForm] = useState('all');
-  const [nextTimePerQuestion, setNextTimePerQuestion] = useState(60);
-  const [nextAvailableCount, setNextAvailableCount] = useState(0);
-  const [loadingNextCount, setLoadingNextCount] = useState(false);
-  const [startingNext, setStartingNext] = useState(false);
   // ── Sync Quiz State ──
   const [syncCurrentQ, setSyncCurrentQ] = useState(0);
   const [syncPhase, setSyncPhase] = useState<'question' | 'reveal'>('question');
@@ -277,15 +256,6 @@ const BattleRoom = () => {
   const myPlayerId = useRef<string | null>(null);
   // ── Debounce progress writes to avoid DB write storm with 10+ players ──
   const progressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // ── Throttle: تجميع تحديثات اللاعبين لتقليل إعادة رسم الشاشة ──
-  const pendingPlayersUpdateRef = useRef<BattlePlayer[] | null>(null);
-  const playersThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const flushPlayersUpdate = () => {
-    if (pendingPlayersUpdateRef.current) {
-      setPlayers(pendingPlayersUpdateRef.current);
-      pendingPlayersUpdateRef.current = null;
-    }
-  };
 
   // Keep refs in sync
   useEffect(() => { questionsRef.current = questions; }, [questions]);
@@ -326,11 +296,6 @@ const BattleRoom = () => {
     const BATCH_SIZE = 100;
     let allData: Question[] = [];
 
-    // ── Staggered loading: توزيع الطلبات عشوائياً لحماية Supabase ──
-    // 20 لاعب يطلبون في نفس اللحظة = اختناق — نؤخر كل لاعب 0-1.5 ثانية عشوائياً
-    const staggerDelay = Math.floor(Math.random() * 1500);
-    await new Promise(resolve => setTimeout(resolve, staggerDelay));
-
     for (let i = 0; i < ids.length; i += BATCH_SIZE) {
       const batch = ids.slice(i, i + BATCH_SIZE);
       const { data } = await supabase
@@ -341,14 +306,8 @@ const BattleRoom = () => {
       if (data) allData = [...allData, ...(data as unknown as Question[])];
     }
 
-    // ترتيب حسب ids الأصلي
+    // Sort by the original ids order to ensure all players see the same question order
     const sorted = allData.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
-
-    // ── بناء Map للوصول الفوري O(1) ──
-    const map = new Map<string, Question>();
-    sorted.forEach(q => map.set(q.id, q));
-    questionMapRef.current = map;
-
     if (sorted.length) setQuestions(sorted);
     return sorted;
   };
@@ -377,26 +336,7 @@ const BattleRoom = () => {
             setMyName(me.player_name);
             setIsJoined(true);
             isCreatorRef.current = true;
-            // ── حفظ كامل في localStorage دائماً ──
             localStorage.setItem(SESSION_KEY, JSON.stringify({ playerId: me.id, playerName: me.player_name, isCreator: true }));
-            // ── إذا كانت الغرفة active (مثلاً بعد تحديث سريع) — استأنف المحرك ──
-            if (data.status === 'active' && me.status !== 'finished') {
-              const loadedQs = await loadQuestions(data.question_ids as string[]);
-              setTimeLeft((data.time_minutes + (data.extra_time_minutes || 0)) * 60);
-              setExamStarted(true);
-              const { data: freshRoom } = await (supabase.from('battle_rooms' as any) as any)
-                .select('current_question_index, current_phase')
-                .eq('id', data.id).single();
-              const resumeIndex = freshRoom?.current_question_index ?? 0;
-              const resumePhase = freshRoom?.current_phase ?? 'question';
-              setTimeout(() => {
-                if (resumePhase === 'reveal') {
-                  revealAnswerFromRef(resumeIndex, data.time_per_question || 60);
-                } else {
-                  startSyncQuestionWithList(resumeIndex, data.time_per_question || 60, loadedQs);
-                }
-              }, 1200);
-            }
           }
         }
         // ── Restore from locationState: regular join ──
@@ -407,35 +347,6 @@ const BattleRoom = () => {
             setMyPlayer(me);
             isCreatorRef.current = !!me.is_creator;
             localStorage.setItem(SESSION_KEY, JSON.stringify({ playerId: me.id, playerName: me.player_name, isCreator: !!me.is_creator }));
-            // ── إذا الغرفة active — استأنف فوراً من Supabase ──
-            if (data.status === 'active' && me.status !== 'finished') {
-              const loadedQs = await loadQuestions(data.question_ids as string[]);
-              if (me.answers_json && Object.keys(me.answers_json).length > 0) {
-                setAnswers(me.answers_json as Record<string, string>);
-                answersRef.current = me.answers_json as Record<string, string>;
-              }
-              setTimeLeft((data.time_minutes + (data.extra_time_minutes || 0)) * 60);
-              setExamStarted(true);
-              const currentQIndex = data.current_question_index ?? 0;
-              const { data: freshRoom } = await (supabase.from('battle_rooms' as any) as any)
-                .select('current_question_index, current_phase').eq('id', data.id).single();
-              const resumeIndex = freshRoom?.current_question_index ?? currentQIndex;
-              const resumePhase = freshRoom?.current_phase ?? 'question';
-              setSyncCurrentQ(resumeIndex);
-              setSyncPhase(resumePhase as 'question' | 'reveal');
-              setShowFeedback(resumePhase === 'reveal');
-              setMyAnswerGiven(resumePhase === 'reveal' || !!me.answers_json?.[loadedQs[resumeIndex]?.id]);
-              if (resumePhase === 'question') {
-                const tpq = data.time_per_question || 60;
-                setSyncTimeLeft(tpq);
-                let t = tpq;
-                syncTimerRef.current = setInterval(() => {
-                  t -= 1; setSyncTimeLeft(t);
-                  if (t <= 0) clearInterval(syncTimerRef.current!);
-                }, 1000);
-              }
-              toast({ title: 'مرحباً مجدداً 👋', description: 'استُؤنف الاختبار من السؤال الحالي' });
-            }
           }
         }
         // ── Restore from localStorage: page refresh / reconnect ──
@@ -458,52 +369,13 @@ const BattleRoom = () => {
               const currentQIndex = data.current_question_index ?? 0;
               setSyncCurrentQ(currentQIndex);
 
-              // ── RESUME ENGINE: المنشئ يستأنف المحرك عند العودة ──
-              // نقرأ السؤال الحالي مباشرة من Supabase (المصدر الوحيد للحقيقة)
-              // ونستأنف المحرك من نفس السؤال الذي يراه اللاعبون
+              // ── KEY FIX: Creator must resume driving the sync quiz after refresh ──
               if (me.is_creator && loadedQs.length > 0 && me.status !== 'finished') {
                 const tpq = data.time_per_question || 60;
-                // نجلب أحدث حالة للغرفة مباشرة (لا نثق بـ cache)
-                const { data: freshRoom } = await (supabase.from('battle_rooms' as any) as any)
-                  .select('current_question_index, current_phase')
-                  .eq('id', data.id)
-                  .single();
-                const resumeIndex = freshRoom?.current_question_index ?? currentQIndex;
-                const resumePhase = freshRoom?.current_phase ?? 'question';
-                // تأخير بسيط فقط لضمان اشتراك الـ channels
+                // Small delay to let channels subscribe
                 setTimeout(() => {
-                  if (resumePhase === 'reveal') {
-                    // كان في مرحلة عرض الإجابة — أكمل منها مباشرة
-                    revealAnswerFromRef(resumeIndex, tpq);
-                  } else {
-                    // كان في مرحلة السؤال — ابدأ السؤال من جديد (العد من الأول لهذا السؤال)
-                    startSyncQuestionWithList(resumeIndex, tpq, loadedQs);
-                  }
-                }, 1200);
-              }
-
-              // ── PLAYER RESUME: استئناف المتسابق من Supabase مباشرة ──
-              if (!me.is_creator && loadedQs.length > 0 && me.status !== 'finished') {
-                const { data: freshRoom } = await (supabase.from('battle_rooms' as any) as any)
-                  .select('current_question_index, current_phase')
-                  .eq('id', data.id).single();
-                const resumeIndex = freshRoom?.current_question_index ?? currentQIndex;
-                const resumePhase = freshRoom?.current_phase ?? 'question';
-                setSyncCurrentQ(resumeIndex);
-                setSyncPhase(resumePhase as 'question' | 'reveal');
-                setShowFeedback(resumePhase === 'reveal');
-                setMyAnswerGiven(resumePhase === 'reveal' || !!me.answers_json?.[loadedQs[resumeIndex]?.id]);
-                if (resumePhase === 'question') {
-                  const tpq = data.time_per_question || 60;
-                  setSyncTimeLeft(tpq);
-                  if (syncTimerRef.current) clearInterval(syncTimerRef.current);
-                  let t = tpq;
-                  syncTimerRef.current = setInterval(() => {
-                    t -= 1;
-                    setSyncTimeLeft(t);
-                    if (t <= 0) clearInterval(syncTimerRef.current!);
-                  }, 1000);
-                }
+                  startSyncQuestionWithList(currentQIndex, tpq, loadedQs);
+                }, 1500);
               }
             } else if (data.status === 'finished') {
               await loadQuestions(data.question_ids as string[]);
@@ -513,20 +385,6 @@ const BattleRoom = () => {
               }
               setExamStarted(true);
               setExamFinished(true);
-            } else if (data.status === 'waiting') {
-              // ── الغرفة في انتظار اختبار جديد (بين جولتين) ──
-              // امسح الجلسة القديمة وابقَ في غرفة الانتظار
-              setExamStarted(false);
-              setExamFinished(false);
-              setQuestions([]);
-              setAnswers({});
-              answersRef.current = {};
-              setCurrentQ(0);
-              setSyncCurrentQ(0);
-              masterTimerStateRef.current = null;
-              localStorage.setItem(SESSION_KEY, JSON.stringify({
-                playerId: me.id, playerName: me.player_name, isCreator: !!me.is_creator
-              }));
             }
             toast({ title: 'مرحباً مجدداً ' + me.player_name + ' 👋', description: 'تم استئناف جلستك تلقائياً' });
           } else {
@@ -564,27 +422,18 @@ const BattleRoom = () => {
           } else if (payload.eventType === 'UPDATE') {
             const updated = payload.new as BattlePlayer;
             // ── FIX: Throttle leaderboard re-renders — only update if meaningful change ──
-            // ── Throttle: نجمع التحديثات ونطبقها كل 800ms بدل كل تحديث ──
             setPlayers(prev => {
               const existing = prev.find(p => p.id === updated.id);
+              // Skip if only answers_json changed (internal data, not displayed in leaderboard)
               if (existing &&
                 existing.correct_count === updated.correct_count &&
                 existing.total_answered === updated.total_answered &&
                 existing.status === updated.status &&
                 existing.kicked === updated.kicked) {
-                return prev; // لا تغيير مرئي — تخطَّ
+                return prev; // No visible change — skip re-render
               }
-              const next = prev.map(p => p.id === updated.id ? updated : p)
+              return prev.map(p => p.id === updated.id ? updated : p)
                 .sort((a, b) => b.percentage - a.percentage);
-              // حفظ التحديث مؤقتاً وتطبيقه بعد 800ms
-              pendingPlayersUpdateRef.current = next;
-              if (!playersThrottleRef.current) {
-                playersThrottleRef.current = setTimeout(() => {
-                  flushPlayersUpdate();
-                  playersThrottleRef.current = null;
-                }, 800);
-              }
-              return prev; // لا نُحدّث الآن — ننتظر الـ throttle
             });
             if (updated.id === myPlayerId.current) {
               setMyPlayer(updated);
@@ -622,23 +471,6 @@ const BattleRoom = () => {
           if (updated.status === 'finished' && !examFinishedRef.current) {
             if (syncTimerRef.current) clearInterval(syncTimerRef.current);
             await handleFinishExam();
-          }
-          // ── إعادة ضبط للاختبار التالي (للاعبين غير المنشئ) ──
-          if (updated.status === 'waiting' && examFinishedRef.current && !isCreatorRef.current) {
-            setExamFinished(false);
-            setExamStarted(false);
-            setQuestions([]);
-            setAnswers({});
-            answersRef.current = {};
-            setCurrentQ(0);
-            setSyncCurrentQ(0);
-            setSelectedAnswer(null);
-            setShowFeedback(false);
-            setShowNextExamPanel(false);
-            masterTimerStateRef.current = null;
-            if (syncTimerRef.current) clearInterval(syncTimerRef.current);
-            if (timerRef.current) clearInterval(timerRef.current);
-            toast({ title: '🎯 جولة جديدة! في انتظار المنشئ...' });
           }
         })
       .subscribe();
@@ -786,107 +618,6 @@ const BattleRoom = () => {
     toast({ title: `✅ تمت إضافة ${minutes} دقيقة للوقت` });
   };
 
-  // ── جلب عدد الأسئلة المتاحة للاختبار التالي ──
-  const fetchNextAvailableCount = async (year: string, form: string, trialForm: string) => {
-    if (!room?.subject_id) return;
-    setLoadingNextCount(true);
-    let q = supabase.from('questions').select('*', { count: 'exact', head: true })
-      .eq('subject_id', room.subject_id).eq('status', 'active');
-    if (year === 'trial') {
-      q = q.is('exam_year', null);
-      if (trialForm !== 'all') q = q.eq('exam_form', trialForm);
-    } else if (year !== 'all' && year) {
-      q = q.not('exam_year', 'is', null).eq('exam_year', parseInt(year));
-      if (form && form !== 'Mixed') q = q.eq('exam_form', form);
-    }
-    const { count } = await q;
-    setNextAvailableCount(count || 0);
-    setLoadingNextCount(false);
-  };
-
-  // ── بدء الاختبار التالي في نفس الغرفة ──
-  const handleStartNextExam = async () => {
-    if (!room || !nextExamYear) return;
-    setStartingNext(true);
-    try {
-      // 1. جلب الأسئلة
-      let q = supabase.from('questions').select('id')
-        .eq('subject_id', room.subject_id).eq('status', 'active');
-      if (nextExamYear === 'trial') {
-        q = q.is('exam_year', null);
-        if (nextTrialForm !== 'all') q = q.eq('exam_form', nextTrialForm);
-      } else if (nextExamYear !== 'all' && nextExamYear) {
-        q = q.not('exam_year', 'is', null).eq('exam_year', parseInt(nextExamYear));
-        if (nextExamForm && nextExamForm !== 'Mixed') q = q.eq('exam_form', nextExamForm);
-      }
-      const { data: qs } = await q;
-      if (!qs || qs.length < 2) {
-        toast({ title: 'لا توجد أسئلة كافية', variant: 'destructive' });
-        setStartingNext(false);
-        return;
-      }
-      const shuffled = qs.sort(() => Math.random() - 0.5);
-      const questionIds = shuffled.map((q: any) => q.id);
-
-      const examFormName = nextExamYear === 'trial'
-        ? (DEFAULT_TRIAL_FORMS.find(f => f.id === nextTrialForm)?.name || 'كل النماذج')
-        : nextExamYear === 'all' ? 'جميع الأسئلة'
-        : (BATTLE_EXAM_FORMS.find(f => f.id === nextExamForm)?.name || 'نموذج العام');
-      const qType = nextExamYear === 'trial' ? 'trial' : nextExamYear === 'all' ? 'general' : 'exam';
-
-      // 2. إعادة ضبط اللاعبين الحاليين
-      await (supabase.from('battle_players' as any) as any)
-        .update({
-          status: 'waiting', score: 0, correct_count: 0, total_answered: 0,
-          percentage: 0, progress: 0, time_seconds: null,
-          finished_at: null, answers_json: {}, kicked: false,
-        })
-        .eq('room_id', room.id)
-        .neq('kicked', true);
-
-      // 3. إعادة ضبط الغرفة
-      await (supabase.from('battle_rooms' as any) as any).update({
-        status: 'waiting',
-        question_ids: questionIds,
-        questions_count: questionIds.length,
-        time_per_question: nextTimePerQuestion,
-        time_minutes: nextTimePerQuestion,
-        current_question_index: 0,
-        started_at: null,
-        finished_at: null,
-        exam_year: (nextExamYear && nextExamYear !== 'all' && nextExamYear !== 'trial') ? parseInt(nextExamYear) : null,
-        exam_form_id: nextExamYear === 'trial' ? (nextTrialForm !== 'all' ? nextTrialForm : null) : (nextExamForm !== 'Mixed' ? nextExamForm : null),
-        exam_form_name: examFormName,
-        question_type: qType,
-        expires_at: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
-        locked: false,
-        extra_time_minutes: 0,
-      }).eq('id', room.id);
-
-      // 4. إعادة ضبط الحالة المحلية
-      setExamFinished(false);
-      setExamStarted(false);
-      setQuestions([]);
-      setAnswers({});
-      answersRef.current = {};
-      setCurrentQ(0);
-      setSyncCurrentQ(0);
-      setSelectedAnswer(null);
-      setShowFeedback(false);
-      setShowNextExamPanel(false);
-      setNextExamYear('');
-      masterTimerStateRef.current = null;
-      if (syncTimerRef.current) clearInterval(syncTimerRef.current);
-      if (timerRef.current) clearInterval(timerRef.current);
-
-      toast({ title: '✅ تم تحضير الاختبار التالي!' });
-    } catch (err: any) {
-      toast({ title: 'خطأ', description: err.message, variant: 'destructive' });
-    } finally {
-      setStartingNext(false);
-    }
-  };
-
   const handleForceFinish = async () => {
     if (!room) return;
     // حفظ نتائج المنشئ أولاً قبل إنهاء الغرفة
@@ -918,20 +649,15 @@ const BattleRoom = () => {
   }, [room?.id]);
 
   // ── Sync Quiz Channel ──
-  // ── Heartbeat: المنشئ يُرسل نبضة كل 4 ثواني، اللاعبون يراقبون ──
-  const lastHeartbeatRef = useRef<number>(Date.now());
-  const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const watchdogIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
   useEffect(() => {
     if (!room?.id) return;
     const syncChannel = supabase.channel(`battle-sync-${room.id}`, {
       config: { broadcast: { self: false } }
     }).on('broadcast', { event: 'quiz_state' }, ({ payload }) => {
       const { questionIndex, phase, timeLeft: tl, totalQs } = payload;
-      lastHeartbeatRef.current = Date.now();
       setSyncCurrentQ(questionIndex);
       setSyncPhase(phase);
+      // حفظ السؤال الحالي للاستئناف عند العودة
       try {
         const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
         if (s) localStorage.setItem(SESSION_KEY, JSON.stringify({ ...s, currentQ: questionIndex, phase }));
@@ -949,41 +675,10 @@ const BattleRoom = () => {
           if (t <= 0) clearInterval(syncTimerRef.current!);
         }, 1000);
       }
-    }).on('broadcast', { event: 'creator_heartbeat' }, () => {
-      lastHeartbeatRef.current = Date.now();
     }).subscribe();
     syncChannelRef.current = syncChannel;
-    return () => {
-      supabase.removeChannel(syncChannel);
-      if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
-      if (watchdogIntervalRef.current) clearInterval(watchdogIntervalRef.current);
-    };
+    return () => { supabase.removeChannel(syncChannel); };
   }, [room?.id]);
-
-  // ── Heartbeat sender: المنشئ يُرسل نبضة كل 4 ثواني أثناء المنافسة ──
-  useEffect(() => {
-    if (!examStarted || examFinished || !isCreatorRef.current) return;
-    heartbeatIntervalRef.current = setInterval(() => {
-      if (syncChannelRef.current) {
-        syncChannelRef.current.send({
-          type: 'broadcast', event: 'creator_heartbeat', payload: { ts: Date.now() }
-        });
-      }
-    }, 4000);
-    return () => { if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current); };
-  }, [examStarted, examFinished]);
-
-  // ── Watchdog: اللاعبون يراقبون — لو المنشئ اختفى أكثر من 10 ثواني يظهر تنبيه ──
-  const [creatorDisconnected, setCreatorDisconnected] = useState(false);
-  useEffect(() => {
-    if (!examStarted || examFinished || isCreatorRef.current) return;
-    lastHeartbeatRef.current = Date.now();
-    watchdogIntervalRef.current = setInterval(() => {
-      const silence = Date.now() - lastHeartbeatRef.current;
-      setCreatorDisconnected(silence > 10000);
-    }, 3000);
-    return () => { if (watchdogIntervalRef.current) clearInterval(watchdogIntervalRef.current); };
-  }, [examStarted, examFinished]);
 
   const handleSendChat = () => {
     const text = chatInput.trim();
@@ -1018,112 +713,57 @@ const BattleRoom = () => {
     const currentRoom = roomRef.current;
     if (currentRoom?.id) {
       (supabase.from('battle_rooms' as any) as any)
-        .update({ current_question_index: questionIndex, current_phase: phase })
+        .update({ current_question_index: questionIndex })
         .eq('id', currentRoom.id)
         .then(() => {}) // intentional fire-and-forget
         .catch(() => {}); // silent fail — not critical for quiz flow
     }
   };
 
-  // ── Master Timer Engine (ساعة واحدة مستمرة لا تنكسر) ──
-  // بدل كسر وبناء interval جديد بين كل سؤال (كان يتسبب في التجمد تحت الضغط)،
-  // نستخدم interval واحد يعمل طوال المنافسة ويدير 3 حالات:
-  // question (N ثانية) → reveal (3 ثواني) → question التالي → ...
-  const masterTimerStateRef = useRef<{
-    qIndex: number;
-    tpq: number;
-    phase: 'question' | 'reveal';
-    tick: number; // العداد التنازلي الحالي بالثواني
-  } | null>(null);
-
   const startSyncQuestionWithList = (qIndex: number, timePerQuestion: number, qList: Question[]) => {
+    // Use qList for the initial call, but always reference questionsRef for subsequent calls
+    // to avoid stale closure issues
     const activeQList = qList.length > 0 ? qList : questionsRef.current;
     if (!activeQList.length) return;
-
-    // أوقف أي interval سابق
-    if (syncTimerRef.current) clearInterval(syncTimerRef.current);
-
-    // اضبط الحالة الأولية
-    masterTimerStateRef.current = { qIndex, tpq: timePerQuestion, phase: 'question', tick: timePerQuestion };
-
+    
     setSyncCurrentQ(qIndex);
     setSyncPhase('question');
+    try {
+      const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+      if (s) localStorage.setItem(SESSION_KEY, JSON.stringify({ ...s, currentQ: qIndex, phase: 'question' }));
+    } catch {}
     setSyncTimeLeft(timePerQuestion);
     setMyAnswerGiven(false);
     setSelectedAnswer(null);
     setShowFeedback(false);
     broadcastQuizState(qIndex, 'question', timePerQuestion, activeQList.length);
-
-    try {
-      const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
-      if (s) localStorage.setItem(SESSION_KEY, JSON.stringify({ ...s, currentQ: qIndex, phase: 'question' }));
-    } catch {}
-
-    // ── الساعة الواحدة المستمرة ──
+    if (syncTimerRef.current) clearInterval(syncTimerRef.current);
+    let t = timePerQuestion;
     syncTimerRef.current = setInterval(() => {
-      const state = masterTimerStateRef.current;
-      if (!state) return;
-
-      state.tick -= 1;
-
-      if (state.phase === 'question') {
-        setSyncTimeLeft(state.tick);
-
-        if (state.tick <= 0) {
-          // انتهى وقت السؤال → انتقل لمرحلة الإجابة
-          state.phase = 'reveal';
-          state.tick = 3; // 3 ثواني لعرض الإجابة الصحيحة
-          const qList = questionsRef.current;
-          setSyncPhase('reveal');
-          setShowFeedback(true);
-          broadcastQuizState(state.qIndex, 'reveal', 0, qList.length);
-        }
-      } else {
-        // phase === 'reveal'
-        if (state.tick <= 0) {
-          // انتهت مرحلة الإجابة → السؤال التالي أو إنهاء
-          const qList = questionsRef.current;
-          const nextIndex = state.qIndex + 1;
-
-          if (!qList.length || nextIndex >= qList.length) {
-            // انتهت كل الأسئلة
-            clearInterval(syncTimerRef.current!);
-            masterTimerStateRef.current = null;
-            handleFinishExam();
-          } else {
-            // السؤال التالي — نحدّث الحالة بدون كسر الـ interval
-            state.qIndex = nextIndex;
-            state.phase = 'question';
-            state.tick = state.tpq;
-
-            setSyncCurrentQ(nextIndex);
-            setSyncPhase('question');
-            setSyncTimeLeft(state.tpq);
-            setMyAnswerGiven(false);
-            setSelectedAnswer(null);
-            setShowFeedback(false);
-            broadcastQuizState(nextIndex, 'question', state.tpq, qList.length);
-
-            try {
-              const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
-              if (s) localStorage.setItem(SESSION_KEY, JSON.stringify({ ...s, currentQ: nextIndex, phase: 'question' }));
-            } catch {}
-          }
-        }
+      t -= 1;
+      setSyncTimeLeft(t);
+      if (t <= 0) {
+        clearInterval(syncTimerRef.current!);
+        // ── FIX: Use questionsRef to avoid stale closure ──
+        revealAnswerFromRef(qIndex, timePerQuestion);
       }
     }, 1000);
   };
 
-  // revealAnswerFromRef محتفظ بها للاستئناف بعد refresh فقط
   const revealAnswerFromRef = (qIndex: number, tpq: number) => {
     const qList = questionsRef.current;
-    if (!masterTimerStateRef.current) {
-      // استئناف بعد refresh — ابدأ المحرك من مرحلة reveal
-      masterTimerStateRef.current = { qIndex, tpq, phase: 'reveal', tick: 3 };
-    }
     setSyncPhase('reveal');
     setShowFeedback(true);
     broadcastQuizState(qIndex, 'reveal', 0, qList.length);
+    // ── FIX: increased from 2500ms to 3000ms to give Supabase realtime room to breathe
+    // with 10+ players all receiving broadcasts simultaneously
+    setTimeout(() => {
+      if (!qList.length || qIndex + 1 >= qList.length) {
+        handleFinishExam();
+      } else {
+        startSyncQuestionWithList(qIndex + 1, tpq, qList);
+      }
+    }, 3000);
   };
 
   const handleSyncAnswer = async (option: string) => {
@@ -1134,9 +774,8 @@ const BattleRoom = () => {
     const newAnswers = { ...answers, [q.id]: option };
     setAnswers(newAnswers);
     answersRef.current = newAnswers;
-    // ── O(1) بدل O(n²): نستخدم Map للوصول الفوري ──
     const correctCount = Object.keys(newAnswers).filter(id => {
-      const qObj = questionMapRef.current.get(id);
+      const qObj = questions.find(q => q.id === id);
       return qObj && newAnswers[id] === qObj.correct_option;
     }).length;
     // ── FIX: non-blocking call (debounced internally) — don't await ──
@@ -1174,9 +813,8 @@ const BattleRoom = () => {
     setAnswers(newAnswers);
     answersRef.current = newAnswers;
 
-    // ── O(1) بدل O(n²): نستخدم Map للوصول الفوري ──
     const correctCount = Object.keys(newAnswers).filter(id => {
-      const qObj = questionMapRef.current.get(id);
+      const qObj = questions.find(q => q.id === id);
       return qObj && newAnswers[id] === qObj.correct_option;
     }).length;
 
@@ -1207,9 +845,8 @@ const BattleRoom = () => {
     const elapsed = (currentRoom.time_minutes + (currentRoom.extra_time_minutes || 0)) * 60 - timeLeft;
     const usedAnswers = finalAnswers || answersRef.current;
     const qList = questionsRef.current;
-    // ── O(1) بدل O(n²) في الحساب النهائي ──
     const correct = finalCorrect ?? Object.keys(usedAnswers).filter(id => {
-      const q = questionMapRef.current.get(id); return q && usedAnswers[id] === q.correct_option;
+      const q = qList.find(q => q.id === id); return q && usedAnswers[id] === q.correct_option;
     }).length;
     const total = finalTotal ?? Object.keys(usedAnswers).length;
     const pct = currentRoom.questions_count > 0 ? (correct / currentRoom.questions_count) * 100 : 0;
@@ -1657,16 +1294,6 @@ const BattleRoom = () => {
         <section className="min-h-[calc(100vh-80px)] bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900 py-4" dir="rtl">
           <div className="container mx-auto px-4 max-w-lg">
 
-            {/* ── تنبيه انقطاع المنشئ ── */}
-            {creatorDisconnected && !isCreator && (
-              <div className="mb-3 flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700 rounded-2xl px-4 py-3 animate-pulse">
-                <WifiOff className="w-4 h-4 text-amber-500 shrink-0" />
-                <p className="text-xs font-black text-amber-700 dark:text-amber-300">
-                  انقطع اتصال المنشئ مؤقتاً... في انتظار عودته
-                </p>
-              </div>
-            )}
-
             {/* ── Top Bar ── */}
             <div className="flex items-center justify-between mb-3 rounded-2xl px-4 py-2.5 bg-white dark:bg-card border border-border shadow-sm">
               <div className="flex flex-col items-start">
@@ -1804,13 +1431,8 @@ const BattleRoom = () => {
 
             {/* Creator controls */}
             {isCreator && (
-              <div className="fixed bottom-20 left-4 flex flex-col gap-2 z-50">
-                <button
-                  onClick={() => {
-                    if (window.confirm('هل أنت متأكد من إنهاء المنافسة؟')) {
-                      handleForceFinish();
-                    }
-                  }}
+              <div className="fixed bottom-4 left-4 flex flex-col gap-2 z-50">
+                <button onClick={handleForceFinish}
                   className="flex items-center gap-1.5 bg-rose-600 text-white text-xs font-black px-3 py-2 rounded-xl shadow-lg hover:bg-rose-700 transition-colors">
                   <XCircle className="w-3.5 h-3.5" /> إنهاء
                 </button>
@@ -2048,179 +1670,51 @@ const BattleRoom = () => {
               {/* Share buttons row */}
               <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest text-center">مشاركة النتيجة</p>
               <div className="grid grid-cols-3 gap-2">
-                <button onClick={handleShareWhatsApp} disabled={!!isShareLoading}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 border-emerald-100 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-800/30 hover:bg-emerald-100 transition-all disabled:opacity-50">
-                  {isShareLoading === 'whatsapp' ? <Loader2 className="w-5 h-5 text-emerald-600 animate-spin" /> : <MessageCircle className="w-5 h-5 text-emerald-600" />}
+                {/* WhatsApp */}
+                <button
+                  onClick={handleShareWhatsApp}
+                  disabled={!!isShareLoading}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 border-emerald-100 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-800/30 hover:bg-emerald-100 transition-all disabled:opacity-50"
+                >
+                  {isShareLoading === 'whatsapp'
+                    ? <Loader2 className="w-5 h-5 text-emerald-600 animate-spin" />
+                    : <MessageCircle className="w-5 h-5 text-emerald-600" />}
                   <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-400">واتساب</span>
                 </button>
-                <button onClick={handleShareTwitter} disabled={!!isShareLoading}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 border-slate-100 bg-slate-50 dark:bg-slate-800/30 dark:border-slate-700 hover:bg-slate-100 transition-all disabled:opacity-50">
+                {/* Twitter / X */}
+                <button
+                  onClick={handleShareTwitter}
+                  disabled={!!isShareLoading}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 border-slate-100 bg-slate-50 dark:bg-slate-800/30 dark:border-slate-700 hover:bg-slate-100 transition-all disabled:opacity-50"
+                >
                   <svg className="w-5 h-5 text-slate-800 dark:text-slate-200" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.737-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
                   </svg>
                   <span className="text-[10px] font-black text-slate-600 dark:text-slate-300">X / تويتر</span>
                 </button>
-                <button onClick={handleSaveImage} disabled={!!isShareLoading}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 border-blue-100 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800/30 hover:bg-blue-100 transition-all disabled:opacity-50">
-                  {isShareLoading === 'save' ? <Loader2 className="w-5 h-5 text-blue-600 animate-spin" /> : <Download className="w-5 h-5 text-blue-600" />}
+                {/* Save image */}
+                <button
+                  onClick={handleSaveImage}
+                  disabled={!!isShareLoading}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-2xl border-2 border-blue-100 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800/30 hover:bg-blue-100 transition-all disabled:opacity-50"
+                >
+                  {isShareLoading === 'save'
+                    ? <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                    : <Download className="w-5 h-5 text-blue-600" />}
                   <span className="text-[10px] font-black text-blue-700 dark:text-blue-400">حفظ صورة</span>
                 </button>
               </div>
 
-              {/* ── زر الاختبار التالي البارز ── */}
-              {!showNextExamPanel && (
-                <button
-                  onClick={() => isCreator ? setShowNextExamPanel(true) : setShowNextExamPanel(true)}
-                  className="w-full relative overflow-hidden rounded-[1.5rem] p-[2px] bg-gradient-to-l from-emerald-400 via-teal-500 to-cyan-500 shadow-2xl shadow-emerald-300/40 animate-pulse-slow"
-                >
-                  <div className="relative bg-gradient-to-l from-emerald-500 via-teal-600 to-cyan-600 rounded-[1.4rem] px-6 py-5 flex items-center justify-between gap-4">
-                    <div className="absolute inset-0 opacity-10 rounded-[1.4rem]"
-                      style={{backgroundImage:'radial-gradient(circle at 20% 50%, white 1px, transparent 1px)', backgroundSize:'16px 16px'}} />
-                    <div className="relative z-10 text-right">
-                      <p className="text-white font-black text-lg leading-tight">⚡ الاختبار التالي</p>
-                      <p className="text-white/70 text-xs font-bold mt-0.5">
-                        {isCreator ? 'اختر النموذج وابدأ الجولة القادمة' : 'انتظر المنشئ لبدء الجولة القادمة'}
-                      </p>
-                    </div>
-                    <div className="relative z-10 w-14 h-14 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center shrink-0">
-                      <ChevronRight className="w-7 h-7 text-white" />
-                    </div>
-                  </div>
-                </button>
-              )}
-
-              {/* ── لوحة اختيار الاختبار التالي (للمنشئ) ── */}
-              {showNextExamPanel && isCreator && (
-                <div className="rounded-[1.5rem] border-2 border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/50 dark:bg-emerald-950/20 p-5 space-y-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Zap className="w-4 h-4 text-emerald-600" />
-                    <p className="font-black text-emerald-700 dark:text-emerald-400 text-sm">اختر الاختبار التالي</p>
-                  </div>
-
-                  {/* سنة الاختبار */}
-                  <div className="space-y-1.5">
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">سنة الاختبار</p>
-                    <select
-                      value={nextExamYear}
-                      onChange={e => {
-                        setNextExamYear(e.target.value);
-                        setNextExamForm('General');
-                        setNextTrialForm('all');
-                        fetchNextAvailableCount(e.target.value, 'General', 'all');
-                      }}
-                      className="w-full h-11 rounded-xl bg-white dark:bg-card border border-slate-200 dark:border-border font-bold text-sm px-3 text-right"
-                    >
-                      <option value="">اختر السنة</option>
-                      <option value="trial">🧪 أسئلة تجريبية</option>
-                      {BATTLE_EXAM_YEARS.map(y => (
-                        <option key={y} value={String(y)}>دورة عام {y}</option>
-                      ))}
-                      <option value="all">📚 جميع الأسئلة</option>
-                    </select>
-                  </div>
-
-                  {/* نموذج الاختبار */}
-                  {nextExamYear && nextExamYear !== 'trial' && nextExamYear !== 'all' && (
-                    <div className="space-y-1.5">
-                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">نموذج الاختبار</p>
-                      <select
-                        value={nextExamForm}
-                        onChange={e => {
-                          setNextExamForm(e.target.value);
-                          fetchNextAvailableCount(nextExamYear, e.target.value, nextTrialForm);
-                        }}
-                        className="w-full h-11 rounded-xl bg-white dark:bg-card border border-slate-200 dark:border-border font-bold text-sm px-3 text-right"
-                      >
-                        {BATTLE_EXAM_FORMS.map(f => (
-                          <option key={f.id} value={f.id}>{f.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-                  {/* نموذج تجريبي */}
-                  {nextExamYear === 'trial' && (
-                    <div className="space-y-1.5">
-                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">النموذج التجريبي</p>
-                      <select
-                        value={nextTrialForm}
-                        onChange={e => {
-                          setNextTrialForm(e.target.value);
-                          fetchNextAvailableCount(nextExamYear, nextExamForm, e.target.value);
-                        }}
-                        className="w-full h-11 rounded-xl bg-white dark:bg-card border border-slate-200 dark:border-border font-bold text-sm px-3 text-right"
-                      >
-                        <option value="all">كل النماذج</option>
-                        {DEFAULT_TRIAL_FORMS.map(f => (
-                          <option key={f.id} value={f.id}>{f.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-                  {/* وقت كل سؤال */}
-                  {nextExamYear && (
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
-                          <Clock className="w-3 h-3" /> وقت كل سؤال
-                        </p>
-                        <span className="text-xs font-black text-primary bg-primary/10 px-2 py-0.5 rounded-lg">
-                          {nextTimePerQuestion >= 60 ? `${nextTimePerQuestion / 60} دقيقة` : `${nextTimePerQuestion} ثانية`}
-                        </span>
-                      </div>
-                      <input type="range" min={15} max={300} step={15} value={nextTimePerQuestion}
-                        onChange={e => setNextTimePerQuestion(Number(e.target.value))}
-                        className="w-full accent-emerald-500" />
-                      <div className="flex justify-between text-[9px] text-slate-400 font-bold">
-                        <span>15 ثانية</span><span>5 دقائق</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* عدد الأسئلة المتاح */}
-                  {nextExamYear && (
-                    <div className="flex items-center gap-2 bg-white dark:bg-card rounded-xl px-3 py-2 border border-slate-100 dark:border-border">
-                      <Hash className="w-3.5 h-3.5 text-slate-400" />
-                      {loadingNextCount
-                        ? <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />
-                        : <span className="text-xs font-black text-slate-600 dark:text-slate-300">{nextAvailableCount} سؤال متاح</span>
-                      }
-                    </div>
-                  )}
-
-                  {/* أزرار */}
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    <button onClick={() => setShowNextExamPanel(false)}
-                      className="h-11 rounded-xl border-2 border-slate-200 dark:border-border text-slate-600 dark:text-slate-300 font-black text-sm hover:bg-slate-50 transition-all">
-                      إلغاء
-                    </button>
-                    <button
-                      onClick={handleStartNextExam}
-                      disabled={!nextExamYear || nextAvailableCount < 2 || startingNext}
-                      className="h-11 rounded-xl bg-gradient-to-l from-emerald-500 to-teal-600 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-200/50 disabled:opacity-50 transition-all hover:-translate-y-0.5"
-                    >
-                      {startingNext ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Play className="w-4 h-4" /> ابدأ</>}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* لوحة انتظار اللاعبين (غير المنشئ) */}
-              {showNextExamPanel && !isCreator && (
-                <div className="rounded-[1.5rem] border-2 border-emerald-200 dark:border-emerald-800/50 bg-emerald-50/50 dark:bg-emerald-950/20 p-5 text-center space-y-3">
-                  <div className="flex gap-1 justify-center">
-                    {[0,1,2].map(i => <div key={i} className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{animationDelay:`${i*0.2}s`}} />)}
-                  </div>
-                  <p className="font-black text-emerald-700 dark:text-emerald-400 text-sm">في انتظار المنشئ لاختيار الاختبار التالي...</p>
-                </div>
-              )}
-
-              {/* زر الخروج */}
-              <button onClick={() => navigate(-1)}
-                className="w-full h-12 rounded-2xl border-2 border-slate-200 dark:border-border text-slate-500 dark:text-slate-400 font-black text-sm flex items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all">
-                <ChevronLeft className="w-4 h-4" /> خروج من الغرفة
-              </button>
+              {/* Action buttons row */}
+              <div className="grid grid-cols-2 gap-3">
+                <Button onClick={handleShare} variant="outline" className="h-12 rounded-2xl font-black gap-2 border-2">
+                  <Share2 className="w-4 h-4" /> مشاركة نصية
+                </Button>
+                <Button onClick={() => navigate('/battle/create')}
+                  className="h-12 rounded-2xl font-black gap-2 bg-gradient-to-l from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-200/50">
+                  <RotateCcw className="w-4 h-4" /> غرفة جديدة
+                </Button>
+              </div>
             </div>
           </div>
         </section>
