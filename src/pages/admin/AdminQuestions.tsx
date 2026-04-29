@@ -11,7 +11,7 @@ import { AdminLayout } from '@/components/admin/AdminLayout';
 import { 
   Plus, Search, Edit2, Trash2, BookOpen, CheckCircle2, FileUp, 
   Loader2, FileText, AlertCircle, Eye, Save, X, PencilLine, ScanLine,
-  ChevronUp, ChevronDown, Download
+  ChevronUp, ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -675,46 +675,6 @@ const AdminQuestions = () => {
   const toggleSelectAll = () => selectedIds.length === filteredQuestions.length ? setSelectedIds([]) : setSelectedIds(filteredQuestions.map(q => q.id));
   const toggleSelectOne = (id: string) => selectedIds.includes(id) ? setSelectedIds(prev => prev.filter(x => x !== id)) : setSelectedIds(prev => [...prev, id]);
 
-  // --- تصدير الأسئلة كملف JSON ---
-  const handleExportJSON = () => {
-    if (!filteredQuestions.length) {
-      toast({ title: 'لا توجد أسئلة للتصدير', description: 'اختر المادة والفلاتر المناسبة أولاً.', variant: 'destructive' });
-      return;
-    }
-
-    const levelName = levels.find(l => l.id === selectedLevel)?.name || '';
-    const subjectName = subjects.find(s => s.id === selectedSubject)?.name || '';
-    const examFormName = EXAM_FORMS.find(f => f.id === selectedExamForm)?.name || selectedExamForm || 'كل_النماذج';
-    const yearLabel = selectedYear || 'كل_السنوات';
-    const fileName = [levelName, subjectName, yearLabel, examFormName]
-      .filter(Boolean)
-      .join('_') + '.json';
-
-    const exportData = filteredQuestions.map(q => ({
-      question_text: q.question_text,
-      option_a: q.option_a,
-      option_b: q.option_b,
-      option_c: q.option_c,
-      option_d: q.option_d,
-      correct_option: q.correct_option,
-      hint: q.hint || '',
-      exam_year: q.exam_year,
-      exam_form: (q as any).exam_form || selectedExamForm || 'General',
-    }));
-
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    toast({ title: '✅ تم التصدير بنجاح', description: `تم تنزيل ${exportData.length} سؤال بصيغة JSON` });
-  };
-
   const filteredQuestions = useMemo(() =>
     searchQuery.trim()
       ? questions.filter(q =>
@@ -744,20 +704,41 @@ const AdminQuestions = () => {
             )}
             <div className="h-8 w-px bg-slate-200 mx-2 hidden md:block"></div>
             {isAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (!filteredQuestions.length) return;
+                  const exportData = filteredQuestions.map(q => ({
+                    question_text: q.question_text,
+                    option_a: q.option_a,
+                    option_b: q.option_b,
+                    option_c: q.option_c,
+                    option_d: q.option_d,
+                    correct_option: q.correct_option,
+                    hint: (q as any).hint || '',
+                    exam_year: q.exam_year || '',
+                    exam_form: (q as any).exam_form || 'General',
+                  }));
+                  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `questions-export-${Date.now()}.json`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+                disabled={!selectedSubject || !filteredQuestions.length}
+                className="gap-2 border-emerald-200 bg-emerald-50 text-emerald-700 font-bold shadow-sm hover:bg-emerald-100"
+              >
+                <FileText className="w-4 h-4" /> تصدير JSON
+              </Button>
+            )}
+            {isAdmin && (
               <Button variant="outline" size="sm" onClick={() => setIsFileUploadOpen(true)} disabled={!selectedSubject} className="gap-2 border-primary/20 bg-primary/5 text-primary font-bold shadow-sm">
                 <ScanLine className="w-4 h-4" /> استيراد PDF/JSON/نص
               </Button>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportJSON}
-              disabled={!selectedSubject || !filteredQuestions.length}
-              className="gap-2 border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold shadow-sm"
-              title="تصدير الأسئلة المعروضة كملف JSON"
-            >
-              <Download className="w-4 h-4" /> تصدير JSON
-            </Button>
             <Button size="sm" onClick={() => { setEditingQuestion(null); setFormData({question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', hint: '', exam_year: '', exam_form: 'General'}); setIsDialogOpen(true); }} disabled={!selectedSubject} className="gradient-primary text-white gap-2 shadow-lg">
               <Plus className="w-4 h-4" /> إضافة سؤال
             </Button>
