@@ -920,9 +920,10 @@ function render(){
     }
     const showHintReview=q.hint&&mode==='review';
     const showHintInteractive=q.hint&&mode==='interactive'&&answers[i]!==undefined&&answers[i]!==q.correct_option;
-    const hint=(showHintReview||showHintInteractive)?`<div class="hint-box show">💡 <span>${q.hint}</span></div>`:\'\';\n    const div=document.createElement('div');
+    const hint=(showHintReview||showHintInteractive)?\`<div class=\"hint-box show\">💡 <span>\${q.hint}</span></div>\`:'';
+    const div=document.createElement('div');
     div.className='question-card';div.id='card-'+i;
-    div.innerHTML=\`<div class="question-header"><div class="q-num">\${i+1}</div><div class="q-text">\${q.question_text}</div></div><div class="options-grid">\${og}</div>\${hint}\`;
+    div.innerHTML=\`<div class=\"question-header\"><div class=\"q-num\">\${i+1}</div><div class=\"q-text\">\${q.question_text}</div></div><div class=\"options-grid\">\${og}</div>\${hint}\`;
     c.appendChild(div);
   });
   updScore();
