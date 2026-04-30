@@ -820,8 +820,12 @@ const AdminQuestions = () => {
   .opt-interactive.sc .opt-radio,.opt-interactive.sw .opt-radio,.opt-interactive.rc .opt-radio{border-color:currentColor;}
   .opt-radio-inner{width:10px;height:10px;border-radius:50%;background:currentColor;opacity:0;transition:opacity .15s;}
   .opt-interactive.sc .opt-radio-inner,.opt-interactive.sw .opt-radio-inner,.opt-interactive.rc .opt-radio-inner{opacity:1;}
-  .hint-box{margin:4px 22px 16px;padding:12px 16px;background:var(--amber-light);border:1.5px solid #fcd34d;border-radius:11px;font-size:13px;font-weight:600;color:#92400e;display:none;gap:8px;align-items:flex-start;}
+  .hint-box{margin:0 22px 16px;padding:14px 18px;background:var(--amber-light);border:1.5px solid #fcd34d;border-radius:11px;font-size:13px;font-weight:600;color:#92400e;display:none;gap:8px;align-items:flex-start;line-height:1.75;white-space:pre-line;}
   .hint-box.show{display:flex;}
+  .hint-toggle{display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:0 22px 14px;cursor:pointer;font-family:\'Cairo\',sans-serif;font-size:13px;font-weight:800;color:var(--primary);user-select:none;transition:color .2s;}
+  .hint-toggle:hover{color:#7c3aed;}
+  .hint-toggle .arrow{display:inline-block;transition:transform .25s;font-size:11px;}
+  .hint-toggle.open .arrow{transform:rotate(180deg);}
   .page-footer{background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);padding:32px 24px;margin-top:40px;text-align:center;}
   .footer-inner{max-width:960px;margin:0 auto;}
   .footer-logo{font-size:22px;font-weight:900;color:#fff;margin-bottom:6px;}
@@ -918,12 +922,16 @@ function render(){
         og+=\`<div class="opt-interactive \${cls}" onclick="pick(\${i},'\${L[j]}')"><div class="opt-radio"><div class="opt-radio-inner"></div></div><div class="opt-badge" style="background:var(--slate-100);color:var(--slate-600);border-radius:7px;">\${LB[j]}</div><span>\${o}</span></div>\`;
       });
     }
-    const showHintReview=q.hint&&mode==='review';
-    const showHintInteractive=q.hint&&mode==='interactive'&&answers[i]!==undefined&&answers[i]!==q.correct_option;
-    const hint=(showHintReview||showHintInteractive)?\`<div class=\"hint-box show\">💡 <span>\${q.hint}</span></div>\`:'';
+    // hint toggle for review mode, instant show for interactive wrong
+    let hintSection='';
+    if(q.hint&&mode==='review'){
+      hintSection=\`<div class=\"hint-toggle\" id=\"ht-\${i}\" onclick=\"toggleHint(\${i})\"><span>الشرح المفصّل</span><span class=\"arrow\">▲</span></div><div class=\"hint-box\" id=\"hb-\${i}\">💡 <span>\${q.hint}</span></div>\`;
+    }else if(q.hint&&mode==='interactive'&&answers[i]!==undefined&&answers[i]!==q.correct_option){
+      hintSection=\`<div class=\"hint-box show\" id=\"hb-\${i}\">💡 <span>\${q.hint}</span></div>\`;
+    }
     const div=document.createElement('div');
     div.className='question-card';div.id='card-'+i;
-    div.innerHTML=\`<div class=\"question-header\"><div class=\"q-num\">\${i+1}</div><div class=\"q-text\">\${q.question_text}</div></div><div class=\"options-grid\">\${og}</div>\${hint}\`;
+    div.innerHTML=\`<div class=\"question-header\"><div class=\"q-num\">\${i+1}</div><div class=\"q-text\">\${q.question_text}</div></div><div class=\"options-grid\">\${og}</div>\${hintSection}\`;
     c.appendChild(div);
   });
   updScore();
@@ -943,6 +951,13 @@ function updScore(){
   document.getElementById('pf').style.width=(tot?(ans/tot)*100:0)+'%';
 }
 function resetQuiz(){answers={};cc=0;wc=0;render();}
+function toggleHint(i){
+  var box=document.getElementById('hb-'+i);
+  var tog=document.getElementById('ht-'+i);
+  if(!box||!tog)return;
+  var open=box.classList.toggle('show');
+  tog.classList.toggle('open',open);
+}
 function setMode(m){
   mode=m;
   document.getElementById('br').classList.toggle('active',m==='review');
