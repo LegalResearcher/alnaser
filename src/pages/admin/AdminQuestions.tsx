@@ -11,7 +11,7 @@ import { AdminLayout } from '@/components/admin/AdminLayout';
 import { 
   Plus, Search, Edit2, Trash2, BookOpen, CheckCircle2, FileUp, 
   Loader2, FileText, AlertCircle, Eye, Save, X, PencilLine, ScanLine,
-  ChevronUp, ChevronDown
+  ChevronUp, ChevronDown, Globe
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -732,6 +732,241 @@ const AdminQuestions = () => {
                 className="gap-2 border-emerald-200 bg-emerald-50 text-emerald-700 font-bold shadow-sm hover:bg-emerald-100"
               >
                 <FileText className="w-4 h-4" /> تصدير JSON
+              </Button>
+            )}
+            {isAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (!filteredQuestions.length) return;
+                  const qs = filteredQuestions;
+                  const subjectName = subjects.find(s => s.id === selectedSubject)?.name || 'بنك الأسئلة';
+                  const year = selectedYear || 'كل السنوات';
+                  const total = qs.length;
+
+                  const questionsJson = JSON.stringify(qs.map(q => ({
+                    question_text: q.question_text,
+                    option_a: q.option_a,
+                    option_b: q.option_b,
+                    option_c: q.option_c,
+                    option_d: q.option_d,
+                    correct_option: q.correct_option,
+                    hint: (q as any).hint || '',
+                  })));
+
+                  const html = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>بنك أسئلة – ${subjectName} – منصة الناصر القانونية</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
+  :root{--primary:#4f46e5;--primary-light:#ede9fe;--emerald:#059669;--emerald-light:#d1fae5;--amber-light:#fef3c7;--slate-50:#f8fafc;--slate-100:#f1f5f9;--slate-200:#e2e8f0;--slate-400:#94a3b8;--slate-600:#475569;--slate-700:#334155;--slate-900:#0f172a;--white:#fff;--radius:16px;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Cairo',sans-serif;background:var(--slate-50);color:var(--slate-900);min-height:100vh;}
+  .platform-banner{background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#4338ca 100%);position:sticky;top:0;z-index:100;box-shadow:0 4px 24px rgba(79,70,229,.35);}
+  .platform-banner-inner{max-width:960px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:14px 24px;gap:16px;}
+  .platform-brand{display:flex;align-items:center;gap:12px;text-decoration:none;transition:opacity .2s;}
+  .platform-brand:hover{opacity:.85;}
+  .platform-logo{width:44px;height:44px;background:rgba(255,255,255,.15);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;border:1.5px solid rgba(255,255,255,.25);flex-shrink:0;}
+  .platform-name{display:flex;flex-direction:column;}
+  .platform-name span:first-child{font-size:17px;font-weight:900;color:#fff;letter-spacing:-.3px;line-height:1.2;}
+  .platform-name span:last-child{font-size:11px;font-weight:600;color:rgba(255,255,255,.65);}
+  .platform-cta{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.3);color:#fff;font-family:'Cairo',sans-serif;font-weight:800;font-size:13px;padding:8px 18px;border-radius:10px;text-decoration:none;cursor:pointer;transition:all .2s;white-space:nowrap;}
+  .platform-cta:hover{background:rgba(255,255,255,.25);transform:translateY(-1px);}
+  .page-header{background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);padding:40px 24px 32px;}
+  .page-header-inner{max-width:960px;margin:0 auto;}
+  .page-header h1{font-size:26px;font-weight:900;color:#fff;margin-bottom:6px;}
+  .page-meta{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:12px;}
+  .meta-chip{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.25);color:#fff;font-size:12px;font-weight:700;padding:5px 14px;border-radius:20px;}
+  .score-bar{position:sticky;top:72px;z-index:50;background:var(--white);border-bottom:1.5px solid var(--slate-100);display:none;padding:12px 24px;box-shadow:0 2px 10px rgba(0,0,0,.06);}
+  .score-bar.show{display:flex;}
+  .score-bar-inner{max-width:960px;margin:0 auto;width:100%;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .score-chip{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-size:13px;font-weight:800;}
+  .score-chip.c{background:var(--emerald-light);color:#065f46;}
+  .score-chip.w{background:#fee2e2;color:#991b1b;}
+  .score-chip.t{background:var(--primary-light);color:#3730a3;}
+  .score-progress{flex:1;height:8px;background:var(--slate-100);border-radius:99px;overflow:hidden;min-width:80px;}
+  .score-progress-fill{height:100%;background:linear-gradient(90deg,#4f46e5,#7c3aed);border-radius:99px;transition:width .4s ease;width:0%;}
+  .reset-btn{padding:6px 14px;border-radius:20px;border:2px solid var(--slate-200);background:var(--white);font-family:'Cairo',sans-serif;font-weight:800;font-size:12px;color:var(--slate-600);cursor:pointer;transition:all .2s;}
+  .reset-btn:hover{border-color:var(--primary);color:var(--primary);}
+  .toolbar{max-width:960px;margin:0 auto;padding:20px 24px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .mode-toggle{display:flex;background:var(--white);border:2px solid var(--slate-200);border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.06);}
+  .mode-btn{padding:9px 20px;font-family:'Cairo',sans-serif;font-weight:800;font-size:13px;border:none;cursor:pointer;transition:all .2s;color:var(--slate-600);background:transparent;display:flex;align-items:center;gap:7px;}
+  .mode-btn.active{background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border-radius:9px;}
+  .spacer{flex:1;}
+  .print-btn{display:inline-flex;align-items:center;gap:8px;background:var(--white);border:2px solid var(--slate-200);color:var(--slate-700);font-family:'Cairo',sans-serif;font-weight:800;font-size:13px;padding:9px 18px;border-radius:11px;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.06);}
+  .print-btn:hover{border-color:var(--primary);color:var(--primary);}
+  .main{max-width:960px;margin:0 auto;padding:24px 24px 60px;}
+  .question-card{background:var(--white);border-radius:var(--radius);border:1.5px solid var(--slate-200);margin-bottom:20px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.05);transition:box-shadow .2s;}
+  .question-card:hover{box-shadow:0 4px 20px rgba(79,70,229,.1);}
+  .question-header{display:flex;align-items:flex-start;gap:14px;padding:20px 22px 16px;border-bottom:1px solid var(--slate-100);}
+  .q-num{min-width:38px;height:38px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-size:14px;font-weight:900;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .q-text{font-size:16px;font-weight:700;color:var(--slate-900);line-height:1.7;flex:1;padding-top:6px;}
+  .options-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:16px 22px 20px;}
+  .opt-review{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:11px;border:1.5px solid var(--slate-200);font-size:14px;font-weight:600;color:var(--slate-700);background:var(--slate-50);}
+  .opt-review.correct{background:var(--emerald-light);border-color:#6ee7b7;color:#065f46;}
+  .opt-badge{min-width:28px;height:28px;border-radius:8px;background:var(--slate-200);color:var(--slate-600);font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .opt-review.correct .opt-badge{background:var(--emerald);color:#fff;}
+  .correct-tag{margin-right:auto;font-size:12px;font-weight:800;color:#059669;}
+  .opt-interactive{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:11px;border:2px solid var(--slate-200);font-size:14px;font-weight:600;color:var(--slate-700);background:var(--white);cursor:pointer;transition:all .18s;user-select:none;}
+  .opt-interactive:hover{border-color:#a5b4fc;background:#eef2ff;color:var(--primary);}
+  .opt-interactive.sc{background:var(--emerald-light);border-color:var(--emerald);color:#065f46;}
+  .opt-interactive.sw{background:#fee2e2;border-color:#fca5a5;color:#991b1b;}
+  .opt-interactive.rc{background:var(--emerald-light);border-color:var(--emerald);color:#065f46;}
+  .opt-radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--slate-300);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .18s;}
+  .opt-interactive.sc .opt-radio,.opt-interactive.sw .opt-radio,.opt-interactive.rc .opt-radio{border-color:currentColor;}
+  .opt-radio-inner{width:10px;height:10px;border-radius:50%;background:currentColor;opacity:0;transition:opacity .15s;}
+  .opt-interactive.sc .opt-radio-inner,.opt-interactive.sw .opt-radio-inner,.opt-interactive.rc .opt-radio-inner{opacity:1;}
+  .hint-box{margin:4px 22px 16px;padding:12px 16px;background:var(--amber-light);border:1.5px solid #fcd34d;border-radius:11px;font-size:13px;font-weight:600;color:#92400e;display:none;gap:8px;align-items:flex-start;}
+  .hint-box.show{display:flex;}
+  .page-footer{background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);padding:32px 24px;margin-top:40px;text-align:center;}
+  .footer-inner{max-width:960px;margin:0 auto;}
+  .footer-logo{font-size:22px;font-weight:900;color:#fff;margin-bottom:6px;}
+  .footer-credit{font-size:14px;font-weight:700;color:rgba(255,255,255,.75);margin-bottom:4px;}
+  .footer-sub{font-size:12px;font-weight:600;color:rgba(255,255,255,.45);margin-bottom:20px;}
+  .footer-link{display:inline-flex;align-items:center;gap:8px;padding:9px 22px;background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.25);border-radius:10px;color:#fff;font-family:'Cairo',sans-serif;font-weight:800;font-size:13px;text-decoration:none;transition:all .2s;}
+  .footer-link:hover{background:rgba(255,255,255,.25);}
+  @media print{
+    body{background:#fff;}
+    .platform-banner,.toolbar,.score-bar,.page-footer{display:none!important;}
+    .opt-interactive{border:1.5px solid #ccc!important;background:#fff!important;color:#000!important;cursor:default!important;}
+    .question-card{box-shadow:none!important;break-inside:avoid;border:1px solid #ddd!important;}
+    .page-header{background:#1e1b4b!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .main{padding:16px!important;}
+    .opt-review.correct{background:#d1fae5!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .hint-box{display:none!important;}
+    @page{margin:1.5cm;}
+  }
+  @media(max-width:640px){.options-grid{grid-template-columns:1fr;}.page-header h1{font-size:20px;}.platform-name span:first-child{font-size:14px;}}
+</style>
+</head>
+<body>
+<div class="platform-banner">
+  <div class="platform-banner-inner">
+    <a href="https://alnaseer.org" target="_blank" class="platform-brand">
+      <div class="platform-logo">⚖️</div>
+      <div class="platform-name"><span>منصة الناصر القانونية</span><span>Alnaser Legal Platform</span></div>
+    </a>
+    <a href="https://alnaseer.org" target="_blank" class="platform-cta">🔗 زيارة المنصة</a>
+  </div>
+</div>
+<div class="page-header">
+  <div class="page-header-inner">
+    <h1>بنك أسئلة – ${subjectName}</h1>
+    <div class="page-meta">
+      <div class="meta-chip">📚 ${subjectName}</div>
+      <div class="meta-chip">📅 ${year}</div>
+      <div class="meta-chip" id="meta-count">📋 ${total} سؤال</div>
+      <div class="meta-chip">👤 إعداد: أ.معين الناصر – الدفعة 50</div>
+    </div>
+  </div>
+</div>
+<div class="score-bar" id="score-bar">
+  <div class="score-bar-inner">
+    <div class="score-chip c">✅ <span id="cc">0</span> صحيح</div>
+    <div class="score-chip w">❌ <span id="wc">0</span> خطأ</div>
+    <div class="score-chip t">📊 <span id="ac">0</span>/<span id="tc">${total}</span></div>
+    <div class="score-progress"><div class="score-progress-fill" id="pf"></div></div>
+    <button class="reset-btn" onclick="resetQuiz()">🔄 إعادة</button>
+  </div>
+</div>
+<div class="toolbar">
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="br" onclick="setMode('review')">👁 مراجعة</button>
+    <button class="mode-btn" id="bi" onclick="setMode('interactive')">✨ تفاعلي</button>
+  </div>
+  <div class="spacer"></div>
+  <button class="print-btn" onclick="window.print()">🖨️ طباعة</button>
+</div>
+<div class="main" id="qc"></div>
+<footer class="page-footer">
+  <div class="footer-inner">
+    <div class="footer-logo">⚖️ منصة الناصر القانونية</div>
+    <div class="footer-credit">إعداد: أ.معين الناصر – الدفعة 50</div>
+    <div class="footer-sub">جميع الحقوق محفوظة © ${new Date().getFullYear()} – Alnaser Legal Platform</div>
+    <a href="https://alnaseer.org" target="_blank" class="footer-link">🌐 alnaseer.org</a>
+  </div>
+</footer>
+<script>
+const QS=${questionsJson};
+let mode='review',answers={},cc=0,wc=0;
+const L=['A','B','C','D'],LB=['أ','ب','ج','د'];
+function render(){
+  const c=document.getElementById('qc');c.innerHTML='';
+  QS.forEach((q,i)=>{
+    const opts=[q.option_a,q.option_b,q.option_c,q.option_d];
+    let og='';
+    if(mode==='review'){
+      opts.forEach((o,j)=>{
+        if(!o)return;
+        const ok=L[j]===q.correct_option;
+        og+=\`<div class="opt-review \${ok?'correct':''}"><div class="opt-badge">\${LB[j]}</div><span>\${o}</span>\${ok?'<span class="correct-tag">✓ صحيحة</span>':''}</div>\`;
+      });
+    }else{
+      const ans=answers[i];
+      opts.forEach((o,j)=>{
+        if(!o)return;
+        let cls='';
+        if(ans!==undefined){
+          if(L[j]===ans&&ans===q.correct_option)cls='sc';
+          else if(L[j]===ans&&ans!==q.correct_option)cls='sw';
+          else if(L[j]===q.correct_option&&ans!==q.correct_option)cls='rc';
+        }
+        og+=\`<div class="opt-interactive \${cls}" onclick="pick(\${i},'\${L[j]}')"><div class="opt-radio"><div class="opt-radio-inner"></div></div><div class="opt-badge" style="background:var(--slate-100);color:var(--slate-600);border-radius:7px;">\${LB[j]}</div><span>\${o}</span></div>\`;
+      });
+    }
+    const hint=(q.hint&&mode==='interactive'&&answers[i]!==undefined&&answers[i]!==q.correct_option)?
+      \`<div class="hint-box show">💡 <span>\${q.hint}</span></div>\`:'';
+    const div=document.createElement('div');
+    div.className='question-card';div.id='card-'+i;
+    div.innerHTML=\`<div class="question-header"><div class="q-num">\${i+1}</div><div class="q-text">\${q.question_text}</div></div><div class="options-grid">\${og}</div>\${hint}\`;
+    c.appendChild(div);
+  });
+  updScore();
+}
+function pick(i,l){
+  if(answers[i]!==undefined)return;
+  answers[i]=l;
+  if(l===QS[i].correct_option)cc++;else wc++;
+  render();
+  document.getElementById('card-'+i)?.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function updScore(){
+  const ans=Object.keys(answers).length,tot=QS.length;
+  document.getElementById('cc').textContent=cc;
+  document.getElementById('wc').textContent=wc;
+  document.getElementById('ac').textContent=ans;
+  document.getElementById('pf').style.width=(tot?(ans/tot)*100:0)+'%';
+}
+function resetQuiz(){answers={};cc=0;wc=0;render();}
+function setMode(m){
+  mode=m;
+  document.getElementById('br').classList.toggle('active',m==='review');
+  document.getElementById('bi').classList.toggle('active',m==='interactive');
+  document.getElementById('score-bar').classList.toggle('show',m==='interactive');
+  if(m==='review'){answers={};cc=0;wc=0;}
+  render();
+}
+render();
+<\/script>
+</body>
+</html>`;
+
+                  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `alnaseer-questions-${subjectName}-${year}-${Date.now()}.html`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+                disabled={!selectedSubject || !filteredQuestions.length}
+                className="gap-2 border-violet-200 bg-violet-50 text-violet-700 font-bold shadow-sm hover:bg-violet-100"
+              >
+                <Globe className="w-4 h-4" /> تصدير HTML
               </Button>
             )}
             {isAdmin && (
