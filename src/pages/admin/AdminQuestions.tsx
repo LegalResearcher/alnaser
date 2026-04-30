@@ -11,7 +11,7 @@ import { AdminLayout } from '@/components/admin/AdminLayout';
 import { 
   Plus, Search, Edit2, Trash2, BookOpen, CheckCircle2, FileUp, 
   Loader2, FileText, AlertCircle, Eye, Save, X, PencilLine, ScanLine,
-  ChevronUp, ChevronDown, Globe
+  ChevronUp, ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -918,9 +918,9 @@ function render(){
         og+=\`<div class="opt-interactive \${cls}" onclick="pick(\${i},'\${L[j]}')"><div class="opt-radio"><div class="opt-radio-inner"></div></div><div class="opt-badge" style="background:var(--slate-100);color:var(--slate-600);border-radius:7px;">\${LB[j]}</div><span>\${o}</span></div>\`;
       });
     }
-    const hint=(q.hint&&mode==='interactive'&&answers[i]!==undefined&&answers[i]!==q.correct_option)?
-      \`<div class="hint-box show">💡 <span>\${q.hint}</span></div>\`:'';
-    const div=document.createElement('div');
+    const showHintReview=q.hint&&mode==='review';
+    const showHintInteractive=q.hint&&mode==='interactive'&&answers[i]!==undefined&&answers[i]!==q.correct_option;
+    const hint=(showHintReview||showHintInteractive)?`<div class="hint-box show">💡 <span>${q.hint}</span></div>`:\'\';\n    const div=document.createElement('div');
     div.className='question-card';div.id='card-'+i;
     div.innerHTML=\`<div class="question-header"><div class="q-num">\${i+1}</div><div class="q-text">\${q.question_text}</div></div><div class="options-grid">\${og}</div>\${hint}\`;
     c.appendChild(div);
@@ -966,7 +966,7 @@ render();
                 disabled={!selectedSubject || !filteredQuestions.length}
                 className="gap-2 border-violet-200 bg-violet-50 text-violet-700 font-bold shadow-sm hover:bg-violet-100"
               >
-                <Globe className="w-4 h-4" /> تصدير HTML
+                <FileText className="w-4 h-4" /> تصدير HTML
               </Button>
             )}
             {isAdmin && (
