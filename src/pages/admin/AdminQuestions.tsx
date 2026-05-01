@@ -422,14 +422,14 @@ const AdminQuestions = () => {
         .select('*')
         .eq('subject_id', selectedSubject)
         .order('order_index');
-      return (data || []) as { id: string; form_id: string; form_name: string; order_index: number }[];
+      return (data || []) as { id: string; form_id: string; form_name: string; order_index: number; hidden?: boolean }[];
     },
     enabled: isTrialSelected && !!selectedSubject,
   });
 
   const addFormMutation = useMutation({
     mutationFn: async ({ name, position }: { name: string; position: number }) => {
-      const formId = name.replace(/\s+/g, '_');
+      const formId = name.replace(/\s+/g, '_') + '_' + Date.now().toString(36);
       const { error } = await (supabase.from('subject_exam_forms' as any) as any).insert({
         subject_id: selectedSubject,
         form_id: formId,
@@ -448,22 +448,74 @@ const AdminQuestions = () => {
     onError: (err: any) => toast({ title: 'خطأ', description: err.message, variant: 'destructive' }),
   });
 
+  // حذف نموذج: للنماذج الافتراضية (Model_1..15) يتم إخفاؤها عبر إدراج/تحديث صف override
+  // للنماذج المخصصة يتم حذف الصف نهائياً
   const deleteFormMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await (supabase.from('subject_exam_forms' as any) as any).delete().eq('id', id);
-      if (error) throw error;
+    mutationFn: async ({ rowId, formId, isDefault }: { rowId: string | null; formId: string; isDefault: boolean }) => {
+      if (isDefault) {
+        if (rowId) {
+          const { error } = await (supabase.from('subject_exam_forms' as any) as any)
+            .update({ hidden: true })
+            .eq('id', rowId);
+          if (error) throw error;
+        } else {
+          const orderIndex = parseInt(formId.replace('Model_', '')) || 1;
+          const { error } = await (supabase.from('subject_exam_forms' as any) as any).insert({
+            subject_id: selectedSubject,
+            form_id: formId,
+            form_name: `نموذج ${orderIndex}`,
+            order_index: orderIndex,
+            hidden: true,
+            created_by: user?.id,
+          });
+          if (error) throw error;
+        }
+      } else {
+        if (!rowId) return;
+        const { error } = await (supabase.from('subject_exam_forms' as any) as any).delete().eq('id', rowId);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subject-exam-forms'] });
-      toast({ title: 'تم حذف النموذج' });
+      toast({ title: 'تم حذف النموذج 🗑️' });
     },
+    onError: (err: any) => toast({ title: 'خطأ', description: err.message, variant: 'destructive' }),
+  });
+
+  // إعادة تسمية: للافتراضية ننشئ/نحدّث صف override، للمخصصة نحدّث الاسم مباشرة
+  const renameFormMutation = useMutation({
+    mutationFn: async ({ rowId, formId, isDefault, newName }: { rowId: string | null; formId: string; isDefault: boolean; newName: string }) => {
+      if (rowId) {
+        const { error } = await (supabase.from('subject_exam_forms' as any) as any)
+          .update({ form_name: newName })
+          .eq('id', rowId);
+        if (error) throw error;
+      } else if (isDefault) {
+        const orderIndex = parseInt(formId.replace('Model_', '')) || 1;
+        const { error } = await (supabase.from('subject_exam_forms' as any) as any).insert({
+          subject_id: selectedSubject,
+          form_id: formId,
+          form_name: newName,
+          order_index: orderIndex,
+          hidden: false,
+          created_by: user?.id,
+        });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subject-exam-forms'] });
+      toast({ title: 'تم تحديث الاسم ✏️' });
+      setEditingFormId(null);
+      setEditingFormName('');
+    },
+    onError: (err: any) => toast({ title: 'خطأ', description: err.message, variant: 'destructive' }),
   });
 
   const reorderFormMutation = useMutation({
-    mutationFn: async ({ id, direction }: { id: string; direction: 'up' | 'down' }) => {
-      const form = customForms.find((f: any) => f.id === id);
-      if (!form) return;
-      const newIndex = direction === 'up' ? form.order_index - 1 : form.order_index + 1;
+    mutationFn: async ({ id, direction, currentIndex }: { id: string; direction: 'up' | 'down'; currentIndex: number }) => {
+      const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
       if (newIndex < 1) return;
       const { error } = await (supabase.from('subject_exam_forms' as any) as any)
         .update({ order_index: newIndex })
@@ -476,22 +528,53 @@ const AdminQuestions = () => {
     onError: (err: any) => toast({ title: 'خطأ', description: err.message, variant: 'destructive' }),
   });
 
+  // قائمة موحّدة لكل النماذج التجريبية مع معلومات الـ override
+  // كل عنصر: { id, name, order_index, isDefault, rowId, hidden }
+  const allTrialForms = useMemo(() => {
+    const overridesByFormId = new Map<string, any>();
+    customForms.forEach((f: any) => overridesByFormId.set(f.form_id, f));
+
+    const items: { id: string; name: string; order_index: number; isDefault: boolean; rowId: string | null; hidden: boolean }[] = [];
+
+    // الافتراضية مع تطبيق overrides
+    for (let i = 1; i <= 15; i++) {
+      const formId = `Model_${i}`;
+      const override = overridesByFormId.get(formId);
+      if (override) {
+        items.push({
+          id: formId,
+          name: override.form_name,
+          order_index: override.order_index ?? i,
+          isDefault: true,
+          rowId: override.id,
+          hidden: !!override.hidden,
+        });
+        overridesByFormId.delete(formId);
+      } else {
+        items.push({ id: formId, name: `نموذج ${i}`, order_index: i, isDefault: true, rowId: null, hidden: false });
+      }
+    }
+
+    // المخصصة المتبقية
+    overridesByFormId.forEach((f: any) => {
+      items.push({
+        id: f.form_id,
+        name: f.form_name,
+        order_index: f.order_index,
+        isDefault: false,
+        rowId: f.id,
+        hidden: !!f.hidden,
+      });
+    });
+
+    return items.sort((a, b) => a.order_index - b.order_index);
+  }, [customForms]);
+
   const activeExamForms = useMemo(() => {
     if (!isTrialSelected) return EXAM_FORMS;
-    // دمج النماذج الافتراضية مع المضافة وترتيبها حسب order_index
-    const defaultWithIndex = Array.from({ length: 15 }, (_, i) => ({
-      id: `Model_${i + 1}`,
-      name: `نموذج ${i + 1}`,
-      order_index: i + 1,
-    }));
-    const customWithIndex = customForms.map((f: any) => ({
-      id: f.form_id,
-      name: f.form_name,
-      order_index: f.order_index,
-    }));
-    const merged = [...defaultWithIndex, ...customWithIndex].sort((a, b) => a.order_index - b.order_index);
-    return merged.map(({ id, name }) => ({ id, name }));
-  }, [isTrialSelected, customForms]);
+    // الفلتر/Selects تعرض النماذج غير المخفية فقط
+    return allTrialForms.filter(f => !f.hidden).map(({ id, name }) => ({ id, name }));
+  }, [isTrialSelected, allTrialForms]);
 
   // --- حفظ جماعي ---
   const bulkSave = useMutation({
