@@ -782,6 +782,7 @@ export type Database = {
           created_by: string | null
           exam_form: string | null
           exam_year: number | null
+          explanation: string | null
           hint: string | null
           id: string
           option_a: string
@@ -801,6 +802,7 @@ export type Database = {
           created_by?: string | null
           exam_form?: string | null
           exam_year?: number | null
+          explanation?: string | null
           hint?: string | null
           id?: string
           option_a: string
@@ -820,6 +822,7 @@ export type Database = {
           created_by?: string | null
           exam_form?: string | null
           exam_year?: number | null
+          explanation?: string | null
           hint?: string | null
           id?: string
           option_a?: string
