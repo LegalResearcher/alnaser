@@ -213,6 +213,9 @@ const AdminQuestions = () => {
   const [isAddFormDialogOpen, setIsAddFormDialogOpen] = useState(false);
   const [newFormName, setNewFormName] = useState('');
   const [newFormPosition, setNewFormPosition] = useState<number>(16);
+  const [editingFormId, setEditingFormId] = useState<string | null>(null);
+  const [editingFormName, setEditingFormName] = useState('');
+  const [confirmDeleteFormId, setConfirmDeleteFormId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     question_text: '', option_a: '', option_b: '', option_c: '', option_d: '',
