@@ -1284,9 +1284,12 @@ render();
       </AlertDialog>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl bg-white rounded-3xl p-8 z-[9999] font-cairo font-bold shadow-2xl border-none">
-          <DialogHeader><DialogTitle className="text-2xl font-black">{editingQuestion ? 'تعديل السؤال' : 'إضافة سؤال جديد'}</DialogTitle></DialogHeader>
-          <form onSubmit={(e) => { e.preventDefault(); saveSingleMutation.mutate(formData); }} className="space-y-6 mt-4">
+        <DialogContent className="max-w-2xl bg-white rounded-3xl p-0 z-[9999] font-cairo font-bold shadow-2xl border-none flex flex-col max-h-[90vh]">
+          <DialogHeader className="px-8 pt-8 pb-4 border-b border-slate-100 shrink-0">
+            <DialogTitle className="text-2xl font-black">{editingQuestion ? 'تعديل السؤال' : 'إضافة سؤال جديد'}</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="flex-1 overflow-y-auto">
+          <form onSubmit={(e) => { e.preventDefault(); saveSingleMutation.mutate(formData); }} className="space-y-6 px-8 py-6" id="question-form">
             <div className="space-y-2.5">
               <Label className="font-black text-slate-700">نص السؤال *</Label>
               <Textarea value={formData.question_text} onChange={(e) => setFormData({ ...formData, question_text: e.target.value })} required className="rounded-2xl border-slate-200 min-h-[120px] text-right" dir="rtl" lang="ar" />
@@ -1375,10 +1378,16 @@ render();
               </div>
             </div>
 
-            <Button type="submit" disabled={saveSingleMutation.isPending} className="gradient-primary text-white w-full h-12 rounded-xl text-lg font-black shadow-lg">
+            <Button type="submit" form="question-form" disabled={saveSingleMutation.isPending} className="gradient-primary text-white w-full h-12 rounded-xl text-lg font-black shadow-lg">
               {saveSingleMutation.isPending ? 'جاري الحفظ...' : 'حفظ البيانات'}
             </Button>
           </form>
+          </ScrollArea>
+          <div className="px-8 py-5 border-t border-slate-100 bg-white rounded-b-3xl shrink-0">
+            <Button type="submit" form="question-form" disabled={saveSingleMutation.isPending} className="gradient-primary text-white w-full h-12 rounded-xl text-lg font-black shadow-lg">
+              {saveSingleMutation.isPending ? 'جاري الحفظ...' : 'حفظ البيانات'}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
