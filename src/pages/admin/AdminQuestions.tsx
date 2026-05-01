@@ -213,6 +213,9 @@ const AdminQuestions = () => {
   const [isAddFormDialogOpen, setIsAddFormDialogOpen] = useState(false);
   const [newFormName, setNewFormName] = useState('');
   const [newFormPosition, setNewFormPosition] = useState<number>(16);
+  const [editingFormId, setEditingFormId] = useState<string | null>(null);
+  const [editingFormName, setEditingFormName] = useState('');
+  const [confirmDeleteFormId, setConfirmDeleteFormId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     question_text: '', option_a: '', option_b: '', option_c: '', option_d: '',
@@ -422,14 +425,14 @@ const AdminQuestions = () => {
         .select('*')
         .eq('subject_id', selectedSubject)
         .order('order_index');
-      return (data || []) as { id: string; form_id: string; form_name: string; order_index: number }[];
+      return (data || []) as { id: string; form_id: string; form_name: string; order_index: number; hidden?: boolean }[];
     },
     enabled: isTrialSelected && !!selectedSubject,
   });
 
   const addFormMutation = useMutation({
     mutationFn: async ({ name, position }: { name: string; position: number }) => {
-      const formId = name.replace(/\s+/g, '_');
+      const formId = name.replace(/\s+/g, '_') + '_' + Date.now().toString(36);
       const { error } = await (supabase.from('subject_exam_forms' as any) as any).insert({
         subject_id: selectedSubject,
         form_id: formId,
@@ -448,22 +451,74 @@ const AdminQuestions = () => {
     onError: (err: any) => toast({ title: 'خطأ', description: err.message, variant: 'destructive' }),
   });
 
+  // حذف نموذج: للنماذج الافتراضية (Model_1..15) يتم إخفاؤها عبر إدراج/تحديث صف override
+  // للنماذج المخصصة يتم حذف الصف نهائياً
   const deleteFormMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await (supabase.from('subject_exam_forms' as any) as any).delete().eq('id', id);
-      if (error) throw error;
+    mutationFn: async ({ rowId, formId, isDefault }: { rowId: string | null; formId: string; isDefault: boolean }) => {
+      if (isDefault) {
+        if (rowId) {
+          const { error } = await (supabase.from('subject_exam_forms' as any) as any)
+            .update({ hidden: true })
+            .eq('id', rowId);
+          if (error) throw error;
+        } else {
+          const orderIndex = parseInt(formId.replace('Model_', '')) || 1;
+          const { error } = await (supabase.from('subject_exam_forms' as any) as any).insert({
+            subject_id: selectedSubject,
+            form_id: formId,
+            form_name: `نموذج ${orderIndex}`,
+            order_index: orderIndex,
+            hidden: true,
+            created_by: user?.id,
+          });
+          if (error) throw error;
+        }
+      } else {
+        if (!rowId) return;
+        const { error } = await (supabase.from('subject_exam_forms' as any) as any).delete().eq('id', rowId);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subject-exam-forms'] });
-      toast({ title: 'تم حذف النموذج' });
+      toast({ title: 'تم حذف النموذج 🗑️' });
     },
+    onError: (err: any) => toast({ title: 'خطأ', description: err.message, variant: 'destructive' }),
+  });
+
+  // إعادة تسمية: للافتراضية ننشئ/نحدّث صف override، للمخصصة نحدّث الاسم مباشرة
+  const renameFormMutation = useMutation({
+    mutationFn: async ({ rowId, formId, isDefault, newName }: { rowId: string | null; formId: string; isDefault: boolean; newName: string }) => {
+      if (rowId) {
+        const { error } = await (supabase.from('subject_exam_forms' as any) as any)
+          .update({ form_name: newName })
+          .eq('id', rowId);
+        if (error) throw error;
+      } else if (isDefault) {
+        const orderIndex = parseInt(formId.replace('Model_', '')) || 1;
+        const { error } = await (supabase.from('subject_exam_forms' as any) as any).insert({
+          subject_id: selectedSubject,
+          form_id: formId,
+          form_name: newName,
+          order_index: orderIndex,
+          hidden: false,
+          created_by: user?.id,
+        });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subject-exam-forms'] });
+      toast({ title: 'تم تحديث الاسم ✏️' });
+      setEditingFormId(null);
+      setEditingFormName('');
+    },
+    onError: (err: any) => toast({ title: 'خطأ', description: err.message, variant: 'destructive' }),
   });
 
   const reorderFormMutation = useMutation({
-    mutationFn: async ({ id, direction }: { id: string; direction: 'up' | 'down' }) => {
-      const form = customForms.find((f: any) => f.id === id);
-      if (!form) return;
-      const newIndex = direction === 'up' ? form.order_index - 1 : form.order_index + 1;
+    mutationFn: async ({ id, direction, currentIndex }: { id: string; direction: 'up' | 'down'; currentIndex: number }) => {
+      const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
       if (newIndex < 1) return;
       const { error } = await (supabase.from('subject_exam_forms' as any) as any)
         .update({ order_index: newIndex })
@@ -476,22 +531,53 @@ const AdminQuestions = () => {
     onError: (err: any) => toast({ title: 'خطأ', description: err.message, variant: 'destructive' }),
   });
 
+  // قائمة موحّدة لكل النماذج التجريبية مع معلومات الـ override
+  // كل عنصر: { id, name, order_index, isDefault, rowId, hidden }
+  const allTrialForms = useMemo(() => {
+    const overridesByFormId = new Map<string, any>();
+    customForms.forEach((f: any) => overridesByFormId.set(f.form_id, f));
+
+    const items: { id: string; name: string; order_index: number; isDefault: boolean; rowId: string | null; hidden: boolean }[] = [];
+
+    // الافتراضية مع تطبيق overrides
+    for (let i = 1; i <= 15; i++) {
+      const formId = `Model_${i}`;
+      const override = overridesByFormId.get(formId);
+      if (override) {
+        items.push({
+          id: formId,
+          name: override.form_name,
+          order_index: override.order_index ?? i,
+          isDefault: true,
+          rowId: override.id,
+          hidden: !!override.hidden,
+        });
+        overridesByFormId.delete(formId);
+      } else {
+        items.push({ id: formId, name: `نموذج ${i}`, order_index: i, isDefault: true, rowId: null, hidden: false });
+      }
+    }
+
+    // المخصصة المتبقية
+    overridesByFormId.forEach((f: any) => {
+      items.push({
+        id: f.form_id,
+        name: f.form_name,
+        order_index: f.order_index,
+        isDefault: false,
+        rowId: f.id,
+        hidden: !!f.hidden,
+      });
+    });
+
+    return items.sort((a, b) => a.order_index - b.order_index);
+  }, [customForms]);
+
   const activeExamForms = useMemo(() => {
     if (!isTrialSelected) return EXAM_FORMS;
-    // دمج النماذج الافتراضية مع المضافة وترتيبها حسب order_index
-    const defaultWithIndex = Array.from({ length: 15 }, (_, i) => ({
-      id: `Model_${i + 1}`,
-      name: `نموذج ${i + 1}`,
-      order_index: i + 1,
-    }));
-    const customWithIndex = customForms.map((f: any) => ({
-      id: f.form_id,
-      name: f.form_name,
-      order_index: f.order_index,
-    }));
-    const merged = [...defaultWithIndex, ...customWithIndex].sort((a, b) => a.order_index - b.order_index);
-    return merged.map(({ id, name }) => ({ id, name }));
-  }, [isTrialSelected, customForms]);
+    // الفلتر/Selects تعرض النماذج غير المخفية فقط
+    return allTrialForms.filter(f => !f.hidden).map(({ id, name }) => ({ id, name }));
+  }, [isTrialSelected, allTrialForms]);
 
   // --- حفظ جماعي ---
   const bulkSave = useMutation({
@@ -1428,43 +1514,141 @@ render();
             <p className="text-xs text-slate-400 font-bold text-right">
               النماذج 1-15 لها مواضع 1-15 — ضع النموذج قبل رقم معين لإدراجه قبله
             </p>
-            {customForms.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs text-slate-500 font-black">النماذج المضافة (الموضع الحالي):</p>
-                {customForms.map((f: any) => (
-                  <div key={f.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
-                    <span className="text-sm font-bold text-slate-700">{f.form_name}</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs text-violet-500 font-black ml-1">#{f.order_index}</span>
-                      <button
-                        onClick={() => reorderFormMutation.mutate({ id: f.id, direction: 'up' })}
-                        disabled={f.order_index <= 1 || reorderFormMutation.isPending}
-                        className="w-7 h-7 rounded-lg text-slate-500 hover:bg-slate-200 flex items-center justify-center transition-colors disabled:opacity-30"
-                      >
-                        <ChevronUp className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => reorderFormMutation.mutate({ id: f.id, direction: 'down' })}
-                        disabled={reorderFormMutation.isPending}
-                        className="w-7 h-7 rounded-lg text-slate-500 hover:bg-slate-200 flex items-center justify-center transition-colors disabled:opacity-30"
-                      >
-                        <ChevronDown className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => deleteFormMutation.mutate(f.id)}
-                        disabled={deleteFormMutation.isPending}
-                        className="w-7 h-7 rounded-lg text-destructive hover:bg-destructive/10 flex items-center justify-center transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+            <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+              <p className="text-xs text-slate-500 font-black">كل النماذج (افتراضية + مضافة):</p>
+              {allTrialForms.map((f) => {
+                const isEditingThis = editingFormId === f.id;
+                return (
+                  <div
+                    key={f.id}
+                    className={cn(
+                      "flex items-center justify-between p-3 rounded-xl border transition-colors",
+                      f.hidden ? "bg-red-50 border-red-200 opacity-70" : "bg-slate-50 border-slate-100"
+                    )}
+                  >
+                    {isEditingThis ? (
+                      <div className="flex items-center gap-2 flex-1">
+                        <Input
+                          value={editingFormName}
+                          onChange={(e) => setEditingFormName(e.target.value)}
+                          className="h-9 text-right rounded-lg flex-1"
+                          dir="rtl"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && editingFormName.trim()) {
+                              renameFormMutation.mutate({ rowId: f.rowId, formId: f.id, isDefault: f.isDefault, newName: editingFormName.trim() });
+                            } else if (e.key === 'Escape') {
+                              setEditingFormId(null); setEditingFormName('');
+                            }
+                          }}
+                        />
+                        <button
+                          onClick={() => editingFormName.trim() && renameFormMutation.mutate({ rowId: f.rowId, formId: f.id, isDefault: f.isDefault, newName: editingFormName.trim() })}
+                          disabled={renameFormMutation.isPending}
+                          className="w-8 h-8 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 flex items-center justify-center"
+                          title="حفظ"
+                        >
+                          <Save className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => { setEditingFormId(null); setEditingFormName(''); }}
+                          className="w-8 h-8 rounded-lg bg-slate-200 text-slate-600 hover:bg-slate-300 flex items-center justify-center"
+                          title="إلغاء"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={cn("text-sm font-bold truncate", f.hidden ? "text-red-600 line-through" : "text-slate-700")}>{f.name}</span>
+                          {f.hidden && <span className="text-[10px] font-black bg-red-100 text-red-700 px-2 py-0.5 rounded-full shrink-0">مخفي</span>}
+                          {!f.isDefault && <span className="text-[10px] font-black bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full shrink-0">مضاف</span>}
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className="text-xs text-violet-500 font-black ml-1">#{f.order_index}</span>
+                          {!f.isDefault && f.rowId && (
+                            <>
+                              <button
+                                onClick={() => reorderFormMutation.mutate({ id: f.rowId!, direction: 'up', currentIndex: f.order_index })}
+                                disabled={f.order_index <= 1 || reorderFormMutation.isPending}
+                                className="w-7 h-7 rounded-lg text-slate-500 hover:bg-slate-200 flex items-center justify-center transition-colors disabled:opacity-30"
+                                title="رفع لأعلى"
+                              >
+                                <ChevronUp className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => reorderFormMutation.mutate({ id: f.rowId!, direction: 'down', currentIndex: f.order_index })}
+                                disabled={reorderFormMutation.isPending}
+                                className="w-7 h-7 rounded-lg text-slate-500 hover:bg-slate-200 flex items-center justify-center transition-colors disabled:opacity-30"
+                                title="إنزال"
+                              >
+                                <ChevronDown className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+                          {f.hidden ? (
+                            <button
+                              onClick={() => f.rowId && renameFormMutation.mutate({ rowId: f.rowId, formId: f.id, isDefault: f.isDefault, newName: f.name })}
+                              className="text-xs font-black px-2 py-1 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                              title="إظهار النموذج"
+                            >
+                              إظهار
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => { setEditingFormId(f.id); setEditingFormName(f.name); }}
+                                className="w-7 h-7 rounded-lg text-blue-600 hover:bg-blue-50 flex items-center justify-center transition-colors"
+                                title="تعديل الاسم"
+                              >
+                                <PencilLine className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setConfirmDeleteFormId(f.id)}
+                                disabled={deleteFormMutation.isPending}
+                                className="w-7 h-7 rounded-lg text-destructive hover:bg-destructive/10 flex items-center justify-center transition-colors"
+                                title="حذف"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
-                ))}
-              </div>
-            )}
+                );
+              })}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* تأكيد حذف النموذج */}
+      <AlertDialog open={!!confirmDeleteFormId} onOpenChange={(open) => !open && setConfirmDeleteFormId(null)}>
+        <AlertDialogContent className="bg-white rounded-3xl z-[10000]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-right font-black">تأكيد حذف النموذج</AlertDialogTitle>
+            <AlertDialogDescription className="text-right">
+              سيختفي النموذج فوراً من قائمة الطلاب. لن يتم حذف الأسئلة المرتبطة به.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const f = allTrialForms.find(x => x.id === confirmDeleteFormId);
+                if (f) deleteFormMutation.mutate({ rowId: f.rowId, formId: f.id, isDefault: f.isDefault });
+                setConfirmDeleteFormId(null);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              حذف نهائي
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 };
