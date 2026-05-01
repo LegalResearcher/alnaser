@@ -1514,43 +1514,141 @@ render();
             <p className="text-xs text-slate-400 font-bold text-right">
               النماذج 1-15 لها مواضع 1-15 — ضع النموذج قبل رقم معين لإدراجه قبله
             </p>
-            {customForms.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs text-slate-500 font-black">النماذج المضافة (الموضع الحالي):</p>
-                {customForms.map((f: any) => (
-                  <div key={f.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
-                    <span className="text-sm font-bold text-slate-700">{f.form_name}</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs text-violet-500 font-black ml-1">#{f.order_index}</span>
-                      <button
-                        onClick={() => reorderFormMutation.mutate({ id: f.id, direction: 'up' })}
-                        disabled={f.order_index <= 1 || reorderFormMutation.isPending}
-                        className="w-7 h-7 rounded-lg text-slate-500 hover:bg-slate-200 flex items-center justify-center transition-colors disabled:opacity-30"
-                      >
-                        <ChevronUp className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => reorderFormMutation.mutate({ id: f.id, direction: 'down' })}
-                        disabled={reorderFormMutation.isPending}
-                        className="w-7 h-7 rounded-lg text-slate-500 hover:bg-slate-200 flex items-center justify-center transition-colors disabled:opacity-30"
-                      >
-                        <ChevronDown className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => deleteFormMutation.mutate(f.id)}
-                        disabled={deleteFormMutation.isPending}
-                        className="w-7 h-7 rounded-lg text-destructive hover:bg-destructive/10 flex items-center justify-center transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+            <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+              <p className="text-xs text-slate-500 font-black">كل النماذج (افتراضية + مضافة):</p>
+              {allTrialForms.map((f) => {
+                const isEditingThis = editingFormId === f.id;
+                return (
+                  <div
+                    key={f.id}
+                    className={cn(
+                      "flex items-center justify-between p-3 rounded-xl border transition-colors",
+                      f.hidden ? "bg-red-50 border-red-200 opacity-70" : "bg-slate-50 border-slate-100"
+                    )}
+                  >
+                    {isEditingThis ? (
+                      <div className="flex items-center gap-2 flex-1">
+                        <Input
+                          value={editingFormName}
+                          onChange={(e) => setEditingFormName(e.target.value)}
+                          className="h-9 text-right rounded-lg flex-1"
+                          dir="rtl"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && editingFormName.trim()) {
+                              renameFormMutation.mutate({ rowId: f.rowId, formId: f.id, isDefault: f.isDefault, newName: editingFormName.trim() });
+                            } else if (e.key === 'Escape') {
+                              setEditingFormId(null); setEditingFormName('');
+                            }
+                          }}
+                        />
+                        <button
+                          onClick={() => editingFormName.trim() && renameFormMutation.mutate({ rowId: f.rowId, formId: f.id, isDefault: f.isDefault, newName: editingFormName.trim() })}
+                          disabled={renameFormMutation.isPending}
+                          className="w-8 h-8 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 flex items-center justify-center"
+                          title="حفظ"
+                        >
+                          <Save className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => { setEditingFormId(null); setEditingFormName(''); }}
+                          className="w-8 h-8 rounded-lg bg-slate-200 text-slate-600 hover:bg-slate-300 flex items-center justify-center"
+                          title="إلغاء"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={cn("text-sm font-bold truncate", f.hidden ? "text-red-600 line-through" : "text-slate-700")}>{f.name}</span>
+                          {f.hidden && <span className="text-[10px] font-black bg-red-100 text-red-700 px-2 py-0.5 rounded-full shrink-0">مخفي</span>}
+                          {!f.isDefault && <span className="text-[10px] font-black bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full shrink-0">مضاف</span>}
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className="text-xs text-violet-500 font-black ml-1">#{f.order_index}</span>
+                          {!f.isDefault && f.rowId && (
+                            <>
+                              <button
+                                onClick={() => reorderFormMutation.mutate({ id: f.rowId!, direction: 'up', currentIndex: f.order_index })}
+                                disabled={f.order_index <= 1 || reorderFormMutation.isPending}
+                                className="w-7 h-7 rounded-lg text-slate-500 hover:bg-slate-200 flex items-center justify-center transition-colors disabled:opacity-30"
+                                title="رفع لأعلى"
+                              >
+                                <ChevronUp className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => reorderFormMutation.mutate({ id: f.rowId!, direction: 'down', currentIndex: f.order_index })}
+                                disabled={reorderFormMutation.isPending}
+                                className="w-7 h-7 rounded-lg text-slate-500 hover:bg-slate-200 flex items-center justify-center transition-colors disabled:opacity-30"
+                                title="إنزال"
+                              >
+                                <ChevronDown className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+                          {f.hidden ? (
+                            <button
+                              onClick={() => f.rowId && renameFormMutation.mutate({ rowId: f.rowId, formId: f.id, isDefault: f.isDefault, newName: f.name })}
+                              className="text-xs font-black px-2 py-1 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                              title="إظهار النموذج"
+                            >
+                              إظهار
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => { setEditingFormId(f.id); setEditingFormName(f.name); }}
+                                className="w-7 h-7 rounded-lg text-blue-600 hover:bg-blue-50 flex items-center justify-center transition-colors"
+                                title="تعديل الاسم"
+                              >
+                                <PencilLine className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setConfirmDeleteFormId(f.id)}
+                                disabled={deleteFormMutation.isPending}
+                                className="w-7 h-7 rounded-lg text-destructive hover:bg-destructive/10 flex items-center justify-center transition-colors"
+                                title="حذف"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
-                ))}
-              </div>
-            )}
+                );
+              })}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* تأكيد حذف النموذج */}
+      <AlertDialog open={!!confirmDeleteFormId} onOpenChange={(open) => !open && setConfirmDeleteFormId(null)}>
+        <AlertDialogContent className="bg-white rounded-3xl z-[10000]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-right font-black">تأكيد حذف النموذج</AlertDialogTitle>
+            <AlertDialogDescription className="text-right">
+              سيختفي النموذج فوراً من قائمة الطلاب. لن يتم حذف الأسئلة المرتبطة به.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const f = allTrialForms.find(x => x.id === confirmDeleteFormId);
+                if (f) deleteFormMutation.mutate({ rowId: f.rowId, formId: f.id, isDefault: f.isDefault });
+                setConfirmDeleteFormId(null);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              حذف نهائي
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 };
