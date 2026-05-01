@@ -304,6 +304,27 @@ const ExamStart = () => {
   });
 
   const activeTrialForms = useMemo(() => {
+    const overrideMap = new Map<string, { form_id: string; form_name: string; order_index: number; hidden?: boolean }>();
+    customForms.forEach(f => overrideMap.set(f.form_id, f));
+
+    const defaults = defaultTrialForms
+      .map(d => {
+        const ov = overrideMap.get(d.id);
+        if (ov) {
+          overrideMap.delete(d.id);
+          return { id: d.id, name: ov.form_name, order_index: ov.order_index ?? d.order_index, hidden: !!ov.hidden };
+        }
+        return { ...d, hidden: false };
+      })
+      .filter(d => !d.hidden);
+
+    const customs: { id: string; name: string; order_index: number }[] = [];
+    overrideMap.forEach(f => {
+      if (!f.hidden) customs.push({ id: f.form_id, name: f.form_name, order_index: f.order_index });
+    });
+
+    return [...defaults, ...customs].sort((a, b) => a.order_index - b.order_index).map(({ id, name }) => ({ id, name }));
+  }, [defaultTrialForms, customForms]);
     const overrideMap = new Map<string, { form_name: string; order_index: number; hidden?: boolean }>();
     customForms.forEach(f => overrideMap.set(f.form_id, f));
 
