@@ -42,6 +42,7 @@ export interface Question {
   option_d: string;
   correct_option: 'A' | 'B' | 'C' | 'D';
   hint: string | null;
+  explanation?: string | null;
   exam_year: number | null;
   status: DeletionStatus;
   created_by: string | null;
