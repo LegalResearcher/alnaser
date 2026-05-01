@@ -216,7 +216,7 @@ const AdminQuestions = () => {
 
   const [formData, setFormData] = useState({
     question_text: '', option_a: '', option_b: '', option_c: '', option_d: '',
-    correct_option: 'A' as 'A' | 'B' | 'C' | 'D', hint: '', exam_year: '', exam_form: 'General',
+    correct_option: 'A' as 'A' | 'B' | 'C' | 'D', hint: '', explanation: '', exam_year: '', exam_form: 'General',
   });
 
   // معالجة PDF
@@ -323,6 +323,7 @@ const AdminQuestions = () => {
             correct_option: q.correct_option || "A",
             exam_form: q.exam_form || "General",
             hint: q.hint || "",
+            explanation: q.explanation || "",
             count: 4
           }));
 
@@ -507,6 +508,7 @@ const AdminQuestions = () => {
         option_d: q.option_d || "",
         correct_option: q.correct_option || 'A',
         hint: q.hint || null,
+        explanation: q.explanation || null,
         exam_year: (importExamForm === 'Trial') ? null : (selectedYear ? parseInt(selectedYear) : null),
         exam_form: importExamForm,
         created_by: user.id,
@@ -552,6 +554,7 @@ const AdminQuestions = () => {
         option_d: data.option_d || "",
         correct_option: data.correct_option,
         hint: data.hint?.trim() || null,
+        explanation: data.explanation?.trim() || null,
         exam_year: (data.exam_year && data.exam_year !== 'trial') ? parseInt(data.exam_year) : null,
         exam_form: data.exam_form || 'General',
         created_by: user?.id,
@@ -601,7 +604,7 @@ const AdminQuestions = () => {
         : (editingQuestion ? 'تم التعديل ✅' : 'تمت الإضافة ✅');
       toast({ title: msg });
       setIsDialogOpen(false); setEditingQuestion(null);
-      setFormData({ question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', hint: '', exam_year: '', exam_form: 'General' });
+      setFormData({ question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', hint: '', explanation: '', exam_year: '', exam_form: 'General' });
     },
     onError: (err: any) => toast({ title: 'خطأ', description: err.message, variant: 'destructive' })
   });
@@ -717,6 +720,7 @@ const AdminQuestions = () => {
                     option_d: q.option_d,
                     correct_option: q.correct_option,
                     hint: (q as any).hint || '',
+                    explanation: (q as any).explanation || '',
                     exam_year: q.exam_year || '',
                     exam_form: (q as any).exam_form || 'General',
                   }));
@@ -753,6 +757,7 @@ const AdminQuestions = () => {
                     option_d: q.option_d,
                     correct_option: q.correct_option,
                     hint: (q as any).hint || '',
+                    explanation: (q as any).explanation || '',
                   })));
 
                   const html = `<!DOCTYPE html>
@@ -826,6 +831,17 @@ const AdminQuestions = () => {
   .hint-toggle:hover{color:#7c3aed;}
   .hint-toggle .arrow{display:inline-block;transition:transform .25s;font-size:11px;}
   .hint-toggle.open .arrow{transform:rotate(180deg);}
+  .explanation-box{margin:0 22px 20px;border-radius:14px;overflow:hidden;display:none;direction:rtl;}
+  .explanation-box.show{display:block;}
+  .explanation-header{background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);padding:14px 18px;display:flex;align-items:center;gap:10px;}
+  .explanation-header-icon{width:32px;height:32px;background:rgba(255,255,255,.2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+  .explanation-header-title{font-size:14px;font-weight:900;color:#fff;letter-spacing:-.2px;}
+  .explanation-header-sub{font-size:11px;font-weight:600;color:rgba(255,255,255,.7);margin-top:1px;}
+  .explanation-body{background:#fafbff;border:1.5px solid #e0e7ff;border-top:none;padding:18px 20px;font-size:13.5px;font-weight:600;color:#1e1b4b;line-height:1.9;white-space:pre-wrap;border-radius:0 0 14px 14px;}
+  .explanation-toggle{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:0 22px 16px;cursor:pointer;font-family:\'Cairo\',sans-serif;font-size:13px;font-weight:800;color:#4f46e5;user-select:none;transition:all .2s;border:none;background:none;width:100%;}
+  .explanation-toggle:hover{color:#7c3aed;}
+  .explanation-toggle .et-arrow{display:inline-block;transition:transform .28s;font-size:10px;background:linear-gradient(135deg,#4f46e5,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .explanation-toggle.open .et-arrow{transform:rotate(180deg);}
   .page-footer{background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);padding:32px 24px;margin-top:40px;text-align:center;}
   .footer-inner{max-width:960px;margin:0 auto;}
   .footer-logo{font-size:22px;font-weight:900;color:#fff;margin-bottom:6px;}
@@ -922,12 +938,16 @@ function render(){
         og+=\`<div class="opt-interactive \${cls}" onclick="pick(\${i},'\${L[j]}')"><div class="opt-radio"><div class="opt-radio-inner"></div></div><div class="opt-badge" style="background:var(--slate-100);color:var(--slate-600);border-radius:7px;">\${LB[j]}</div><span>\${o}</span></div>\`;
       });
     }
-    // hint toggle for review mode, instant show for interactive wrong
+    // hint for interactive wrong / explanation toggle for review
     let hintSection='';
-    if(q.hint&&mode==='review'){
-      hintSection=\`<div class=\"hint-toggle\" id=\"ht-\${i}\" onclick=\"toggleHint(\${i})\"><span>الشرح المفصّل</span><span class=\"arrow\">▲</span></div><div class=\"hint-box\" id=\"hb-\${i}\">💡 <span>\${q.hint}</span></div>\`;
-    }else if(q.hint&&mode==='interactive'&&answers[i]!==undefined&&answers[i]!==q.correct_option){
-      hintSection=\`<div class=\"hint-box show\" id=\"hb-\${i}\">💡 <span>\${q.hint}</span></div>\`;
+    if(mode==='review'){
+      if(q.explanation){
+        hintSection+=\`<button class="explanation-toggle" id="et-\${i}" onclick="toggleExplanation(\${i})"><span>▼ الشرح المفصّل</span><span class="et-arrow">▲</span></button><div class="explanation-box" id="eb-\${i}"><div class="explanation-header"><div class="explanation-header-icon">📖</div><div><div class="explanation-header-title">الشرح المفصّل</div><div class="explanation-header-sub">اضغط للإغلاق</div></div></div><div class="explanation-body">\${q.explanation}</div></div>\`;
+      }
+    }else{
+      if(q.hint&&answers[i]!==undefined&&answers[i]!==q.correct_option){
+        hintSection=\`<div class="hint-box show" id="hb-\${i}">💡 <span>\${q.hint}</span></div>\`;
+      }
     }
     const div=document.createElement('div');
     div.className='question-card';div.id='card-'+i;
@@ -951,12 +971,13 @@ function updScore(){
   document.getElementById('pf').style.width=(tot?(ans/tot)*100:0)+'%';
 }
 function resetQuiz(){answers={};cc=0;wc=0;render();}
-function toggleHint(i){
-  var box=document.getElementById('hb-'+i);
-  var tog=document.getElementById('ht-'+i);
+function toggleExplanation(i){
+  var box=document.getElementById('eb-'+i);
+  var tog=document.getElementById('et-'+i);
   if(!box||!tog)return;
   var open=box.classList.toggle('show');
   tog.classList.toggle('open',open);
+  if(open){var hdr=box.querySelector('.explanation-header-sub');if(hdr)hdr.textContent='اضغط للإغلاق';}
 }
 function setMode(m){
   mode=m;
@@ -990,7 +1011,7 @@ render();
                 <ScanLine className="w-4 h-4" /> استيراد PDF/JSON/نص
               </Button>
             )}
-            <Button size="sm" onClick={() => { setEditingQuestion(null); setFormData({question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', hint: '', exam_year: '', exam_form: 'General'}); setIsDialogOpen(true); }} disabled={!selectedSubject} className="gradient-primary text-white gap-2 shadow-lg">
+            <Button size="sm" onClick={() => { setEditingQuestion(null); setFormData({question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', hint: '', explanation: '', exam_year: '', exam_form: 'General'}); setIsDialogOpen(true); }} disabled={!selectedSubject} className="gradient-primary text-white gap-2 shadow-lg">
               <Plus className="w-4 h-4" /> إضافة سؤال
             </Button>
           </div>
@@ -1039,7 +1060,7 @@ render();
                     <div className="flex justify-between items-start">
                       <p className="font-bold text-slate-800 text-lg mb-4 leading-relaxed cursor-pointer" onClick={() => toggleSelectOne(q.id)}>{q.question_text}</p>
                       <div className="flex gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => { setEditingQuestion(q); setFormData({ question_text: q.question_text, option_a: q.option_a, option_b: q.option_b, option_c: q.option_c || '', option_d: q.option_d || '', correct_option: q.correct_option as 'A' | 'B' | 'C' | 'D', hint: q.hint || '', exam_year: q.exam_year?.toString() || '', exam_form: (q as any).exam_form || 'General' }); setIsDialogOpen(true); }} className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 bg-white border border-slate-100"><Edit2 className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="sm" onClick={() => { setEditingQuestion(q); setFormData({ question_text: q.question_text, option_a: q.option_a, option_b: q.option_b, option_c: q.option_c || '', option_d: q.option_d || '', correct_option: q.correct_option as 'A' | 'B' | 'C' | 'D', hint: q.hint || '', explanation: (q as any).explanation || '', exam_year: q.exam_year?.toString() || '', exam_form: (q as any).exam_form || 'General' }); setIsDialogOpen(true); }} className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 bg-white border border-slate-100"><Edit2 className="w-4 h-4" /></Button>
                         <Button variant="ghost" size="sm" onClick={() => isAdmin ? setDeleteQuestion(q) : setRequestDeleteQuestion(q)} className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600 bg-white border border-slate-100" title={isEditor ? 'طلب حذف (يحتاج موافقة المسؤل)' : 'حذف'}><Trash2 className="w-4 h-4" /></Button>
                       </div>
                     </div>
@@ -1131,6 +1152,21 @@ render();
                       onChange={(e) => { const up = [...previewQuestions]; const i = up.findIndex(x => x.id === q.id); up[i].hint = e.target.value; setPreviewQuestions(up); }}
                       placeholder="اكتب شرحاً أو تلميحاً للطالب عند الإجابة الخاطئة..."
                       className="rounded-xl border-amber-200 bg-amber-50/40 font-bold text-xs md:text-sm min-h-[64px] text-right resize-none placeholder:text-amber-300 focus:border-amber-400"
+                      dir="rtl"
+                      lang="ar"
+                    />
+                  </div>
+
+                  {/* حقل الشرح المفصّل في الاستيراد */}
+                  <div className="mt-3 space-y-1.5 font-cairo">
+                    <Label className="text-[10px] font-black text-indigo-600 flex items-center gap-1">
+                      📖 الشرح المفصّل (اختياري — يظهر في وضع المراجعة)
+                    </Label>
+                    <Textarea
+                      value={q.explanation || ''}
+                      onChange={(e) => { const up = [...previewQuestions]; const i = up.findIndex(x => x.id === q.id); up[i].explanation = e.target.value; setPreviewQuestions(up); }}
+                      placeholder="اكتب شرحاً مفصلاً بعناوين وتفاصيل..."
+                      className="rounded-xl border-indigo-200 bg-indigo-50/30 font-bold text-xs md:text-sm min-h-[80px] text-right resize-none placeholder:text-indigo-300 focus:border-indigo-400"
                       dir="rtl"
                       lang="ar"
                     />
@@ -1278,7 +1314,25 @@ render();
                 lang="ar"
               />
               <p className="text-[11px] text-amber-500 font-bold text-right">
-                ⚠️ تظهر هذه الملاحظة للطالب فقط عند اختياره إجابة خاطئة
+                ⚠️ تظهر هذه الملاحظة للطالب فقط عند اختياره إجابة خاطئة (وضع تفاعلي)
+              </p>
+            </div>
+
+            {/* حقل الشرح المفصّل */}
+            <div className="space-y-2.5">
+              <Label className="font-black text-slate-700 flex items-center gap-2">
+                <span>📖</span> الشرح المفصّل (اختياري)
+              </Label>
+              <Textarea
+                value={formData.explanation}
+                onChange={(e) => setFormData({ ...formData, explanation: e.target.value })}
+                placeholder="اكتب شرحاً مفصلاً بعناوين وتفاصيل... يظهر في وضع المراجعة فقط عند الضغط على ▼ الشرح المفصّل"
+                className="rounded-2xl border-indigo-200 bg-indigo-50/30 min-h-[140px] text-right focus:border-indigo-400 focus:ring-indigo-200 placeholder:text-indigo-300"
+                dir="rtl"
+                lang="ar"
+              />
+              <p className="text-[11px] text-indigo-500 font-bold text-right">
+                📖 يظهر هذا الشرح في وضع المراجعة فقط عند الضغط على زر "▼ الشرح المفصّل"
               </p>
             </div>
 
