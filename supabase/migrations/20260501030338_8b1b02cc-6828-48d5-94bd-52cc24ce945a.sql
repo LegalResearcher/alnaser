@@ -1,0 +1,1 @@
+ALTER TABLE public.subject_exam_forms ADD COLUMN IF NOT EXISTS hidden boolean NOT NULL DEFAULT false;

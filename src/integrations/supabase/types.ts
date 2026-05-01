@@ -918,6 +918,7 @@ export type Database = {
           created_by: string | null
           form_id: string
           form_name: string
+          hidden: boolean
           id: string
           order_index: number
           subject_id: string
@@ -927,6 +928,7 @@ export type Database = {
           created_by?: string | null
           form_id: string
           form_name: string
+          hidden?: boolean
           id?: string
           order_index?: number
           subject_id: string
@@ -936,6 +938,7 @@ export type Database = {
           created_by?: string | null
           form_id?: string
           form_name?: string
+          hidden?: boolean
           id?: string
           order_index?: number
           subject_id?: string
