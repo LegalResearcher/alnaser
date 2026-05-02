@@ -1508,6 +1508,19 @@ const BattleRoom = () => {
               </div>
             )}
 
+            {/* ── Hint on wrong answer (during reveal) ── */}
+            {isRevealing &&
+             selectedAnswer &&
+             selectedAnswer !== questions[syncCurrentQ]?.correct_option &&
+             questions[syncCurrentQ]?.hint && (
+              <div className="mb-3 flex items-start gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700 rounded-2xl px-4 py-3 animate-in slide-in-from-bottom-2 duration-300">
+                <span className="text-amber-500 text-lg shrink-0">💡</span>
+                <p className="text-xs font-bold text-amber-800 dark:text-amber-300 leading-relaxed">
+                  {questions[syncCurrentQ].hint}
+                </p>
+              </div>
+            )}
+
             {/* ── Live Chat ── */}
             {renderChatPanel(!!isCreator)}
 
