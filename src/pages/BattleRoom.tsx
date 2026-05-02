@@ -545,6 +545,8 @@ const BattleRoom = () => {
           if (me) {
             myPlayerId.current = me.id;
             setMyPlayer(me);
+            setMyName(me.player_name);
+            setIsJoined(true);
             isCreatorRef.current = !!me.is_creator;
             localStorage.setItem(SESSION_KEY, JSON.stringify({ playerId: me.id, playerName: me.player_name, isCreator: !!me.is_creator }));
             // ── استئناف إذا كانت الغرفة نشطة ──
@@ -958,7 +960,11 @@ const BattleRoom = () => {
         .eq('subject_id', room.subject_id);
       if (examYear && examYear !== 'تجريبية') query = query.eq('exam_year', parseInt(examYear));
       else if (examYear === 'تجريبية') query = query.is('exam_year', null);
-      if (examForm) query = query.ilike('exam_form', `%${examForm}%`);
+      // مطابقة دقيقة للنموذج — يبحث بالقيمة الحرفية أولاً ثم يجرب الاحتمالات الشائعة
+      if (examForm) {
+        const formVariants = [examForm, `نموذج ${examForm}`, examForm.replace('نموذج ', '')].filter(Boolean);
+        query = query.or(formVariants.map((v: string) => `exam_form.eq.${v}`).join(','));
+      }
       const { data: qData } = await query;
       if (qData && qData.length > 0) {
         // خلط Fisher-Yates الحقيقي
@@ -1221,14 +1227,12 @@ const BattleRoom = () => {
       const currentRoom = roomRef.current;
       const pct = currentRoom.questions_count > 0 ? (correct / currentRoom.questions_count) * 100 : 0;
       const progress = (answered / currentRoom.questions_count) * 100;
-      // ── كتابة answers_json كل 5 أسئلة لضمان الاستئناف الصحيح عند العودة
-      // (ليس على كل إجابة تجنباً للـ payload الكبير مع 10+ لاعبين)
-      const shouldSaveAnswers = answered % 5 === 0 || answered >= currentRoom.questions_count;
+      // ── دائماً احفظ answers_json لضمان استئناف صحيح عند العودة في أي وقت ──
       await (supabase.from('battle_players' as any) as any).update({
         correct_count: correct, total_answered: answered,
         score: correct, percentage: pct, progress,
         status: answered >= currentRoom.questions_count ? 'finished' : 'playing',
-        ...(shouldSaveAnswers ? { answers_json: answersJson } : {}),
+        answers_json: answersJson,
       }).eq('id', myPlayerId.current);
     }, 300);
   };
