@@ -960,11 +960,8 @@ const BattleRoom = () => {
         .eq('subject_id', room.subject_id);
       if (examYear && examYear !== 'تجريبية') query = query.eq('exam_year', parseInt(examYear));
       else if (examYear === 'تجريبية') query = query.is('exam_year', null);
-      // مطابقة دقيقة للنموذج — يبحث بالقيمة الحرفية أولاً ثم يجرب الاحتمالات الشائعة
-      if (examForm) {
-        const formVariants = [examForm, `نموذج ${examForm}`, examForm.replace('نموذج ', '')].filter(Boolean);
-        query = query.or(formVariants.map((v: string) => `exam_form.eq.${v}`).join(','));
-      }
+      // مطابقة تامة للنموذج بالـ ID المخزن في DB
+      if (examForm) query = query.eq('exam_form', examForm);
       const { data: qData } = await query;
       if (qData && qData.length > 0) {
         // خلط Fisher-Yates الحقيقي
@@ -1015,7 +1012,10 @@ const BattleRoom = () => {
         finished_at: null,
         exam_year: examYear && examYear !== 'تجريبية' ? parseInt(examYear) : null,
         exam_form: examForm || null,
-        exam_form_name: [examYear, examForm].filter(Boolean).join(' — ') || null,
+        exam_form_name: [
+          examYear,
+          examForm ? ({General:'عام',Parallel:'موازي',Mixed:'مختلط',Model_1:'نموذج 1',Model_2:'نموذج 2',Model_3:'نموذج 3'} as Record<string,string>)[examForm] || examForm : ''
+        ].filter(Boolean).join(' — ') || null,
       })
       .eq('id', room.id);
 
@@ -1938,11 +1938,18 @@ const BattleRoom = () => {
           <div>
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">نموذج الاختبار</p>
             <div className="flex gap-2 flex-wrap">
-              {['عام','موازي','مختلط','نموذج 1','نموذج 2','نموذج 3'].map(f => (
-                <button key={f} onClick={() => setNextExamForm(prev => prev === f ? '' : f)}
+              {([
+                { id: 'General', label: 'عام' },
+                { id: 'Parallel', label: 'موازي' },
+                { id: 'Mixed', label: 'مختلط' },
+                { id: 'Model_1', label: 'نموذج 1' },
+                { id: 'Model_2', label: 'نموذج 2' },
+                { id: 'Model_3', label: 'نموذج 3' },
+              ] as {id:string,label:string}[]).map(f => (
+                <button key={f.id} onClick={() => setNextExamForm(prev => prev === f.id ? '' : f.id)}
                   className={cn('px-3 py-1.5 rounded-xl border-2 text-xs font-black transition-all',
-                    nextExamForm === f ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600' : 'border-slate-200 dark:border-border text-slate-500 hover:border-slate-300')}>
-                  {f}
+                    nextExamForm === f.id ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600' : 'border-slate-200 dark:border-border text-slate-500 hover:border-slate-300')}>
+                  {f.label}
                 </button>
               ))}
             </div>
