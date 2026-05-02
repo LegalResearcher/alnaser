@@ -29,6 +29,13 @@ interface BattleRoom {
   expires_at: string; is_private: boolean; password?: string;
   allow_teams: boolean; team1_name: string; team2_name: string;
   locked: boolean; extra_time_minutes: number; question_type: string;
+  time_per_question?: number;
+  current_question_index?: number;
+  current_phase?: 'question' | 'reveal';
+  phase_started_at?: string | null;
+  exam_year?: number | null;
+  exam_form?: string | null;
+  exam_form_name?: string | null;
   subjects?: { name: string };
 }
 
@@ -46,6 +53,7 @@ interface Question {
   id: string; question_text: string;
   option_a: string; option_b: string; option_c: string; option_d: string;
   correct_option: 'A' | 'B' | 'C' | 'D';
+  hint?: string | null;
 }
 
 interface ChatMessage {
@@ -236,15 +244,23 @@ const BattleRoom = () => {
   const [examStarted, setExamStarted] = useState(false);
   const [examFinished, setExamFinished] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
-  // ── Sync Quiz State ──
+  // ── Sync Quiz State (server-driven via battle_rooms.phase_started_at) ──
   const [syncCurrentQ, setSyncCurrentQ] = useState(0);
   const [syncPhase, setSyncPhase] = useState<'question' | 'reveal'>('question');
   const [syncTimeLeft, setSyncTimeLeft] = useState(0);
   const [myAnswerGiven, setMyAnswerGiven] = useState(false);
   const syncTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const syncChannelRef = useRef<any>(null);
   const roomRef = useRef<BattleRoom | null>(null);
   const isCreatorRef = useRef(false);
+  // Guard against multiple devices racing to advance phase
+  const phaseAdvanceLockRef = useRef<string | null>(null);
+  const REVEAL_SECONDS = 3;
+
+  // ── Multi-exam session state (placeholders for upcoming next-exam/final-summary features) ──
+  const [examNumber] = useState(1);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _sessionPlaceholders = { examNumber };
+
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [showChat, setShowChat] = useState(false);
@@ -300,14 +316,15 @@ const BattleRoom = () => {
       const batch = ids.slice(i, i + BATCH_SIZE);
       const { data } = await supabase
         .from('questions')
-        .select('id, question_text, option_a, option_b, option_c, option_d, correct_option')
+        .select('id, question_text, option_a, option_b, option_c, option_d, correct_option, hint')
         .in('id', batch)
-        .limit(BATCH_SIZE);
+        .range(0, batch.length - 1);
       if (data) allData = [...allData, ...(data as unknown as Question[])];
     }
 
-    // Sort by the original ids order to ensure all players see the same question order
-    const sorted = allData.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+    // Fast O(n) sort using index map (avoids O(n²) indexOf for large arrays)
+    const indexMap = new Map(ids.map((id, i) => [id, i]));
+    const sorted = allData.sort((a, b) => (indexMap.get(a.id) ?? 0) - (indexMap.get(b.id) ?? 0));
     if (sorted.length) setQuestions(sorted);
     return sorted;
   };
@@ -368,15 +385,11 @@ const BattleRoom = () => {
               setExamStarted(true);
               const currentQIndex = data.current_question_index ?? 0;
               setSyncCurrentQ(currentQIndex);
-
-              // ── KEY FIX: Creator must resume driving the sync quiz after refresh ──
-              if (me.is_creator && loadedQs.length > 0 && me.status !== 'finished') {
-                const tpq = data.time_per_question || 60;
-                // Small delay to let channels subscribe
-                setTimeout(() => {
-                  startSyncQuestionWithList(currentQIndex, tpq, loadedQs);
-                }, 1500);
-              }
+              // Engine is server-driven now: just sync from the freshly loaded room.
+              // The realtime UPDATE handler + room ref will keep it ticking.
+              setTimeout(() => {
+                syncFromRoom({ ...data, question_ids: data.question_ids as string[] } as BattleRoom);
+              }, 800);
             } else if (data.status === 'finished') {
               await loadQuestions(data.question_ids as string[]);
               if (me.answers_json && Object.keys(me.answers_json).length > 0) {
@@ -448,26 +461,52 @@ const BattleRoom = () => {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'battle_rooms', filter: `id=eq.${room.id}` },
         async (payload) => {
           const updated = payload.new as any;
-          const updatedRoom = { ...updated, question_ids: updated.question_ids as string[] };
+          const updatedRoom = { ...updated, question_ids: updated.question_ids as string[] } as BattleRoom;
           setRoom(prev => prev ? { ...prev, ...updatedRoom } : prev);
-          roomRef.current = roomRef.current ? { ...roomRef.current, ...updatedRoom } : null;
+          roomRef.current = roomRef.current ? { ...roomRef.current, ...updatedRoom } : updatedRoom;
 
+          // ── Status: waiting -> active (start of an exam, including subsequent rounds) ──
           if (updated.status === 'active' && !examStartedRef.current) {
-            // ── FIX: Competitors auto-join the exam immediately ──
             const loadedQs = await loadQuestions(updated.question_ids as string[]);
             setTimeLeft((updated.time_minutes + (updated.extra_time_minutes || 0)) * 60);
             setExamStarted(true);
-            
-            // Also update player status to 'playing' if still waiting
+
+            // Promote myself from waiting to playing if needed
             if (myPlayerId.current) {
               await (supabase.from('battle_players' as any) as any)
                 .update({ status: 'playing' })
                 .eq('id', myPlayerId.current)
                 .eq('status', 'waiting');
             }
-
             toast({ title: '🚀 انطلقت المنافسة!' });
+
+            // Kick off the local sync from the freshly loaded room state
+            if (loadedQs.length > 0) {
+              setTimeout(() => syncFromRoom(updatedRoom), 200);
+            }
+          } else if (updated.status === 'active' && examStartedRef.current) {
+            // ── Server-driven engine: any change to phase / question index re-syncs the UI ──
+            syncFromRoom(updatedRoom);
           }
+
+          // ── Round reset: room flipped back to waiting (next exam in same session) ──
+          if (updated.status === 'waiting' && examStartedRef.current && !examFinishedRef.current) {
+            // Creator pressed "Next exam" — soft-reset local exam state without leaving room
+            if (syncTimerRef.current) clearInterval(syncTimerRef.current);
+            setExamStarted(false);
+            setExamFinished(false);
+            setSelectedAnswer(null);
+            setShowFeedback(false);
+            setMyAnswerGiven(false);
+            setSyncCurrentQ(0);
+            setSyncPhase('question');
+            setSyncTimeLeft(0);
+            setAnswers({});
+            answersRef.current = {};
+            setQuestions([]);
+            questionsRef.current = [];
+          }
+
           if (updated.status === 'finished' && !examFinishedRef.current) {
             if (syncTimerRef.current) clearInterval(syncTimerRef.current);
             await handleFinishExam();
@@ -588,21 +627,30 @@ const BattleRoom = () => {
       .update({ status: 'playing' })
       .eq('room_id', room.id)
       .eq('status', 'waiting');
-    
-    // Now set room to active - this triggers realtime for all competitors
+
+    // ── Server-driven engine: write the starting phase and let realtime fan it out ──
+    const nowIso = new Date().toISOString();
     await (supabase.from('battle_rooms' as any) as any).update({
-      status: 'active', started_at: new Date().toISOString(), locked: false,
+      status: 'active',
+      started_at: nowIso,
+      locked: false,
+      current_question_index: 0,
+      current_phase: 'question',
+      phase_started_at: nowIso,
     }).eq('id', room.id);
-    
+
     setTimeLeft((room.time_minutes + (room.extra_time_minutes || 0)) * 60);
     setExamStarted(true);
     setStarting(false);
-    
-    // Start sync quiz with minimal delay (just enough for broadcast channel to be ready)
-    const tpq = (room as any)?.time_per_question || 60;
-    setTimeout(() => {
-      startSyncQuestionWithList(0, tpq, loadedQs);
-    }, 800);
+    // Local sync is also driven by the realtime UPDATE handler, but kick it off immediately
+    // so the creator's UI doesn't wait a round-trip to render Q1.
+    syncFromRoom({
+      ...room,
+      status: 'active',
+      current_question_index: 0,
+      current_phase: 'question',
+      phase_started_at: nowIso,
+    });
   };
 
   const handleKickPlayer = async (playerId: string) => {
@@ -648,37 +696,117 @@ const BattleRoom = () => {
     return () => { supabase.removeChannel(chatChannel); };
   }, [room?.id]);
 
-  // ── Sync Quiz Channel ──
-  useEffect(() => {
-    if (!room?.id) return;
-    const syncChannel = supabase.channel(`battle-sync-${room.id}`, {
-      config: { broadcast: { self: false } }
-    }).on('broadcast', { event: 'quiz_state' }, ({ payload }) => {
-      const { questionIndex, phase, timeLeft: tl, totalQs } = payload;
-      setSyncCurrentQ(questionIndex);
-      setSyncPhase(phase);
-      // حفظ السؤال الحالي للاستئناف عند العودة
-      try {
-        const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
-        if (s) localStorage.setItem(SESSION_KEY, JSON.stringify({ ...s, currentQ: questionIndex, phase }));
-      } catch {}
-      setSyncTimeLeft(tl);
+  // ── Server-Driven Sync Engine ──
+  // Drives the quiz from `battle_rooms` columns: current_question_index, current_phase, phase_started_at, time_per_question.
+  // Every device computes timeLeft locally; the first device to reach 0 atomically advances the phase.
+  const syncFromRoom = useCallback((r: BattleRoom | null) => {
+    if (!r || r.status !== 'active' || !r.phase_started_at) return;
+    const tpq = r.time_per_question || 60;
+    const phase = (r.current_phase || 'question') as 'question' | 'reveal';
+    const idx = r.current_question_index ?? 0;
+    const phaseDuration = phase === 'question' ? tpq : REVEAL_SECONDS;
+    const elapsed = (Date.now() - new Date(r.phase_started_at).getTime()) / 1000;
+    const tl = Math.max(0, Math.floor(phaseDuration - elapsed));
+
+    setSyncCurrentQ(idx);
+    setSyncPhase(phase);
+    setSyncTimeLeft(tl);
+
+    // When a new question starts, reset per-question UI state
+    if (phase === 'question') {
       setMyAnswerGiven(false);
       setSelectedAnswer(null);
-      setShowFeedback(phase === 'reveal');
-      if (syncTimerRef.current) clearInterval(syncTimerRef.current);
-      if (phase === 'question' && tl > 0) {
-        let t = tl;
-        syncTimerRef.current = setInterval(() => {
-          t -= 1;
-          setSyncTimeLeft(t);
-          if (t <= 0) clearInterval(syncTimerRef.current!);
-        }, 1000);
+      setShowFeedback(false);
+    } else {
+      setShowFeedback(true);
+    }
+
+    // Persist for refresh-resume
+    try {
+      const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+      if (s) localStorage.setItem(SESSION_KEY, JSON.stringify({ ...s, currentQ: idx, phase }));
+    } catch {}
+
+    // Local countdown (purely visual; the truth is phase_started_at)
+    if (syncTimerRef.current) clearInterval(syncTimerRef.current);
+    if (tl > 0) {
+      let t = tl;
+      syncTimerRef.current = setInterval(() => {
+        t -= 1;
+        setSyncTimeLeft(t);
+        if (t <= 0) {
+          clearInterval(syncTimerRef.current!);
+          // Race-safe phase advance
+          tryAdvancePhase();
+        }
+      }, 1000);
+    } else {
+      // Already at 0 — try to advance immediately
+      setTimeout(() => tryAdvancePhase(), 50 + Math.random() * 200); // small jitter to spread races
+    }
+  }, [SESSION_KEY]);
+
+  // Atomically advance the phase if the room is still in the expected state.
+  // Multiple devices may call this simultaneously; the conditional update + local lock
+  // ensures only one update wins per (roomId, expectedPhase, expectedIndex).
+  const tryAdvancePhase = useCallback(async () => {
+    const r = roomRef.current;
+    if (!r || r.status !== 'active') return;
+    const expectedPhase = r.current_phase || 'question';
+    const expectedIndex = r.current_question_index ?? 0;
+    const lockKey = `${r.id}:${expectedPhase}:${expectedIndex}`;
+    if (phaseAdvanceLockRef.current === lockKey) return;
+    phaseAdvanceLockRef.current = lockKey;
+
+    try {
+      // Re-check from DB right before writing (defends against very late wakeups)
+      const { data: check } = await (supabase.from('battle_rooms' as any) as any)
+        .select('current_phase, current_question_index, status, phase_started_at, time_per_question')
+        .eq('id', r.id)
+        .single();
+      if (!check || check.status !== 'active') return;
+      if (check.current_phase !== expectedPhase || check.current_question_index !== expectedIndex) return;
+
+      // Confirm time has actually elapsed (avoids early advance if our local clock drifted)
+      const tpq = check.time_per_question || 60;
+      const phaseDuration = expectedPhase === 'question' ? tpq : REVEAL_SECONDS;
+      const elapsed = check.phase_started_at
+        ? (Date.now() - new Date(check.phase_started_at).getTime()) / 1000
+        : phaseDuration;
+      if (elapsed < phaseDuration - 0.5) return;
+
+      const totalQs = questionsRef.current.length;
+      if (expectedPhase === 'question') {
+        // question -> reveal
+        await (supabase.from('battle_rooms' as any) as any)
+          .update({
+            current_phase: 'reveal',
+            phase_started_at: new Date().toISOString(),
+          })
+          .eq('id', r.id)
+          .eq('current_phase', 'question')
+          .eq('current_question_index', expectedIndex);
+      } else {
+        // reveal -> next question (or finish)
+        if (expectedIndex + 1 >= totalQs) {
+          // End of exam — finish locally; the room status flips when all are done
+          await handleFinishExam();
+        } else {
+          await (supabase.from('battle_rooms' as any) as any)
+            .update({
+              current_phase: 'question',
+              current_question_index: expectedIndex + 1,
+              phase_started_at: new Date().toISOString(),
+            })
+            .eq('id', r.id)
+            .eq('current_phase', 'reveal')
+            .eq('current_question_index', expectedIndex);
+        }
       }
-    }).subscribe();
-    syncChannelRef.current = syncChannel;
-    return () => { supabase.removeChannel(syncChannel); };
-  }, [room?.id]);
+    } catch (_) {
+      // silent — another device likely won the race
+    }
+  }, []);
 
   const handleSendChat = () => {
     const text = chatInput.trim();
@@ -701,70 +829,6 @@ const BattleRoom = () => {
     chatChannelRef.current.send({ type: 'broadcast', event: 'chat_control', payload: { disabled: newDisabled } });
   };
 
-  // ── Sync Quiz Logic (Creator Only) ──
-  const broadcastQuizState = (questionIndex: number, phase: 'question' | 'reveal', timeLeft: number, totalQs: number) => {
-    if (!syncChannelRef.current) return;
-    syncChannelRef.current.send({
-      type: 'broadcast', event: 'quiz_state',
-      payload: { questionIndex, phase, timeLeft, totalQs }
-    });
-    // ── FIX: fire-and-forget DB update — never await inside timer loop ──
-    // Awaiting here was blocking the setInterval and causing freeze at Q40+ with 10+ players
-    const currentRoom = roomRef.current;
-    if (currentRoom?.id) {
-      (supabase.from('battle_rooms' as any) as any)
-        .update({ current_question_index: questionIndex })
-        .eq('id', currentRoom.id)
-        .then(() => {}) // intentional fire-and-forget
-        .catch(() => {}); // silent fail — not critical for quiz flow
-    }
-  };
-
-  const startSyncQuestionWithList = (qIndex: number, timePerQuestion: number, qList: Question[]) => {
-    // Use qList for the initial call, but always reference questionsRef for subsequent calls
-    // to avoid stale closure issues
-    const activeQList = qList.length > 0 ? qList : questionsRef.current;
-    if (!activeQList.length) return;
-    
-    setSyncCurrentQ(qIndex);
-    setSyncPhase('question');
-    try {
-      const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
-      if (s) localStorage.setItem(SESSION_KEY, JSON.stringify({ ...s, currentQ: qIndex, phase: 'question' }));
-    } catch {}
-    setSyncTimeLeft(timePerQuestion);
-    setMyAnswerGiven(false);
-    setSelectedAnswer(null);
-    setShowFeedback(false);
-    broadcastQuizState(qIndex, 'question', timePerQuestion, activeQList.length);
-    if (syncTimerRef.current) clearInterval(syncTimerRef.current);
-    let t = timePerQuestion;
-    syncTimerRef.current = setInterval(() => {
-      t -= 1;
-      setSyncTimeLeft(t);
-      if (t <= 0) {
-        clearInterval(syncTimerRef.current!);
-        // ── FIX: Use questionsRef to avoid stale closure ──
-        revealAnswerFromRef(qIndex, timePerQuestion);
-      }
-    }, 1000);
-  };
-
-  const revealAnswerFromRef = (qIndex: number, tpq: number) => {
-    const qList = questionsRef.current;
-    setSyncPhase('reveal');
-    setShowFeedback(true);
-    broadcastQuizState(qIndex, 'reveal', 0, qList.length);
-    // ── FIX: increased from 2500ms to 3000ms to give Supabase realtime room to breathe
-    // with 10+ players all receiving broadcasts simultaneously
-    setTimeout(() => {
-      if (!qList.length || qIndex + 1 >= qList.length) {
-        handleFinishExam();
-      } else {
-        startSyncQuestionWithList(qIndex + 1, tpq, qList);
-      }
-    }, 3000);
-  };
 
   const handleSyncAnswer = async (option: string) => {
     if (myAnswerGiven || syncPhase !== 'question' || !questions[syncCurrentQ]) return;
@@ -1337,8 +1401,11 @@ const BattleRoom = () => {
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">المتسابقون الآن</p>
               </div>
-              <div className="space-y-1.5">
-                {sortedPlayers.slice(0, 5).map((p, i) => (
+              <div
+                className="space-y-1.5 overflow-y-auto overscroll-contain"
+                style={{ maxHeight: '220px', scrollbarWidth: 'thin' }}
+              >
+                {sortedPlayers.map((p, i) => (
                   <div key={p.id} className={cn('flex items-center gap-2 px-2 py-1.5 rounded-xl text-xs font-bold transition-all',
                     p.id === myPlayerId.current ? 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600' : 'text-slate-600 dark:text-slate-300')}>
                     <span className="w-4 text-center font-black text-slate-400">{i + 1}</span>
@@ -1351,6 +1418,19 @@ const BattleRoom = () => {
                     <div className="w-12 bg-slate-100 dark:bg-slate-800 rounded-full h-1.5">
                       <div className="h-full rounded-full bg-indigo-500 transition-all duration-500" style={{ width: `${p.progress}%` }} />
                     </div>
+                    {isCreator && p.id !== myPlayerId.current && !p.is_creator && (
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`هل تريد طرد ${p.player_name}؟`)) {
+                            handleKickPlayer(p.id);
+                          }
+                        }}
+                        className="w-6 h-6 rounded-full bg-rose-100 dark:bg-rose-950/30 flex items-center justify-center hover:bg-rose-200 transition-all shrink-0"
+                        title="طرد اللاعب"
+                      >
+                        <UserX className="w-3 h-3 text-rose-500" />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1423,6 +1503,19 @@ const BattleRoom = () => {
                     <ChevronRight className="w-4 h-4 text-emerald-500" />
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* ── Hint on wrong answer (during reveal) ── */}
+            {isRevealing &&
+             selectedAnswer &&
+             selectedAnswer !== questions[syncCurrentQ]?.correct_option &&
+             questions[syncCurrentQ]?.hint && (
+              <div className="mb-3 flex items-start gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700 rounded-2xl px-4 py-3 animate-in slide-in-from-bottom-2 duration-300">
+                <span className="text-amber-500 text-lg shrink-0">💡</span>
+                <p className="text-xs font-bold text-amber-800 dark:text-amber-300 leading-relaxed">
+                  {questions[syncCurrentQ].hint}
+                </p>
               </div>
             )}
 
