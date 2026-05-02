@@ -415,6 +415,7 @@ const BattleRoom = () => {
   const [nextExamForm, setNextExamForm] = useState<string>('');
   const [nextTimePerQuestion, setNextTimePerQuestion] = useState<number>(60);
   const [nextQuestionsCount, setNextQuestionsCount] = useState<number>(0);
+  const [showNextExamAlert, setShowNextExamAlert] = useState(false);
 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
@@ -468,7 +469,7 @@ const BattleRoom = () => {
   }, [room?.id]);
 
   const loadQuestions = async (ids: string[]) => {
-    const BATCH_SIZE = 100;
+    const BATCH_SIZE = 50; // Supabase default row limit is often 50 — نجلب batch صغير لضمان كل الأسئلة
     let allData: Question[] = [];
 
     for (let i = 0; i < ids.length; i += BATCH_SIZE) {
@@ -476,8 +477,7 @@ const BattleRoom = () => {
       const { data } = await supabase
         .from('questions')
         .select('id, question_text, option_a, option_b, option_c, option_d, correct_option, hint')
-        .in('id', batch)
-        .range(0, batch.length - 1);
+        .in('id', batch); // بدون .range() — نجلب كل ما يطابق الـ ids
       if (data) allData = [...allData, ...(data as unknown as Question[])];
     }
 
@@ -1056,6 +1056,8 @@ const BattleRoom = () => {
       setTimeout(() => { const ref = chatContainerRef.current || chatContainerRef2.current; if (ref) { ref.scrollTop = ref.scrollHeight; } }, 50);
     }).on('broadcast', { event: 'chat_control' }, ({ payload }) => {
       setChatDisabled(payload.disabled);
+    }).on('broadcast', { event: 'next_exam_alert' }, () => {
+      setShowNextExamAlert(true);
     }).subscribe();
     chatChannelRef.current = chatChannel;
     return () => { supabase.removeChannel(chatChannel); };
@@ -1151,7 +1153,7 @@ const BattleRoom = () => {
         : phaseDuration;
       if (elapsed < phaseDuration - 0.5) return;
 
-      const totalQs = questionsRef.current.length;
+      const totalQs = Math.max(questionsRef.current.length, r.questions_count ?? 0);
       if (expectedPhase === 'question') {
         // question -> reveal
         await (supabase.from('battle_rooms' as any) as any)
@@ -1203,6 +1205,12 @@ const BattleRoom = () => {
     if (!chatChannelRef.current) return;
     const newDisabled = !chatDisabled;
     chatChannelRef.current.send({ type: 'broadcast', event: 'chat_control', payload: { disabled: newDisabled } });
+  };
+
+  const sendNextExamAlert = () => {
+    if (!chatChannelRef.current) return;
+    chatChannelRef.current.send({ type: 'broadcast', event: 'next_exam_alert', payload: {} });
+    setShowNextExamAlert(true); // المنشئ يراه أيضاً
   };
 
 
@@ -1909,6 +1917,18 @@ const BattleRoom = () => {
             {/* Creator controls */}
             {isCreator && (
               <div className="fixed bottom-4 left-4 flex flex-col gap-2 z-50">
+                {/* زر تنبيه الاختبار التالي */}
+                <button
+                  onClick={sendNextExamAlert}
+                  className="flex items-center gap-2 text-white text-xs font-black px-4 py-2.5 rounded-xl shadow-xl transition-all active:scale-95"
+                  style={{
+                    background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                    boxShadow: '0 0 20px rgba(124,58,237,0.6), 0 4px 15px rgba(0,0,0,0.3)',
+                    border: '1px solid rgba(255,255,255,0.2)'
+                  }}>
+                  <Zap className="w-3.5 h-3.5 animate-pulse" />
+                  لا تخرج! اختبار تالٍ
+                </button>
                 <button onClick={handleForceFinish}
                   className="flex items-center gap-1.5 bg-rose-600 text-white text-xs font-black px-3 py-2 rounded-xl shadow-lg hover:bg-rose-700 transition-colors">
                   <XCircle className="w-3.5 h-3.5" /> إنهاء
@@ -1916,6 +1936,7 @@ const BattleRoom = () => {
               </div>
             )}
           </div>
+          {renderNextExamAlert()}
         </section>
       </MainLayout>
     );
@@ -1995,6 +2016,47 @@ const BattleRoom = () => {
           <button onClick={() => setNextExamPanel(false)}
             className="w-full h-11 rounded-2xl border-2 border-slate-200 dark:border-border font-black text-sm text-slate-500 hover:bg-slate-50 dark:hover:bg-muted transition-all">
             إلغاء
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── إشعار الاختبار التالي (يظهر لجميع الاعبين) ──
+  const renderNextExamAlert = () => !showNextExamAlert ? null : (
+    <div className="fixed inset-0 z-[500] flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}>
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="w-[500px] h-[500px] rounded-full opacity-10 animate-ping"
+          style={{ background: 'radial-gradient(circle, #7c3aed, transparent)' }} />
+      </div>
+      <div className="relative w-full max-w-sm rounded-3xl overflow-hidden animate-in zoom-in-95 duration-300"
+        style={{ background: 'linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#1e1b4b 100%)', border: '2px solid rgba(139,92,246,0.6)', boxShadow: '0 0 60px rgba(124,58,237,0.5),0 25px 50px rgba(0,0,0,0.5)' }}>
+        <div className="h-1.5 w-full animate-pulse" style={{ background: 'linear-gradient(90deg,#7c3aed,#06b6d4,#a855f7)' }} />
+        <div className="p-8 text-center space-y-5" dir="rtl">
+          <div className="flex justify-center">
+            <div className="w-20 h-20 rounded-full flex items-center justify-center animate-bounce"
+              style={{ background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', boxShadow: '0 0 40px rgba(124,58,237,0.8)' }}>
+              <Zap className="w-10 h-10 text-white" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-black text-white tracking-tight" style={{ textShadow: '0 0 20px rgba(139,92,246,0.9)' }}>
+              ⚡ لا تغادر الغرفة!
+            </h2>
+            <p className="text-violet-200 font-bold text-base">سيبدأ اختبار جديد قريباً</p>
+            <p className="text-violet-300/80 text-sm">ابقَ في الصفحة للمشاركة في الجولة القادمة 🚀</p>
+          </div>
+          <div className="flex items-center justify-center gap-2 py-1">
+            {[0,1,2].map(i => (
+              <div key={i} className="w-3 h-3 rounded-full bg-violet-400"
+                style={{ animation: `bounce 1.2s ease-in-out ${i*0.2}s infinite` }} />
+            ))}
+          </div>
+          <button onClick={() => setShowNextExamAlert(false)}
+            className="w-full h-13 py-3 rounded-2xl font-black text-base text-white transition-all active:scale-95"
+            style={{ background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', boxShadow: '0 4px 25px rgba(124,58,237,0.6)' }}>
+            ✅ حسناً، سأبقى!
           </button>
         </div>
       </div>
@@ -2281,6 +2343,18 @@ const BattleRoom = () => {
                     className="w-full h-12 rounded-2xl border-2 border-slate-200 dark:border-border font-black text-sm flex items-center justify-center gap-2 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-muted transition-all">
                     <ChevronLeft className="w-4 h-4" /> خروج من الغرفة
                   </button>
+                  {/* زر تنبيه اللاعبين — في شاشة النتائج */}
+                  <button
+                    onClick={sendNextExamAlert}
+                    className="w-full h-11 rounded-2xl font-black text-sm flex items-center justify-center gap-2 text-white transition-all active:scale-95"
+                    style={{
+                      background: 'linear-gradient(135deg,#7c3aed 0%,#4f46e5 100%)',
+                      boxShadow: '0 0 20px rgba(124,58,237,0.5),0 4px 12px rgba(0,0,0,0.2)',
+                      border: '1px solid rgba(255,255,255,0.15)'
+                    }}>
+                    <Zap className="w-4 h-4 animate-pulse" />
+                    نبّه اللاعبين: لا تخرجوا!
+                  </button>
                   <button
                     onClick={() => { setNextExamPanel(true); setNextExamYear(''); setNextExamForm(''); setNextQuestionsCount(0); }}
                     className="w-full h-14 rounded-2xl font-black text-base flex items-center justify-center gap-2 text-white shadow-lg shadow-indigo-200/50 bg-gradient-to-l from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 transition-all">
@@ -2297,10 +2371,12 @@ const BattleRoom = () => {
           </div>
 
           {renderNextExamModal()}
+          {renderNextExamAlert()}
         </section>
       </MainLayout>
     );
   }
+
 
   // ── FINAL SESSION SUMMARY VIEW ──
   if (showFinalSummary && sessionResults.length > 0) {
@@ -2579,6 +2655,7 @@ const BattleRoom = () => {
             تنتهي الغرفة في {new Date(room.expires_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}
           </p>
         </div>
+      {renderNextExamAlert()}
       </section>
     </MainLayout>
   );
