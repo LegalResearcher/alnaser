@@ -667,37 +667,117 @@ const BattleRoom = () => {
     return () => { supabase.removeChannel(chatChannel); };
   }, [room?.id]);
 
-  // ── Sync Quiz Channel ──
-  useEffect(() => {
-    if (!room?.id) return;
-    const syncChannel = supabase.channel(`battle-sync-${room.id}`, {
-      config: { broadcast: { self: false } }
-    }).on('broadcast', { event: 'quiz_state' }, ({ payload }) => {
-      const { questionIndex, phase, timeLeft: tl, totalQs } = payload;
-      setSyncCurrentQ(questionIndex);
-      setSyncPhase(phase);
-      // حفظ السؤال الحالي للاستئناف عند العودة
-      try {
-        const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
-        if (s) localStorage.setItem(SESSION_KEY, JSON.stringify({ ...s, currentQ: questionIndex, phase }));
-      } catch {}
-      setSyncTimeLeft(tl);
+  // ── Server-Driven Sync Engine ──
+  // Drives the quiz from `battle_rooms` columns: current_question_index, current_phase, phase_started_at, time_per_question.
+  // Every device computes timeLeft locally; the first device to reach 0 atomically advances the phase.
+  const syncFromRoom = useCallback((r: BattleRoom | null) => {
+    if (!r || r.status !== 'active' || !r.phase_started_at) return;
+    const tpq = r.time_per_question || 60;
+    const phase = (r.current_phase || 'question') as 'question' | 'reveal';
+    const idx = r.current_question_index ?? 0;
+    const phaseDuration = phase === 'question' ? tpq : REVEAL_SECONDS;
+    const elapsed = (Date.now() - new Date(r.phase_started_at).getTime()) / 1000;
+    const tl = Math.max(0, Math.floor(phaseDuration - elapsed));
+
+    setSyncCurrentQ(idx);
+    setSyncPhase(phase);
+    setSyncTimeLeft(tl);
+
+    // When a new question starts, reset per-question UI state
+    if (phase === 'question') {
       setMyAnswerGiven(false);
       setSelectedAnswer(null);
-      setShowFeedback(phase === 'reveal');
-      if (syncTimerRef.current) clearInterval(syncTimerRef.current);
-      if (phase === 'question' && tl > 0) {
-        let t = tl;
-        syncTimerRef.current = setInterval(() => {
-          t -= 1;
-          setSyncTimeLeft(t);
-          if (t <= 0) clearInterval(syncTimerRef.current!);
-        }, 1000);
+      setShowFeedback(false);
+    } else {
+      setShowFeedback(true);
+    }
+
+    // Persist for refresh-resume
+    try {
+      const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+      if (s) localStorage.setItem(SESSION_KEY, JSON.stringify({ ...s, currentQ: idx, phase }));
+    } catch {}
+
+    // Local countdown (purely visual; the truth is phase_started_at)
+    if (syncTimerRef.current) clearInterval(syncTimerRef.current);
+    if (tl > 0) {
+      let t = tl;
+      syncTimerRef.current = setInterval(() => {
+        t -= 1;
+        setSyncTimeLeft(t);
+        if (t <= 0) {
+          clearInterval(syncTimerRef.current!);
+          // Race-safe phase advance
+          tryAdvancePhase();
+        }
+      }, 1000);
+    } else {
+      // Already at 0 — try to advance immediately
+      setTimeout(() => tryAdvancePhase(), 50 + Math.random() * 200); // small jitter to spread races
+    }
+  }, [SESSION_KEY]);
+
+  // Atomically advance the phase if the room is still in the expected state.
+  // Multiple devices may call this simultaneously; the conditional update + local lock
+  // ensures only one update wins per (roomId, expectedPhase, expectedIndex).
+  const tryAdvancePhase = useCallback(async () => {
+    const r = roomRef.current;
+    if (!r || r.status !== 'active') return;
+    const expectedPhase = r.current_phase || 'question';
+    const expectedIndex = r.current_question_index ?? 0;
+    const lockKey = `${r.id}:${expectedPhase}:${expectedIndex}`;
+    if (phaseAdvanceLockRef.current === lockKey) return;
+    phaseAdvanceLockRef.current = lockKey;
+
+    try {
+      // Re-check from DB right before writing (defends against very late wakeups)
+      const { data: check } = await (supabase.from('battle_rooms' as any) as any)
+        .select('current_phase, current_question_index, status, phase_started_at, time_per_question')
+        .eq('id', r.id)
+        .single();
+      if (!check || check.status !== 'active') return;
+      if (check.current_phase !== expectedPhase || check.current_question_index !== expectedIndex) return;
+
+      // Confirm time has actually elapsed (avoids early advance if our local clock drifted)
+      const tpq = check.time_per_question || 60;
+      const phaseDuration = expectedPhase === 'question' ? tpq : REVEAL_SECONDS;
+      const elapsed = check.phase_started_at
+        ? (Date.now() - new Date(check.phase_started_at).getTime()) / 1000
+        : phaseDuration;
+      if (elapsed < phaseDuration - 0.5) return;
+
+      const totalQs = questionsRef.current.length;
+      if (expectedPhase === 'question') {
+        // question -> reveal
+        await (supabase.from('battle_rooms' as any) as any)
+          .update({
+            current_phase: 'reveal',
+            phase_started_at: new Date().toISOString(),
+          })
+          .eq('id', r.id)
+          .eq('current_phase', 'question')
+          .eq('current_question_index', expectedIndex);
+      } else {
+        // reveal -> next question (or finish)
+        if (expectedIndex + 1 >= totalQs) {
+          // End of exam — finish locally; the room status flips when all are done
+          await handleFinishExam();
+        } else {
+          await (supabase.from('battle_rooms' as any) as any)
+            .update({
+              current_phase: 'question',
+              current_question_index: expectedIndex + 1,
+              phase_started_at: new Date().toISOString(),
+            })
+            .eq('id', r.id)
+            .eq('current_phase', 'reveal')
+            .eq('current_question_index', expectedIndex);
+        }
       }
-    }).subscribe();
-    syncChannelRef.current = syncChannel;
-    return () => { supabase.removeChannel(syncChannel); };
-  }, [room?.id]);
+    } catch (_) {
+      // silent — another device likely won the race
+    }
+  }, []);
 
   const handleSendChat = () => {
     const text = chatInput.trim();
@@ -720,70 +800,6 @@ const BattleRoom = () => {
     chatChannelRef.current.send({ type: 'broadcast', event: 'chat_control', payload: { disabled: newDisabled } });
   };
 
-  // ── Sync Quiz Logic (Creator Only) ──
-  const broadcastQuizState = (questionIndex: number, phase: 'question' | 'reveal', timeLeft: number, totalQs: number) => {
-    if (!syncChannelRef.current) return;
-    syncChannelRef.current.send({
-      type: 'broadcast', event: 'quiz_state',
-      payload: { questionIndex, phase, timeLeft, totalQs }
-    });
-    // ── FIX: fire-and-forget DB update — never await inside timer loop ──
-    // Awaiting here was blocking the setInterval and causing freeze at Q40+ with 10+ players
-    const currentRoom = roomRef.current;
-    if (currentRoom?.id) {
-      (supabase.from('battle_rooms' as any) as any)
-        .update({ current_question_index: questionIndex })
-        .eq('id', currentRoom.id)
-        .then(() => {}) // intentional fire-and-forget
-        .catch(() => {}); // silent fail — not critical for quiz flow
-    }
-  };
-
-  const startSyncQuestionWithList = (qIndex: number, timePerQuestion: number, qList: Question[]) => {
-    // Use qList for the initial call, but always reference questionsRef for subsequent calls
-    // to avoid stale closure issues
-    const activeQList = qList.length > 0 ? qList : questionsRef.current;
-    if (!activeQList.length) return;
-    
-    setSyncCurrentQ(qIndex);
-    setSyncPhase('question');
-    try {
-      const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
-      if (s) localStorage.setItem(SESSION_KEY, JSON.stringify({ ...s, currentQ: qIndex, phase: 'question' }));
-    } catch {}
-    setSyncTimeLeft(timePerQuestion);
-    setMyAnswerGiven(false);
-    setSelectedAnswer(null);
-    setShowFeedback(false);
-    broadcastQuizState(qIndex, 'question', timePerQuestion, activeQList.length);
-    if (syncTimerRef.current) clearInterval(syncTimerRef.current);
-    let t = timePerQuestion;
-    syncTimerRef.current = setInterval(() => {
-      t -= 1;
-      setSyncTimeLeft(t);
-      if (t <= 0) {
-        clearInterval(syncTimerRef.current!);
-        // ── FIX: Use questionsRef to avoid stale closure ──
-        revealAnswerFromRef(qIndex, timePerQuestion);
-      }
-    }, 1000);
-  };
-
-  const revealAnswerFromRef = (qIndex: number, tpq: number) => {
-    const qList = questionsRef.current;
-    setSyncPhase('reveal');
-    setShowFeedback(true);
-    broadcastQuizState(qIndex, 'reveal', 0, qList.length);
-    // ── FIX: increased from 2500ms to 3000ms to give Supabase realtime room to breathe
-    // with 10+ players all receiving broadcasts simultaneously
-    setTimeout(() => {
-      if (!qList.length || qIndex + 1 >= qList.length) {
-        handleFinishExam();
-      } else {
-        startSyncQuestionWithList(qIndex + 1, tpq, qList);
-      }
-    }, 3000);
-  };
 
   const handleSyncAnswer = async (option: string) => {
     if (myAnswerGiven || syncPhase !== 'question' || !questions[syncCurrentQ]) return;
