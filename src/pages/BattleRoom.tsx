@@ -1403,8 +1403,11 @@ const BattleRoom = () => {
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">المتسابقون الآن</p>
               </div>
-              <div className="space-y-1.5">
-                {sortedPlayers.slice(0, 5).map((p, i) => (
+              <div
+                className="space-y-1.5 overflow-y-auto overscroll-contain"
+                style={{ maxHeight: '220px', scrollbarWidth: 'thin' }}
+              >
+                {sortedPlayers.map((p, i) => (
                   <div key={p.id} className={cn('flex items-center gap-2 px-2 py-1.5 rounded-xl text-xs font-bold transition-all',
                     p.id === myPlayerId.current ? 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600' : 'text-slate-600 dark:text-slate-300')}>
                     <span className="w-4 text-center font-black text-slate-400">{i + 1}</span>
@@ -1417,6 +1420,19 @@ const BattleRoom = () => {
                     <div className="w-12 bg-slate-100 dark:bg-slate-800 rounded-full h-1.5">
                       <div className="h-full rounded-full bg-indigo-500 transition-all duration-500" style={{ width: `${p.progress}%` }} />
                     </div>
+                    {isCreator && p.id !== myPlayerId.current && !p.is_creator && (
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`هل تريد طرد ${p.player_name}؟`)) {
+                            handleKickPlayer(p.id);
+                          }
+                        }}
+                        className="w-6 h-6 rounded-full bg-rose-100 dark:bg-rose-950/30 flex items-center justify-center hover:bg-rose-200 transition-all shrink-0"
+                        title="طرد اللاعب"
+                      >
+                        <UserX className="w-3 h-3 text-rose-500" />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
