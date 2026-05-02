@@ -256,10 +256,14 @@ const BattleRoom = () => {
   const phaseAdvanceLockRef = useRef<string | null>(null);
   const REVEAL_SECONDS = 3;
 
-  // ── Multi-exam session state (placeholders for upcoming next-exam/final-summary features) ──
-  const [examNumber] = useState(1);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _sessionPlaceholders = { examNumber };
+  // ── Multi-exam session state ──
+  const [examNumber, setExamNumber] = useState(1);
+  const [sessionResults, setSessionResults] = useState<any[]>([]);
+  const [showFinalSummary, setShowFinalSummary] = useState(false);
+  const [nextExamPanel, setNextExamPanel] = useState(false);
+  const [nextExamYear, setNextExamYear] = useState<string>('');
+  const [nextExamForm, setNextExamForm] = useState<string>('');
+  const [nextTimePerQuestion, setNextTimePerQuestion] = useState<number>(room?.time_per_question || 60);
 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
@@ -354,6 +358,30 @@ const BattleRoom = () => {
             setIsJoined(true);
             isCreatorRef.current = true;
             localStorage.setItem(SESSION_KEY, JSON.stringify({ playerId: me.id, playerName: me.player_name, isCreator: true }));
+            // ── إذا كانت الغرفة نشطة استئنف مباشرة بدون الضغط على ابدأ ──
+            if (data.status === 'active') {
+              const loadedQs = await loadQuestions(data.question_ids as string[]);
+              if (me.answers_json && Object.keys(me.answers_json).length > 0) {
+                setAnswers(me.answers_json as Record<string, string>);
+                answersRef.current = me.answers_json as Record<string, string>;
+              }
+              setTimeLeft((data.time_minutes + (data.extra_time_minutes || 0)) * 60);
+              setExamStarted(true);
+              if (loadedQs.length > 0) {
+                setTimeout(() => {
+                  syncFromRoom({ ...data, question_ids: data.question_ids as string[] } as BattleRoom);
+                }, 800);
+              }
+              toast({ title: 'مرحباً مجدداً ' + me.player_name + ' 👋', description: 'تم استئناف الجلسة تلقائياً' });
+            } else if (data.status === 'finished') {
+              await loadQuestions(data.question_ids as string[]);
+              if (me.answers_json && Object.keys(me.answers_json).length > 0) {
+                setAnswers(me.answers_json as Record<string, string>);
+                answersRef.current = me.answers_json as Record<string, string>;
+              }
+              setExamStarted(true);
+              setExamFinished(true);
+            }
           }
         }
         // ── Restore from locationState: regular join ──
@@ -364,6 +392,29 @@ const BattleRoom = () => {
             setMyPlayer(me);
             isCreatorRef.current = !!me.is_creator;
             localStorage.setItem(SESSION_KEY, JSON.stringify({ playerId: me.id, playerName: me.player_name, isCreator: !!me.is_creator }));
+            // ── استئناف إذا كانت الغرفة نشطة ──
+            if (data.status === 'active') {
+              const loadedQs = await loadQuestions(data.question_ids as string[]);
+              if (me.answers_json && Object.keys(me.answers_json).length > 0) {
+                setAnswers(me.answers_json as Record<string, string>);
+                answersRef.current = me.answers_json as Record<string, string>;
+              }
+              setTimeLeft((data.time_minutes + (data.extra_time_minutes || 0)) * 60);
+              setExamStarted(true);
+              if (loadedQs.length > 0) {
+                setTimeout(() => {
+                  syncFromRoom({ ...data, question_ids: data.question_ids as string[] } as BattleRoom);
+                }, 800);
+              }
+            } else if (data.status === 'finished') {
+              await loadQuestions(data.question_ids as string[]);
+              if (me.answers_json && Object.keys(me.answers_json).length > 0) {
+                setAnswers(me.answers_json as Record<string, string>);
+                answersRef.current = me.answers_json as Record<string, string>;
+              }
+              setExamStarted(true);
+              setExamFinished(true);
+            }
           }
         }
         // ── Restore from localStorage: page refresh / reconnect ──
@@ -676,6 +727,72 @@ const BattleRoom = () => {
     }).eq('id', room.id);
   };
 
+  // ── دالة حفظ نتائج الاختبار في battle_session_results ──
+  const saveSessionResults = async (examLabel: string) => {
+    if (!room) return;
+    const records = players.filter(p => !p.kicked).map(p => ({
+      room_id: room.id,
+      player_id: p.id,
+      player_name: p.player_name,
+      exam_number: examNumber,
+      exam_label: examLabel,
+      total_questions: questions.length,
+      correct_count: p.correct_count,
+      wrong_count: questions.length - p.correct_count,
+      percentage: p.percentage,
+    }));
+    await (supabase.from('battle_session_results' as any) as any).insert(records);
+    setSessionResults(prev => [...prev, ...records]);
+    setExamNumber(prev => prev + 1);
+  };
+
+  // ── الاختبار التالي: صفّر اللاعبين والغرفة ──
+  const handleNextExam = async (questionIds: string[], examLabel: string, newTimePerQuestion: number) => {
+    if (!room) return;
+    // 1. احفظ نتائج الاختبار المنتهي
+    await saveSessionResults(examLabel);
+
+    // 2. صفّر نتائج كل اللاعبين
+    await (supabase.from('battle_players' as any) as any)
+      .update({
+        score: 0, correct_count: 0, total_answered: 0,
+        percentage: 0, progress: 0, status: 'waiting',
+        finished_at: null, answers_json: {},
+      })
+      .eq('room_id', room.id)
+      .neq('kicked', true);
+
+    // 3. أعد ضبط الغرفة
+    await (supabase.from('battle_rooms' as any) as any)
+      .update({
+        status: 'waiting',
+        current_question_index: 0,
+        current_phase: 'question',
+        phase_started_at: null,
+        question_ids: questionIds,
+        questions_count: questionIds.length,
+        time_per_question: newTimePerQuestion,
+        started_at: null,
+        finished_at: null,
+      })
+      .eq('id', room.id);
+
+    setNextExamPanel(false);
+  };
+
+  // ── الإنهاء النهائي للجلسة ──
+  const handleFinalEnd = async () => {
+    if (!room) return;
+    // احفظ الاختبار الأخير إن لم يُحفظ بعد
+    const examLabel = `اختبار ${examNumber}`;
+    await saveSessionResults(examLabel);
+    // أنهِ الغرفة
+    await (supabase.from('battle_rooms' as any) as any).update({
+      status: 'finished', finished_at: new Date().toISOString()
+    }).eq('id', room.id);
+    setShowFinalSummary(true);
+  };
+
   // ── Chat Channel ──
   useEffect(() => {
     if (!room?.id) return;
@@ -849,22 +966,23 @@ const BattleRoom = () => {
   // ── Exam ──
   const updateProgress = (correct: number, total: number, answered: number, answersJson: Record<string, string>) => {
     if (!myPlayerId.current || !room) return;
-    // ── FIX: Debounce DB writes to prevent write storm with 10+ players ──
+    // ── Debounce DB writes to prevent write storm with 10+ players ──
     if (progressDebounceRef.current) clearTimeout(progressDebounceRef.current);
     progressDebounceRef.current = setTimeout(async () => {
       if (!myPlayerId.current || !roomRef.current) return;
       const currentRoom = roomRef.current;
       const pct = currentRoom.questions_count > 0 ? (correct / currentRoom.questions_count) * 100 : 0;
       const progress = (answered / currentRoom.questions_count) * 100;
-      // ── FIX: Do NOT write answers_json on every answer — only write stats ──
-      // answers_json grows with every question (40+ entries × 10+ players = massive payload)
-      // It will be written once at exam finish
+      // ── كتابة answers_json كل 5 أسئلة لضمان الاستئناف الصحيح عند العودة
+      // (ليس على كل إجابة تجنباً للـ payload الكبير مع 10+ لاعبين)
+      const shouldSaveAnswers = answered % 5 === 0 || answered >= currentRoom.questions_count;
       await (supabase.from('battle_players' as any) as any).update({
         correct_count: correct, total_answered: answered,
         score: correct, percentage: pct, progress,
         status: answered >= currentRoom.questions_count ? 'finished' : 'playing',
+        ...(shouldSaveAnswers ? { answers_json: answersJson } : {}),
       }).eq('id', myPlayerId.current);
-    }, 300); // 300ms debounce: batches rapid answers, prevents flood
+    }, 300);
   };
 
   const handleAnswer = async (option: string) => {
@@ -1808,6 +1926,173 @@ const BattleRoom = () => {
                   <RotateCcw className="w-4 h-4" /> غرفة جديدة
                 </Button>
               </div>
+
+              {/* ── أزرار المنشئ: الاختبار التالي / الإنهاء النهائي ── */}
+              {isCreator && (
+                <div className="space-y-3 pt-2 border-t-2 border-dashed border-slate-200 dark:border-border">
+                  <button
+                    onClick={() => navigate(-1)}
+                    className="w-full h-12 rounded-2xl border-2 border-slate-200 dark:border-border font-black text-sm flex items-center justify-center gap-2 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-muted transition-all">
+                    <ChevronLeft className="w-4 h-4" /> خروج من الغرفة
+                  </button>
+                  <button
+                    onClick={() => setNextExamPanel(true)}
+                    className="w-full h-14 rounded-2xl font-black text-base flex items-center justify-center gap-2 text-white shadow-lg shadow-indigo-200/50 bg-gradient-to-l from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 transition-all">
+                    <Zap className="w-5 h-5" /> اختبار تالٍ بدون خروج 🚀
+                  </button>
+                  <button
+                    onClick={handleFinalEnd}
+                    className="w-full h-11 rounded-2xl font-black text-sm flex items-center justify-center gap-2 text-rose-600 dark:text-rose-400 border-2 border-rose-200 dark:border-rose-800/50 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all">
+                    <XCircle className="w-4 h-4" /> إنهاء الجلسة نهائياً
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── لوحة الاختبار التالي (Modal) ── */}
+          {nextExamPanel && isCreator && (
+            <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm" onClick={() => setNextExamPanel(false)}>
+              <div className="w-full max-w-sm bg-white dark:bg-card rounded-t-3xl p-6 space-y-4 animate-in slide-in-from-bottom-4 duration-300" onClick={e => e.stopPropagation()} dir="rtl">
+                <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-2" />
+                <h3 className="font-black text-slate-900 dark:text-white text-center text-base">⚡ الاختبار التالي</h3>
+
+                <div className="space-y-3">
+                  {/* سنة الاختبار */}
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">سنة الاختبار</p>
+                    <div className="flex gap-2 flex-wrap">
+                      {['تجريبية', '2020', '2021', '2022', '2023', '2024', '2025', '2026'].map(y => (
+                        <button key={y} onClick={() => setNextExamYear(y)}
+                          className={cn('px-3 py-1.5 rounded-xl border-2 text-xs font-black transition-all',
+                            nextExamYear === y ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600' : 'border-slate-200 dark:border-border text-slate-500 hover:border-slate-300')}>
+                          {y}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* نموذج الاختبار */}
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">نموذج الاختبار</p>
+                    <div className="flex gap-2 flex-wrap">
+                      {['عام', 'موازي', 'مختلط', 'نموذج 1', 'نموذج 2', 'نموذج 3'].map(f => (
+                        <button key={f} onClick={() => setNextExamForm(f)}
+                          className={cn('px-3 py-1.5 rounded-xl border-2 text-xs font-black transition-all',
+                            nextExamForm === f ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600' : 'border-slate-200 dark:border-border text-slate-500 hover:border-slate-300')}>
+                          {f}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* وقت كل سؤال */}
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">وقت كل سؤال</p>
+                    <div className="flex gap-2 flex-wrap">
+                      {[
+                        { label: '15ث', val: 15 }, { label: '30ث', val: 30 }, { label: '1د', val: 60 },
+                        { label: '2د', val: 120 }, { label: '3د', val: 180 }, { label: '5د', val: 300 },
+                      ].map(t => (
+                        <button key={t.val} onClick={() => setNextTimePerQuestion(t.val)}
+                          className={cn('px-3 py-1.5 rounded-xl border-2 text-xs font-black transition-all',
+                            nextTimePerQuestion === t.val ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600' : 'border-slate-200 dark:border-border text-slate-500 hover:border-slate-300')}>
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2 space-y-2">
+                  <button
+                    onClick={() => {
+                      if (!room) return;
+                      const examLabel = [nextExamYear, nextExamForm].filter(Boolean).join(' — ') || `اختبار ${examNumber}`;
+                      handleNextExam(room.question_ids, examLabel, nextTimePerQuestion);
+                    }}
+                    className="w-full h-12 rounded-2xl font-black text-sm text-white bg-gradient-to-l from-indigo-500 to-violet-600 shadow-lg flex items-center justify-center gap-2">
+                    <Play className="w-4 h-4" /> ابدأ الاختبار التالي
+                  </button>
+                  <button onClick={() => setNextExamPanel(false)}
+                    className="w-full h-11 rounded-2xl border-2 border-slate-200 dark:border-border font-black text-sm text-slate-500 hover:bg-slate-50 dark:hover:bg-muted transition-all">
+                    إلغاء
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+      </MainLayout>
+    );
+  }
+
+  // ── FINAL SESSION SUMMARY VIEW ──
+  if (showFinalSummary && sessionResults.length > 0) {
+    const examGroups = sessionResults.reduce((acc: any, r: any) => {
+      if (!acc[r.exam_number]) acc[r.exam_number] = [];
+      acc[r.exam_number].push(r);
+      return acc;
+    }, {});
+    return (
+      <MainLayout>
+        <section className="min-h-[calc(100vh-80px)] py-6 bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900" dir="rtl">
+          <div className="container mx-auto px-4 max-w-lg">
+            <div className="space-y-6">
+              <div className="text-center">
+                <Trophy className="w-12 h-12 text-amber-500 mx-auto mb-2" />
+                <h2 className="text-2xl font-black">ملخص الجلسة</h2>
+                <p className="text-slate-500 text-sm">{examNumber - 1} اختبار</p>
+              </div>
+
+              {Object.entries(examGroups).map(([num, group]: any) => (
+                <div key={num} className="rounded-2xl border-2 border-slate-100 dark:border-border overflow-hidden">
+                  <div className="bg-gradient-to-l from-primary/10 to-transparent px-4 py-3 border-b border-slate-100 dark:border-border">
+                    <p className="font-black text-sm">{group[0].exam_label}</p>
+                    <p className="text-xs text-slate-500">{group[0].total_questions} سؤال</p>
+                  </div>
+                  {group
+                    .sort((a: any, b: any) => b.percentage - a.percentage)
+                    .map((r: any, i: number) => (
+                      <div key={r.player_id} className="flex items-center gap-3 px-4 py-3 border-b border-slate-50 dark:border-border/50 last:border-0">
+                        <span className="text-lg">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`}</span>
+                        <span className="font-black flex-1 text-sm">{r.player_name}</span>
+                        <span className="text-xs text-emerald-600 font-bold">✅ {r.correct_count}</span>
+                        <span className="text-xs text-rose-500 font-bold">❌ {r.wrong_count}</span>
+                        <span className="text-xs font-black bg-primary/10 text-primary px-2 py-0.5 rounded-lg">{Math.round(r.percentage)}%</span>
+                      </div>
+                    ))}
+                </div>
+              ))}
+
+              <div className="rounded-2xl border-2 border-amber-200 dark:border-amber-800/50 overflow-hidden">
+                <div className="bg-gradient-to-l from-amber-500/10 to-transparent px-4 py-3 border-b border-amber-100 dark:border-amber-800/30">
+                  <p className="font-black text-sm text-amber-700 dark:text-amber-400">🏆 الترتيب النهائي</p>
+                  <p className="text-xs text-slate-500">متوسط كل الاختبارات</p>
+                </div>
+                {(Object.values(
+                  sessionResults.reduce((acc: any, r: any) => {
+                    if (!acc[r.player_id]) acc[r.player_id] = { name: r.player_name, total: 0, count: 0 };
+                    acc[r.player_id].total += r.percentage;
+                    acc[r.player_id].count += 1;
+                    return acc;
+                  }, {})
+                ) as any[])
+                  .map((p: any) => ({ ...p, avg: p.total / p.count }))
+                  .sort((a: any, b: any) => b.avg - a.avg)
+                  .map((p: any, i: number) => (
+                    <div key={p.name} className="flex items-center gap-3 px-4 py-3 border-b border-amber-50 dark:border-amber-800/20 last:border-0">
+                      <span className="text-lg">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`}</span>
+                      <span className="font-black flex-1 text-sm">{p.name}</span>
+                      <span className="text-sm font-black bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-3 py-1 rounded-xl">{Math.round(p.avg)}%</span>
+                    </div>
+                  ))}
+              </div>
+
+              <button onClick={() => navigate(-1)}
+                className="w-full h-12 rounded-2xl border-2 border-slate-200 dark:border-border font-black text-sm">
+                خروج
+              </button>
             </div>
           </div>
         </section>
@@ -1984,8 +2269,8 @@ const BattleRoom = () => {
                 </div>
               )}
 
-              {/* Start button (creator) */}
-              {isCreator && isJoined && (
+              {/* Start button (creator) — يظهر فقط إذا كانت الغرفة في انتظار */}
+              {isCreator && isJoined && room.status === 'waiting' && (
                 <Button onClick={handleStartRoom} disabled={starting || activePlayers.length < 2}
                   className="w-full h-14 rounded-xl font-black gap-2 bg-gradient-to-l from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-200/50 text-base">
                   {starting ? <Loader2 className="w-5 h-5 animate-spin" /> : (
@@ -2004,7 +2289,9 @@ const BattleRoom = () => {
                   <div className="flex gap-1">
                     {[0,1,2].map(i => <div key={i} className="w-2 h-2 rounded-full bg-amber-500 animate-bounce" style={{animationDelay:`${i*0.2}s`}} />)}
                   </div>
-                  <p className="text-xs font-black text-amber-600">في انتظار المنشئ للبدء...</p>
+                  <p className="text-xs font-black text-amber-600">
+                    {examNumber > 1 ? 'في انتظار المنشئ لبدء الجولة القادمة...' : 'في انتظار المنشئ للبدء...'}
+                  </p>
                 </div>
               )}
 
