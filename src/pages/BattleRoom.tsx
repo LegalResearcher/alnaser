@@ -29,6 +29,13 @@ interface BattleRoom {
   expires_at: string; is_private: boolean; password?: string;
   allow_teams: boolean; team1_name: string; team2_name: string;
   locked: boolean; extra_time_minutes: number; question_type: string;
+  time_per_question?: number;
+  current_question_index?: number;
+  current_phase?: 'question' | 'reveal';
+  phase_started_at?: string | null;
+  exam_year?: number | null;
+  exam_form?: string | null;
+  exam_form_name?: string | null;
   subjects?: { name: string };
 }
 
