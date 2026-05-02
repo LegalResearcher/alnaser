@@ -261,9 +261,10 @@ const BattleRoom = () => {
   const [sessionResults, setSessionResults] = useState<any[]>([]);
   const [showFinalSummary, setShowFinalSummary] = useState(false);
   const [nextExamPanel, setNextExamPanel] = useState(false);
+  const [nextExamLoading, setNextExamLoading] = useState(false);
   const [nextExamYear, setNextExamYear] = useState<string>('');
   const [nextExamForm, setNextExamForm] = useState<string>('');
-  const [nextTimePerQuestion, setNextTimePerQuestion] = useState<number>(room?.time_per_question || 60);
+  const [nextTimePerQuestion, setNextTimePerQuestion] = useState<number>(60);
 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
@@ -281,6 +282,10 @@ const BattleRoom = () => {
   useEffect(() => { questionsRef.current = questions; }, [questions]);
   useEffect(() => { roomRef.current = room; }, [room]);
   useEffect(() => { isCreatorRef.current = !!myPlayer?.is_creator; }, [myPlayer]);
+  // تحديث الوقت الافتراضي للاختبار التالي من الغرفة الحالية
+  useEffect(() => {
+    if (room?.time_per_question) setNextTimePerQuestion(room.time_per_question);
+  }, [room?.time_per_question]);
 
   // ── Fetch room ──
   const fetchRoom = useCallback(async () => {
@@ -289,12 +294,10 @@ const BattleRoom = () => {
       .select('*, subjects(name, battle_password)').eq('code', code).maybeSingle();
     if (data) {
       setRoom({ ...data, question_ids: data.question_ids as string[] });
-      if (data.status === 'active' && !examStarted && isJoined) {
-        loadQuestions(data.question_ids as string[]);
-        setTimeLeft((data.time_minutes + (data.extra_time_minutes || 0)) * 60);
-      }
+      // fetchRoom لا تُشغّل الاختبار — init() هي المسؤولة عن ذلك
+      // هذه الدالة تُستخدم فقط لتحديث بيانات الغرفة
     }
-  }, [code, examStarted, isJoined]);
+  }, [code]);
 
   const fetchPlayers = useCallback(async () => {
     if (!room?.id) return;
@@ -369,7 +372,7 @@ const BattleRoom = () => {
               setExamStarted(true);
               if (loadedQs.length > 0) {
                 setTimeout(() => {
-                  syncFromRoom({ ...data, question_ids: data.question_ids as string[] } as BattleRoom);
+                  syncFromRoom({ ...data, question_ids: data.question_ids as string[] } as BattleRoom, me.answers_json as Record<string, string>);
                 }, 800);
               }
               toast({ title: 'مرحباً مجدداً ' + me.player_name + ' 👋', description: 'تم استئناف الجلسة تلقائياً' });
@@ -403,7 +406,7 @@ const BattleRoom = () => {
               setExamStarted(true);
               if (loadedQs.length > 0) {
                 setTimeout(() => {
-                  syncFromRoom({ ...data, question_ids: data.question_ids as string[] } as BattleRoom);
+                  syncFromRoom({ ...data, question_ids: data.question_ids as string[] } as BattleRoom, me.answers_json as Record<string, string>);
                 }, 800);
               }
             } else if (data.status === 'finished') {
@@ -439,7 +442,7 @@ const BattleRoom = () => {
               // Engine is server-driven now: just sync from the freshly loaded room.
               // The realtime UPDATE handler + room ref will keep it ticking.
               setTimeout(() => {
-                syncFromRoom({ ...data, question_ids: data.question_ids as string[] } as BattleRoom);
+                syncFromRoom({ ...data, question_ids: data.question_ids as string[] } as BattleRoom, me.answers_json as Record<string, string>);
               }, 800);
             } else if (data.status === 'finished') {
               await loadQuestions(data.question_ids as string[]);
@@ -541,9 +544,12 @@ const BattleRoom = () => {
           }
 
           // ── Round reset: room flipped back to waiting (next exam in same session) ──
-          if (updated.status === 'waiting' && examStartedRef.current && !examFinishedRef.current) {
-            // Creator pressed "Next exam" — soft-reset local exam state without leaving room
+          // يعمل سواء كان الاختبار منتهياً أو لا — المنشئ طلب جولة جديدة
+          if (updated.status === 'waiting' && examStartedRef.current) {
             if (syncTimerRef.current) clearInterval(syncTimerRef.current);
+            // تحديث الـ refs مباشرة قبل setState لتجنب stale closure
+            examStartedRef.current = false;
+            examFinishedRef.current = false;
             setExamStarted(false);
             setExamFinished(false);
             setSelectedAnswer(null);
@@ -556,6 +562,7 @@ const BattleRoom = () => {
             answersRef.current = {};
             setQuestions([]);
             questionsRef.current = [];
+            setShowFinalSummary(false);
           }
 
           if (updated.status === 'finished' && !examFinishedRef.current) {
@@ -747,12 +754,29 @@ const BattleRoom = () => {
   };
 
   // ── الاختبار التالي: صفّر اللاعبين والغرفة ──
-  const handleNextExam = async (questionIds: string[], examLabel: string, newTimePerQuestion: number) => {
+  const handleNextExam = async (examLabel: string, newTimePerQuestion: number, examYear: string, examForm: string) => {
     if (!room) return;
-    // 1. احفظ نتائج الاختبار المنتهي
+    setNextExamLoading(true);
+
+    // 1. جلب أسئلة جديدة من DB حسب المادة والسنة والنموذج
+    let questionIds = room.question_ids; // افتراضي: نفس الأسئلة
+    try {
+      let query = (supabase.from('questions') as any)
+        .select('id')
+        .eq('subject_id', room.subject_id);
+      if (examYear && examYear !== 'تجريبية') query = query.eq('exam_year', parseInt(examYear));
+      if (examYear === 'تجريبية') query = query.is('exam_year', null);
+      if (examForm) query = query.ilike('exam_form', `%${examForm}%`);
+      const { data: qData } = await query;
+      if (qData && qData.length > 0) {
+        questionIds = qData.map((q: any) => q.id);
+      }
+    } catch (_) {}
+
+    // 2. احفظ نتائج الاختبار المنتهي
     await saveSessionResults(examLabel);
 
-    // 2. صفّر نتائج كل اللاعبين
+    // 3. صفّر نتائج كل اللاعبين
     await (supabase.from('battle_players' as any) as any)
       .update({
         score: 0, correct_count: 0, total_answered: 0,
@@ -762,7 +786,7 @@ const BattleRoom = () => {
       .eq('room_id', room.id)
       .neq('kicked', true);
 
-    // 3. أعد ضبط الغرفة
+    // 4. أعد ضبط الغرفة مع الأسئلة الجديدة
     await (supabase.from('battle_rooms' as any) as any)
       .update({
         status: 'waiting',
@@ -774,10 +798,14 @@ const BattleRoom = () => {
         time_per_question: newTimePerQuestion,
         started_at: null,
         finished_at: null,
+        exam_year: examYear && examYear !== 'تجريبية' ? parseInt(examYear) : null,
+        exam_form: examForm || null,
+        exam_form_name: [examYear, examForm].filter(Boolean).join(' — ') || null,
       })
       .eq('id', room.id);
 
     setNextExamPanel(false);
+    setNextExamLoading(false);
   };
 
   // ── الإنهاء النهائي للجلسة ──
@@ -816,7 +844,7 @@ const BattleRoom = () => {
   // ── Server-Driven Sync Engine ──
   // Drives the quiz from `battle_rooms` columns: current_question_index, current_phase, phase_started_at, time_per_question.
   // Every device computes timeLeft locally; the first device to reach 0 atomically advances the phase.
-  const syncFromRoom = useCallback((r: BattleRoom | null) => {
+  const syncFromRoom = useCallback((r: BattleRoom | null, restoredAnswers?: Record<string, string>) => {
     if (!r || r.status !== 'active' || !r.phase_started_at) return;
     const tpq = r.time_per_question || 60;
     const phase = (r.current_phase || 'question') as 'question' | 'reveal';
@@ -831,9 +859,20 @@ const BattleRoom = () => {
 
     // When a new question starts, reset per-question UI state
     if (phase === 'question') {
-      setMyAnswerGiven(false);
-      setSelectedAnswer(null);
-      setShowFeedback(false);
+      // ── عند الاستئناف: تحقق من إجابة السؤال الحالي من الـ answers المستعادة ──
+      const currentAnswers = restoredAnswers || answersRef.current;
+      const currentQId = questionsRef.current[idx]?.id;
+      const alreadyAnswered = currentQId ? !!currentAnswers[currentQId] : false;
+      if (alreadyAnswered) {
+        // أجاب على هذا السؤال قبل الخروج — أعِد إظهار إجابته
+        setMyAnswerGiven(true);
+        setSelectedAnswer(currentAnswers[currentQId!]);
+        setShowFeedback(false);
+      } else {
+        setMyAnswerGiven(false);
+        setSelectedAnswer(null);
+        setShowFeedback(false);
+      }
     } else {
       setShowFeedback(true);
     }
@@ -1305,7 +1344,15 @@ const BattleRoom = () => {
       {/* Messages - آخر 4 رسائل مع تمرير */}
       <div
         className="overflow-y-auto px-3 py-2 space-y-2"
-        style={{maxHeight:'160px',scrollbarWidth:'thin',scrollbarColor:'rgba(99,102,241,0.3) transparent'}}
+        style={{
+          height: '180px',
+          minHeight: '180px',
+          maxHeight: '180px',
+          overflowY: 'auto',
+          overscrollBehavior: 'contain',
+          scrollbarWidth: 'thin',
+          scrollbarColor: 'rgba(99,102,241,0.3) transparent'
+        }}
       >
         {chatMessages.length === 0 ? (
           <div className="flex items-center justify-center gap-2 py-3 opacity-40">
@@ -1572,7 +1619,7 @@ const BattleRoom = () => {
             </div>
 
             {/* ── Options ── */}
-            <div className="space-y-2.5 mb-3">
+            <div className="space-y-2.5 mb-3 flex-shrink-0" style={{ position: 'relative', zIndex: 10 }}>
               {options.map(opt => {
                 const isSelected = selectedAnswer === opt.key;
                 const isCorrect = opt.key === q.correct_option;
@@ -2009,10 +2056,12 @@ const BattleRoom = () => {
                     onClick={() => {
                       if (!room) return;
                       const examLabel = [nextExamYear, nextExamForm].filter(Boolean).join(' — ') || `اختبار ${examNumber}`;
-                      handleNextExam(room.question_ids, examLabel, nextTimePerQuestion);
+                      handleNextExam(examLabel, nextTimePerQuestion, nextExamYear, nextExamForm);
                     }}
-                    className="w-full h-12 rounded-2xl font-black text-sm text-white bg-gradient-to-l from-indigo-500 to-violet-600 shadow-lg flex items-center justify-center gap-2">
-                    <Play className="w-4 h-4" /> ابدأ الاختبار التالي
+                    disabled={nextExamLoading}
+                    className="w-full h-12 rounded-2xl font-black text-sm text-white bg-gradient-to-l from-indigo-500 to-violet-600 shadow-lg flex items-center justify-center gap-2 disabled:opacity-70">
+                    {nextExamLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                    {nextExamLoading ? 'جارٍ التحضير...' : 'ابدأ الاختبار التالي'}
                   </button>
                   <button onClick={() => setNextExamPanel(false)}
                     className="w-full h-11 rounded-2xl border-2 border-slate-200 dark:border-border font-black text-sm text-slate-500 hover:bg-slate-50 dark:hover:bg-muted transition-all">
