@@ -196,6 +196,7 @@ export type Database = {
           code: string
           created_at: string | null
           creator_name: string
+          current_phase: string | null
           current_question_index: number
           exam_form: string | null
           exam_form_id: string | null
@@ -209,6 +210,7 @@ export type Database = {
           locked: boolean | null
           max_players: number
           password: string | null
+          phase_started_at: string | null
           question_ids: Json
           question_type: string | null
           questions_count: number
@@ -227,6 +229,7 @@ export type Database = {
           code: string
           created_at?: string | null
           creator_name: string
+          current_phase?: string | null
           current_question_index?: number
           exam_form?: string | null
           exam_form_id?: string | null
@@ -240,6 +243,7 @@ export type Database = {
           locked?: boolean | null
           max_players?: number
           password?: string | null
+          phase_started_at?: string | null
           question_ids?: Json
           question_type?: string | null
           questions_count?: number
@@ -258,6 +262,7 @@ export type Database = {
           code?: string
           created_at?: string | null
           creator_name?: string
+          current_phase?: string | null
           current_question_index?: number
           exam_form?: string | null
           exam_form_id?: string | null
@@ -271,6 +276,7 @@ export type Database = {
           locked?: boolean | null
           max_players?: number
           password?: string | null
+          phase_started_at?: string | null
           question_ids?: Json
           question_type?: string | null
           questions_count?: number
@@ -290,6 +296,63 @@ export type Database = {
             columns: ["subject_id"]
             isOneToOne: false
             referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      battle_session_results: {
+        Row: {
+          correct_count: number
+          created_at: string | null
+          exam_label: string
+          exam_number: number
+          id: string
+          percentage: number
+          player_id: string | null
+          player_name: string
+          room_id: string | null
+          total_questions: number
+          wrong_count: number
+        }
+        Insert: {
+          correct_count: number
+          created_at?: string | null
+          exam_label: string
+          exam_number: number
+          id?: string
+          percentage: number
+          player_id?: string | null
+          player_name: string
+          room_id?: string | null
+          total_questions: number
+          wrong_count: number
+        }
+        Update: {
+          correct_count?: number
+          created_at?: string | null
+          exam_label?: string
+          exam_number?: number
+          id?: string
+          percentage?: number
+          player_id?: string | null
+          player_name?: string
+          room_id?: string | null
+          total_questions?: number
+          wrong_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_session_results_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "battle_players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "battle_session_results_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "battle_rooms"
             referencedColumns: ["id"]
           },
         ]
