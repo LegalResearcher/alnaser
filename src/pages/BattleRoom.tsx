@@ -201,6 +201,155 @@ function PlayerCard({ player, rank, isMe, isCreator: iAmCreator, onKick, teamNam
   );
 }
 
+// ── Chat Panel Component (self-contained scroll) ──────────
+const ChatPanel = ({
+  amCreator, chatMessages, chatDisabled, players, myName, myPlayer,
+  chatInput, setChatInput, handleSendChat, handleToggleChat
+}: {
+  amCreator: boolean;
+  chatMessages: ChatMessage[];
+  chatDisabled: boolean;
+  players: BattlePlayer[];
+  myName: string;
+  myPlayer: BattlePlayer | null;
+  chatInput: string;
+  setChatInput: (v: string) => void;
+  handleSendChat: () => void;
+  handleToggleChat: () => void;
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
+  }, [chatMessages]);
+
+  return (
+    <div className="rounded-2xl overflow-hidden shadow-2xl mb-4" style={{background:'linear-gradient(135deg,#0f172a 0%,#1e1b4b 100%)',border:`1px solid ${chatDisabled ? 'rgba(239,68,68,0.3)' : 'rgba(99,102,241,0.25)'}`}}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-2.5" style={{background:'rgba(255,255,255,0.04)',borderBottom:'1px solid rgba(255,255,255,0.07)'}}>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <MessageCircle className="w-4 h-4 text-indigo-400" />
+            <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full border border-slate-900 ${chatDisabled ? 'bg-rose-500' : 'bg-emerald-400'}`} />
+          </div>
+          <span className="text-xs font-black text-white/80">دردشة المنافسة</span>
+          {chatDisabled
+            ? <span className="text-[10px] font-black text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded-full">موقوفة</span>
+            : <span className="text-[10px] font-bold text-white/30">{players.filter(p=>!p.kicked).length} مشارك</span>
+          }
+        </div>
+        <div className="flex items-center gap-2">
+          {amCreator && (
+            <button onClick={handleToggleChat}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-[10px] font-black transition-all ${chatDisabled ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30' : 'bg-rose-500/20 border border-rose-500/30 text-rose-400 hover:bg-rose-500/30'}`}>
+              {chatDisabled ? <><Zap className="w-3 h-3" /> تفعيل</> : <><Shield className="w-3 h-3" /> إيقاف</>}
+            </button>
+          )}
+          {amCreator && (
+            <div className="flex items-center gap-1 bg-amber-500/10 border border-amber-500/20 rounded-full px-2 py-0.5">
+              <Crown className="w-2.5 h-2.5 text-amber-400" />
+              <span className="text-[9px] font-black text-amber-400">منشئ</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div
+        ref={containerRef}
+        className="overflow-y-auto px-3 py-2 space-y-2"
+        style={{
+          height: '180px',
+          minHeight: '180px',
+          maxHeight: '180px',
+          overflowY: 'auto',
+          overscrollBehavior: 'contain',
+          scrollbarWidth: 'thin',
+          scrollbarColor: 'rgba(99,102,241,0.3) transparent'
+        }}
+      >
+        {chatMessages.length === 0 ? (
+          <div className="flex items-center justify-center gap-2 py-3 opacity-40">
+            <MessageCircle className="w-4 h-4 text-white/30" />
+            <span className="text-[11px] text-white/40 font-bold">كن أول من يبدأ المحادثة!</span>
+          </div>
+        ) : (
+          chatMessages.map((msg, idx) => {
+            const isMe = msg.sender === myName;
+            const isLast4 = idx >= Math.max(0, chatMessages.length - 4);
+            return (
+              <div key={msg.id} className={cn('flex items-end gap-1.5 transition-all duration-300', isMe ? 'flex-row-reverse' : 'flex-row', !isLast4 && 'opacity-50')}>
+                {!isMe && (
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-black shrink-0 shadow-md ring-1 ring-white/10"
+                    style={{backgroundColor: msg.avatarColor}}>
+                    {msg.sender.charAt(0)}
+                  </div>
+                )}
+                <div className={cn('flex flex-col gap-0.5 max-w-[78%]', isMe ? 'items-end' : 'items-start')}>
+                  {!isMe && (
+                    <div className="flex items-center gap-1 px-1">
+                      <span className="text-[9px] font-black text-white/40">{msg.sender}</span>
+                      {msg.isCreator && <span className="text-[8px] font-black bg-amber-500/20 text-amber-400 border border-amber-400/20 px-1 rounded-full">👑</span>}
+                    </div>
+                  )}
+                  <div className={cn('px-3 py-1.5 rounded-2xl text-xs font-bold leading-snug shadow-lg',
+                    isMe ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-br-sm'
+                    : msg.isCreator ? 'text-amber-100 rounded-bl-sm' : 'text-white/85 rounded-bl-sm'
+                  )}
+                  style={!isMe ? {
+                    background: msg.isCreator ? 'linear-gradient(135deg,rgba(245,158,11,0.18),rgba(234,88,12,0.12))' : 'rgba(255,255,255,0.07)',
+                    border: msg.isCreator ? '1px solid rgba(245,158,11,0.25)' : '1px solid rgba(255,255,255,0.08)'
+                  } : {}}>
+                    {msg.text}
+                  </div>
+                  <span className="text-[8px] text-white/20 font-bold px-1">{msg.time}</span>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Input */}
+      <div className="px-3 pb-3 pt-2" style={{borderTop:'1px solid rgba(255,255,255,0.06)'}}>
+        {chatDisabled ? (
+          <div className="flex items-center justify-center gap-2 py-2 rounded-xl bg-rose-500/10 border border-rose-500/20">
+            <Shield className="w-3.5 h-3.5 text-rose-400" />
+            <span className="text-[11px] font-black text-rose-400">الدردشة موقوفة من قِبل المنشئ</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-black shrink-0 shadow-md"
+              style={{backgroundColor: myPlayer?.avatar_color || '#6366f1'}}>
+              {myName.charAt(0)}
+            </div>
+            <input
+              value={chatInput}
+              onChange={e => setChatInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendChat()}
+              placeholder={amCreator ? '👑 أرسل رسالة للمتسابقين...' : 'اكتب رسالتك...'}
+              maxLength={150}
+              className="flex-1 rounded-xl px-3 py-2 text-xs text-white font-bold outline-none transition-all"
+              style={{background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.1)'}}
+              onFocus={e => { e.target.style.border='1px solid rgba(99,102,241,0.5)'; e.target.style.background='rgba(255,255,255,0.1)'; }}
+              onBlur={e => { e.target.style.border='1px solid rgba(255,255,255,0.1)'; e.target.style.background='rgba(255,255,255,0.07)'; }}
+            />
+            <button onClick={handleSendChat} disabled={!chatInput.trim()}
+              className="w-8 h-8 rounded-xl flex items-center justify-center transition-all disabled:opacity-30 disabled:scale-100 hover:scale-105 active:scale-95 shadow-lg"
+              style={{background:'linear-gradient(135deg,#6366f1,#8b5cf6)'}}>
+              <svg className="w-3.5 h-3.5 text-white rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ── Main Component ──────────────────────────────────
 const BattleRoom = () => {
   const { code } = useParams<{ code: string }>();
@@ -273,6 +422,8 @@ const BattleRoom = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [chatDisabled, setChatDisabled] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef2 = useRef<HTMLDivElement>(null);
   const chatChannelRef = useRef<any>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const myPlayerId = useRef<string | null>(null);
@@ -858,7 +1009,7 @@ const BattleRoom = () => {
         if (!prev) setUnreadCount(c => c + 1);
         return prev;
       });
-      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+      setTimeout(() => { const ref = chatContainerRef.current || chatContainerRef2.current; if (ref) { ref.scrollTop = ref.scrollHeight; } }, 50);
     }).on('broadcast', { event: 'chat_control' }, ({ payload }) => {
       setChatDisabled(payload.disabled);
     }).subscribe();
@@ -1333,7 +1484,7 @@ const BattleRoom = () => {
   };
 
   // ── Chat Panel (Inline) ──
-  const renderChatPanel = (amCreator: boolean) => (
+  const renderChatPanel = (amCreator: boolean, msgContainerRef?: React.RefObject<HTMLDivElement>) => (
     <div className="rounded-2xl overflow-hidden shadow-2xl mb-4" style={{background:'linear-gradient(135deg,#0f172a 0%,#1e1b4b 100%)',border:`1px solid ${chatDisabled ? 'rgba(239,68,68,0.3)' : 'rgba(99,102,241,0.25)'}`}}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2.5" style={{background:'rgba(255,255,255,0.04)',borderBottom:'1px solid rgba(255,255,255,0.07)'}}>
@@ -1368,6 +1519,7 @@ const BattleRoom = () => {
 
       {/* Messages - آخر 4 رسائل مع تمرير */}
       <div
+        ref={msgContainerRef || chatContainerRef}
         className="overflow-y-auto px-3 py-2 space-y-2"
         style={{
           height: '180px',
@@ -1710,7 +1862,7 @@ const BattleRoom = () => {
             )}
 
             {/* ── Live Chat ── */}
-            {renderChatPanel(!!isCreator)}
+            {renderChatPanel(!!isCreator, chatContainerRef)}
 
             {/* Creator controls */}
             {isCreator && (
@@ -2370,7 +2522,7 @@ const BattleRoom = () => {
               )}
 
               {/* ── Live Chat in Waiting Room ── */}
-              {isJoined && renderChatPanel(!!myPlayer?.is_creator)}
+              {isJoined && renderChatPanel(!!myPlayer?.is_creator, chatContainerRef2)}
             </div>
           </div>
 
