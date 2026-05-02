@@ -256,12 +256,10 @@ const BattleRoom = () => {
   const phaseAdvanceLockRef = useRef<string | null>(null);
   const REVEAL_SECONDS = 3;
 
-  // ── Multi-exam session state ──
-  const [examNumber, setExamNumber] = useState(1);
-  const [showNextExamPanel, setShowNextExamPanel] = useState(false);
-  const [showFinalSummary, setShowFinalSummary] = useState(false);
-  const [finalSessionData, setFinalSessionData] = useState<any[]>([]);
-  const sessionSavedRef = useRef<Set<string>>(new Set()); // prevent double-save per (room,exam_number)
+  // ── Multi-exam session state (placeholders for upcoming next-exam/final-summary features) ──
+  const [examNumber] = useState(1);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _sessionPlaceholders = { examNumber };
 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
