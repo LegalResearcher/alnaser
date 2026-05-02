@@ -1942,126 +1942,132 @@ const BattleRoom = () => {
     );
   }
 
-  // ── لوحة الاختبار التالي ──
-  const renderNextExamModal = () => !nextExamPanel || !isCreator ? null : (
-    <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/60 backdrop-blur-sm" onClick={() => setNextExamPanel(false)}>
-      <div className="w-full max-w-sm bg-white dark:bg-card rounded-t-3xl p-6 space-y-5 animate-in slide-in-from-bottom-4 duration-300 overflow-y-auto max-h-[90vh]" onClick={e => e.stopPropagation()} dir="rtl">
-        <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto" />
-        <h3 className="font-black text-slate-900 dark:text-white text-center text-base">⚡ الاختبار التالي</h3>
-        <div className="space-y-4">
-          <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">سنة الاختبار</p>
-            <div className="flex gap-2 flex-wrap">
-              {['تجريبية','2020','2021','2022','2023','2024','2025','2026'].map(y => (
-                <button key={y} onClick={() => setNextExamYear(prev => prev === y ? '' : y)}
-                  className={cn('px-3 py-1.5 rounded-xl border-2 text-xs font-black transition-all',
-                    nextExamYear === y ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600' : 'border-slate-200 dark:border-border text-slate-500 hover:border-slate-300')}>
-                  {y}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">نموذج الاختبار</p>
-            <div className="flex gap-2 flex-wrap">
-              {([
-                { id: 'General', label: 'عام' },
-                { id: 'Parallel', label: 'موازي' },
-                { id: 'Mixed', label: 'مختلط' },
-                { id: 'Model_1', label: 'نموذج 1' },
-                { id: 'Model_2', label: 'نموذج 2' },
-                { id: 'Model_3', label: 'نموذج 3' },
-              ] as {id:string,label:string}[]).map(f => (
-                <button key={f.id} onClick={() => setNextExamForm(prev => prev === f.id ? '' : f.id)}
-                  className={cn('px-3 py-1.5 rounded-xl border-2 text-xs font-black transition-all',
-                    nextExamForm === f.id ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600' : 'border-slate-200 dark:border-border text-slate-500 hover:border-slate-300')}>
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">وقت كل سؤال</p>
-            <div className="flex gap-2 flex-wrap">
-              {[{label:'15ث',val:15},{label:'30ث',val:30},{label:'1د',val:60},{label:'2د',val:120},{label:'3د',val:180},{label:'5د',val:300}].map(t => (
-                <button key={t.val} onClick={() => setNextTimePerQuestion(t.val)}
-                  className={cn('px-3 py-1.5 rounded-xl border-2 text-xs font-black transition-all',
-                    nextTimePerQuestion === t.val ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600' : 'border-slate-200 dark:border-border text-slate-500 hover:border-slate-300')}>
-                  {t.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">عدد الأسئلة</p>
-            <div className="flex gap-2 flex-wrap">
-              {[{label:'الكل',val:0},{label:'10',val:10},{label:'20',val:20},{label:'30',val:30},{label:'40',val:40},{label:'50',val:50}].map(n => (
-                <button key={n.val} onClick={() => setNextQuestionsCount(n.val)}
-                  className={cn('px-3 py-1.5 rounded-xl border-2 text-xs font-black transition-all',
-                    nextQuestionsCount === n.val ? 'border-violet-500 bg-violet-50 dark:bg-violet-950/30 text-violet-600' : 'border-slate-200 dark:border-border text-slate-500 hover:border-slate-300')}>
-                  {n.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="space-y-2 pt-1">
-          <button
-            onClick={() => { if (!room) return; const examLabel = [nextExamYear, nextExamForm].filter(Boolean).join(' — ') || `اختبار ${examNumber}`; handleNextExam(examLabel, nextTimePerQuestion, nextExamYear, nextExamForm); }}
-            disabled={nextExamLoading}
-            className="w-full h-12 rounded-2xl font-black text-sm text-white bg-gradient-to-l from-indigo-500 to-violet-600 shadow-lg flex items-center justify-center gap-2 disabled:opacity-70">
-            {nextExamLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-            {nextExamLoading ? 'جارٍ التحضير...' : 'ابدأ الاختبار التالي'}
-          </button>
-          <button onClick={() => setNextExamPanel(false)}
-            className="w-full h-11 rounded-2xl border-2 border-slate-200 dark:border-border font-black text-sm text-slate-500 hover:bg-slate-50 dark:hover:bg-muted transition-all">
-            إلغاء
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
   // ── إشعار الاختبار التالي (يظهر لجميع الاعبين) ──
-  const renderNextExamAlert = () => !showNextExamAlert ? null : (
-    <div className="fixed inset-0 z-[500] flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}>
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="w-[500px] h-[500px] rounded-full opacity-10 animate-ping"
-          style={{ background: 'radial-gradient(circle, #7c3aed, transparent)' }} />
-      </div>
-      <div className="relative w-full max-w-sm rounded-3xl overflow-hidden animate-in zoom-in-95 duration-300"
-        style={{ background: 'linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#1e1b4b 100%)', border: '2px solid rgba(139,92,246,0.6)', boxShadow: '0 0 60px rgba(124,58,237,0.5),0 25px 50px rgba(0,0,0,0.5)' }}>
-        <div className="h-1.5 w-full animate-pulse" style={{ background: 'linear-gradient(90deg,#7c3aed,#06b6d4,#a855f7)' }} />
-        <div className="p-8 text-center space-y-5" dir="rtl">
-          <div className="flex justify-center">
-            <div className="w-20 h-20 rounded-full flex items-center justify-center animate-bounce"
-              style={{ background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', boxShadow: '0 0 40px rgba(124,58,237,0.8)' }}>
-              <Zap className="w-10 h-10 text-white" />
+  function renderNextExamAlert() {
+    if (!showNextExamAlert) return null;
+    return (
+      <div className="fixed inset-0 z-[500] flex items-center justify-center p-4"
+        style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}>
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-[500px] h-[500px] rounded-full opacity-10 animate-ping"
+            style={{ background: 'radial-gradient(circle, #7c3aed, transparent)' }} />
+        </div>
+        <div className="relative w-full max-w-sm rounded-3xl overflow-hidden animate-in zoom-in-95 duration-300"
+          style={{ background: 'linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#1e1b4b 100%)', border: '2px solid rgba(139,92,246,0.6)', boxShadow: '0 0 60px rgba(124,58,237,0.5),0 25px 50px rgba(0,0,0,0.5)' }}>
+          <div className="h-1.5 w-full animate-pulse" style={{ background: 'linear-gradient(90deg,#7c3aed,#06b6d4,#a855f7)' }} />
+          <div className="p-8 text-center space-y-5" dir="rtl">
+            <div className="flex justify-center">
+              <div className="w-20 h-20 rounded-full flex items-center justify-center animate-bounce"
+                style={{ background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', boxShadow: '0 0 40px rgba(124,58,237,0.8)' }}>
+                <Zap className="w-10 h-10 text-white" />
+              </div>
             </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-black text-white tracking-tight" style={{ textShadow: '0 0 20px rgba(139,92,246,0.9)' }}>
+                ⚡ لا تغادر الغرفة!
+              </h2>
+              <p className="text-violet-200 font-bold text-base">سيبدأ اختبار جديد قريباً</p>
+              <p className="text-violet-300/80 text-sm">ابقَ في الصفحة للمشاركة في الجولة القادمة 🚀</p>
+            </div>
+            <div className="flex items-center justify-center gap-2 py-1">
+              {[0,1,2].map(i => (
+                <div key={i} className="w-3 h-3 rounded-full bg-violet-400"
+                  style={{ animation: `bounce 1.2s ease-in-out ${i*0.2}s infinite` }} />
+              ))}
+            </div>
+            <button onClick={() => setShowNextExamAlert(false)}
+              className="w-full py-3 rounded-2xl font-black text-base text-white transition-all active:scale-95"
+              style={{ background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', boxShadow: '0 4px 25px rgba(124,58,237,0.6)' }}>
+              ✅ حسناً، سأبقى!
+            </button>
           </div>
-          <div className="space-y-2">
-            <h2 className="text-2xl font-black text-white tracking-tight" style={{ textShadow: '0 0 20px rgba(139,92,246,0.9)' }}>
-              ⚡ لا تغادر الغرفة!
-            </h2>
-            <p className="text-violet-200 font-bold text-base">سيبدأ اختبار جديد قريباً</p>
-            <p className="text-violet-300/80 text-sm">ابقَ في الصفحة للمشاركة في الجولة القادمة 🚀</p>
-          </div>
-          <div className="flex items-center justify-center gap-2 py-1">
-            {[0,1,2].map(i => (
-              <div key={i} className="w-3 h-3 rounded-full bg-violet-400"
-                style={{ animation: `bounce 1.2s ease-in-out ${i*0.2}s infinite` }} />
-            ))}
-          </div>
-          <button onClick={() => setShowNextExamAlert(false)}
-            className="w-full h-13 py-3 rounded-2xl font-black text-base text-white transition-all active:scale-95"
-            style={{ background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', boxShadow: '0 4px 25px rgba(124,58,237,0.6)' }}>
-            ✅ حسناً، سأبقى!
-          </button>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  // ── لوحة الاختبار التالي ──
+  function renderNextExamModal() {
+    if (!nextExamPanel || !isCreator) return null;
+    return (
+      <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/60 backdrop-blur-sm" onClick={() => setNextExamPanel(false)}>
+        <div className="w-full max-w-sm bg-white dark:bg-card rounded-t-3xl p-6 space-y-5 animate-in slide-in-from-bottom-4 duration-300 overflow-y-auto max-h-[90vh]" onClick={e => e.stopPropagation()} dir="rtl">
+          <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto" />
+          <h3 className="font-black text-slate-900 dark:text-white text-center text-base">⚡ الاختبار التالي</h3>
+          <div className="space-y-4">
+            <div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">سنة الاختبار</p>
+              <div className="flex gap-2 flex-wrap">
+                {['تجريبية','2020','2021','2022','2023','2024','2025','2026'].map(y => (
+                  <button key={y} onClick={() => setNextExamYear(prev => prev === y ? '' : y)}
+                    className={cn('px-3 py-1.5 rounded-xl border-2 text-xs font-black transition-all',
+                      nextExamYear === y ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600' : 'border-slate-200 dark:border-border text-slate-500 hover:border-slate-300')}>
+                    {y}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">نموذج الاختبار</p>
+              <div className="flex gap-2 flex-wrap">
+                {([
+                  { id: 'General', label: 'عام' },
+                  { id: 'Parallel', label: 'موازي' },
+                  { id: 'Mixed', label: 'مختلط' },
+                  { id: 'Model_1', label: 'نموذج 1' },
+                  { id: 'Model_2', label: 'نموذج 2' },
+                  { id: 'Model_3', label: 'نموذج 3' },
+                ] as {id:string,label:string}[]).map(f => (
+                  <button key={f.id} onClick={() => setNextExamForm(prev => prev === f.id ? '' : f.id)}
+                    className={cn('px-3 py-1.5 rounded-xl border-2 text-xs font-black transition-all',
+                      nextExamForm === f.id ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600' : 'border-slate-200 dark:border-border text-slate-500 hover:border-slate-300')}>
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">وقت كل سؤال</p>
+              <div className="flex gap-2 flex-wrap">
+                {[{label:'15ث',val:15},{label:'30ث',val:30},{label:'1د',val:60},{label:'2د',val:120},{label:'3د',val:180},{label:'5د',val:300}].map(t => (
+                  <button key={t.val} onClick={() => setNextTimePerQuestion(t.val)}
+                    className={cn('px-3 py-1.5 rounded-xl border-2 text-xs font-black transition-all',
+                      nextTimePerQuestion === t.val ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600' : 'border-slate-200 dark:border-border text-slate-500 hover:border-slate-300')}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">عدد الأسئلة</p>
+              <div className="flex gap-2 flex-wrap">
+                {[{label:'الكل',val:0},{label:'10',val:10},{label:'20',val:20},{label:'30',val:30},{label:'40',val:40},{label:'50',val:50}].map(n => (
+                  <button key={n.val} onClick={() => setNextQuestionsCount(n.val)}
+                    className={cn('px-3 py-1.5 rounded-xl border-2 text-xs font-black transition-all',
+                      nextQuestionsCount === n.val ? 'border-violet-500 bg-violet-50 dark:bg-violet-950/30 text-violet-600' : 'border-slate-200 dark:border-border text-slate-500 hover:border-slate-300')}>
+                    {n.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="space-y-2 pt-1">
+            <button
+              onClick={() => { if (!room) return; const examLabel = [nextExamYear, nextExamForm].filter(Boolean).join(' — ') || `اختبار ${examNumber}`; handleNextExam(examLabel, nextTimePerQuestion, nextExamYear, nextExamForm); }}
+              disabled={nextExamLoading}
+              className="w-full h-12 rounded-2xl font-black text-sm text-white bg-gradient-to-l from-indigo-500 to-violet-600 shadow-lg flex items-center justify-center gap-2 disabled:opacity-70">
+              {nextExamLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+              {nextExamLoading ? 'جارٍ التحضير...' : 'ابدأ الاختبار التالي'}
+            </button>
+            <button onClick={() => setNextExamPanel(false)}
+              className="w-full h-11 rounded-2xl border-2 border-slate-200 dark:border-border font-black text-sm text-slate-500 hover:bg-slate-50 dark:hover:bg-muted transition-all">
+              إلغاء
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ── RESULTS VIEW ──
   if (examFinished) {
