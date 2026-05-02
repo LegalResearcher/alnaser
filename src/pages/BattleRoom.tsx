@@ -387,15 +387,11 @@ const BattleRoom = () => {
               setExamStarted(true);
               const currentQIndex = data.current_question_index ?? 0;
               setSyncCurrentQ(currentQIndex);
-
-              // ── KEY FIX: Creator must resume driving the sync quiz after refresh ──
-              if (me.is_creator && loadedQs.length > 0 && me.status !== 'finished') {
-                const tpq = data.time_per_question || 60;
-                // Small delay to let channels subscribe
-                setTimeout(() => {
-                  startSyncQuestionWithList(currentQIndex, tpq, loadedQs);
-                }, 1500);
-              }
+              // Engine is server-driven now: just sync from the freshly loaded room.
+              // The realtime UPDATE handler + room ref will keep it ticking.
+              setTimeout(() => {
+                syncFromRoom({ ...data, question_ids: data.question_ids as string[] } as BattleRoom);
+              }, 800);
             } else if (data.status === 'finished') {
               await loadQuestions(data.question_ids as string[]);
               if (me.answers_json && Object.keys(me.answers_json).length > 0) {
