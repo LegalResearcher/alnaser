@@ -301,14 +301,15 @@ const BattleRoom = () => {
       const batch = ids.slice(i, i + BATCH_SIZE);
       const { data } = await supabase
         .from('questions')
-        .select('id, question_text, option_a, option_b, option_c, option_d, correct_option')
+        .select('id, question_text, option_a, option_b, option_c, option_d, correct_option, hint')
         .in('id', batch)
-        .limit(BATCH_SIZE);
+        .range(0, batch.length - 1);
       if (data) allData = [...allData, ...(data as unknown as Question[])];
     }
 
-    // Sort by the original ids order to ensure all players see the same question order
-    const sorted = allData.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+    // Fast O(n) sort using index map (avoids O(n²) indexOf for large arrays)
+    const indexMap = new Map(ids.map((id, i) => [id, i]));
+    const sorted = allData.sort((a, b) => (indexMap.get(a.id) ?? 0) - (indexMap.get(b.id) ?? 0));
     if (sorted.length) setQuestions(sorted);
     return sorted;
   };
