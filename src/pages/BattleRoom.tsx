@@ -603,21 +603,30 @@ const BattleRoom = () => {
       .update({ status: 'playing' })
       .eq('room_id', room.id)
       .eq('status', 'waiting');
-    
-    // Now set room to active - this triggers realtime for all competitors
+
+    // ── Server-driven engine: write the starting phase and let realtime fan it out ──
+    const nowIso = new Date().toISOString();
     await (supabase.from('battle_rooms' as any) as any).update({
-      status: 'active', started_at: new Date().toISOString(), locked: false,
+      status: 'active',
+      started_at: nowIso,
+      locked: false,
+      current_question_index: 0,
+      current_phase: 'question',
+      phase_started_at: nowIso,
     }).eq('id', room.id);
-    
+
     setTimeLeft((room.time_minutes + (room.extra_time_minutes || 0)) * 60);
     setExamStarted(true);
     setStarting(false);
-    
-    // Start sync quiz with minimal delay (just enough for broadcast channel to be ready)
-    const tpq = (room as any)?.time_per_question || 60;
-    setTimeout(() => {
-      startSyncQuestionWithList(0, tpq, loadedQs);
-    }, 800);
+    // Local sync is also driven by the realtime UPDATE handler, but kick it off immediately
+    // so the creator's UI doesn't wait a round-trip to render Q1.
+    syncFromRoom({
+      ...room,
+      status: 'active',
+      current_question_index: 0,
+      current_phase: 'question',
+      phase_started_at: nowIso,
+    });
   };
 
   const handleKickPlayer = async (playerId: string) => {
