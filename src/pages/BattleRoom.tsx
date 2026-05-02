@@ -463,26 +463,52 @@ const BattleRoom = () => {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'battle_rooms', filter: `id=eq.${room.id}` },
         async (payload) => {
           const updated = payload.new as any;
-          const updatedRoom = { ...updated, question_ids: updated.question_ids as string[] };
+          const updatedRoom = { ...updated, question_ids: updated.question_ids as string[] } as BattleRoom;
           setRoom(prev => prev ? { ...prev, ...updatedRoom } : prev);
-          roomRef.current = roomRef.current ? { ...roomRef.current, ...updatedRoom } : null;
+          roomRef.current = roomRef.current ? { ...roomRef.current, ...updatedRoom } : updatedRoom;
 
+          // ── Status: waiting -> active (start of an exam, including subsequent rounds) ──
           if (updated.status === 'active' && !examStartedRef.current) {
-            // ── FIX: Competitors auto-join the exam immediately ──
             const loadedQs = await loadQuestions(updated.question_ids as string[]);
             setTimeLeft((updated.time_minutes + (updated.extra_time_minutes || 0)) * 60);
             setExamStarted(true);
-            
-            // Also update player status to 'playing' if still waiting
+
+            // Promote myself from waiting to playing if needed
             if (myPlayerId.current) {
               await (supabase.from('battle_players' as any) as any)
                 .update({ status: 'playing' })
                 .eq('id', myPlayerId.current)
                 .eq('status', 'waiting');
             }
-
             toast({ title: '🚀 انطلقت المنافسة!' });
+
+            // Kick off the local sync from the freshly loaded room state
+            if (loadedQs.length > 0) {
+              setTimeout(() => syncFromRoom(updatedRoom), 200);
+            }
+          } else if (updated.status === 'active' && examStartedRef.current) {
+            // ── Server-driven engine: any change to phase / question index re-syncs the UI ──
+            syncFromRoom(updatedRoom);
           }
+
+          // ── Round reset: room flipped back to waiting (next exam in same session) ──
+          if (updated.status === 'waiting' && examStartedRef.current && !examFinishedRef.current) {
+            // Creator pressed "Next exam" — soft-reset local exam state without leaving room
+            if (syncTimerRef.current) clearInterval(syncTimerRef.current);
+            setExamStarted(false);
+            setExamFinished(false);
+            setSelectedAnswer(null);
+            setShowFeedback(false);
+            setMyAnswerGiven(false);
+            setSyncCurrentQ(0);
+            setSyncPhase('question');
+            setSyncTimeLeft(0);
+            setAnswers({});
+            answersRef.current = {};
+            setQuestions([]);
+            questionsRef.current = [];
+          }
+
           if (updated.status === 'finished' && !examFinishedRef.current) {
             if (syncTimerRef.current) clearInterval(syncTimerRef.current);
             await handleFinishExam();
