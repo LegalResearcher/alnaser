@@ -244,15 +244,25 @@ const BattleRoom = () => {
   const [examStarted, setExamStarted] = useState(false);
   const [examFinished, setExamFinished] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
-  // ── Sync Quiz State ──
+  // ── Sync Quiz State (server-driven via battle_rooms.phase_started_at) ──
   const [syncCurrentQ, setSyncCurrentQ] = useState(0);
   const [syncPhase, setSyncPhase] = useState<'question' | 'reveal'>('question');
   const [syncTimeLeft, setSyncTimeLeft] = useState(0);
   const [myAnswerGiven, setMyAnswerGiven] = useState(false);
   const syncTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const syncChannelRef = useRef<any>(null);
   const roomRef = useRef<BattleRoom | null>(null);
   const isCreatorRef = useRef(false);
+  // Guard against multiple devices racing to advance phase
+  const phaseAdvanceLockRef = useRef<string | null>(null);
+  const REVEAL_SECONDS = 3;
+
+  // ── Multi-exam session state ──
+  const [examNumber, setExamNumber] = useState(1);
+  const [showNextExamPanel, setShowNextExamPanel] = useState(false);
+  const [showFinalSummary, setShowFinalSummary] = useState(false);
+  const [finalSessionData, setFinalSessionData] = useState<any[]>([]);
+  const sessionSavedRef = useRef<Set<string>>(new Set()); // prevent double-save per (room,exam_number)
+
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [showChat, setShowChat] = useState(false);
