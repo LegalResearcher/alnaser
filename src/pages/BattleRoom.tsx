@@ -265,6 +265,7 @@ const BattleRoom = () => {
   const [nextExamYear, setNextExamYear] = useState<string>('');
   const [nextExamForm, setNextExamForm] = useState<string>('');
   const [nextTimePerQuestion, setNextTimePerQuestion] = useState<number>(60);
+  const [nextQuestionsCount, setNextQuestionsCount] = useState<number>(0);
 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
@@ -765,11 +766,15 @@ const BattleRoom = () => {
         .select('id')
         .eq('subject_id', room.subject_id);
       if (examYear && examYear !== 'تجريبية') query = query.eq('exam_year', parseInt(examYear));
-      if (examYear === 'تجريبية') query = query.is('exam_year', null);
+      else if (examYear === 'تجريبية') query = query.is('exam_year', null);
       if (examForm) query = query.ilike('exam_form', `%${examForm}%`);
       const { data: qData } = await query;
       if (qData && qData.length > 0) {
-        questionIds = qData.map((q: any) => q.id);
+        // خلط عشوائي لضمان عدم تكرار نفس ترتيب الأسئلة
+        const shuffled = [...qData].sort(() => Math.random() - 0.5);
+        // تطبيق حد عدد الأسئلة إذا حُدِّد (0 = كل الأسئلة)
+        const limit = nextQuestionsCount > 0 ? nextQuestionsCount : shuffled.length;
+        questionIds = shuffled.slice(0, limit).map((q: any) => q.id);
       }
     } catch (_) {}
 
@@ -2045,6 +2050,25 @@ const BattleRoom = () => {
                           className={cn('px-3 py-1.5 rounded-xl border-2 text-xs font-black transition-all',
                             nextTimePerQuestion === t.val ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600' : 'border-slate-200 dark:border-border text-slate-500 hover:border-slate-300')}>
                           {t.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* عدد الأسئلة */}
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">عدد الأسئلة</p>
+                    <div className="flex gap-2 flex-wrap">
+                      {[
+                        { label: 'الكل', val: 0 }, { label: '10', val: 10 }, { label: '20', val: 20 },
+                        { label: '30', val: 30 }, { label: '40', val: 40 }, { label: '50', val: 50 },
+                      ].map(n => (
+                        <button key={n.val} onClick={() => setNextQuestionsCount(n.val)}
+                          className={cn('px-3 py-1.5 rounded-xl border-2 text-xs font-black transition-all',
+                            nextQuestionsCount === n.val
+                              ? 'border-violet-500 bg-violet-50 dark:bg-violet-950/30 text-violet-600'
+                              : 'border-slate-200 dark:border-border text-slate-500 hover:border-slate-300')}>
+                          {n.label}
                         </button>
                       ))}
                     </div>
