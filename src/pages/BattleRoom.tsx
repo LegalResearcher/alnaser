@@ -717,6 +717,11 @@ const BattleRoom = () => {
             setQuestions([]);
             questionsRef.current = [];
             setShowFinalSummary(false);
+            // أعِد حفظ SESSION_KEY حتى يتمكن اللاعب من الاستئناف إذا خرج أثناء الانتظار
+            const s = localStorage.getItem(SESSION_KEY);
+            if (!s && myPlayerId.current && myName) {
+              localStorage.setItem(SESSION_KEY, JSON.stringify({ playerId: myPlayerId.current, playerName: myName, isCreator: isCreatorRef.current }));
+            }
           }
 
           if (updated.status === 'finished' && !examFinishedRef.current) {
@@ -1274,7 +1279,7 @@ const BattleRoom = () => {
     // ── FIX: cancel any pending debounced progress write before final save ──
     if (progressDebounceRef.current) clearTimeout(progressDebounceRef.current);
     setExamFinished(true);
-    localStorage.removeItem(SESSION_KEY);
+    // لا نمسح SESSION_KEY — يُحتاج إذا انتقل المنشئ لاختبار تالٍ في نفس الجلسة
 
     const elapsed = (currentRoom.time_minutes + (currentRoom.extra_time_minutes || 0)) * 60 - timeLeft;
     const usedAnswers = finalAnswers || answersRef.current;
