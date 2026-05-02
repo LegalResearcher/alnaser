@@ -1727,6 +1727,79 @@ const BattleRoom = () => {
     );
   }
 
+  // ── لوحة الاختبار التالي ──
+  const renderNextExamModal = () => !nextExamPanel || !isCreator ? null : (
+    <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/60 backdrop-blur-sm" onClick={() => setNextExamPanel(false)}>
+      <div className="w-full max-w-sm bg-white dark:bg-card rounded-t-3xl p-6 space-y-5 animate-in slide-in-from-bottom-4 duration-300 overflow-y-auto max-h-[90vh]" onClick={e => e.stopPropagation()} dir="rtl">
+        <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto" />
+        <h3 className="font-black text-slate-900 dark:text-white text-center text-base">⚡ الاختبار التالي</h3>
+        <div className="space-y-4">
+          <div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">سنة الاختبار</p>
+            <div className="flex gap-2 flex-wrap">
+              {['تجريبية','2020','2021','2022','2023','2024','2025','2026'].map(y => (
+                <button key={y} onClick={() => setNextExamYear(prev => prev === y ? '' : y)}
+                  className={cn('px-3 py-1.5 rounded-xl border-2 text-xs font-black transition-all',
+                    nextExamYear === y ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600' : 'border-slate-200 dark:border-border text-slate-500 hover:border-slate-300')}>
+                  {y}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">نموذج الاختبار</p>
+            <div className="flex gap-2 flex-wrap">
+              {['عام','موازي','مختلط','نموذج 1','نموذج 2','نموذج 3'].map(f => (
+                <button key={f} onClick={() => setNextExamForm(prev => prev === f ? '' : f)}
+                  className={cn('px-3 py-1.5 rounded-xl border-2 text-xs font-black transition-all',
+                    nextExamForm === f ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600' : 'border-slate-200 dark:border-border text-slate-500 hover:border-slate-300')}>
+                  {f}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">وقت كل سؤال</p>
+            <div className="flex gap-2 flex-wrap">
+              {[{label:'15ث',val:15},{label:'30ث',val:30},{label:'1د',val:60},{label:'2د',val:120},{label:'3د',val:180},{label:'5د',val:300}].map(t => (
+                <button key={t.val} onClick={() => setNextTimePerQuestion(t.val)}
+                  className={cn('px-3 py-1.5 rounded-xl border-2 text-xs font-black transition-all',
+                    nextTimePerQuestion === t.val ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600' : 'border-slate-200 dark:border-border text-slate-500 hover:border-slate-300')}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">عدد الأسئلة</p>
+            <div className="flex gap-2 flex-wrap">
+              {[{label:'الكل',val:0},{label:'10',val:10},{label:'20',val:20},{label:'30',val:30},{label:'40',val:40},{label:'50',val:50}].map(n => (
+                <button key={n.val} onClick={() => setNextQuestionsCount(n.val)}
+                  className={cn('px-3 py-1.5 rounded-xl border-2 text-xs font-black transition-all',
+                    nextQuestionsCount === n.val ? 'border-violet-500 bg-violet-50 dark:bg-violet-950/30 text-violet-600' : 'border-slate-200 dark:border-border text-slate-500 hover:border-slate-300')}>
+                  {n.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="space-y-2 pt-1">
+          <button
+            onClick={() => { if (!room) return; const examLabel = [nextExamYear, nextExamForm].filter(Boolean).join(' — ') || `اختبار ${examNumber}`; handleNextExam(examLabel, nextTimePerQuestion, nextExamYear, nextExamForm); }}
+            disabled={nextExamLoading}
+            className="w-full h-12 rounded-2xl font-black text-sm text-white bg-gradient-to-l from-indigo-500 to-violet-600 shadow-lg flex items-center justify-center gap-2 disabled:opacity-70">
+            {nextExamLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+            {nextExamLoading ? 'جارٍ التحضير...' : 'ابدأ الاختبار التالي'}
+          </button>
+          <button onClick={() => setNextExamPanel(false)}
+            className="w-full h-11 rounded-2xl border-2 border-slate-200 dark:border-border font-black text-sm text-slate-500 hover:bg-slate-50 dark:hover:bg-muted transition-all">
+            إلغاء
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   // ── RESULTS VIEW ──
   if (examFinished) {
     const me = sortedPlayers.find(p => p.id === myPlayerId.current);
@@ -2022,105 +2095,11 @@ const BattleRoom = () => {
             </div>
           </div>
 
+          {renderNextExamModal()}
         </section>
       </MainLayout>
     );
   }
-
-
-  {/* ── لوحة الاختبار التالي (Modal - عالمي يظهر فوق أي شاشة) ── */}
-  {nextExamPanel && isCreator && (
-    <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/60 backdrop-blur-sm" onClick={() => setNextExamPanel(false)}>
-      <div className="w-full max-w-sm bg-white dark:bg-card rounded-t-3xl p-6 space-y-5 animate-in slide-in-from-bottom-4 duration-300 overflow-y-auto max-h-[90vh]" onClick={e => e.stopPropagation()} dir="rtl">
-        <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto" />
-        <h3 className="font-black text-slate-900 dark:text-white text-center text-base">⚡ الاختبار التالي</h3>
-
-        <div className="space-y-4">
-          {/* سنة الاختبار */}
-          <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">سنة الاختبار</p>
-            <div className="flex gap-2 flex-wrap">
-              {['تجريبية', '2020', '2021', '2022', '2023', '2024', '2025', '2026'].map(y => (
-                <button key={y} onClick={() => setNextExamYear(prev => prev === y ? '' : y)}
-                  className={cn('px-3 py-1.5 rounded-xl border-2 text-xs font-black transition-all',
-                    nextExamYear === y ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600' : 'border-slate-200 dark:border-border text-slate-500 hover:border-slate-300')}>
-                  {y}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* نموذج الاختبار */}
-          <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">نموذج الاختبار</p>
-            <div className="flex gap-2 flex-wrap">
-              {['عام', 'موازي', 'مختلط', 'نموذج 1', 'نموذج 2', 'نموذج 3'].map(f => (
-                <button key={f} onClick={() => setNextExamForm(prev => prev === f ? '' : f)}
-                  className={cn('px-3 py-1.5 rounded-xl border-2 text-xs font-black transition-all',
-                    nextExamForm === f ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600' : 'border-slate-200 dark:border-border text-slate-500 hover:border-slate-300')}>
-                  {f}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* وقت كل سؤال */}
-          <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">وقت كل سؤال</p>
-            <div className="flex gap-2 flex-wrap">
-              {[
-                { label: '15ث', val: 15 }, { label: '30ث', val: 30 }, { label: '1د', val: 60 },
-                { label: '2د', val: 120 }, { label: '3د', val: 180 }, { label: '5د', val: 300 },
-              ].map(t => (
-                <button key={t.val} onClick={() => setNextTimePerQuestion(t.val)}
-                  className={cn('px-3 py-1.5 rounded-xl border-2 text-xs font-black transition-all',
-                    nextTimePerQuestion === t.val ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600' : 'border-slate-200 dark:border-border text-slate-500 hover:border-slate-300')}>
-                  {t.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* عدد الأسئلة */}
-          <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">عدد الأسئلة</p>
-            <div className="flex gap-2 flex-wrap">
-              {[
-                { label: 'الكل', val: 0 }, { label: '10', val: 10 }, { label: '20', val: 20 },
-                { label: '30', val: 30 }, { label: '40', val: 40 }, { label: '50', val: 50 },
-              ].map(n => (
-                <button key={n.val} onClick={() => setNextQuestionsCount(n.val)}
-                  className={cn('px-3 py-1.5 rounded-xl border-2 text-xs font-black transition-all',
-                    nextQuestionsCount === n.val
-                      ? 'border-violet-500 bg-violet-50 dark:bg-violet-950/30 text-violet-600'
-                      : 'border-slate-200 dark:border-border text-slate-500 hover:border-slate-300')}>
-                  {n.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-2 pt-1">
-          <button
-            onClick={() => {
-              if (!room) return;
-              const examLabel = [nextExamYear, nextExamForm].filter(Boolean).join(' — ') || `اختبار ${examNumber}`;
-              handleNextExam(examLabel, nextTimePerQuestion, nextExamYear, nextExamForm);
-            }}
-            disabled={nextExamLoading}
-            className="w-full h-12 rounded-2xl font-black text-sm text-white bg-gradient-to-l from-indigo-500 to-violet-600 shadow-lg flex items-center justify-center gap-2 disabled:opacity-70">
-            {nextExamLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-            {nextExamLoading ? 'جارٍ التحضير...' : 'ابدأ الاختبار التالي'}
-          </button>
-          <button onClick={() => setNextExamPanel(false)}
-            className="w-full h-11 rounded-2xl border-2 border-slate-200 dark:border-border font-black text-sm text-slate-500 hover:bg-slate-50 dark:hover:bg-muted transition-all">
-            إلغاء
-          </button>
-        </div>
-      </div>
-    </div>
-  )}
 
   // ── FINAL SESSION SUMMARY VIEW ──
   if (showFinalSummary && sessionResults.length > 0) {
