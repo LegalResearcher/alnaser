@@ -780,14 +780,52 @@ const BattleRoom = () => {
     if (players.filter(p => !p.kicked).length >= room.max_players) {
       toast({ title: '⚠️ الغرفة ممتلئة!', variant: 'destructive' }); return;
     }
-    if (players.some(p => p.player_name === name && !p.kicked)) {
-      toast({ title: '⚠️ هذا الاسم مستخدم بالفعل', variant: 'destructive' }); return;
-    }
-    
 
     setJoining(true);
-    const avatarColor = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
     const isLateJoin = room.status === 'active';
+
+    // ── تحقق من DB مباشرة: هل اللاعب موجود مسبقاً بنفس الاسم؟ (عاد بعد خروج) ──
+    const { data: existingPlayers } = await (supabase.from('battle_players' as any) as any)
+      .select('*')
+      .eq('room_id', room.id)
+      .eq('player_name', name)
+      .eq('kicked', false)
+      .eq('is_creator', false)
+      .maybeSingle();
+    const existingPlayer = existingPlayers as BattlePlayer | null;
+
+    if (existingPlayer) {
+      // إعادة ربط بدون إنشاء سجل جديد — تُحافظ على الدرجات الحقيقية من DB
+      myPlayerId.current = existingPlayer.id;
+      setMyPlayer(existingPlayer);
+      setMyName(name);
+      setIsJoined(true);
+      setShowWelcome(true);
+      localStorage.setItem('alnaseer_student_name', name);
+      localStorage.setItem(SESSION_KEY, JSON.stringify({ playerId: existingPlayer.id, playerName: name }));
+      if (isLateJoin || existingPlayer.status === 'playing') {
+        const loadedQs = await loadQuestions(room.question_ids);
+        if (existingPlayer.answers_json && Object.keys(existingPlayer.answers_json).length > 0) {
+          setAnswers(existingPlayer.answers_json as Record<string, string>);
+          answersRef.current = existingPlayer.answers_json as Record<string, string>;
+        }
+        setTimeLeft((room.time_minutes + (room.extra_time_minutes || 0)) * 60);
+        setExamStarted(true);
+        if (loadedQs.length) {
+          setTimeout(() => syncFromRoom(room, existingPlayer.answers_json as Record<string, string>), 800);
+          toast({ title: 'مرحباً مجدداً ' + name + ' 👋', description: 'تم استئناف جلستك' });
+        }
+      }
+      setJoining(false);
+      return;
+    }
+
+    // ── لاعب جديد كلياً ──
+    if (players.some(p => p.player_name === name && !p.kicked)) {
+      toast({ title: '⚠️ هذا الاسم مستخدم بالفعل', variant: 'destructive' });
+      setJoining(false); return;
+    }
+    const avatarColor = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
     const { data } = await (supabase.from('battle_players' as any) as any).insert({
       room_id: room.id, player_name: name, is_creator: false,
       status: isLateJoin ? 'playing' : 'waiting',
@@ -801,18 +839,13 @@ const BattleRoom = () => {
       setIsJoined(true);
       setShowWelcome(true);
       localStorage.setItem('alnaseer_student_name', name);
-      // ── حفظ جلسة غرفة المنافسة لاستئنافها عند العودة ──
       localStorage.setItem(SESSION_KEY, JSON.stringify({ playerId: data.id, playerName: name }));
-
-      // Late joiner: load questions and start exam from current synced question
       if (isLateJoin) {
         const loadedQs = await loadQuestions(room.question_ids);
         setTimeLeft((room.time_minutes + (room.extra_time_minutes || 0)) * 60);
         setExamStarted(true);
         if (loadedQs.length) {
-          // syncCurrentQ is already being updated via the realtime broadcast channel
-          // The late joiner will automatically see the current question from the sync channel
-          toast({ title: '⚡ انضممت للمنافسة الجارية!', description: `ستبدأ من السؤال الحالي` });
+          toast({ title: '⚡ انضممت للمنافسة الجارية!', description: 'ستبدأ من السؤال الحالي' });
         }
       }
     }
