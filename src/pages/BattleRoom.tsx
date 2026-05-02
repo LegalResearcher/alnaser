@@ -330,7 +330,7 @@ const BattleRoom = () => {
       if (data) allData = [...allData, ...(data as unknown as Question[])];
     }
 
-    // Fast O(n) sort using index map (avoids O(n²) indexOf for large arrays)
+    // حفظ الترتيب كما جاء في ids (مهم للخلط العشوائي)
     const indexMap = new Map(ids.map((id, i) => [id, i]));
     const sorted = allData.sort((a, b) => (indexMap.get(a.id) ?? 0) - (indexMap.get(b.id) ?? 0));
     if (sorted.length) setQuestions(sorted);
@@ -546,7 +546,7 @@ const BattleRoom = () => {
 
           // ── Round reset: room flipped back to waiting (next exam in same session) ──
           // يعمل سواء كان الاختبار منتهياً أو لا — المنشئ طلب جولة جديدة
-          if (updated.status === 'waiting' && examStartedRef.current) {
+          if (updated.status === 'waiting' && (examStartedRef.current || examFinishedRef.current)) {
             if (syncTimerRef.current) clearInterval(syncTimerRef.current);
             // تحديث الـ refs مباشرة قبل setState لتجنب stale closure
             examStartedRef.current = false;
@@ -672,9 +672,16 @@ const BattleRoom = () => {
   const handleStartRoom = async () => {
     if (!room) return;
     setStarting(true);
-    
-    // Load questions first before updating room status
-    const loadedQs = await loadQuestions(room.question_ids);
+
+    // ── جلب question_ids الحديثة من DB مباشرة (يضمن الأسئلة الجديدة بعد handleNextExam) ──
+    const { data: freshRoomData } = await (supabase.from('battle_rooms' as any) as any)
+      .select('question_ids, time_minutes, extra_time_minutes')
+      .eq('id', room.id)
+      .single();
+    const freshQuestionIds: string[] = freshRoomData?.question_ids ?? room.question_ids;
+
+    // Load questions using fresh IDs
+    const loadedQs = await loadQuestions(freshQuestionIds);
     if (!loadedQs.length) {
       toast({ title: '⚠️ لم يتم تحميل الأسئلة', variant: 'destructive' });
       setStarting(false);
@@ -760,7 +767,7 @@ const BattleRoom = () => {
     setNextExamLoading(true);
 
     // 1. جلب أسئلة جديدة من DB حسب المادة والسنة والنموذج
-    let questionIds = room.question_ids; // افتراضي: نفس الأسئلة
+    let questionIds: string[] = [];
     try {
       let query = (supabase.from('questions') as any)
         .select('id')
@@ -770,13 +777,26 @@ const BattleRoom = () => {
       if (examForm) query = query.ilike('exam_form', `%${examForm}%`);
       const { data: qData } = await query;
       if (qData && qData.length > 0) {
-        // خلط عشوائي لضمان عدم تكرار نفس ترتيب الأسئلة
-        const shuffled = [...qData].sort(() => Math.random() - 0.5);
-        // تطبيق حد عدد الأسئلة إذا حُدِّد (0 = كل الأسئلة)
-        const limit = nextQuestionsCount > 0 ? nextQuestionsCount : shuffled.length;
-        questionIds = shuffled.slice(0, limit).map((q: any) => q.id);
+        // خلط Fisher-Yates الحقيقي
+        const arr = [...qData];
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        const limit = nextQuestionsCount > 0 ? nextQuestionsCount : arr.length;
+        questionIds = arr.slice(0, limit).map((q: any) => q.id);
       }
     } catch (_) {}
+    // إذا فشل الجلب — خلط الأسئلة الحالية على الأقل
+    if (questionIds.length === 0) {
+      const arr = [...room.question_ids];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      const limit = nextQuestionsCount > 0 ? nextQuestionsCount : arr.length;
+      questionIds = arr.slice(0, limit);
+    }
 
     // 2. احفظ نتائج الاختبار المنتهي
     await saveSessionResults(examLabel);
@@ -1988,7 +2008,7 @@ const BattleRoom = () => {
                     <ChevronLeft className="w-4 h-4" /> خروج من الغرفة
                   </button>
                   <button
-                    onClick={() => setNextExamPanel(true)}
+                    onClick={() => { setNextExamPanel(true); setNextExamYear(''); setNextExamForm(''); setNextQuestionsCount(0); }}
                     className="w-full h-14 rounded-2xl font-black text-base flex items-center justify-center gap-2 text-white shadow-lg shadow-indigo-200/50 bg-gradient-to-l from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 transition-all">
                     <Zap className="w-5 h-5" /> اختبار تالٍ بدون خروج 🚀
                   </button>
