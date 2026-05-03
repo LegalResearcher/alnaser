@@ -174,20 +174,30 @@ const BattleCreate = () => {
 
     setCreating(true);
     try {
-      let query = supabase.from('questions').select('id')
-        .eq('subject_id', selectedSubject).eq('status', 'active');
-      if (selectedExamYear === 'trial') {
-        query = query.is('exam_year', null);
-        if (selectedTrialForm !== 'all') query = query.eq('exam_form', selectedTrialForm);
-      } else if (selectedExamYear !== 'all' && selectedExamYear) {
-        query = query.not('exam_year', 'is', null);
-        query = query.eq('exam_year', parseInt(selectedExamYear));
-        if (selectedExamForm && selectedExamForm !== 'Mixed') query = query.eq('exam_form', selectedExamForm);
+      // ── Pagination: جلب كل الأسئلة بدون التأثر بالحد الافتراضي للـ PostgREST ──
+      const PAGE_SIZE = 1000;
+      let allRows: { id: string }[] = [];
+      let from = 0;
+      while (true) {
+        let query = supabase.from('questions').select('id')
+          .eq('subject_id', selectedSubject).eq('status', 'active');
+        if (selectedExamYear === 'trial') {
+          query = query.is('exam_year', null);
+          if (selectedTrialForm !== 'all') query = query.eq('exam_form', selectedTrialForm);
+        } else if (selectedExamYear !== 'all' && selectedExamYear) {
+          query = query.not('exam_year', 'is', null);
+          query = query.eq('exam_year', parseInt(selectedExamYear));
+          if (selectedExamForm && selectedExamForm !== 'Mixed') query = query.eq('exam_form', selectedExamForm);
+        }
+        // 'all' → no extra filters
+        const { data: pageData } = await query.range(from, from + PAGE_SIZE - 1);
+        if (!pageData || pageData.length === 0) break;
+        allRows = [...allRows, ...(pageData as any[])];
+        if (pageData.length < PAGE_SIZE) break;
+        from += PAGE_SIZE;
       }
-      // 'all' → no extra filters
 
-      const { data: questions } = await query;
-      const shuffled = (questions || []).sort(() => Math.random() - 0.5).slice(0, questionsCount);
+      const shuffled = allRows.sort(() => Math.random() - 0.5).slice(0, questionsCount);
       const questionIds = shuffled.map((q: any) => q.id);
 
       const code = generateCode();

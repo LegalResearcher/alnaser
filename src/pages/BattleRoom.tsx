@@ -416,6 +416,7 @@ const BattleRoom = () => {
   const [nextTimePerQuestion, setNextTimePerQuestion] = useState<number>(60);
   const [nextQuestionsCount, setNextQuestionsCount] = useState<number>(0);
   const [showNextExamAlert, setShowNextExamAlert] = useState(false);
+  const lastNextExamAlertRef = useRef<string | null>(null);
 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
@@ -499,6 +500,8 @@ const BattleRoom = () => {
         const r = { ...data, question_ids: data.question_ids as string[] } as BattleRoom;
         setRoom(r);
         roomRef.current = r;
+        // تهيئة ref الإشعار حتى لا يُعرض الإشعار القديم تلقائياً عند الدخول
+        lastNextExamAlertRef.current = (data as any).next_exam_alert_at ?? null;
         const { data: pData } = await (supabase.from('battle_players' as any) as any)
           .select('*').eq('room_id', data.id).order('percentage', { ascending: false });
         if (pData) setPlayers(pData);
@@ -674,8 +677,11 @@ const BattleRoom = () => {
           setRoom(prev => prev ? { ...prev, ...updatedRoom } : prev);
           roomRef.current = roomRef.current ? { ...roomRef.current, ...updatedRoom } : updatedRoom;
 
-          // ── تنبيه "الاختبار التالي" يصل لجميع اللاعبين (انتظار/اختبار/نتائج) ──
-          if (updated.next_exam_alert_at && updated.next_exam_alert_at !== prevRow?.next_exam_alert_at) {
+          // ── تنبيه "الاختبار التالي" — يُعرض مرة واحدة لكل قيمة جديدة ──
+          // ملاحظة: payload.old في postgres_changes لا يحتوي إلا على المفتاح الأساسي،
+          // لذا نعتمد على ref محلي لتتبع آخر قيمة معروفة بدل prevRow.
+          if (updated.next_exam_alert_at && updated.next_exam_alert_at !== lastNextExamAlertRef.current) {
+            lastNextExamAlertRef.current = updated.next_exam_alert_at;
             setShowNextExamAlert(true);
           }
 
