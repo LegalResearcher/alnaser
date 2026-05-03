@@ -1,0 +1,1 @@
+ALTER TABLE public.battle_rooms ADD COLUMN IF NOT EXISTS next_exam_alert_at timestamptz;

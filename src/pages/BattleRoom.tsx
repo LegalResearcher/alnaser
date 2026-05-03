@@ -669,9 +669,15 @@ const BattleRoom = () => {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'battle_rooms', filter: `id=eq.${room.id}` },
         async (payload) => {
           const updated = payload.new as any;
+          const prevRow = payload.old as any;
           const updatedRoom = { ...updated, question_ids: updated.question_ids as string[] } as BattleRoom;
           setRoom(prev => prev ? { ...prev, ...updatedRoom } : prev);
           roomRef.current = roomRef.current ? { ...roomRef.current, ...updatedRoom } : updatedRoom;
+
+          // ── تنبيه "الاختبار التالي" يصل لجميع اللاعبين (انتظار/اختبار/نتائج) ──
+          if (updated.next_exam_alert_at && updated.next_exam_alert_at !== prevRow?.next_exam_alert_at) {
+            setShowNextExamAlert(true);
+          }
 
           // ── Status: waiting -> active (start of an exam, including subsequent rounds) ──
           if (updated.status === 'active' && !examStartedRef.current) {
@@ -1207,10 +1213,13 @@ const BattleRoom = () => {
     chatChannelRef.current.send({ type: 'broadcast', event: 'chat_control', payload: { disabled: newDisabled } });
   };
 
-  const sendNextExamAlert = () => {
-    if (!chatChannelRef.current) return;
-    chatChannelRef.current.send({ type: 'broadcast', event: 'next_exam_alert', payload: {} });
-    setShowNextExamAlert(true); // المنشئ يراه أيضاً
+  const sendNextExamAlert = async () => {
+    if (!room?.id) return;
+    // ── يُكتب في الـ DB ليصل لجميع اللاعبين عبر postgres_changes الموجود أصلاً ──
+    await (supabase.from('battle_rooms' as any) as any)
+      .update({ next_exam_alert_at: new Date().toISOString() })
+      .eq('id', room.id);
+    setShowNextExamAlert(true); // المنشئ يراه فوراً
   };
 
 

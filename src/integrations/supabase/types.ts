@@ -209,6 +209,7 @@ export type Database = {
           is_private: boolean | null
           locked: boolean | null
           max_players: number
+          next_exam_alert_at: string | null
           password: string | null
           phase_started_at: string | null
           question_ids: Json
@@ -242,6 +243,7 @@ export type Database = {
           is_private?: boolean | null
           locked?: boolean | null
           max_players?: number
+          next_exam_alert_at?: string | null
           password?: string | null
           phase_started_at?: string | null
           question_ids?: Json
@@ -275,6 +277,7 @@ export type Database = {
           is_private?: boolean | null
           locked?: boolean | null
           max_players?: number
+          next_exam_alert_at?: string | null
           password?: string | null
           phase_started_at?: string | null
           question_ids?: Json
