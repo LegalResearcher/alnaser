@@ -1207,10 +1207,13 @@ const BattleRoom = () => {
     chatChannelRef.current.send({ type: 'broadcast', event: 'chat_control', payload: { disabled: newDisabled } });
   };
 
-  const sendNextExamAlert = () => {
-    if (!chatChannelRef.current) return;
-    chatChannelRef.current.send({ type: 'broadcast', event: 'next_exam_alert', payload: {} });
-    setShowNextExamAlert(true); // المنشئ يراه أيضاً
+  const sendNextExamAlert = async () => {
+    if (!room?.id) return;
+    // ── يُكتب في الـ DB ليصل لجميع اللاعبين عبر postgres_changes الموجود أصلاً ──
+    await (supabase.from('battle_rooms' as any) as any)
+      .update({ next_exam_alert_at: new Date().toISOString() })
+      .eq('id', room.id);
+    setShowNextExamAlert(true); // المنشئ يراه فوراً
   };
 
 
