@@ -416,6 +416,7 @@ const BattleRoom = () => {
   const [nextTimePerQuestion, setNextTimePerQuestion] = useState<number>(60);
   const [nextQuestionsCount, setNextQuestionsCount] = useState<number>(0);
   const [showNextExamAlert, setShowNextExamAlert] = useState(false);
+  const lastNextExamAlertRef = useRef<string | null>(null);
 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
