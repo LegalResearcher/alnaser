@@ -1175,7 +1175,7 @@ const BattleRoom = () => {
         : phaseDuration;
       if (elapsed < phaseDuration - 0.5) return;
 
-      const totalQs = Math.max(questionsRef.current.length, r.questions_count ?? 0);
+      const totalQs = r.questions_count ?? questionsRef.current.length;
       if (expectedPhase === 'question') {
         // question -> reveal
         await (supabase.from('battle_rooms' as any) as any)
