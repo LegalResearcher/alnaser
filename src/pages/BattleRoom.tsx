@@ -669,9 +669,15 @@ const BattleRoom = () => {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'battle_rooms', filter: `id=eq.${room.id}` },
         async (payload) => {
           const updated = payload.new as any;
+          const prevRow = payload.old as any;
           const updatedRoom = { ...updated, question_ids: updated.question_ids as string[] } as BattleRoom;
           setRoom(prev => prev ? { ...prev, ...updatedRoom } : prev);
           roomRef.current = roomRef.current ? { ...roomRef.current, ...updatedRoom } : updatedRoom;
+
+          // ── تنبيه "الاختبار التالي" يصل لجميع اللاعبين (انتظار/اختبار/نتائج) ──
+          if (updated.next_exam_alert_at && updated.next_exam_alert_at !== prevRow?.next_exam_alert_at) {
+            setShowNextExamAlert(true);
+          }
 
           // ── Status: waiting -> active (start of an exam, including subsequent rounds) ──
           if (updated.status === 'active' && !examStartedRef.current) {
