@@ -72,7 +72,7 @@ const BattleCreate = () => {
 
   const { data: levels = [] } = useQuery({
     queryKey: ['levels'],
-    queryFn: async () => (await supabase.from('levels').select('*').order('order_index')).data || [],
+    queryFn: async () => (await supabase.from('levels').select('*').eq('is_disabled', false).order('order_index')).data || [],
   });
 
   const { data: subjects = [] } = useQuery({
