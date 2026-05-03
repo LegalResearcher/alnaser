@@ -675,8 +675,11 @@ const BattleRoom = () => {
           setRoom(prev => prev ? { ...prev, ...updatedRoom } : prev);
           roomRef.current = roomRef.current ? { ...roomRef.current, ...updatedRoom } : updatedRoom;
 
-          // ── تنبيه "الاختبار التالي" يصل لجميع اللاعبين (انتظار/اختبار/نتائج) ──
-          if (updated.next_exam_alert_at && updated.next_exam_alert_at !== prevRow?.next_exam_alert_at) {
+          // ── تنبيه "الاختبار التالي" — يُعرض مرة واحدة لكل قيمة جديدة ──
+          // ملاحظة: payload.old في postgres_changes لا يحتوي إلا على المفتاح الأساسي،
+          // لذا نعتمد على ref محلي لتتبع آخر قيمة معروفة بدل prevRow.
+          if (updated.next_exam_alert_at && updated.next_exam_alert_at !== lastNextExamAlertRef.current) {
+            lastNextExamAlertRef.current = updated.next_exam_alert_at;
             setShowNextExamAlert(true);
           }
 
