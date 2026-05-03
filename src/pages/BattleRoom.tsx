@@ -966,14 +966,24 @@ const BattleRoom = () => {
     // 1. جلب أسئلة جديدة من DB حسب المادة والسنة والنموذج
     let questionIds: string[] = [];
     try {
-      let query = (supabase.from('questions') as any)
-        .select('id')
-        .eq('subject_id', room.subject_id);
-      if (examYear && examYear !== 'تجريبية') query = query.eq('exam_year', parseInt(examYear));
-      else if (examYear === 'تجريبية') query = query.is('exam_year', null);
-      // مطابقة تامة للنموذج بالـ ID المخزن في DB
-      if (examForm) query = query.eq('exam_form', examForm);
-      const { data: qData } = await query;
+      let allIds: string[] = [];
+      const PAGE_SIZE = 1000;
+      let from = 0;
+      while (true) {
+        let query = (supabase.from('questions') as any)
+          .select('id')
+          .eq('subject_id', room.subject_id)
+          .range(from, from + PAGE_SIZE - 1);
+        if (examYear && examYear !== 'تجريبية') query = query.eq('exam_year', parseInt(examYear));
+        else if (examYear === 'تجريبية') query = query.is('exam_year', null);
+        if (examForm) query = query.eq('exam_form', examForm);
+        const { data: pageData } = await query;
+        if (!pageData || pageData.length === 0) break;
+        allIds = [...allIds, ...pageData.map((q: any) => q.id)];
+        if (pageData.length < PAGE_SIZE) break;
+        from += PAGE_SIZE;
+      }
+      const qData = allIds.map(id => ({ id }));
       if (qData && qData.length > 0) {
         // خلط Fisher-Yates الحقيقي
         const arr = [...qData];
