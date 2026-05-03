@@ -500,6 +500,8 @@ const BattleRoom = () => {
         const r = { ...data, question_ids: data.question_ids as string[] } as BattleRoom;
         setRoom(r);
         roomRef.current = r;
+        // تهيئة ref الإشعار حتى لا يُعرض الإشعار القديم تلقائياً عند الدخول
+        lastNextExamAlertRef.current = (data as any).next_exam_alert_at ?? null;
         const { data: pData } = await (supabase.from('battle_players' as any) as any)
           .select('*').eq('room_id', data.id).order('percentage', { ascending: false });
         if (pData) setPlayers(pData);
