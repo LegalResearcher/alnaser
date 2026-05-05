@@ -470,21 +470,44 @@ const BattleRoom = () => {
   }, [room?.id]);
 
   const loadQuestions = async (ids: string[]) => {
-    const BATCH_SIZE = 50; // Supabase default row limit is often 50 — نجلب batch صغير لضمان كل الأسئلة
+    if (!ids || ids.length === 0) return [];
+    const BATCH_SIZE = 50;
     let allData: Question[] = [];
 
     for (let i = 0; i < ids.length; i += BATCH_SIZE) {
       const batch = ids.slice(i, i + BATCH_SIZE);
-      const { data } = await supabase
-        .from('questions')
-        .select('id, question_text, option_a, option_b, option_c, option_d, correct_option, hint')
-        .in('id', batch); // بدون .range() — نجلب كل ما يطابق الـ ids
-      if (data) allData = [...allData, ...(data as unknown as Question[])];
+      let batchData: Question[] | null = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const { data, error } = await supabase
+          .from('questions')
+          .select('id, question_text, option_a, option_b, option_c, option_d, correct_option, hint')
+          .in('id', batch)
+          .limit(batch.length);
+        if (!error && data) { batchData = data as unknown as Question[]; break; }
+        if (attempt < 2) await new Promise(r => setTimeout(r, 500));
+      }
+      if (batchData) allData = [...allData, ...batchData];
     }
 
-    // حفظ الترتيب كما جاء في ids (مهم للخلط العشوائي)
     const indexMap = new Map(ids.map((id, i) => [id, i]));
-    const sorted = allData.sort((a, b) => (indexMap.get(a.id) ?? 0) - (indexMap.get(b.id) ?? 0));
+    let sorted = allData.sort((a, b) => (indexMap.get(a.id) ?? 0) - (indexMap.get(b.id) ?? 0));
+
+    // إعادة محاولة لأي IDs ناقصة
+    if (sorted.length < ids.length) {
+      const fetchedIds = new Set(sorted.map(q => q.id));
+      const missingIds = ids.filter(id => !fetchedIds.has(id));
+      for (let i = 0; i < missingIds.length; i += BATCH_SIZE) {
+        const batch = missingIds.slice(i, i + BATCH_SIZE);
+        const { data } = await supabase
+          .from('questions')
+          .select('id, question_text, option_a, option_b, option_c, option_d, correct_option, hint')
+          .in('id', batch)
+          .limit(batch.length);
+        if (data) allData = [...allData, ...(data as unknown as Question[])];
+      }
+      sorted = allData.sort((a, b) => (indexMap.get(a.id) ?? 0) - (indexMap.get(b.id) ?? 0));
+    }
+
     if (sorted.length) setQuestions(sorted);
     return sorted;
   };
@@ -687,7 +710,13 @@ const BattleRoom = () => {
 
           // ── Status: waiting -> active (start of an exam, including subsequent rounds) ──
           if (updated.status === 'active' && !examStartedRef.current) {
-            const loadedQs = await loadQuestions(updated.question_ids as string[]);
+            // جلب question_ids من DB مباشرة لتفادي اقتطاع Realtime payload للمصفوفات الكبيرة
+            const { data: freshRoom } = await (supabase.from('battle_rooms' as any) as any)
+              .select('question_ids')
+              .eq('id', updated.id)
+              .single();
+            const freshIds: string[] = freshRoom?.question_ids ?? updated.question_ids ?? [];
+            const loadedQs = await loadQuestions(freshIds);
             setTimeLeft((updated.time_minutes + (updated.extra_time_minutes || 0)) * 60);
             setExamStarted(true);
 
@@ -1161,7 +1190,7 @@ const BattleRoom = () => {
     try {
       // Re-check from DB right before writing (defends against very late wakeups)
       const { data: check } = await (supabase.from('battle_rooms' as any) as any)
-        .select('current_phase, current_question_index, status, phase_started_at, time_per_question')
+        .select('current_phase, current_question_index, status, phase_started_at, time_per_question, questions_count')
         .eq('id', r.id)
         .single();
       if (!check || check.status !== 'active') return;
@@ -1175,7 +1204,8 @@ const BattleRoom = () => {
         : phaseDuration;
       if (elapsed < phaseDuration - 0.5) return;
 
-      const totalQs = r.questions_count ?? questionsRef.current.length;
+      // ── questions_count من DB مباشرة — المصدر الوحيد الموثوق دائماً ──
+      const totalQs = check.questions_count ?? r.questions_count ?? questionsRef.current.length;
       if (expectedPhase === 'question') {
         // question -> reveal
         await (supabase.from('battle_rooms' as any) as any)
@@ -1263,13 +1293,15 @@ const BattleRoom = () => {
     progressDebounceRef.current = setTimeout(async () => {
       if (!myPlayerId.current || !roomRef.current) return;
       const currentRoom = roomRef.current;
-      const pct = currentRoom.questions_count > 0 ? (correct / currentRoom.questions_count) * 100 : 0;
-      const progress = (answered / currentRoom.questions_count) * 100;
+      const qCount = currentRoom.questions_count > 0 ? currentRoom.questions_count : (questionsRef.current.length || 1);
+      const pct = (correct / qCount) * 100;
+      const progress = (answered / qCount) * 100;
       // ── دائماً احفظ answers_json لضمان استئناف صحيح عند العودة في أي وقت ──
+      // ── لا تضع status='finished' هنا — tryAdvancePhase هي المسؤولة الوحيدة ──
       await (supabase.from('battle_players' as any) as any).update({
         correct_count: correct, total_answered: answered,
         score: correct, percentage: pct, progress,
-        status: answered >= currentRoom.questions_count ? 'finished' : 'playing',
+        status: 'playing',
         answers_json: answersJson,
       }).eq('id', myPlayerId.current);
     }, 300);
