@@ -471,7 +471,8 @@ const BattleRoom = () => {
 
   const loadQuestions = async (ids: string[]) => {
     if (!ids || ids.length === 0) return [];
-    const BATCH_SIZE = 200;
+    // ── BATCH_SIZE = 50: يُجنّب تجاوز حد طول URL في PostgREST عند .in('id', batch) لمنع فشل الدفعات بصمت ──
+    const BATCH_SIZE = 50;
     let allData: Question[] = [];
 
     for (let i = 0; i < ids.length; i += BATCH_SIZE) {
@@ -2018,11 +2019,18 @@ const BattleRoom = () => {
               </div>
             </div>
             <div className="space-y-2">
-              <h2 className="text-2xl font-black text-white tracking-tight" style={{ textShadow: '0 0 20px rgba(139,92,246,0.9)' }}>
-                ⚡ لا تغادر الغرفة!
+              <h2 className="text-xl font-black text-white tracking-tight" style={{ textShadow: '0 0 20px rgba(139,92,246,0.9)' }}>
+                ⚡ التحدي لم ينتهِ بعد
               </h2>
-              <p className="text-violet-200 font-bold text-base">سيبدأ اختبار جديد قريباً</p>
-              <p className="text-violet-300/80 text-sm">ابقَ في الصفحة للمشاركة في الجولة القادمة 🚀</p>
+              <p className="text-violet-100 font-bold text-sm leading-relaxed">
+                أداؤك كان استثنائياً، لكن التحدي لم ينتهِ بعد.
+              </p>
+              <p className="text-violet-200/90 text-xs leading-relaxed">
+                خذ نفساً عميقاً، فالقادم يتطلب تركيزاً أعلى..
+              </p>
+              <p className="text-cyan-300 font-black text-sm pt-1">
+                استعد، الاختبار التالي سيبدأ بعد ثوانٍ ليختبر حدود قدراتك! 🚀
+              </p>
             </div>
             <div className="flex items-center justify-center gap-2 py-1">
               {[0,1,2].map(i => (
