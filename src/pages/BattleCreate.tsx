@@ -197,8 +197,11 @@ const BattleCreate = () => {
         from += PAGE_SIZE;
       }
 
-      const shuffled = allRows.sort(() => Math.random() - 0.5).slice(0, questionsCount);
-      const questionIds = shuffled.map((q: any) => q.id);
+      const shuffled = allRows.sort(() => Math.random() - 0.5);
+      const finalQuestionsCount = selectedExamYear === 'all'
+        ? shuffled.length
+        : Math.min(questionsCount, shuffled.length);
+      const questionIds = shuffled.slice(0, finalQuestionsCount).map((q: any) => q.id);
 
       const code = generateCode();
       const avatarColor = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
@@ -221,7 +224,7 @@ const BattleCreate = () => {
         creator_name: creatorName.trim(),
         status: 'waiting',
         max_players: maxPlayers,
-        questions_count: questionsCount,
+        questions_count: questionIds.length,
         time_minutes: timeMinutes,
         question_ids: questionIds,
         is_private: finalIsPrivate,
