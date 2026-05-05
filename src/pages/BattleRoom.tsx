@@ -471,7 +471,7 @@ const BattleRoom = () => {
 
   const loadQuestions = async (ids: string[]) => {
     if (!ids || ids.length === 0) return [];
-    const BATCH_SIZE = 50;
+    const BATCH_SIZE = 200;
     let allData: Question[] = [];
 
     for (let i = 0; i < ids.length; i += BATCH_SIZE) {
@@ -481,8 +481,7 @@ const BattleRoom = () => {
         const { data, error } = await supabase
           .from('questions')
           .select('id, question_text, option_a, option_b, option_c, option_d, correct_option, hint')
-          .in('id', batch)
-          .limit(batch.length);
+          .in('id', batch);
         if (!error && data) { batchData = data as unknown as Question[]; break; }
         if (attempt < 2) await new Promise(r => setTimeout(r, 500));
       }
@@ -501,8 +500,7 @@ const BattleRoom = () => {
         const { data } = await supabase
           .from('questions')
           .select('id, question_text, option_a, option_b, option_c, option_d, correct_option, hint')
-          .in('id', batch)
-          .limit(batch.length);
+          .in('id', batch);
         if (data) allData = [...allData, ...(data as unknown as Question[])];
       }
       sorted = allData.sort((a, b) => (indexMap.get(a.id) ?? 0) - (indexMap.get(b.id) ?? 0));
