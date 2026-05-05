@@ -2019,11 +2019,18 @@ const BattleRoom = () => {
               </div>
             </div>
             <div className="space-y-2">
-              <h2 className="text-2xl font-black text-white tracking-tight" style={{ textShadow: '0 0 20px rgba(139,92,246,0.9)' }}>
-                ⚡ لا تغادر الغرفة!
+              <h2 className="text-xl font-black text-white tracking-tight" style={{ textShadow: '0 0 20px rgba(139,92,246,0.9)' }}>
+                ⚡ التحدي لم ينتهِ بعد
               </h2>
-              <p className="text-violet-200 font-bold text-base">سيبدأ اختبار جديد قريباً</p>
-              <p className="text-violet-300/80 text-sm">ابقَ في الصفحة للمشاركة في الجولة القادمة 🚀</p>
+              <p className="text-violet-100 font-bold text-sm leading-relaxed">
+                أداؤك كان استثنائياً، لكن التحدي لم ينتهِ بعد.
+              </p>
+              <p className="text-violet-200/90 text-xs leading-relaxed">
+                خذ نفساً عميقاً، فالقادم يتطلب تركيزاً أعلى..
+              </p>
+              <p className="text-cyan-300 font-black text-sm pt-1">
+                استعد، الاختبار التالي سيبدأ بعد ثوانٍ ليختبر حدود قدراتك! 🚀
+              </p>
             </div>
             <div className="flex items-center justify-center gap-2 py-1">
               {[0,1,2].map(i => (
