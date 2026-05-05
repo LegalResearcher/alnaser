@@ -471,7 +471,8 @@ const BattleRoom = () => {
 
   const loadQuestions = async (ids: string[]) => {
     if (!ids || ids.length === 0) return [];
-    const BATCH_SIZE = 200;
+    // ── BATCH_SIZE = 50: يُجنّب تجاوز حد طول URL في PostgREST عند .in('id', batch) لمنع فشل الدفعات بصمت ──
+    const BATCH_SIZE = 50;
     let allData: Question[] = [];
 
     for (let i = 0; i < ids.length; i += BATCH_SIZE) {
