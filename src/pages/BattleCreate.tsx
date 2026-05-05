@@ -131,6 +131,7 @@ const BattleCreate = () => {
   });
 
   const maxQ = availableCount;
+  const effectiveQuestionsCount = selectedExamYear === 'all' ? availableCount : questionsCount;
 
   // عند تغيير الفلاتر: اضبط عدد الأسئلة تلقائياً ليكون كل الأسئلة المتاحة
   useEffect(() => {
@@ -280,7 +281,7 @@ const BattleCreate = () => {
 
 📚 المادة: ${subjectNameStr}
 🎓 المستوى: ${levelNameStr}${yearStr}${formStr}
-❓ الأسئلة: ${questionsCount} سؤال
+❓ الأسئلة: ${effectiveQuestionsCount} سؤال
 👨‍🏫 المنشئ: ${creatorName}
 
 🔥 هل أنت مستعد للمنافسة؟ انضم الآن!
@@ -540,9 +541,11 @@ const BattleCreate = () => {
               <div className="space-y-3 p-4 bg-slate-50 dark:bg-muted rounded-[1.25rem] border border-slate-100 dark:border-border">
                 <div className="flex items-center justify-between">
                   <Label className="text-[11px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest">عدد الأسئلة</Label>
-                  <span className="text-primary font-black text-sm bg-primary/10 px-3 py-1 rounded-xl">{questionsCount} سؤال</span>
+                  <span className="text-primary font-black text-sm bg-primary/10 px-3 py-1 rounded-xl">
+                    {selectedExamYear === 'all' ? `${availableCount} سؤال (الكل)` : `${questionsCount} سؤال`}
+                  </span>
                 </div>
-                <Slider value={[questionsCount]} onValueChange={([v]) => setQuestionsCount(v)} min={5} max={Math.max(maxQ, 5)} step={5} disabled={!selectedSubject} className="py-1" />
+                <Slider value={[effectiveQuestionsCount]} onValueChange={([v]) => setQuestionsCount(v)} min={5} max={Math.max(maxQ, 5)} step={5} disabled={!selectedSubject || selectedExamYear === 'all'} className="py-1" />
               </div>
 
               {/* وقت السؤال */}
