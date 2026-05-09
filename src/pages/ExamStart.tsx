@@ -271,6 +271,7 @@ const ExamStart = () => {
   const [showReviewPasswordModal, setShowReviewPasswordModal] = useState(false);
   const [reviewPassword, setReviewPassword] = useState('');
   const [reviewPasswordError, setReviewPasswordError] = useState(false);
+  const [reviewPasswordErrorMsg, setReviewPasswordErrorMsg] = useState('');
   const [reviewPasswordLoading, setReviewPasswordLoading] = useState(false);
   const newQsDismissKey = subjectId ? `new_qs_dismissed_${subjectId}` : null;
 
