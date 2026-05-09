@@ -8,7 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Level, Subject } from '@/types/database';
+import { Level, Subject, ReviewPassword } from '@/types/database';
+import { Badge } from '@/components/ui/badge';
+import { KeyRound, RefreshCw } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -425,7 +427,14 @@ const AdminSubjects = () => {
                   />
                 </div>
 
-                {/* ── رفع ملف الملخص ── */}
+                {/* ── كلمات مرور اختبار+ المراجعة ── */}
+                {editingSubject && (
+                  <div className="col-span-1 sm:col-span-2">
+                    <ReviewPasswordsSection subjectId={editingSubject.id} />
+                  </div>
+                )}
+
+
                 <div className="space-y-3 col-span-1 sm:col-span-2 p-4 rounded-xl border-2 border-dashed border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20">
                   <Label className="flex items-center gap-2 text-sm font-black">
                     <FileText className="w-4 h-4 text-emerald-600" /> ملخص المادة (ملف HTML)
@@ -593,6 +602,186 @@ const AdminSubjects = () => {
         </AlertDialogContent>
       </AlertDialog>
     </AdminLayout>
+  );
+};
+
+
+const ReviewPasswordsSection = ({ subjectId }: { subjectId: string }) => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [newLabel, setNewLabel] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+
+  const { data: passwords = [], isLoading } = useQuery({
+    queryKey: ['review_passwords', subjectId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('review_passwords')
+        .select('*')
+        .eq('subject_id', subjectId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []) as ReviewPassword[];
+    },
+  });
+
+  const isExpired = (p: ReviewPassword) =>
+    !p.is_active || (p.expires_at && new Date(p.expires_at) < new Date());
+
+  const addMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await (supabase as any).from('review_passwords').insert({
+        subject_id: subjectId,
+        password: newPassword.trim(),
+        label: newLabel.trim() || null,
+        is_active: true,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['review_passwords', subjectId] });
+      setNewLabel(''); setNewPassword('');
+      toast({ title: 'تمت إضافة كلمة المرور' });
+    },
+    onError: (e: any) => toast({ title: 'حدث خطأ', description: e?.message, variant: 'destructive' }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any).from('review_passwords').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['review_passwords', subjectId] });
+      toast({ title: 'تم الحذف' });
+    },
+  });
+
+  const renewMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any).from('review_passwords').update({
+        first_used_at: null,
+        expires_at: null,
+        device_fingerprint: null,
+        is_active: true,
+      }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['review_passwords', subjectId] });
+      toast({ title: 'تم تجديد كلمة المرور' });
+    },
+  });
+
+  const handleAdd = () => {
+    if (!newPassword.trim()) {
+      toast({ title: 'أدخل كلمة المرور', variant: 'destructive' });
+      return;
+    }
+    addMutation.mutate();
+  };
+
+  return (
+    <div className="space-y-4 p-4 rounded-xl border-2 border-dashed border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20">
+      <div className="flex items-center gap-2">
+        <KeyRound className="w-4 h-4 text-emerald-600" />
+        <h3 className="font-black text-sm">كلمات مرور اختبار+ المراجعة</h3>
+      </div>
+
+      {/* نموذج الإضافة */}
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
+        <Input
+          placeholder="اسم الطالب (label)"
+          value={newLabel}
+          onChange={(e) => setNewLabel(e.target.value)}
+          className="bg-background"
+        />
+        <Input
+          placeholder="كلمة المرور"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          className="bg-background"
+        />
+        <Button
+          type="button"
+          onClick={handleAdd}
+          disabled={addMutation.isPending}
+          className="gradient-primary text-primary-foreground border-0"
+        >
+          <Plus className="w-4 h-4" /> إضافة
+        </Button>
+      </div>
+
+      {/* الجدول */}
+      {isLoading ? (
+        <Skeleton className="h-24 rounded-lg" />
+      ) : passwords.length === 0 ? (
+        <p className="text-xs text-muted-foreground text-center py-4">لا توجد كلمات مرور</p>
+      ) : (
+        <div className="rounded-lg border overflow-x-auto bg-background">
+          <table className="w-full text-xs sm:text-sm">
+            <thead className="bg-muted/50">
+              <tr className="text-right">
+                <th className="p-2 font-bold">الاسم</th>
+                <th className="p-2 font-bold">كلمة المرور</th>
+                <th className="p-2 font-bold">الحالة</th>
+                <th className="p-2 font-bold hidden sm:table-cell">التاريخ</th>
+                <th className="p-2 font-bold">إجراءات</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {passwords.map((p) => {
+                const expired = isExpired(p);
+                return (
+                  <tr key={p.id} className={expired ? 'text-muted-foreground bg-muted/20' : ''}>
+                    <td className="p-2">{p.label || '—'}</td>
+                    <td className="p-2 font-mono">{p.password}</td>
+                    <td className="p-2">
+                      {expired ? (
+                        <Badge variant="secondary" className="bg-muted text-muted-foreground">منتهية</Badge>
+                      ) : (
+                        <Badge className="bg-emerald-500 hover:bg-emerald-500 text-white">نشطة</Badge>
+                      )}
+                    </td>
+                    <td className="p-2 hidden sm:table-cell whitespace-nowrap">
+                      {new Date(p.created_at).toLocaleDateString('ar')}
+                    </td>
+                    <td className="p-2">
+                      <div className="flex items-center gap-1">
+                        {expired && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-emerald-600"
+                            onClick={() => renewMutation.mutate(p.id)}
+                            disabled={renewMutation.isPending}
+                            title="تجديد"
+                          >
+                            <RefreshCw className="w-4 h-4" />
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive"
+                          onClick={() => deleteMutation.mutate(p.id)}
+                          disabled={deleteMutation.isPending}
+                          title="حذف"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 };
 

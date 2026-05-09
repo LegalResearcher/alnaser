@@ -912,6 +912,50 @@ export type Database = {
           },
         ]
       }
+      review_passwords: {
+        Row: {
+          created_at: string | null
+          device_fingerprint: string | null
+          expires_at: string | null
+          first_used_at: string | null
+          id: string
+          is_active: boolean | null
+          label: string | null
+          password: string
+          subject_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          device_fingerprint?: string | null
+          expires_at?: string | null
+          first_used_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          label?: string | null
+          password: string
+          subject_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          device_fingerprint?: string | null
+          expires_at?: string | null
+          first_used_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          label?: string | null
+          password?: string
+          subject_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_passwords_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_analytics: {
         Row: {
           created_at: string

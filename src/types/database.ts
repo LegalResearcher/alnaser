@@ -89,5 +89,17 @@ export interface SiteAnalytics {
   created_at: string;
 }
 
+export interface ReviewPassword {
+  id: string;
+  subject_id: string;
+  password: string;
+  label: string | null;
+  device_fingerprint: string | null;
+  first_used_at: string | null;
+  expires_at: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
 export const EXAM_YEARS = [2020, 2021, 2022, 2023, 2024, 2025, 2026] as const;
 export type ExamYear = typeof EXAM_YEARS[number];
