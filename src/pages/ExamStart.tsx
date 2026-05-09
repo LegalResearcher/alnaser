@@ -851,7 +851,8 @@ const ExamStart = () => {
               </button>
 
               {/* ── زر اختبار+ المراجعة ── */}
-              {subject?.password && (
+              {/* الزر يظهر دائماً */}
+              {true && (
                 <button
                   onClick={handleOpenReviewModal}
                   disabled={!studentName.trim() || !selectedYear || questionCount === 0}
