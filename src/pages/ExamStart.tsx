@@ -267,6 +267,11 @@ const ExamStart = () => {
   const [showResumeDialog, setShowResumeDialog] = useState(false);
   const [showNewQsNotif,   setShowNewQsNotif]   = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
+  // ── وضع المراجعة ──
+  const [showReviewPasswordModal, setShowReviewPasswordModal] = useState(false);
+  const [reviewPassword, setReviewPassword] = useState('');
+  const [reviewPasswordError, setReviewPasswordError] = useState(false);
+  const [reviewPasswordLoading, setReviewPasswordLoading] = useState(false);
   const newQsDismissKey = subjectId ? `new_qs_dismissed_${subjectId}` : null;
 
   useEffect(() => {
@@ -463,6 +468,52 @@ const ExamStart = () => {
         forcedQuestionIds: wrongQuestions, isWrongReview: true,
       },
     });
+  };
+
+  // ── فتح نافذة كلمة مرور المراجعة ──
+  const handleOpenReviewModal = () => {
+    if (!studentName.trim()) { toast({ title: 'تنبيه', description: 'يرجى إدخال اسمك الكامل أولاً', variant: 'destructive' }); return; }
+    if (!selectedYear) { toast({ title: 'تنبيه', description: 'يرجى اختيار نموذج سنة الاختبار', variant: 'destructive' }); return; }
+    setReviewPassword('');
+    setReviewPasswordError(false);
+    setShowReviewPasswordModal(true);
+  };
+
+  // ── التحقق من كلمة المرور وبدء اختبار المراجعة ──
+  const handleConfirmReviewPassword = async () => {
+    if (!reviewPassword.trim()) { setReviewPasswordError(true); return; }
+    setReviewPasswordLoading(true);
+    setReviewPasswordError(false);
+    try {
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('password')
+        .eq('id', subjectId)
+        .single();
+      if (error || !data?.password) { setReviewPasswordError(true); setReviewPasswordLoading(false); return; }
+      if (reviewPassword !== data.password) { setReviewPasswordError(true); setReviewPasswordLoading(false); return; }
+      setShowReviewPasswordModal(false);
+      const baseState = {
+        studentName,
+        examYear: (selectedYear === 'trial' || selectedYear === 'all') ? 0 : parseInt(selectedYear),
+        examForm: selectedYear === 'trial'
+          ? (selectedTrialForm !== 'all' ? selectedTrialForm : 'Trial')
+          : selectedYear === 'all' ? 'All' : selectedExamForm,
+        examTime,
+        questionsCount: questionCount,
+        subjectName: subject?.name,
+        levelName: subject?.levels?.name,
+        isTrial: selectedYear === 'trial',
+        allQuestions: selectedYear === 'all',
+        trialFormFilter: selectedYear === 'trial' ? selectedTrialForm : null,
+        reviewMode: true,
+      };
+      navigate(`/exam/${subjectId}/start`, { state: baseState });
+    } catch {
+      setReviewPasswordError(true);
+    } finally {
+      setReviewPasswordLoading(false);
+    }
   };
 
   if (isLoading && !subject) return (
@@ -799,6 +850,37 @@ const ExamStart = () => {
                 </div>
               </button>
 
+              {/* ── زر اختبار+ المراجعة ── */}
+              {subject?.password && (
+                <button
+                  onClick={handleOpenReviewModal}
+                  disabled={!studentName.trim() || !selectedYear || questionCount === 0}
+                  className="relative w-full h-14 rounded-[1.25rem] font-black text-sm overflow-hidden transition-all duration-300 hover:-translate-y-1 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 group"
+                  style={{
+                    background: 'linear-gradient(135deg, #065f46 0%, #047857 50%, #059669 100%)',
+                    boxShadow: '0 6px 28px rgba(5,150,105,0.45), 0 0 0 1px rgba(255,255,255,0.08) inset',
+                  }}
+                >
+                  {/* توهج داخلي عند hover */}
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                    style={{ background: 'linear-gradient(135deg, #047857, #10b981)' }} />
+                  {/* بريق متحرك */}
+                  <div className="absolute inset-0 -skew-x-12 translate-x-[-150%] group-hover:translate-x-[250%] transition-transform duration-700"
+                    style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent)', width: '50%' }} />
+                  {/* حدود لامعة */}
+                  <div className="absolute inset-0 rounded-[1.25rem]" style={{ boxShadow: '0 0 0 1.5px rgba(52,211,153,0.5) inset' }} />
+                  <div className="relative z-10 flex items-center justify-center gap-2.5 text-white">
+                    <div className="w-7 h-7 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+                      <BookOpen className="w-4 h-4" />
+                    </div>
+                    <span style={{ textShadow: '0 1px 8px rgba(0,0,0,0.3)' }}>اختبار+ المراجعة</span>
+                    <div className="w-6 h-6 rounded-lg bg-emerald-300/20 flex items-center justify-center shrink-0">
+                      <Lock className="w-3.5 h-3.5 text-emerald-200" />
+                    </div>
+                  </div>
+                </button>
+              )}
+
               {/* ── زر إنشاء غرفة تحدي جماعي ── */}
               <button
                 onClick={() => {
@@ -861,6 +943,82 @@ const ExamStart = () => {
           </div>
         </div>
       </section>
+
+      {/* ── مودال كلمة مرور اختبار+ المراجعة ── */}
+      {showReviewPasswordModal && (
+        <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center"
+          onClick={(e) => e.target === e.currentTarget && setShowReviewPasswordModal(false)}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+            onClick={() => setShowReviewPasswordModal(false)} />
+          <div className="relative w-full sm:max-w-sm bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-2xl animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-300 overflow-hidden">
+            {/* شريط علوي أخضر */}
+            <div className="h-1.5 w-full bg-gradient-to-l from-emerald-400 via-teal-500 to-emerald-600" />
+            <div className="p-6 space-y-5">
+              {/* رأس */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/40 dark:to-teal-900/40 flex items-center justify-center">
+                    <BookOpen className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-slate-800 dark:text-slate-100 text-base">اختبار+ المراجعة</h3>
+                    <p className="text-[11px] text-slate-400 font-semibold">أدخل كلمة المرور للمتابعة</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowReviewPasswordModal(false)}
+                  className="w-9 h-9 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors">
+                  <X className="w-4 h-4 text-slate-500" />
+                </button>
+              </div>
+
+              {/* وصف */}
+              <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl p-3.5 border border-emerald-100 dark:border-emerald-800/40">
+                <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 text-right leading-relaxed" dir="rtl">
+                  في هذا الوضع ستظهر لك <span className="font-black">التلميحات والشرح المفصل</span> بعد كل إجابة — صحيحة كانت أم خاطئة.
+                </p>
+              </div>
+
+              {/* حقل كلمة المرور */}
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-500 uppercase tracking-wider">كلمة المرور</label>
+                <input
+                  type="password"
+                  value={reviewPassword}
+                  onChange={(e) => { setReviewPassword(e.target.value); setReviewPasswordError(false); }}
+                  onKeyDown={(e) => e.key === 'Enter' && handleConfirmReviewPassword()}
+                  placeholder="● ● ● ● ● ●"
+                  autoFocus
+                  className={cn(
+                    "w-full h-13 rounded-2xl border-2 bg-slate-50 dark:bg-slate-800 text-center font-black tracking-[0.4em] text-lg focus:outline-none transition-all",
+                    reviewPasswordError
+                      ? "border-red-400 focus:border-red-500 bg-red-50 dark:bg-red-950/20 text-red-600"
+                      : "border-slate-200 dark:border-slate-700 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900/30"
+                  )}
+                  dir="ltr"
+                />
+                {reviewPasswordError && (
+                  <p className="text-xs font-black text-red-500 text-center animate-in fade-in duration-200">
+                    ❌ كلمة المرور غير صحيحة
+                  </p>
+                )}
+              </div>
+
+              {/* زر التأكيد */}
+              <button
+                onClick={handleConfirmReviewPassword}
+                disabled={reviewPasswordLoading || !reviewPassword.trim()}
+                className="w-full h-13 rounded-2xl font-black text-sm text-white transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                style={{ background: 'linear-gradient(135deg, #065f46, #059669)', boxShadow: '0 6px 20px rgba(5,150,105,0.4)' }}
+              >
+                {reviewPasswordLoading
+                  ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  : <><ShieldCheck className="w-4 h-4" /> دخول وضع المراجعة</>
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* حوار استئناف الاختبار */}
       <AlertDialog open={showResumeDialog} onOpenChange={setShowResumeDialog}>
