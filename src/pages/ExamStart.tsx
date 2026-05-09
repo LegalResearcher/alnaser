@@ -470,47 +470,114 @@ const ExamStart = () => {
     });
   };
 
-  // ── فتح نافذة كلمة مرور المراجعة ──
-  const handleOpenReviewModal = () => {
+  // ── توليد بصمة الجهاز ──
+  const getDeviceFingerprint = () => {
+    try {
+      return btoa(unescape(encodeURIComponent([
+        navigator.userAgent,
+        screen.width + 'x' + screen.height,
+        Intl.DateTimeFormat().resolvedOptions().timeZone,
+      ].join('|'))));
+    } catch {
+      return [navigator.userAgent, screen.width + 'x' + screen.height].join('|');
+    }
+  };
+
+  // ── بناء state للدخول إلى وضع المراجعة ──
+  const buildReviewState = () => ({
+    studentName,
+    examYear: (selectedYear === 'trial' || selectedYear === 'all') ? 0 : parseInt(selectedYear),
+    examForm: selectedYear === 'trial'
+      ? (selectedTrialForm !== 'all' ? selectedTrialForm : 'Trial')
+      : selectedYear === 'all' ? 'All' : selectedExamForm,
+    examTime,
+    questionsCount: questionCount,
+    subjectName: subject?.name,
+    levelName: subject?.levels?.name,
+    isTrial: selectedYear === 'trial',
+    allQuestions: selectedYear === 'all',
+    trialFormFilter: selectedYear === 'trial' ? selectedTrialForm : null,
+    reviewMode: true,
+  });
+
+  // ── فتح نافذة كلمة مرور المراجعة (أو دخول مباشر إن لم توجد كلمات) ──
+  const handleOpenReviewModal = async () => {
     if (!studentName.trim()) { toast({ title: 'تنبيه', description: 'يرجى إدخال اسمك الكامل أولاً', variant: 'destructive' }); return; }
     if (!selectedYear) { toast({ title: 'تنبيه', description: 'يرجى اختيار نموذج سنة الاختبار', variant: 'destructive' }); return; }
+
+    // تحقق إن كانت توجد أي كلمات مرور نشطة لهذه المادة
+    const { data: activeList } = await (supabase as any)
+      .from('review_passwords')
+      .select('id')
+      .eq('subject_id', subjectId)
+      .eq('is_active', true)
+      .limit(1);
+
+    if (!activeList || activeList.length === 0) {
+      // لا توجد كلمات مرور → دخول مباشر
+      navigate(`/exam/${subjectId}/start`, { state: buildReviewState() });
+      return;
+    }
+
     setReviewPassword('');
     setReviewPasswordError(false);
+    setReviewPasswordErrorMsg('');
     setShowReviewPasswordModal(true);
   };
 
   // ── التحقق من كلمة المرور وبدء اختبار المراجعة ──
   const handleConfirmReviewPassword = async () => {
-    if (!reviewPassword.trim()) { setReviewPasswordError(true); return; }
+    if (!reviewPassword.trim()) { setReviewPasswordError(true); setReviewPasswordErrorMsg('كلمة المرور غير صحيحة'); return; }
     setReviewPasswordLoading(true);
     setReviewPasswordError(false);
+    setReviewPasswordErrorMsg('');
     try {
-      const { data, error } = await supabase
-        .from('subjects')
-        .select('password')
-        .eq('id', subjectId)
-        .single();
-      if (error || !data?.password) { setReviewPasswordError(true); setReviewPasswordLoading(false); return; }
-      if (reviewPassword !== data.password) { setReviewPasswordError(true); setReviewPasswordLoading(false); return; }
+      const { data: match } = await (supabase as any)
+        .from('review_passwords')
+        .select('*')
+        .eq('subject_id', subjectId)
+        .eq('password', reviewPassword.trim())
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (!match) {
+        setReviewPasswordError(true);
+        setReviewPasswordErrorMsg('كلمة المرور غير صحيحة');
+        setReviewPasswordLoading(false);
+        return;
+      }
+
+      const fingerprint = getDeviceFingerprint();
+
+      if (match.device_fingerprint && match.device_fingerprint !== fingerprint) {
+        setReviewPasswordError(true);
+        setReviewPasswordErrorMsg('هذه الكلمة مستخدمة على جهاز آخر');
+        setReviewPasswordLoading(false);
+        return;
+      }
+
+      if (match.expires_at && new Date(match.expires_at) < new Date()) {
+        setReviewPasswordError(true);
+        setReviewPasswordErrorMsg('انتهت صلاحية كلمة المرور، تواصل مع الإدارة');
+        setReviewPasswordLoading(false);
+        return;
+      }
+
+      if (!match.first_used_at) {
+        const expiresAt = new Date();
+        expiresAt.setMonth(expiresAt.getMonth() + 1);
+        await (supabase as any).from('review_passwords').update({
+          device_fingerprint: fingerprint,
+          first_used_at: new Date().toISOString(),
+          expires_at: expiresAt.toISOString(),
+        }).eq('id', match.id);
+      }
+
       setShowReviewPasswordModal(false);
-      const baseState = {
-        studentName,
-        examYear: (selectedYear === 'trial' || selectedYear === 'all') ? 0 : parseInt(selectedYear),
-        examForm: selectedYear === 'trial'
-          ? (selectedTrialForm !== 'all' ? selectedTrialForm : 'Trial')
-          : selectedYear === 'all' ? 'All' : selectedExamForm,
-        examTime,
-        questionsCount: questionCount,
-        subjectName: subject?.name,
-        levelName: subject?.levels?.name,
-        isTrial: selectedYear === 'trial',
-        allQuestions: selectedYear === 'all',
-        trialFormFilter: selectedYear === 'trial' ? selectedTrialForm : null,
-        reviewMode: true,
-      };
-      navigate(`/exam/${subjectId}/start`, { state: baseState });
+      navigate(`/exam/${subjectId}/start`, { state: buildReviewState() });
     } catch {
       setReviewPasswordError(true);
+      setReviewPasswordErrorMsg('حدث خطأ، حاول مرة أخرى');
     } finally {
       setReviewPasswordLoading(false);
     }
