@@ -1067,7 +1067,7 @@ const ExamStart = () => {
                 />
                 {reviewPasswordError && (
                   <p className="text-xs font-black text-red-500 text-center animate-in fade-in duration-200">
-                    ❌ كلمة المرور غير صحيحة
+                    ❌ {reviewPasswordErrorMsg || 'كلمة المرور غير صحيحة'}
                   </p>
                 )}
               </div>
