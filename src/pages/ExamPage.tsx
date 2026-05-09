@@ -1005,7 +1005,7 @@ const ExamPage = () => {
                     )}
 
                     {/* ── زر الشرح المفصل ── */}
-                    {selectedAnswer && currentQuestion.explanation && (
+                    {selectedAnswer && currentQuestion.explanation && reviewMode && (
                       <div className="mb-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
                         <button
                           onClick={() => setShowExplanationModal(true)}
