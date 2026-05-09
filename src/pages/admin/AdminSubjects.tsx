@@ -427,7 +427,14 @@ const AdminSubjects = () => {
                   />
                 </div>
 
-                {/* ── رفع ملف الملخص ── */}
+                {/* ── كلمات مرور اختبار+ المراجعة ── */}
+                {editingSubject && (
+                  <div className="col-span-1 sm:col-span-2">
+                    <ReviewPasswordsSection subjectId={editingSubject.id} />
+                  </div>
+                )}
+
+
                 <div className="space-y-3 col-span-1 sm:col-span-2 p-4 rounded-xl border-2 border-dashed border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20">
                   <Label className="flex items-center gap-2 text-sm font-black">
                     <FileText className="w-4 h-4 text-emerald-600" /> ملخص المادة (ملف HTML)
