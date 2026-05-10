@@ -528,14 +528,15 @@ const ExamPage = () => {
   }, [timeLeft, handleSubmit]);
 
   // ── سكرول تلقائي لقسم التلميح/الشرح عند الإجابة ──
-  const currentSelectedAnswer = currentQuestion ? answers[currentQuestion.id] : undefined;
+  const _currentQId = questions[currentIndex]?.id;
+  const _currentSelectedAnswer = _currentQId ? answers[_currentQId] : undefined;
   useEffect(() => {
-    if (currentSelectedAnswer && hintSectionRef.current) {
+    if (_currentSelectedAnswer && hintSectionRef.current) {
       setTimeout(() => {
         hintSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 300);
     }
-  }, [currentSelectedAnswer]);
+  }, [_currentSelectedAnswer]);
 
   if (isLoading) return (
     <MainLayout>
