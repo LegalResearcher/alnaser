@@ -1,0 +1,1 @@
+ALTER TABLE public.review_passwords ADD COLUMN IF NOT EXISTS duration_days INTEGER NOT NULL DEFAULT 30;

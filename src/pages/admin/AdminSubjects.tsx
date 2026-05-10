@@ -611,6 +611,10 @@ const ReviewPasswordsSection = ({ subjectId }: { subjectId: string }) => {
   const queryClient = useQueryClient();
   const [newLabel, setNewLabel] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [newDuration, setNewDuration] = useState<number>(30);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editPassword, setEditPassword] = useState('');
+  const [editDuration, setEditDuration] = useState<number>(30);
 
   const { data: passwords = [], isLoading } = useQuery({
     queryKey: ['review_passwords', subjectId],
@@ -634,13 +638,14 @@ const ReviewPasswordsSection = ({ subjectId }: { subjectId: string }) => {
         subject_id: subjectId,
         password: newPassword.trim(),
         label: newLabel.trim() || null,
+        duration_days: Number(newDuration) > 0 ? Number(newDuration) : 30,
         is_active: true,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['review_passwords', subjectId] });
-      setNewLabel(''); setNewPassword('');
+      setNewLabel(''); setNewPassword(''); setNewDuration(30);
       toast({ title: 'تمت إضافة كلمة المرور' });
     },
     onError: (e: any) => toast({ title: 'حدث خطأ', description: e?.message, variant: 'destructive' }),
@@ -673,12 +678,38 @@ const ReviewPasswordsSection = ({ subjectId }: { subjectId: string }) => {
     },
   });
 
+  const editMutation = useMutation({
+    mutationFn: async ({ id, password, duration_days, p }: { id: string; password: string; duration_days: number; p: ReviewPassword }) => {
+      const updates: any = { password: password.trim(), duration_days };
+      // إذا كانت قيد الاستخدام، أعد حساب expires_at حسب المدة الجديدة
+      if (p.first_used_at) {
+        const newExpiry = new Date(p.first_used_at);
+        newExpiry.setDate(newExpiry.getDate() + duration_days);
+        updates.expires_at = newExpiry.toISOString();
+      }
+      const { error } = await (supabase as any).from('review_passwords').update(updates).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['review_passwords', subjectId] });
+      setEditingId(null);
+      toast({ title: 'تم التحديث' });
+    },
+    onError: (e: any) => toast({ title: 'فشل التحديث', description: e?.message, variant: 'destructive' }),
+  });
+
   const handleAdd = () => {
     if (!newPassword.trim()) {
       toast({ title: 'أدخل كلمة المرور', variant: 'destructive' });
       return;
     }
     addMutation.mutate();
+  };
+
+  const startEdit = (p: ReviewPassword) => {
+    setEditingId(p.id);
+    setEditPassword(p.password);
+    setEditDuration(p.duration_days || 30);
   };
 
   return (
@@ -689,28 +720,15 @@ const ReviewPasswordsSection = ({ subjectId }: { subjectId: string }) => {
       </div>
 
       {/* نموذج الإضافة */}
-      <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
-        <Input
-          placeholder="اسم الطالب (label)"
-          value={newLabel}
-          onChange={(e) => setNewLabel(e.target.value)}
-          className="bg-background"
-        />
-        <Input
-          placeholder="كلمة المرور"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-          className="bg-background"
-        />
-        <Button
-          type="button"
-          onClick={handleAdd}
-          disabled={addMutation.isPending}
-          className="gradient-primary text-primary-foreground border-0"
-        >
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_120px_auto] gap-2">
+        <Input placeholder="اسم الطالب (label)" value={newLabel} onChange={(e) => setNewLabel(e.target.value)} className="bg-background" />
+        <Input placeholder="كلمة المرور" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="bg-background" />
+        <Input type="number" min={1} placeholder="أيام" value={newDuration} onChange={(e) => setNewDuration(Number(e.target.value))} className="bg-background" title="مدة الصلاحية بالأيام" />
+        <Button type="button" onClick={handleAdd} disabled={addMutation.isPending} className="gradient-primary text-primary-foreground border-0">
           <Plus className="w-4 h-4" /> إضافة
         </Button>
       </div>
+      <p className="text-[10px] text-muted-foreground">المدة الافتراضية 30 يومًا. يبدأ احتساب الصلاحية من أول استخدام.</p>
 
       {/* الجدول */}
       {isLoading ? (
@@ -724,18 +742,29 @@ const ReviewPasswordsSection = ({ subjectId }: { subjectId: string }) => {
               <tr className="text-right">
                 <th className="p-2 font-bold">الاسم</th>
                 <th className="p-2 font-bold">كلمة المرور</th>
+                <th className="p-2 font-bold">المدة</th>
                 <th className="p-2 font-bold">الحالة</th>
-                <th className="p-2 font-bold hidden sm:table-cell">التاريخ</th>
+                <th className="p-2 font-bold hidden sm:table-cell">الانتهاء</th>
                 <th className="p-2 font-bold">إجراءات</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {passwords.map((p) => {
                 const expired = isExpired(p);
+                const editing = editingId === p.id;
                 return (
                   <tr key={p.id} className={expired ? 'text-muted-foreground bg-muted/20' : ''}>
                     <td className="p-2">{p.label || '—'}</td>
-                    <td className="p-2 font-mono">{p.password}</td>
+                    <td className="p-2 font-mono">
+                      {editing ? (
+                        <Input value={editPassword} onChange={(e) => setEditPassword(e.target.value)} className="h-8 text-xs" />
+                      ) : p.password}
+                    </td>
+                    <td className="p-2">
+                      {editing ? (
+                        <Input type="number" min={1} value={editDuration} onChange={(e) => setEditDuration(Number(e.target.value))} className="h-8 w-20 text-xs" />
+                      ) : `${p.duration_days || 30} يوم`}
+                    </td>
                     <td className="p-2">
                       {expired ? (
                         <Badge variant="secondary" className="bg-muted text-muted-foreground">منتهية</Badge>
@@ -744,34 +773,39 @@ const ReviewPasswordsSection = ({ subjectId }: { subjectId: string }) => {
                       )}
                     </td>
                     <td className="p-2 hidden sm:table-cell whitespace-nowrap">
-                      {new Date(p.created_at).toLocaleDateString('ar')}
+                      {p.expires_at ? new Date(p.expires_at).toLocaleDateString('ar') : '—'}
                     </td>
                     <td className="p-2">
                       <div className="flex items-center gap-1">
-                        {expired && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-emerald-600"
-                            onClick={() => renewMutation.mutate(p.id)}
-                            disabled={renewMutation.isPending}
-                            title="تجديد"
-                          >
-                            <RefreshCw className="w-4 h-4" />
-                          </Button>
+                        {editing ? (
+                          <>
+                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-emerald-600"
+                              onClick={() => editMutation.mutate({ id: p.id, password: editPassword, duration_days: editDuration, p })}
+                              disabled={editMutation.isPending || !editPassword.trim()}
+                              title="حفظ">
+                              <CheckCircle2 className="w-4 h-4" />
+                            </Button>
+                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingId(null)} title="إلغاء">
+                              <XCircle className="w-4 h-4" />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(p)} title="تعديل">
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                            {expired && (
+                              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-emerald-600"
+                                onClick={() => renewMutation.mutate(p.id)} disabled={renewMutation.isPending} title="تجديد">
+                                <RefreshCw className="w-4 h-4" />
+                              </Button>
+                            )}
+                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive"
+                              onClick={() => deleteMutation.mutate(p.id)} disabled={deleteMutation.isPending} title="حذف">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </>
                         )}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive"
-                          onClick={() => deleteMutation.mutate(p.id)}
-                          disabled={deleteMutation.isPending}
-                          title="حذف"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
                       </div>
                     </td>
                   </tr>

@@ -916,6 +916,7 @@ export type Database = {
         Row: {
           created_at: string | null
           device_fingerprint: string | null
+          duration_days: number
           expires_at: string | null
           first_used_at: string | null
           id: string
@@ -927,6 +928,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           device_fingerprint?: string | null
+          duration_days?: number
           expires_at?: string | null
           first_used_at?: string | null
           id?: string
@@ -938,6 +940,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           device_fingerprint?: string | null
+          duration_days?: number
           expires_at?: string | null
           first_used_at?: string | null
           id?: string

@@ -565,8 +565,9 @@ const ExamStart = () => {
       }
 
       if (!match.first_used_at) {
+        const days = Number(match.duration_days) > 0 ? Number(match.duration_days) : 30;
         const expiresAt = new Date();
-        expiresAt.setMonth(expiresAt.getMonth() + 1);
+        expiresAt.setDate(expiresAt.getDate() + days);
         await (supabase as any).from('review_passwords').update({
           device_fingerprint: fingerprint,
           first_used_at: new Date().toISOString(),
