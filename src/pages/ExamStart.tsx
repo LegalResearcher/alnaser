@@ -1140,6 +1140,8 @@ const ExamStart = () => {
                   </svg>
                 </div>
               </a>
+            </div>
+          </div>
         </div>
       )}
 
