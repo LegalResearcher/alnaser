@@ -107,7 +107,89 @@ export default function AdminReviewPasswords() {
   };
 
   const fmt = (d?: string | null) => d ? new Date(d).toLocaleString('ar', { dateStyle: 'short', timeStyle: 'short' }) : '—';
-  const fp = (s?: string | null) => s ? s.slice(0, 12) + '…' : '—';
+
+  const parseDevice = (base64Fingerprint: string | null): { device: string; model: string; browser: string; timezone: string } => {
+    if (!base64Fingerprint) return { device: '—', model: '—', browser: '—', timezone: '—' };
+    try {
+      const decoded = decodeURIComponent(escape(atob(base64Fingerprint)));
+      const parts = decoded.split('|');
+      const ua = parts[0];
+      const timezone = parts[4] || '—';
+
+      // ── المتصفح وإصداره ──
+      let browser = 'غير معروف';
+      const samsungBrowserMatch = ua.match(/SamsungBrowser\/([\d]+)/);
+      const edgeMatch = ua.match(/Edg\/([\d]+)/);
+      const chromeMatch = ua.match(/Chrome\/([\d]+)/);
+      const firefoxMatch = ua.match(/Firefox\/([\d]+)/);
+      const safariMatch = ua.match(/Version\/([\d]+).*Safari/);
+      if (samsungBrowserMatch) browser = `Samsung Browser ${samsungBrowserMatch[1]}`;
+      else if (edgeMatch) browser = `Edge ${edgeMatch[1]}`;
+      else if (chromeMatch) browser = `Chrome ${chromeMatch[1]}`;
+      else if (firefoxMatch) browser = `Firefox ${firefoxMatch[1]}`;
+      else if (safariMatch) browser = `Safari ${safariMatch[1]}`;
+
+      // ── الجهاز والموديل ──
+      let device = 'غير معروف';
+      let model = '—';
+
+      if (/iPhone/.test(ua)) {
+        device = 'Apple iPhone';
+        const v = ua.match(/OS (\d+_\d+)/);
+        model = v ? `iOS ${v[1].replace('_', '.')}` : 'iOS';
+      } else if (/iPad/.test(ua)) {
+        device = 'Apple iPad';
+        const v = ua.match(/OS (\d+_\d+)/);
+        model = v ? `iOS ${v[1].replace('_', '.')}` : 'iOS';
+      } else if (/SM-N/.test(ua)) {
+        device = 'Samsung Note';
+        model = ua.match(/SM-N[\w]+/)?.[0] || '—';
+      } else if (/SM-S/.test(ua)) {
+        device = 'Samsung S Series';
+        model = ua.match(/SM-S[\w]+/)?.[0] || '—';
+      } else if (/SM-A/.test(ua)) {
+        device = 'Samsung A Series';
+        model = ua.match(/SM-A[\w]+/)?.[0] || '—';
+      } else if (/SM-G/.test(ua)) {
+        device = 'Samsung Galaxy';
+        model = ua.match(/SM-G[\w]+/)?.[0] || '—';
+      } else if (/SM-F/.test(ua)) {
+        device = 'Samsung Fold/Flip';
+        model = ua.match(/SM-F[\w]+/)?.[0] || '—';
+      } else if (/SM-/.test(ua)) {
+        device = 'Samsung';
+        model = ua.match(/SM-[\w]+/)?.[0] || '—';
+      } else if (/Huawei|HUAWEI/.test(ua)) {
+        device = 'Huawei';
+        const m = ua.match(/(?:Huawei|HUAWEI)[- ]([\w]+)/);
+        model = m ? m[1] : '—';
+      } else if (/Xiaomi|Redmi|MIUI/.test(ua)) {
+        device = 'Xiaomi';
+        const m = ua.match(/(?:Xiaomi|Redmi)[- ]([\w]+)/);
+        model = m ? m[1] : '—';
+      } else if (/OPPO/.test(ua)) {
+        device = 'OPPO';
+        model = ua.match(/OPPO[- ]?([\w]+)/)?.[1] || '—';
+      } else if (/vivo/.test(ua)) {
+        device = 'Vivo';
+        model = ua.match(/vivo[- ]?([\w]+)/)?.[1] || '—';
+      } else if (/Android/.test(ua)) {
+        device = 'Android';
+        const android = ua.match(/Android ([\d.]+)/)?.[1] || '';
+        model = android ? `Android ${android}` : '—';
+      } else if (/Windows NT/.test(ua)) {
+        device = 'Windows PC';
+        model = '—';
+      } else if (/Macintosh/.test(ua)) {
+        device = 'Mac';
+        model = '—';
+      }
+
+      return { device, model, browser, timezone };
+    } catch {
+      return { device: '—', model: '—', browser: '—', timezone: '—' };
+    }
+  };
 
   const stats = useMemo(() => ({
     total: rows.length,
@@ -187,6 +269,9 @@ export default function AdminReviewPasswords() {
                     <th className="p-3 font-black">المدة</th>
                     <th className="p-3 font-black">الحالة</th>
                     <th className="p-3 font-black hidden md:table-cell"><Smartphone className="w-3 h-3 inline ml-1" />الجهاز</th>
+                    <th className="p-3 font-black hidden md:table-cell">الموديل</th>
+                    <th className="p-3 font-black hidden md:table-cell">المتصفح</th>
+                    <th className="p-3 font-black hidden md:table-cell">المنطقة الزمنية</th>
                     <th className="p-3 font-black hidden md:table-cell"><Clock className="w-3 h-3 inline ml-1" />أول استخدام</th>
                     <th className="p-3 font-black hidden md:table-cell"><Calendar className="w-3 h-3 inline ml-1" />الانتهاء</th>
                     <th className="p-3 font-black">إجراءات</th>
@@ -213,7 +298,17 @@ export default function AdminReviewPasswords() {
                               ? <Badge className="bg-emerald-500 text-white hover:bg-emerald-500">قيد الاستخدام</Badge>
                               : <Badge className="bg-blue-500 text-white hover:bg-blue-500">جاهزة</Badge>}
                         </td>
-                        <td className="p-3 hidden md:table-cell font-mono text-[11px]" title={p.device_fingerprint || ''}>{fp(p.device_fingerprint)}</td>
+                        {(() => {
+                          const info = parseDevice(p.device_fingerprint);
+                          return (
+                            <>
+                              <td className="p-3 hidden md:table-cell font-semibold text-slate-700 dark:text-slate-300 text-xs">{info.device}</td>
+                              <td className="p-3 hidden md:table-cell font-mono text-[11px] text-slate-500">{info.model}</td>
+                              <td className="p-3 hidden md:table-cell text-xs text-slate-500">{info.browser}</td>
+                              <td className="p-3 hidden md:table-cell text-xs text-slate-500">{info.timezone}</td>
+                            </>
+                          );
+                        })()}
                         <td className="p-3 hidden md:table-cell whitespace-nowrap">{fmt(p.first_used_at)}</td>
                         <td className="p-3 hidden md:table-cell whitespace-nowrap">{fmt(p.expires_at)}</td>
                         <td className="p-3">
