@@ -1033,6 +1033,27 @@ const ExamPage = () => {
                       </div>
                     )}
 
+                    {/* تلميح: زر الشرح المفصل متاح فقط في وضع المراجعة */}
+                    {selectedAnswer && currentQuestion.explanation && !reviewMode && (
+                      <div className="mb-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                        <div className="relative overflow-hidden rounded-2xl border border-amber-200 dark:border-amber-800/50 bg-gradient-to-l from-amber-50 via-yellow-50 to-amber-50 dark:from-amber-950/30 dark:via-yellow-950/30 dark:to-amber-950/30 p-3.5">
+                          <div className="flex items-start gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-500 flex items-center justify-center text-white shrink-0 shadow-md shadow-amber-500/30">
+                              🔒
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-amber-900 dark:text-amber-200 font-black text-xs sm:text-sm leading-relaxed">
+                                الشرح المفصل لهذا السؤال متاح حصريًا في <span className="text-amber-700 dark:text-amber-300">وضع اختبار+ المراجعة</span>
+                              </p>
+                              <p className="text-amber-700/80 dark:text-amber-400/80 text-[10px] sm:text-[11px] font-semibold mt-0.5">
+                                فعّل وضع المراجعة من صفحة بدء الاختبار للوصول إلى الشروحات القانونية الكاملة.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* اسم المراجع */}
                     {(currentQuestion as any).reviewer_credit && (
                       <div className="mb-4 flex items-center gap-2 text-[11px] text-slate-400 dark:text-slate-500 font-semibold">
