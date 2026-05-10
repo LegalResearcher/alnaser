@@ -471,16 +471,42 @@ const ExamStart = () => {
     });
   };
 
-  // ── توليد بصمة الجهاز ──
-  const getDeviceFingerprint = () => {
+  // ── توليد بصمة الجهاز (معززة) ──
+  const getDeviceFingerprint = (): string => {
     try {
-      return btoa(unescape(encodeURIComponent([
+      // ── بيانات الكانفاس (فريدة لكل جهاز/معالج رسومي) ──
+      let canvasHash = '';
+      try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.textBaseline = 'top';
+          ctx.font = '14px Arial';
+          ctx.fillStyle = '#f60';
+          ctx.fillRect(125, 1, 62, 20);
+          ctx.fillStyle = '#069';
+          ctx.fillText('alnaseer🔑', 2, 15);
+          ctx.fillStyle = 'rgba(102,204,0,0.7)';
+          ctx.fillText('alnaseer🔑', 4, 17);
+          canvasHash = canvas.toDataURL().slice(-40);
+        }
+      } catch { /* تجاهل إذا محظور */ }
+
+      const parts = [
         navigator.userAgent,
         screen.width + 'x' + screen.height,
+        screen.colorDepth,
+        navigator.language || navigator.languages?.join(',') || '',
         Intl.DateTimeFormat().resolvedOptions().timeZone,
-      ].join('|'))));
+        navigator.hardwareConcurrency || 0,
+        (navigator as any).deviceMemory || 0,
+        new Date().getTimezoneOffset(),
+        navigator.platform || '',
+        canvasHash,
+      ];
+      return btoa(unescape(encodeURIComponent(parts.join('|'))));
     } catch {
-      return [navigator.userAgent, screen.width + 'x' + screen.height].join('|');
+      return btoa([navigator.userAgent, screen.width, screen.height].join('|'));
     }
   };
 
