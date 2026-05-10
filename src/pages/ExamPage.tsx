@@ -748,7 +748,7 @@ const ExamPage = () => {
       <GlobalStyles />
       <Confetti active={showConfetti} />
 
-      <section className="py-4 md:py-8 bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 min-h-[calc(100vh-80px)] font-cairo text-right" dir="rtl">
+      <section className="py-4 md:py-8 pb-28 bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 min-h-[calc(100vh-80px)] font-cairo text-right" dir="rtl">
         <div className="container mx-auto px-3 md:px-6">
           <div className="max-w-4xl mx-auto">
 
@@ -1125,21 +1125,16 @@ const ExamPage = () => {
                       </div>
                     )}
 
-                    {/* زر السؤال التالي / التسليم */}
-                    {currentIndex < questions.length - 1 ? (
-                      <Button
-                        onClick={goNext}
-                        className="w-full h-12 md:h-14 rounded-2xl bg-gradient-to-l from-primary to-blue-600 text-white font-black text-base shadow-lg shadow-primary/30 hover:shadow-primary/50 transition-all active:scale-[0.98]"
-                      >
-                        السؤال التالي <ChevronLeft className="mr-2 w-5 h-5" />
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={() => setShowSubmitDialog(true)}
-                        className="w-full h-12 md:h-14 rounded-2xl bg-slate-900 text-white font-black text-base shadow-lg transition-all active:scale-[0.98]"
-                      >
-                        <Flag className="w-5 h-5 ml-2" /> تسليم الاختبار
-                      </Button>
+                    {/* زر تسليم الاختبار فقط عند آخر سؤال */}
+                    {currentIndex === questions.length - 1 && selectedAnswer && (
+                      <div className="mb-4">
+                        <Button
+                          onClick={() => setShowSubmitDialog(true)}
+                          className="w-full h-12 md:h-14 rounded-2xl bg-slate-900 text-white font-black text-base shadow-lg transition-all active:scale-[0.98]"
+                        >
+                          <Flag className="w-5 h-5 ml-2" /> تسليم الاختبار
+                        </Button>
+                      </div>
                     )}
                   </div>
                 )}
@@ -1184,6 +1179,46 @@ const ExamPage = () => {
           </div>
         </div>
       </section>
+
+      {/* ── شريط التالي/السابق الثابت ── */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-100 dark:border-slate-800 px-4 py-3"
+        style={{ boxShadow: '0 -4px 24px rgba(0,0,0,0.08)', paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
+        <div className="max-w-2xl mx-auto flex justify-between items-center gap-3">
+          {/* زر السابق */}
+          <Button variant="outline" onClick={goPrev} disabled={currentIndex === 0}
+            className="rounded-2xl h-12 px-5 font-bold text-sm active:scale-95 transition-all disabled:opacity-40"
+            style={{ background: 'linear-gradient(135deg, #f8faff, #f1f5ff)', border: '1.5px solid rgba(99,102,241,0.2)', color: '#4f46e5', boxShadow: '0 2px 8px rgba(99,102,241,0.1)' }}>
+            <ChevronRight className="ml-1 w-4 h-4" /> السابق
+          </Button>
+
+          {/* نقاط التنقل */}
+          <div className="flex gap-1.5 items-center">
+            {questions.slice(dotStart, dotEnd).map((_, i) => {
+              const ri = dotStart + i;
+              return (
+                <button key={ri} onClick={() => goTo(ri)}
+                  className={cn("rounded-full transition-all duration-200",
+                    ri === currentIndex ? "w-6 h-3 bg-primary" : "w-3 h-3 bg-slate-300 dark:bg-slate-600 hover:bg-primary/50"
+                  )} />
+              );
+            })}
+          </div>
+
+          {/* زر التالي / تسليم */}
+          {currentIndex === questions.length - 1 ? (
+            <Button onClick={() => setShowSubmitDialog(true)}
+              className="rounded-2xl h-12 px-5 bg-slate-900 text-white font-black text-sm active:scale-95">
+              <Flag className="w-4 h-4 ml-1" /> تسليم
+            </Button>
+          ) : (
+            <Button onClick={goNext}
+              className="rounded-2xl h-12 px-5 text-white font-black text-sm active:scale-95 transition-all"
+              style={{ background: 'linear-gradient(135deg, #1d4ed8, #4f46e5)', boxShadow: '0 4px 16px rgba(99,102,241,0.4)' }}>
+              التالي <ChevronLeft className="mr-1 w-4 h-4" />
+            </Button>
+          )}
+        </div>
+      </div>
 
       {/* ── حوار التسليم ── */}
       <AlertDialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
