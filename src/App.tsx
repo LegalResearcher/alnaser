@@ -46,6 +46,7 @@ const AdminSubjects         = lazy(() => import("./pages/admin/AdminSubjects"));
 const AdminReports          = lazy(() => import("./pages/admin/AdminReports"));
 const AdminSuggestions      = lazy(() => import("./pages/admin/AdminSuggestions"));
 const AdminBattleRooms      = lazy(() => import("./pages/admin/AdminBattleRooms"));
+const AdminReviewPasswords  = lazy(() => import("./pages/admin/AdminReviewPasswords"));
 
 // صفحات المنافسة الجماعية
 const BattleCreate = lazy(() => import("./pages/BattleCreate"));
