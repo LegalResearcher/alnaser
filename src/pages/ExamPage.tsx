@@ -270,6 +270,7 @@ const ExamPage = () => {
   const [showScoreFloat, setShowScoreFloat] = useState(false);
 
   const progressSaveInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hintSectionRef = useRef<HTMLDivElement>(null);
 
   // ── جلب الأسئلة (يجب أن يكون قبل أي useEffect يستخدم questions) ──
   const { data: questions = [], isLoading } = useQuery({
@@ -519,6 +520,15 @@ const ExamPage = () => {
       },
     });
   }, [answers, questions, subject, state, subjectId, timeLeft, navigate, isSubmitting, totalTime, shuffledOptionsMap]);
+
+  // ── سكرول تلقائي لقسم التلميح/الشرح عند الإجابة ──
+  useEffect(() => {
+    if (hasAnswered && hintSectionRef.current) {
+      setTimeout(() => {
+        hintSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+    }
+  }, [hasAnswered]);
 
   useEffect(() => {
     if (timeLeft <= 0) { handleSubmit(); return; }
@@ -949,7 +959,7 @@ const ExamPage = () => {
 
                 {/* رسالة + زر التالي بعد الإجابة */}
                 {hasAnswered && (
-                  <div className="mt-5 md:mt-8 anim-zoom-in">
+                  <div ref={hintSectionRef} className="mt-5 md:mt-8 anim-zoom-in">
                     <div className={cn(
                       "p-4 md:p-5 rounded-2xl flex items-center gap-3 font-black text-sm md:text-base mb-4",
                       isAnswerCorrect
@@ -1140,41 +1150,6 @@ const ExamPage = () => {
                 )}
               </div>
             )}
-
-            {/* ── أزرار التنقل الحر ── */}
-            <div className="flex justify-between items-center gap-2 md:gap-4">
-              <Button variant="outline" onClick={goPrev} disabled={currentIndex === 0}
-                className="rounded-xl md:rounded-2xl h-12 md:h-14 px-4 md:px-8 font-bold text-sm active:scale-95 transition-all hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0"
-                style={{ background: 'linear-gradient(135deg, #f8faff, #f1f5ff)', border: '1.5px solid rgba(99,102,241,0.2)', color: '#4f46e5', boxShadow: '0 2px 8px rgba(99,102,241,0.1)' }}>
-                <ChevronRight className="ml-1 w-4 h-4" /> السابق
-              </Button>
-
-              {/* نقاط التنقل */}
-              <div className="flex gap-2 items-center">
-                {questions.slice(dotStart, dotEnd).map((_, i) => {
-                  const ri = dotStart + i;
-                  return (
-                    <button key={ri} onClick={() => goTo(ri)}
-                      className={cn("rounded-full transition-all duration-200",
-                        ri === currentIndex ? "w-6 h-3 bg-primary" : "w-3 h-3 bg-slate-300 dark:bg-slate-600 hover:bg-primary/50"
-                      )} />
-                  );
-                })}
-              </div>
-
-              {currentIndex === questions.length - 1 ? (
-                <Button onClick={() => setShowSubmitDialog(true)}
-                  className="rounded-xl md:rounded-2xl h-12 md:h-14 px-5 md:px-10 bg-slate-900 text-white font-black text-sm active:scale-95">
-                  <Flag className="w-4 h-4 ml-1" /> تسليم
-                </Button>
-              ) : (
-                <Button onClick={goNext}
-                  className="rounded-xl md:rounded-2xl h-12 md:h-14 px-5 md:px-10 text-white font-black text-sm active:scale-95 transition-all hover:-translate-y-0.5"
-                  style={{ background: 'linear-gradient(135deg, #1d4ed8, #4f46e5)', boxShadow: '0 4px 16px rgba(99,102,241,0.4)' }}>
-                  التالي <ChevronLeft className="mr-1 w-4 h-4" />
-                </Button>
-              )}
-            </div>
 
           </div>
         </div>
