@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -126,15 +126,30 @@ const ExamResult = () => {
   const [nextSubject, setNextSubject] = useState<{ id: string; name: string } | null>(null);
   const [wrongQuestions, setWrongQuestions] = useState<string[]>([]);
 
-  // جلب level_id والمادة التالية
-  useEffect(() => {
+  // دالة لتحميل الأسئلة الخاطئة
+  const loadWrongQuestions = useCallback(() => {
     if (!state?.subjectId) return;
-    // تحميل الأسئلة الخاطئة من localStorage
     try {
       const key = `wrong_questions_${state.subjectId}`;
       const stored = JSON.parse(localStorage.getItem(key) || '[]') as string[];
       setWrongQuestions(stored);
     } catch { /* ignore */ }
+  }, [state?.subjectId]);
+
+  // إعادة تحميل الأسئلة الخاطئة عند العودة للصفحة
+  useEffect(() => {
+    loadWrongQuestions();
+    window.addEventListener('focus', loadWrongQuestions);
+    document.addEventListener('visibilitychange', loadWrongQuestions);
+    return () => {
+      window.removeEventListener('focus', loadWrongQuestions);
+      document.removeEventListener('visibilitychange', loadWrongQuestions);
+    };
+  }, [loadWrongQuestions]);
+
+  // جلب level_id والمادة التالية
+  useEffect(() => {
+    if (!state?.subjectId) return;
 
     supabase.from('subjects').select('level_id, order_index').eq('id', state.subjectId).maybeSingle()
       .then(({ data: cur }) => {
