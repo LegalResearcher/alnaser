@@ -515,6 +515,7 @@ const ExamPage = () => {
         allQuestions:  state.allQuestions,
         examTime:      state.examTime,
         questionsCount: state.questionsCount,
+        reviewMode:    state.reviewMode ?? false,
       },
     });
   }, [answers, questions, subject, state, subjectId, timeLeft, navigate, isSubmitting, totalTime, shuffledOptionsMap]);
