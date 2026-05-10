@@ -527,6 +527,16 @@ const ExamPage = () => {
     return () => clearInterval(t);
   }, [timeLeft, handleSubmit]);
 
+  // ── سكرول تلقائي لقسم التلميح/الشرح عند الإجابة ──
+  const currentSelectedAnswer = currentQuestion ? answers[currentQuestion.id] : undefined;
+  useEffect(() => {
+    if (currentSelectedAnswer && hintSectionRef.current) {
+      setTimeout(() => {
+        hintSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+    }
+  }, [currentSelectedAnswer]);
+
   if (isLoading) return (
     <MainLayout>
       <div className="container mx-auto px-6 py-24 text-center font-bold text-slate-400 dark:text-slate-500 dark:text-muted-foreground animate-pulse">جاري تحضير أسئلة الاختبار...</div>
@@ -634,15 +644,6 @@ const ExamPage = () => {
   const selectedAnswer = currentQuestion ? answers[currentQuestion.id] : undefined;
   const hasAnswered = !!selectedAnswer;
   // isAnswerCorrect ستُحسب بعد mappedCorrectOption
-
-  // ── سكرول تلقائي لقسم التلميح/الشرح عند الإجابة ──
-  useEffect(() => {
-    if (hasAnswered && hintSectionRef.current) {
-      setTimeout(() => {
-        hintSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 300);
-    }
-  }, [hasAnswered]);
   const progressColor = progressPct < 33 ? '#ef4444' : progressPct < 66 ? '#f59e0b' : '#10b981';
 
   const currentShuffled = shuffledOptionsMap[currentQuestion?.id] ?? { order: ['A','B','C','D'], correctMapped: currentQuestion?.correct_option };
