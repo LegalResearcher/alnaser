@@ -24,6 +24,7 @@ const navItems = [
   { href: '/admin/reports', label: 'تعقيبات الأسئلة', icon: MessageSquare, adminOnly: true },
   { href: '/admin/suggestions', label: 'اقتراحات الأسئلة', icon: Lightbulb, adminOnly: true },
   { href: '/admin/battle-rooms', label: 'غرف التحدي', icon: Swords, adminOnly: true },
+  { href: '/admin/review-passwords', label: 'كلمات مرور المراجعة', icon: KeyRound, adminOnly: true },
   { href: '/admin/settings', label: 'إعدادات المنصة', icon: Settings },
 ];
 
