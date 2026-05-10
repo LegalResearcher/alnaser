@@ -118,7 +118,7 @@ export default function AdminReviewPasswords() {
 
   return (
     <AdminLayout>
-      <AdminSEO title="سجل كلمات مرور المراجعة" />
+      <AdminSEO pageName="سجل كلمات مرور المراجعة" />
       <div className="space-y-6">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
