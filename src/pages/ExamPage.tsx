@@ -521,15 +521,6 @@ const ExamPage = () => {
     });
   }, [answers, questions, subject, state, subjectId, timeLeft, navigate, isSubmitting, totalTime, shuffledOptionsMap]);
 
-  // ── سكرول تلقائي لقسم التلميح/الشرح عند الإجابة ──
-  useEffect(() => {
-    if (hasAnswered && hintSectionRef.current) {
-      setTimeout(() => {
-        hintSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 300);
-    }
-  }, [hasAnswered]);
-
   useEffect(() => {
     if (timeLeft <= 0) { handleSubmit(); return; }
     const t = setInterval(() => setTimeLeft(p => p - 1), 1000);
@@ -643,6 +634,15 @@ const ExamPage = () => {
   const selectedAnswer = currentQuestion ? answers[currentQuestion.id] : undefined;
   const hasAnswered = !!selectedAnswer;
   // isAnswerCorrect ستُحسب بعد mappedCorrectOption
+
+  // ── سكرول تلقائي لقسم التلميح/الشرح عند الإجابة ──
+  useEffect(() => {
+    if (hasAnswered && hintSectionRef.current) {
+      setTimeout(() => {
+        hintSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+    }
+  }, [hasAnswered]);
   const progressColor = progressPct < 33 ? '#ef4444' : progressPct < 66 ? '#f59e0b' : '#10b981';
 
   const currentShuffled = shuffledOptionsMap[currentQuestion?.id] ?? { order: ['A','B','C','D'], correctMapped: currentQuestion?.correct_option };
