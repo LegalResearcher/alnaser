@@ -98,6 +98,7 @@ export interface ReviewPassword {
   first_used_at: string | null;
   expires_at: string | null;
   is_active: boolean;
+  duration_days: number;
   created_at: string;
 }
 
