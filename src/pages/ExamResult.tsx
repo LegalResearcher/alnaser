@@ -41,6 +41,7 @@ interface ResultState {
   allQuestions?:       boolean;
   examTime?:           number;
   questionsCount?:     number;
+  reviewMode?:         boolean;
 }
 
 // دائرة النسبة المئوية
@@ -727,6 +728,7 @@ const ExamResult = () => {
                       allQuestions:     false,
                       forcedQuestionIds: wrongQuestions,
                       isWrongReview:    true,
+                      reviewMode:       state.reviewMode ?? false,
                     },
                   })}
                   className="w-full h-12 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-black text-sm gap-2 shadow-lg shadow-rose-500/25 active:scale-[0.98]"
@@ -756,6 +758,7 @@ const ExamResult = () => {
                         questionsCount: state.questionsCount ?? state.totalQuestions,
                         subjectName:    state.subjectName,
                         levelName:      state.levelName,
+                        reviewMode:     state.reviewMode ?? false,
                       },
                     });
                   } else { navigate('/levels'); }
