@@ -120,6 +120,7 @@ const App = () => (
                     <Route path="/admin/reports"           element={<AdminReports />} />
                     <Route path="/admin/suggestions"       element={<AdminSuggestions />} />
                     <Route path="/admin/battle-rooms"      element={<AdminBattleRooms />} />
+                    <Route path="/admin/review-passwords"   element={<AdminReviewPasswords />} />
                     <Route path="/admin/settings"          element={<AdminSettings />} />
 
                     {/* ── 404 ── */}
