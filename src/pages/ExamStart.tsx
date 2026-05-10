@@ -578,7 +578,7 @@ const ExamStart = () => {
 
       if (match.device_fingerprint && match.device_fingerprint !== fingerprint) {
         setReviewPasswordError(true);
-        setReviewPasswordErrorMsg('هذه الكلمة مستخدمة على جهاز آخر');
+        setReviewPasswordErrorMsg('كلمة المرور خاطئة');
         setReviewPasswordLoading(false);
         return;
       }
