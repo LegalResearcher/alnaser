@@ -304,7 +304,7 @@ const ExamPage = () => {
       if (error) throw error;
       return (data as Question[]).sort(() => Math.random() - 0.5);
     },
-    enabled: !!subjectId && (!!state?.examYear || !!state?.isTrial || !!state?.allQuestions || !!state?.forcedQuestionIds?.length || !!state?.resumeProgress),
+    enabled: !!subjectId && (state?.examYear !== undefined || !!state?.isTrial || !!state?.allQuestions || !!state?.forcedQuestionIds?.length || !!state?.resumeProgress),
   });
 
   // حفظ التقدم كل 5 ثوانٍ (فقط لـ allQuestions)
