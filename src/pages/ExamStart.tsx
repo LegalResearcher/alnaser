@@ -1113,33 +1113,48 @@ const ExamStart = () => {
               </button>
 
               {/* ── رابط التواصل ── */}
-              <a
-                href="https://t.me/MuenAlnaser"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex items-center justify-center gap-3 w-full py-3 px-4 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-sky-200 dark:hover:border-sky-800 bg-slate-50 dark:bg-slate-800/50 hover:bg-sky-50 dark:hover:bg-sky-950/30 transition-all duration-200 active:scale-[0.98]"
-              >
-                {/* أيقونة تيليجرام */}
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-110"
-                  style={{ background: 'linear-gradient(135deg, #0088cc, #00aaff)' }}>
-                  <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
-                  </svg>
-                </div>
-                <div className="text-right flex-1">
-                  <p className="text-xs font-black text-slate-600 dark:text-slate-300 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
-                    للحصول على كلمة المرور
-                  </p>
-                  <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 group-hover:text-sky-500 transition-colors">
-                    تواصل مع الإدارة عبر تيليجرام
-                  </p>
-                </div>
-                <div className="w-6 h-6 rounded-lg bg-slate-200 dark:bg-slate-700 group-hover:bg-sky-100 dark:group-hover:bg-sky-900/50 flex items-center justify-center transition-colors shrink-0">
-                  <svg className="w-3 h-3 text-slate-400 group-hover:text-sky-500 rotate-180 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </a>
+              <div className="relative">
+                {/* نبضة خلفية */}
+                <div className="absolute inset-0 rounded-2xl bg-sky-400/20 animate-ping" style={{ animationDuration: '2s' }} />
+                <a
+                  href="https://t.me/MuenAlnaser"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group relative flex items-center gap-3 w-full py-3 px-4 rounded-2xl border-2 border-sky-200 dark:border-sky-700 bg-gradient-to-l from-sky-50 to-white dark:from-sky-950/40 dark:to-slate-900 hover:border-sky-400 hover:from-sky-100 hover:to-sky-50 dark:hover:from-sky-900/60 transition-all duration-200 active:scale-[0.98] shadow-sm shadow-sky-100 dark:shadow-sky-900/20"
+                >
+                  {/* أيقونة تيليجرام مع نبض */}
+                  <div className="relative shrink-0">
+                    <div className="absolute inset-0 rounded-xl bg-sky-400/40 animate-ping" style={{ animationDuration: '2s' }} />
+                    <div className="relative w-9 h-9 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200"
+                      style={{ background: 'linear-gradient(135deg, #0088cc, #00aaff)', boxShadow: '0 4px 12px rgba(0,136,204,0.4)' }}>
+                      <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                      </svg>
+                    </div>
+                  </div>
+
+                  {/* النص */}
+                  <div className="text-right flex-1">
+                    <p className="text-xs font-black text-sky-600 dark:text-sky-400">
+                      للحصول على كلمة المرور
+                    </p>
+                    <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
+                      تواصل مع الإدارة عبر تيليجرام
+                    </p>
+                  </div>
+
+                  {/* "اضغط للتواصل" badge */}
+                  <div className="flex flex-col items-center gap-1 shrink-0">
+                    <div className="px-2 py-0.5 rounded-lg text-[9px] font-black text-white"
+                      style={{ background: 'linear-gradient(135deg, #0088cc, #00aaff)' }}>
+                      اضغط
+                    </div>
+                    <svg className="w-3 h-3 text-sky-400 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </a>
+              </div>
             </div>
           </div>
         </div>
