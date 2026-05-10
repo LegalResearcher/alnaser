@@ -1,0 +1,263 @@
+import { useState, useMemo } from 'react';
+import { AdminLayout } from '@/components/admin/AdminLayout';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { ReviewPassword, Subject } from '@/types/database';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { KeyRound, Search, Edit2, Trash2, CheckCircle2, XCircle, RefreshCw, Smartphone, Calendar, Clock } from 'lucide-react';
+import { AdminSEO } from '@/components/seo/SEOHead';
+
+type Row = ReviewPassword & { subject_name?: string };
+
+export default function AdminReviewPasswords() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [search, setSearch] = useState('');
+  const [subjectFilter, setSubjectFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editPassword, setEditPassword] = useState('');
+  const [editDuration, setEditDuration] = useState<number>(30);
+
+  const { data: subjects = [] } = useQuery({
+    queryKey: ['subjects-min'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('subjects').select('id,name').order('name');
+      if (error) throw error;
+      return (data || []) as Pick<Subject, 'id' | 'name'>[];
+    },
+  });
+
+  const subjectMap = useMemo(() => Object.fromEntries(subjects.map((s: any) => [s.id, s.name])), [subjects]);
+
+  const { data: rows = [], isLoading } = useQuery({
+    queryKey: ['admin_review_passwords_all'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('review_passwords')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []) as Row[];
+    },
+  });
+
+  const isExpired = (p: ReviewPassword) => !p.is_active || (p.expires_at && new Date(p.expires_at) < new Date());
+
+  const filtered = useMemo(() => {
+    return rows.filter(r => {
+      if (subjectFilter !== 'all' && r.subject_id !== subjectFilter) return false;
+      const expired = isExpired(r);
+      if (statusFilter === 'active' && expired) return false;
+      if (statusFilter === 'expired' && !expired) return false;
+      if (statusFilter === 'unused' && r.first_used_at) return false;
+      if (statusFilter === 'used' && !r.first_used_at) return false;
+      if (search.trim()) {
+        const q = search.trim().toLowerCase();
+        const subjectName = (subjectMap[r.subject_id] || '').toLowerCase();
+        if (!(`${r.label || ''} ${r.password} ${subjectName}`.toLowerCase().includes(q))) return false;
+      }
+      return true;
+    });
+  }, [rows, search, subjectFilter, statusFilter, subjectMap]);
+
+  const deleteMut = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any).from('review_passwords').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin_review_passwords_all'] }); toast({ title: 'تم حذف الطالب' }); },
+    onError: (e: any) => toast({ title: 'فشل الحذف', description: e?.message, variant: 'destructive' }),
+  });
+
+  const renewMut = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any).from('review_passwords').update({
+        first_used_at: null, expires_at: null, device_fingerprint: null, is_active: true,
+      }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin_review_passwords_all'] }); toast({ title: 'تم تجديد كلمة المرور' }); },
+  });
+
+  const editMut = useMutation({
+    mutationFn: async ({ id, password, duration_days, p }: { id: string; password: string; duration_days: number; p: ReviewPassword }) => {
+      const updates: any = { password: password.trim(), duration_days };
+      if (p.first_used_at) {
+        const newExpiry = new Date(p.first_used_at);
+        newExpiry.setDate(newExpiry.getDate() + duration_days);
+        updates.expires_at = newExpiry.toISOString();
+      }
+      const { error } = await (supabase as any).from('review_passwords').update(updates).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin_review_passwords_all'] }); setEditingId(null); toast({ title: 'تم التحديث' }); },
+    onError: (e: any) => toast({ title: 'فشل التحديث', description: e?.message, variant: 'destructive' }),
+  });
+
+  const startEdit = (p: ReviewPassword) => {
+    setEditingId(p.id);
+    setEditPassword(p.password);
+    setEditDuration(p.duration_days || 30);
+  };
+
+  const fmt = (d?: string | null) => d ? new Date(d).toLocaleString('ar', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+  const fp = (s?: string | null) => s ? s.slice(0, 12) + '…' : '—';
+
+  const stats = useMemo(() => ({
+    total: rows.length,
+    active: rows.filter(r => !isExpired(r)).length,
+    expired: rows.filter(r => isExpired(r)).length,
+    used: rows.filter(r => r.first_used_at).length,
+  }), [rows]);
+
+  return (
+    <AdminLayout>
+      <AdminSEO title="سجل كلمات مرور المراجعة" />
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
+            <KeyRound className="w-6 h-6 text-emerald-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-black text-slate-800">سجل كلمات مرور اختبار+ المراجعة</h1>
+            <p className="text-sm text-slate-500 font-medium">إدارة شاملة لكل الطلاب وأجهزتهم وصلاحية كلمات المرور</p>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { l: 'الإجمالي', v: stats.total, c: 'bg-slate-100 text-slate-700' },
+            { l: 'نشطة', v: stats.active, c: 'bg-emerald-100 text-emerald-700' },
+            { l: 'منتهية', v: stats.expired, c: 'bg-rose-100 text-rose-700' },
+            { l: 'تم استخدامها', v: stats.used, c: 'bg-blue-100 text-blue-700' },
+          ].map((s, i) => (
+            <div key={i} className={`rounded-2xl p-4 border ${s.c} border-current/10`}>
+              <p className="text-xs font-bold opacity-70">{s.l}</p>
+              <p className="text-2xl font-black">{s.v}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Filters */}
+        <div className="bg-white rounded-2xl p-4 border border-slate-200 grid grid-cols-1 md:grid-cols-[1fr_200px_200px] gap-3">
+          <div className="relative">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="بحث بالاسم أو المادة أو كلمة المرور..." className="pr-9" />
+          </div>
+          <Select value={subjectFilter} onValueChange={setSubjectFilter}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل المواد</SelectItem>
+              {subjects.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل الحالات</SelectItem>
+              <SelectItem value="active">نشطة</SelectItem>
+              <SelectItem value="expired">منتهية</SelectItem>
+              <SelectItem value="used">تم استخدامها</SelectItem>
+              <SelectItem value="unused">غير مستخدمة</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Table */}
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          {isLoading ? (
+            <div className="p-6"><Skeleton className="h-64" /></div>
+          ) : filtered.length === 0 ? (
+            <div className="p-12 text-center text-slate-500 font-medium">لا توجد كلمات مرور مطابقة</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs sm:text-sm">
+                <thead className="bg-slate-50 text-slate-700">
+                  <tr className="text-right">
+                    <th className="p-3 font-black">الطالب</th>
+                    <th className="p-3 font-black">المادة</th>
+                    <th className="p-3 font-black">كلمة المرور</th>
+                    <th className="p-3 font-black">المدة</th>
+                    <th className="p-3 font-black">الحالة</th>
+                    <th className="p-3 font-black hidden md:table-cell"><Smartphone className="w-3 h-3 inline ml-1" />الجهاز</th>
+                    <th className="p-3 font-black hidden md:table-cell"><Clock className="w-3 h-3 inline ml-1" />أول استخدام</th>
+                    <th className="p-3 font-black hidden md:table-cell"><Calendar className="w-3 h-3 inline ml-1" />الانتهاء</th>
+                    <th className="p-3 font-black">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filtered.map((p) => {
+                    const expired = isExpired(p);
+                    const editing = editingId === p.id;
+                    return (
+                      <tr key={p.id} className={`hover:bg-slate-50/50 ${expired ? 'opacity-70' : ''}`}>
+                        <td className="p-3 font-bold">{p.label || '—'}</td>
+                        <td className="p-3">{subjectMap[p.subject_id] || '—'}</td>
+                        <td className="p-3 font-mono">
+                          {editing ? <Input value={editPassword} onChange={(e) => setEditPassword(e.target.value)} className="h-8 text-xs" /> : p.password}
+                        </td>
+                        <td className="p-3">
+                          {editing ? <Input type="number" min={1} value={editDuration} onChange={(e) => setEditDuration(Number(e.target.value))} className="h-8 w-20 text-xs" /> : `${p.duration_days || 30} يوم`}
+                        </td>
+                        <td className="p-3">
+                          {expired
+                            ? <Badge variant="secondary" className="bg-rose-100 text-rose-700">منتهية</Badge>
+                            : p.first_used_at
+                              ? <Badge className="bg-emerald-500 text-white hover:bg-emerald-500">قيد الاستخدام</Badge>
+                              : <Badge className="bg-blue-500 text-white hover:bg-blue-500">جاهزة</Badge>}
+                        </td>
+                        <td className="p-3 hidden md:table-cell font-mono text-[11px]" title={p.device_fingerprint || ''}>{fp(p.device_fingerprint)}</td>
+                        <td className="p-3 hidden md:table-cell whitespace-nowrap">{fmt(p.first_used_at)}</td>
+                        <td className="p-3 hidden md:table-cell whitespace-nowrap">{fmt(p.expires_at)}</td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-1">
+                            {editing ? (
+                              <>
+                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-emerald-600"
+                                  disabled={editMut.isPending || !editPassword.trim()}
+                                  onClick={() => editMut.mutate({ id: p.id, password: editPassword, duration_days: editDuration, p })} title="حفظ">
+                                  <CheckCircle2 className="w-4 h-4" />
+                                </Button>
+                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingId(null)} title="إلغاء">
+                                  <XCircle className="w-4 h-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(p)} title="تعديل">
+                                  <Edit2 className="w-4 h-4" />
+                                </Button>
+                                {(expired || p.first_used_at) && (
+                                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-emerald-600"
+                                    onClick={() => renewMut.mutate(p.id)} disabled={renewMut.isPending} title="تجديد (إعادة تعيين الجهاز والصلاحية)">
+                                    <RefreshCw className="w-4 h-4" />
+                                  </Button>
+                                )}
+                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive"
+                                  onClick={() => { if (confirm(`حذف الطالب "${p.label || p.password}"؟`)) deleteMut.mutate(p.id); }}
+                                  disabled={deleteMut.isPending} title="حذف الطالب">
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    </AdminLayout>
+  );
+}
