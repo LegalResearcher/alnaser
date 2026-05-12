@@ -430,7 +430,7 @@ const AdminSubjects = () => {
                 {/* ── كلمات مرور اختبار+ المراجعة ── */}
                 {editingSubject && (
                   <div className="col-span-1 sm:col-span-2">
-                    <ReviewPasswordsSection subjectId={editingSubject.id} />
+                    <ReviewPasswordsSection subjectId={editingSubject.id} levels={levels} />
                   </div>
                 )}
 
@@ -606,7 +606,7 @@ const AdminSubjects = () => {
 };
 
 
-const ReviewPasswordsSection = ({ subjectId }: { subjectId: string }) => {
+const ReviewPasswordsSection = ({ subjectId, levels }: { subjectId: string; levels: Level[] }) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [newLabel, setNewLabel] = useState('');
@@ -615,6 +615,10 @@ const ReviewPasswordsSection = ({ subjectId }: { subjectId: string }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editPassword, setEditPassword] = useState('');
   const [editDuration, setEditDuration] = useState<number>(30);
+
+  // ── حقول المستوى والمواد الإضافية ──
+  const [extraLevelId, setExtraLevelId] = useState<string>('none');
+  const [extraSubjectIds, setExtraSubjectIds] = useState<string[]>([]);
 
   const { data: passwords = [], isLoading } = useQuery({
     queryKey: ['review_passwords', subjectId],
@@ -629,23 +633,61 @@ const ReviewPasswordsSection = ({ subjectId }: { subjectId: string }) => {
     },
   });
 
+  // ── جلب مواد المستوى المختار ──
+  const { data: levelSubjects = [] } = useQuery({
+    queryKey: ['subjects-for-level', extraLevelId],
+    queryFn: async () => {
+      if (!extraLevelId || extraLevelId === 'none') return [];
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('id, name')
+        .eq('level_id', extraLevelId)
+        .order('order_index');
+      if (error) throw error;
+      return (data || []) as Pick<Subject, 'id' | 'name'>[];
+    },
+    enabled: !!extraLevelId && extraLevelId !== 'none',
+  });
+
+  // عند تغيير المستوى، امسح المواد المحددة
+  const handleExtraLevelChange = (val: string) => {
+    setExtraLevelId(val);
+    setExtraSubjectIds([]);
+  };
+
+  const toggleExtraSubject = (id: string) => {
+    setExtraSubjectIds(prev =>
+      prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
+    );
+  };
+
   const isExpired = (p: ReviewPassword) =>
     !p.is_active || (p.expires_at && new Date(p.expires_at) < new Date());
 
   const addMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await (supabase as any).from('review_passwords').insert({
-        subject_id: subjectId,
-        password: newPassword.trim(),
-        label: newLabel.trim() || null,
-        duration_days: Number(newDuration) > 0 ? Number(newDuration) : 30,
+      const duration = Number(newDuration) > 0 ? Number(newDuration) : 30;
+      const label = newLabel.trim() || null;
+      const password = newPassword.trim();
+
+      // المادة الحالية دائماً مضمّنة
+      const allSubjectIds = [subjectId, ...extraSubjectIds.filter(id => id !== subjectId)];
+
+      const records = allSubjectIds.map(sid => ({
+        subject_id: sid,
+        password,
+        label,
+        duration_days: duration,
         is_active: true,
-      });
+      }));
+
+      const { error } = await (supabase as any).from('review_passwords').insert(records);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['review_passwords', subjectId] });
       setNewLabel(''); setNewPassword(''); setNewDuration(30);
+      setExtraLevelId('none'); setExtraSubjectIds([]);
       toast({ title: 'تمت إضافة كلمة المرور' });
     },
     onError: (e: any) => toast({ title: 'حدث خطأ', description: e?.message, variant: 'destructive' }),
@@ -728,6 +770,51 @@ const ReviewPasswordsSection = ({ subjectId }: { subjectId: string }) => {
           <Plus className="w-4 h-4" /> إضافة
         </Button>
       </div>
+
+      {/* ── مواد إضافية ── */}
+      <div className="space-y-2 pt-1">
+        <p className="text-[11px] font-bold text-muted-foreground">صلاحية لمواد إضافية (اختياري)</p>
+        <Select value={extraLevelId} onValueChange={handleExtraLevelChange}>
+          <SelectTrigger className="bg-background h-9 text-xs">
+            <SelectValue placeholder="اختر المستوى لعرض موادّه..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">— بدون مواد إضافية —</SelectItem>
+            {levels.map(l => (
+              <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {extraLevelId !== 'none' && levelSubjects.length > 0 && (
+          <div className="rounded-lg border bg-background p-3 grid grid-cols-2 sm:grid-cols-3 gap-y-2 gap-x-3">
+            {levelSubjects.map(s => {
+              const isCurrent = s.id === subjectId;
+              const checked = isCurrent || extraSubjectIds.includes(s.id);
+              return (
+                <label key={s.id} className={`flex items-center gap-2 text-xs cursor-pointer select-none ${isCurrent ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={isCurrent}
+                    onChange={() => !isCurrent && toggleExtraSubject(s.id)}
+                    className="accent-emerald-600 w-3.5 h-3.5"
+                  />
+                  <span className="truncate">{s.name}</span>
+                  {isCurrent && <span className="text-[10px] text-emerald-600">(الحالية)</span>}
+                </label>
+              );
+            })}
+          </div>
+        )}
+
+        {extraSubjectIds.length > 0 && (
+          <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">
+            ✓ ستُضاف كلمة المرور لـ {extraSubjectIds.length + 1} مادة (المادة الحالية + {extraSubjectIds.length} إضافية)
+          </p>
+        )}
+      </div>
+
       <p className="text-[10px] text-muted-foreground">المدة الافتراضية 30 يومًا. يبدأ احتساب الصلاحية من أول استخدام.</p>
 
       {/* الجدول */}
