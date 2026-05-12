@@ -650,6 +650,9 @@ const ReviewPasswordsSection = ({ subjectId, levels }: { subjectId: string; leve
     const selected = importRows.filter(r => importSelected.has(r.id));
     if (selected.length === 0) { toast({ title: 'لم تحدد أي اسم', variant: 'destructive' }); return; }
 
+    // كل المواد المستهدفة: الحالية + الإضافية
+    const allSubjectIds = [subjectId, ...extraSubjectIds.filter(id => id !== subjectId)];
+
     // لو صف واحد محدد → عبّئ الحقول فقط
     if (selected.length === 1) {
       setNewLabel(selected[0].label);
@@ -661,22 +664,27 @@ const ReviewPasswordsSection = ({ subjectId, levels }: { subjectId: string; leve
       return;
     }
 
-    // عدة صفوف → أضف مباشرة
+    // عدة صفوف → أضف مباشرة لكل المواد المحددة
     setImportPending(true);
-    const records = selected.map(r => ({
-      subject_id: subjectId,
-      password: r.password,
-      label: r.label || null,
-      duration_days: r.duration,
-      is_active: true,
-    }));
+    const records = selected.flatMap(r =>
+      allSubjectIds.map(sid => ({
+        subject_id: sid,
+        password: r.password,
+        label: r.label || null,
+        duration_days: Number(newDuration) > 0 ? Number(newDuration) : r.duration,
+        is_active: true,
+      }))
+    );
     const { error } = await (supabase as any).from('review_passwords').insert(records);
     setImportPending(false);
     if (error) { toast({ title: 'فشل الاستيراد', description: error.message, variant: 'destructive' }); return; }
     queryClient.invalidateQueries({ queryKey: ['review_passwords', subjectId] });
     setImportRows([]);
     setImportSelected(new Set());
-    toast({ title: `تم استيراد ${records.length} طالب بنجاح` });
+    const msg = allSubjectIds.length > 1
+      ? `تم استيراد ${selected.length} طالب × ${allSubjectIds.length} مواد = ${records.length} سجل`
+      : `تم استيراد ${records.length} طالب بنجاح`;
+    toast({ title: msg });
   };
 
   // ── قراءة الملف ──
