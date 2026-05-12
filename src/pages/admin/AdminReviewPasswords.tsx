@@ -9,8 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { KeyRound, Search, Edit2, Trash2, CheckCircle2, XCircle, RefreshCw, Smartphone, Calendar, Clock } from 'lucide-react';
+import { KeyRound, Search, Edit2, Trash2, CheckCircle2, XCircle, RefreshCw, Smartphone, Calendar, Clock, Download } from 'lucide-react';
 import { AdminSEO } from '@/components/seo/SEOHead';
+import * as XLSX from 'xlsx';
 
 type Row = ReviewPassword & { subject_name?: string };
 
@@ -198,18 +199,46 @@ export default function AdminReviewPasswords() {
     used: rows.filter(r => r.first_used_at).length,
   }), [rows]);
 
+  const handleExport = () => {
+    if (rows.length === 0) {
+      toast({ title: 'لا توجد بيانات للتصدير', variant: 'destructive' });
+      return;
+    }
+    const exportData = rows.map(r => ({
+      'الاسم': r.label || '—',
+      'كلمة المرور': r.password,
+      'المادة': subjectMap[r.subject_id] || '—',
+      'المدة (يوم)': r.duration_days || 30,
+      'الحالة': isExpired(r) ? 'منتهية' : r.first_used_at ? 'قيد الاستخدام' : 'جاهزة',
+      'أول استخدام': r.first_used_at ? new Date(r.first_used_at).toLocaleDateString('ar') : '—',
+      'تاريخ الانتهاء': r.expires_at ? new Date(r.expires_at).toLocaleDateString('ar') : '—',
+    }));
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    ws['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 25 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'كلمات المرور');
+    XLSX.writeFile(wb, `review-passwords-${new Date().toISOString().slice(0,10)}.xlsx`);
+    toast({ title: `تم تصدير ${rows.length} سجل` });
+  };
+
   return (
     <AdminLayout>
       <AdminSEO pageName="سجل كلمات مرور المراجعة" />
       <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
-            <KeyRound className="w-6 h-6 text-emerald-600" />
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
+              <KeyRound className="w-6 h-6 text-emerald-600" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-black text-slate-800">سجل كلمات مرور اختبار+ المراجعة</h1>
+              <p className="text-sm text-slate-500 font-medium">إدارة شاملة لكل الطلاب وأجهزتهم وصلاحية كلمات المرور</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-black text-slate-800">سجل كلمات مرور اختبار+ المراجعة</h1>
-            <p className="text-sm text-slate-500 font-medium">إدارة شاملة لكل الطلاب وأجهزتهم وصلاحية كلمات المرور</p>
-          </div>
+          <Button onClick={handleExport} disabled={rows.length === 0} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shrink-0">
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">تصدير Excel</span>
+          </Button>
         </div>
 
         {/* Stats */}
