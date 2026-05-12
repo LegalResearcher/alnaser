@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Plus, Edit2, Trash2, BookOpen, Clock, Target, Settings, User, Lock, Upload, Loader2, FileText, CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { AdminSEO } from '@/components/seo/SEOHead';
+import * as XLSX from 'xlsx';
 import {
   Dialog,
   DialogContent,
@@ -615,10 +616,103 @@ const ReviewPasswordsSection = ({ subjectId, levels }: { subjectId: string; leve
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editPassword, setEditPassword] = useState('');
   const [editDuration, setEditDuration] = useState<number>(30);
+  const importRef = useRef<HTMLInputElement>(null);
 
   // ── حقول المستوى والمواد الإضافية ──
   const [extraLevelId, setExtraLevelId] = useState<string>('none');
   const [extraSubjectIds, setExtraSubjectIds] = useState<string[]>([]);
+
+  // ── بيانات الاستيراد المعلّقة ──
+  type ImportRow = { id: string; label: string; password: string; duration: number };
+  const [importRows, setImportRows] = useState<ImportRow[]>([]);
+  const [importSelected, setImportSelected] = useState<Set<string>>(new Set());
+  const [importPending, setImportPending] = useState(false);
+
+  const allImportChecked = importRows.length > 0 && importSelected.size === importRows.length;
+
+  const toggleImportRow = (id: string) => {
+    setImportSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleImportAll = () => {
+    if (allImportChecked) {
+      setImportSelected(new Set());
+    } else {
+      setImportSelected(new Set(importRows.map(r => r.id)));
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    const selected = importRows.filter(r => importSelected.has(r.id));
+    if (selected.length === 0) { toast({ title: 'لم تحدد أي اسم', variant: 'destructive' }); return; }
+
+    // لو صف واحد محدد → عبّئ الحقول فقط
+    if (selected.length === 1) {
+      setNewLabel(selected[0].label);
+      setNewPassword(selected[0].password);
+      setNewDuration(selected[0].duration);
+      setImportRows([]);
+      setImportSelected(new Set());
+      toast({ title: 'تم تعبئة البيانات', description: `${selected[0].label} — ${selected[0].password}` });
+      return;
+    }
+
+    // عدة صفوف → أضف مباشرة
+    setImportPending(true);
+    const records = selected.map(r => ({
+      subject_id: subjectId,
+      password: r.password,
+      label: r.label || null,
+      duration_days: r.duration,
+      is_active: true,
+    }));
+    const { error } = await (supabase as any).from('review_passwords').insert(records);
+    setImportPending(false);
+    if (error) { toast({ title: 'فشل الاستيراد', description: error.message, variant: 'destructive' }); return; }
+    queryClient.invalidateQueries({ queryKey: ['review_passwords', subjectId] });
+    setImportRows([]);
+    setImportSelected(new Set());
+    toast({ title: `تم استيراد ${records.length} طالب بنجاح` });
+  };
+
+  // ── قراءة الملف ──
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const wb = XLSX.read(ev.target?.result, { type: 'binary' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json<any>(ws, { header: 1 });
+        const rows = data.filter((r: any[]) => r.length >= 2);
+        if (rows.length === 0) { toast({ title: 'الملف فارغ أو غير صحيح', variant: 'destructive' }); return; }
+        const startIdx = (typeof rows[0][1] === 'string' && isNaN(Number(rows[0][1]))) ? 1 : 0;
+        const dataRows = rows.slice(startIdx);
+        if (dataRows.length === 0) { toast({ title: 'لا توجد بيانات بعد الهيدر', variant: 'destructive' }); return; }
+        const parsed: ImportRow[] = dataRows
+          .map((r: any[], i: number) => ({
+            id: `import-${i}`,
+            label: String(r[0] || '').trim(),
+            password: String(r[1] || '').trim(),
+            duration: Number(r[2]) > 0 ? Number(r[2]) : 30,
+          }))
+          .filter(r => r.password);
+        if (parsed.length === 0) { toast({ title: 'لا توجد كلمات مرور صالحة', variant: 'destructive' }); return; }
+        setImportRows(parsed);
+        setImportSelected(new Set(parsed.map(r => r.id)));
+      } catch {
+        toast({ title: 'تعذّر قراءة الملف', variant: 'destructive' });
+      } finally {
+        if (importRef.current) importRef.current.value = '';
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
 
   const { data: passwords = [], isLoading } = useQuery({
     queryKey: ['review_passwords', subjectId],
@@ -756,10 +850,66 @@ const ReviewPasswordsSection = ({ subjectId, levels }: { subjectId: string; leve
 
   return (
     <div className="space-y-4 p-4 rounded-xl border-2 border-dashed border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20">
-      <div className="flex items-center gap-2">
-        <KeyRound className="w-4 h-4 text-emerald-600" />
-        <h3 className="font-black text-sm">كلمات مرور اختبار+ المراجعة</h3>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <KeyRound className="w-4 h-4 text-emerald-600" />
+          <h3 className="font-black text-sm">كلمات مرور اختبار+ المراجعة</h3>
+        </div>
+        <Button type="button" variant="outline" size="sm" className="text-xs gap-1.5 h-8"
+          onClick={() => importRef.current?.click()}>
+          <Upload className="w-3.5 h-3.5" /> استيراد Excel
+        </Button>
+        <input ref={importRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImport} />
       </div>
+      <p className="text-[10px] text-muted-foreground -mt-2">
+        صيغة الاستيراد: العمود الأول = الاسم، الثاني = كلمة المرور، الثالث = الأيام (اختياري).
+        صف واحد → تعبئة الحقول. عدة صفوف → إضافة مباشرة.
+      </p>
+
+      {/* ── قائمة الاستيراد مع الاختيار ── */}
+      {importRows.length > 0 && (
+        <div className="rounded-lg border bg-background overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-2 bg-emerald-50 dark:bg-emerald-950/30 border-b">
+            <label className="flex items-center gap-2 text-xs font-bold cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={allImportChecked}
+                onChange={toggleImportAll}
+                className="accent-emerald-600 w-3.5 h-3.5"
+              />
+              تحديد الكل ({importRows.length})
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-muted-foreground">{importSelected.size} محدد</span>
+              <Button type="button" size="sm" className="h-7 text-xs gradient-primary text-primary-foreground border-0"
+                disabled={importSelected.size === 0 || importPending}
+                onClick={handleConfirmImport}>
+                {importPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+                إضافة المحدد
+              </Button>
+              <Button type="button" size="sm" variant="ghost" className="h-7 text-xs text-destructive"
+                onClick={() => { setImportRows([]); setImportSelected(new Set()); }}>
+                <XCircle className="w-3 h-3" /> إلغاء
+              </Button>
+            </div>
+          </div>
+          <div className="divide-y max-h-52 overflow-y-auto">
+            {importRows.map(r => (
+              <label key={r.id} className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-muted/40 select-none">
+                <input
+                  type="checkbox"
+                  checked={importSelected.has(r.id)}
+                  onChange={() => toggleImportRow(r.id)}
+                  className="accent-emerald-600 w-3.5 h-3.5 shrink-0"
+                />
+                <span className="text-xs font-semibold flex-1 truncate">{r.label || '—'}</span>
+                <span className="text-xs font-mono text-muted-foreground">{r.password}</span>
+                <span className="text-[11px] text-muted-foreground shrink-0">{r.duration} يوم</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* نموذج الإضافة */}
       <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_120px_auto] gap-2">
