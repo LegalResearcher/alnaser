@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { ReviewPassword, Subject } from '@/types/database';
+import { ReviewPassword, Subject, Level } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -19,20 +19,40 @@ export default function AdminReviewPasswords() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
+  const [levelFilter, setLevelFilter] = useState<string>('all');
   const [subjectFilter, setSubjectFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editPassword, setEditPassword] = useState('');
   const [editDuration, setEditDuration] = useState<number>(30);
 
+  const { data: levels = [] } = useQuery({
+    queryKey: ['levels'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('levels').select('*').order('order_index');
+      if (error) throw error;
+      return data as Level[];
+    },
+  });
+
   const { data: subjects = [] } = useQuery({
     queryKey: ['subjects-min'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('subjects').select('id,name').order('name');
+      const { data, error } = await supabase.from('subjects').select('id,name,level_id').order('name');
       if (error) throw error;
-      return (data || []) as Pick<Subject, 'id' | 'name'>[];
+      return (data || []) as Pick<Subject, 'id' | 'name' | 'level_id'>[];
     },
   });
+
+  // مواد المستوى المختار فقط
+  const filteredSubjects = useMemo(() =>
+    levelFilter === 'all' ? subjects : subjects.filter((s: any) => s.level_id === levelFilter)
+  , [subjects, levelFilter]);
+
+  const handleLevelFilterChange = (val: string) => {
+    setLevelFilter(val);
+    setSubjectFilter('all'); // إعادة تعيين المادة عند تغيير المستوى
+  };
 
   const subjectMap = useMemo(() => Object.fromEntries(subjects.map((s: any) => [s.id, s.name])), [subjects]);
 
@@ -52,6 +72,10 @@ export default function AdminReviewPasswords() {
 
   const filtered = useMemo(() => {
     return rows.filter(r => {
+      if (levelFilter !== 'all') {
+        const subjectLevelId = (subjects.find((s: any) => s.id === r.subject_id) as any)?.level_id;
+        if (subjectLevelId !== levelFilter) return false;
+      }
       if (subjectFilter !== 'all' && r.subject_id !== subjectFilter) return false;
       const expired = isExpired(r);
       if (statusFilter === 'active' && expired) return false;
@@ -65,7 +89,7 @@ export default function AdminReviewPasswords() {
       }
       return true;
     });
-  }, [rows, search, subjectFilter, statusFilter, subjectMap]);
+  }, [rows, search, levelFilter, subjectFilter, statusFilter, subjectMap, subjects]);
 
   const deleteMut = useMutation({
     mutationFn: async (id: string) => {
@@ -257,16 +281,23 @@ export default function AdminReviewPasswords() {
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-2xl p-4 border border-slate-200 grid grid-cols-1 md:grid-cols-[1fr_200px_200px] gap-3">
+        <div className="bg-white rounded-2xl p-4 border border-slate-200 grid grid-cols-1 md:grid-cols-[1fr_180px_180px_180px] gap-3">
           <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="بحث بالاسم أو المادة أو كلمة المرور..." className="pr-9" />
           </div>
+          <Select value={levelFilter} onValueChange={handleLevelFilterChange}>
+            <SelectTrigger><SelectValue placeholder="كل المستويات" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل المستويات</SelectItem>
+              {levels.map((l: any) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Select value={subjectFilter} onValueChange={setSubjectFilter}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="كل المواد" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">كل المواد</SelectItem>
-              {subjects.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+              {filteredSubjects.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
