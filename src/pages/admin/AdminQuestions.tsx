@@ -516,6 +516,20 @@ const AdminQuestions = () => {
     onError: (err: any) => toast({ title: 'خطأ', description: err.message, variant: 'destructive' }),
   });
 
+  const showFormMutation = useMutation({
+    mutationFn: async ({ rowId }: { rowId: string }) => {
+      const { error } = await (supabase.from('subject_exam_forms' as any) as any)
+        .update({ hidden: false })
+        .eq('id', rowId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subject-exam-forms'] });
+      toast({ title: 'تم إظهار النموذج ✅' });
+    },
+    onError: (err: any) => toast({ title: 'خطأ', description: err.message, variant: 'destructive' }),
+  });
+
   const reorderFormMutation = useMutation({
     mutationFn: async ({ id, direction, currentIndex }: { id: string; direction: 'up' | 'down'; currentIndex: number }) => {
       const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
@@ -1589,7 +1603,8 @@ render();
                           )}
                           {f.hidden ? (
                             <button
-                              onClick={() => f.rowId && renameFormMutation.mutate({ rowId: f.rowId, formId: f.id, isDefault: f.isDefault, newName: f.name })}
+                              onClick={() => f.rowId && showFormMutation.mutate({ rowId: f.rowId })}
+                              disabled={showFormMutation.isPending}
                               className="text-xs font-black px-2 py-1 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
                               title="إظهار النموذج"
                             >
