@@ -983,9 +983,7 @@ const ExamPage = () => {
 
                     {/* ملاحظة احترافية عند الإجابة الخاطئة */}
                     {((!isAnswerCorrect) || reviewMode) && selectedAnswer && currentQuestion.hint && (
-                      <>
-                      {/* التلميح يظهر فقط في اختبار+ المراجعة */}
-                      {!reviewMode ? (
+                      !reviewMode ? (
                         <div className="mb-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
                           <div className="relative overflow-hidden rounded-2xl border border-amber-200 dark:border-amber-800/50 bg-gradient-to-l from-amber-50 via-yellow-50 to-amber-50 dark:from-amber-950/30 dark:via-yellow-950/30 dark:to-amber-950/30 p-3.5">
                             <div className="flex items-start gap-3">
@@ -1004,43 +1002,38 @@ const ExamPage = () => {
                           </div>
                         </div>
                       ) : (
-                      <div className="mb-4 animate-in slide-in-from-bottom-2 fade-in duration-500">
-                        <div className="relative overflow-hidden rounded-2xl border border-amber-200 dark:border-amber-700/50 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 shadow-md">
-                          {/* شريط علوي ملون */}
-                          <div className="h-1 w-full bg-gradient-to-r from-amber-400 via-orange-400 to-amber-400" />
-                          <div className="p-4">
-                            {/* رأس البطاقة */}
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-base">
-                                  💡
+                        <div className="mb-4 animate-in slide-in-from-bottom-2 fade-in duration-500">
+                          <div className="relative overflow-hidden rounded-2xl border border-amber-200 dark:border-amber-700/50 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 shadow-md">
+                            <div className="h-1 w-full bg-gradient-to-r from-amber-400 via-orange-400 to-amber-400" />
+                            <div className="p-4">
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-7 h-7 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-base">
+                                    💡
+                                  </div>
+                                  <span className="text-xs font-black text-amber-700 dark:text-amber-400 uppercase tracking-wider">
+                                    تلميح وشرح
+                                  </span>
                                 </div>
-                                <span className="text-xs font-black text-amber-700 dark:text-amber-400 uppercase tracking-wider">
-                                  تلميح وشرح
-                                </span>
+                                <button
+                                  onClick={() => setShowHint(p => !p)}
+                                  className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-amber-600 hover:bg-amber-200 transition-colors"
+                                >
+                                  <span className="text-xs font-black">{showHint ? '▲' : '▼'}</span>
+                                </button>
                               </div>
-                              <button
-                                onClick={() => setShowHint(p => !p)}
-                                className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-amber-600 hover:bg-amber-200 transition-colors"
-                              >
-                                <span className="text-xs font-black">{showHint ? '▲' : '▼'}</span>
-                              </button>
+                              {showHint && (
+                                <div className="animate-in fade-in slide-in-from-top-1 duration-300">
+                                  <div className="h-px bg-amber-200/60 dark:bg-amber-700/30 mb-3" />
+                                  <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 leading-relaxed text-right" dir="rtl">
+                                    {currentQuestion.hint}
+                                  </p>
+                                </div>
+                              )}
                             </div>
-                            {/* محتوى الملاحظة */}
-                            {showHint && (
-                              <div className="animate-in fade-in slide-in-from-top-1 duration-300">
-                                <div className="h-px bg-amber-200/60 dark:bg-amber-700/30 mb-3" />
-                                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 leading-relaxed text-right" dir="rtl">
-                                  {currentQuestion.hint}
-                                </p>
-                              </div>
-                            )}
                           </div>
                         </div>
-                      </div>
-                    )}
-                      )}
-                      </>
+                      )
                     )}
                     {selectedAnswer && currentQuestion.explanation && reviewMode && (
                       <div className="mb-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
