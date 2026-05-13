@@ -40,6 +40,7 @@ interface ExamState {
   studentName: string;
   examYear: number;
   examForm?: string;
+  examFormName?: string;
   isTrial?: boolean;
   allQuestions?: boolean;
   examTime: number;
@@ -512,6 +513,7 @@ const ExamPage = () => {
         subjectId,
         // بيانات إضافية لإعادة الاختبار مباشرة
         examForm:      state.examForm,
+        examFormName:  state.examFormName,
         isTrial:       state.isTrial,
         allQuestions:  state.allQuestions,
         examTime:      state.examTime,
