@@ -428,12 +428,22 @@ const ExamStart = () => {
   }, [selectedYear, selectedTrialForm, subject]);
 
   const navigateToExam = (resume: boolean) => {
+    // اسم النموذج المعروض (للاستخدام في رسائل المشاركة)
+    const examFormName = selectedYear === 'trial'
+      ? (selectedTrialForm !== 'all'
+          ? (activeTrialForms.find(f => f.id === selectedTrialForm)?.name ?? selectedTrialForm)
+          : 'كل النماذج')
+      : selectedYear === 'all'
+        ? 'كل الأسئلة'
+        : (activeExamForms.find(f => f.id === selectedExamForm)?.name ?? selectedExamForm);
+
     const baseState = {
       studentName,
       examYear:       (selectedYear === 'trial' || selectedYear === 'all') ? 0 : parseInt(selectedYear),
       examForm:       selectedYear === 'trial'
         ? (selectedTrialForm !== 'all' ? selectedTrialForm : 'Trial')
         : selectedYear === 'all' ? 'All' : selectedExamForm,
+      examFormName,
       examTime,
       questionsCount: questionCount,
       subjectName:    subject?.name,
@@ -517,6 +527,13 @@ const ExamStart = () => {
     examForm: selectedYear === 'trial'
       ? (selectedTrialForm !== 'all' ? selectedTrialForm : 'Trial')
       : selectedYear === 'all' ? 'All' : selectedExamForm,
+    examFormName: selectedYear === 'trial'
+      ? (selectedTrialForm !== 'all'
+          ? (activeTrialForms.find(f => f.id === selectedTrialForm)?.name ?? selectedTrialForm)
+          : 'كل النماذج')
+      : selectedYear === 'all'
+        ? 'كل الأسئلة'
+        : (activeExamForms.find(f => f.id === selectedExamForm)?.name ?? selectedExamForm),
     examTime,
     questionsCount: questionCount,
     subjectName: subject?.name,
