@@ -857,7 +857,6 @@ const ExamStart = () => {
                     {EXAM_YEARS.map((year) => (
                       <SelectItem key={year} value={year.toString()} className="h-11 rounded-xl font-bold cursor-pointer">دورة عام {year}</SelectItem>
                     ))}
-                    <SelectItem value="all" className="h-11 rounded-xl font-bold cursor-pointer text-emerald-600">📚 الكل</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
