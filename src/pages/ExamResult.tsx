@@ -37,6 +37,7 @@ interface ResultState {
   challengeSessionId?: string;
   subjectId?:          string;
   examForm?:           string;
+  examFormName?:       string;
   isTrial?:            boolean;
   allQuestions?:       boolean;
   examTime?:           number;
@@ -365,12 +366,12 @@ const ExamResult = () => {
     const subject   = state?.subjectName  ?? 'الاختبار';
     const level     = state?.levelName    ?? '';
     const year      = state?.examYear     ?? new Date().getFullYear();
-    const examForm  = state?.examForm     ?? '';
+    const examFormName = state?.examFormName ?? state?.examForm ?? '';
     const questions = state?.questionsCount ?? state?.totalQuestions ?? 0;
     const creator   = state?.studentName  ?? '';
     const result    = state?.scorePercentage ?? scorePercentage;
 
-    const levelParts = [level, String(year), examForm ? `نموذج ${examForm}` : ''].filter(Boolean);
+    const levelParts = [level, year ? String(year) : '', examFormName].filter(Boolean);
     const levelLine  = levelParts.join(' | ');
 
     const body = `📚 المادة: ${subject}\n🎓 المستوى: ${levelLine}\n❓ الأسئلة: ${questions} سؤال\n👨‍🏫 منشئ التحدي: ${creator}\nنتيجته: ${result}%\n\n🔥 هل أنت مستعد للتحدي والتفوق؟ انضم الآن!`;
