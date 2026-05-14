@@ -549,7 +549,6 @@ const ExamStart = () => {
     const savedPwd = reviewPasswordKey ? localStorage.getItem(reviewPasswordKey) : null;
     if (savedPwd) {
       // تحقق من صلاحيتها في قاعدة البيانات
-      const fingerprint = getDeviceFingerprint();
       const { data: match } = await (supabase as any)
         .from('review_passwords')
         .select('*')
@@ -558,22 +557,19 @@ const ExamStart = () => {
         .eq('is_active', true)
         .maybeSingle();
 
-      if (match &&
-        !(match.device_fingerprint && match.device_fingerprint !== fingerprint) &&
-        !(match.expires_at && new Date(match.expires_at) < new Date())
-      ) {
-        // تسجيل أول استخدام إن لم يكن مسجلاً
+      // الكلمة المحفوظة في localStorage = نفس الجهاز، نتحقق فقط من الصلاحية
+      if (match && !(match.expires_at && new Date(match.expires_at) < new Date())) {
         if (!match.first_used_at) {
           const days = Number(match.duration_days) > 0 ? Number(match.duration_days) : 30;
           const expiresAt = new Date();
           expiresAt.setDate(expiresAt.getDate() + days);
+          const fingerprint = getDeviceFingerprint();
           await (supabase as any).from('review_passwords').update({
             device_fingerprint: fingerprint,
             first_used_at: new Date().toISOString(),
             expires_at: expiresAt.toISOString(),
           }).eq('id', match.id);
         }
-        // الكلمة المحفوظة لا تزال صالحة → دخول مباشر
         navigate(`/exam/${subjectId}/start`, { state: buildReviewState() });
         return;
       } else {
