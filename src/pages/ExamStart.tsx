@@ -260,7 +260,7 @@ const ExamStart = () => {
   const [password,         setPassword]         = useState('');
   const [selectedYear,     setSelectedYear]     = useState<string>('');
   const [selectedExamForm, setSelectedExamForm] = useState<string>('General');
-  const [selectedTrialForm, setSelectedTrialForm] = useState<string>('all');
+  const [selectedTrialForm, setSelectedTrialForm] = useState<string>('');
   const [examTime,         setExamTime]         = useState<number>(30);
   const [wrongQuestions,   setWrongQuestions]   = useState<string[]>([]);
   const [savedProgress,    setSavedProgress]    = useState<SavedProgress | null>(null);
@@ -281,8 +281,7 @@ const ExamStart = () => {
   }, [subjectId]);
 
   useEffect(() => {
-    if (!subjectId || !studentName || selectedYear !== 'all') { setSavedProgress(null); return; }
-    setSavedProgress(getSavedProgress(subjectId, studentName));
+    setSavedProgress(null);
   }, [subjectId, studentName, selectedYear]);
 
   const { data: subject, isLoading } = useCachedQuery<
@@ -340,8 +339,8 @@ const ExamStart = () => {
       let query = supabase.from('questions').select('*', { count: 'exact', head: true }).eq('subject_id', subjectId).eq('status', 'active');
       if (selectedYear === 'trial') {
         query = query.is('exam_year', null);
-        if (selectedTrialForm !== 'all') query = query.eq('exam_form', selectedTrialForm);
-      } else if (selectedYear !== 'all' && selectedYear) {
+        if (selectedTrialForm) query = query.eq('exam_form', selectedTrialForm);
+      } else if (selectedYear) {
         query = query.eq('exam_year', parseInt(selectedYear));
         if (selectedExamForm && selectedExamForm !== 'Mixed') query = query.eq('exam_form', selectedExamForm);
       }
@@ -416,46 +415,33 @@ const ExamStart = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subject]);
 
-  // عند اختيار "الكل" أو "أسئلة تجريبية + كل النماذج" يكون الوقت الافتراضي 120 دقيقة
   useEffect(() => {
-    const isAllQuestions = selectedYear === 'all';
-    const isAllTrialForms = selectedYear === 'trial' && selectedTrialForm === 'all';
-    if (isAllQuestions || isAllTrialForms) {
-      setExamTime(120);
-    } else if (subject) {
+    if (subject) {
       setExamTime(subject.default_time_minutes || 30);
     }
   }, [selectedYear, selectedTrialForm, subject]);
 
   const navigateToExam = (resume: boolean) => {
-    // اسم النموذج المعروض (للاستخدام في رسائل المشاركة)
     const examFormName = selectedYear === 'trial'
-      ? (selectedTrialForm !== 'all'
-          ? (activeTrialForms.find(f => f.id === selectedTrialForm)?.name ?? selectedTrialForm)
-          : 'كل النماذج')
-      : selectedYear === 'all'
-        ? 'كل الأسئلة'
-        : (activeExamForms.find(f => f.id === selectedExamForm)?.name ?? selectedExamForm);
+      ? (activeTrialForms.find(f => f.id === selectedTrialForm)?.name ?? selectedTrialForm)
+      : (activeExamForms.find(f => f.id === selectedExamForm)?.name ?? selectedExamForm);
 
     const baseState = {
       studentName,
-      examYear:       (selectedYear === 'trial' || selectedYear === 'all') ? 0 : parseInt(selectedYear),
-      examForm:       selectedYear === 'trial'
-        ? (selectedTrialForm !== 'all' ? selectedTrialForm : 'Trial')
-        : selectedYear === 'all' ? 'All' : selectedExamForm,
+      examYear:       selectedYear === 'trial' ? 0 : parseInt(selectedYear),
+      examForm:       selectedYear === 'trial' ? selectedTrialForm : selectedExamForm,
       examFormName,
       examTime,
       questionsCount: questionCount,
       subjectName:    subject?.name,
       levelName:      subject?.levels?.name,
       isTrial:        selectedYear === 'trial',
-      allQuestions:   selectedYear === 'all',
+      allQuestions:   false,
       trialFormFilter: selectedYear === 'trial' ? selectedTrialForm : null,
     };
     if (resume && savedProgress) {
       navigate(`/exam/${subjectId}/start`, { state: { ...baseState, resumeProgress: savedProgress } });
     } else {
-      if (selectedYear === 'all') clearSavedProgress(subjectId!, studentName);
       navigate(`/exam/${subjectId}/start`, { state: baseState });
     }
   };
@@ -463,9 +449,9 @@ const ExamStart = () => {
   const handleStartExam = () => {
     if (!studentName.trim()) { toast({ title: 'تنبيه', description: 'يرجى إدخال اسمك الكامل للمتابعة', variant: 'destructive' }); return; }
     if (!selectedYear) { toast({ title: 'تنبيه', description: 'يرجى اختيار نموذج سنة الاختبار', variant: 'destructive' }); return; }
+    if (selectedYear === 'trial' && !selectedTrialForm) { toast({ title: 'تنبيه', description: 'يرجى اختيار النموذج التجريبي', variant: 'destructive' }); return; }
     if (subject?.password && password !== subject.password) { toast({ title: 'خطأ في الدخول', description: 'كلمة مرور الاختبار غير صحيحة', variant: 'destructive' }); return; }
     if (questionCount === 0) { toast({ title: 'نعتذر', description: 'لا توجد أسئلة متوفرة لهذا الاختيار حالياً', variant: 'destructive' }); return; }
-    if (selectedYear === 'all' && savedProgress) { setShowResumeDialog(true); return; }
     navigateToExam(false);
   };
 
@@ -523,23 +509,17 @@ const ExamStart = () => {
   // ── بناء state للدخول إلى وضع المراجعة ──
   const buildReviewState = () => ({
     studentName,
-    examYear: (selectedYear === 'trial' || selectedYear === 'all') ? 0 : parseInt(selectedYear),
-    examForm: selectedYear === 'trial'
-      ? (selectedTrialForm !== 'all' ? selectedTrialForm : 'Trial')
-      : selectedYear === 'all' ? 'All' : selectedExamForm,
+    examYear: selectedYear === 'trial' ? 0 : parseInt(selectedYear),
+    examForm: selectedYear === 'trial' ? selectedTrialForm : selectedExamForm,
     examFormName: selectedYear === 'trial'
-      ? (selectedTrialForm !== 'all'
-          ? (activeTrialForms.find(f => f.id === selectedTrialForm)?.name ?? selectedTrialForm)
-          : 'كل النماذج')
-      : selectedYear === 'all'
-        ? 'كل الأسئلة'
-        : (activeExamForms.find(f => f.id === selectedExamForm)?.name ?? selectedExamForm),
+      ? (activeTrialForms.find(f => f.id === selectedTrialForm)?.name ?? selectedTrialForm)
+      : (activeExamForms.find(f => f.id === selectedExamForm)?.name ?? selectedExamForm),
     examTime,
     questionsCount: questionCount,
     subjectName: subject?.name,
     levelName: subject?.levels?.name,
     isTrial: selectedYear === 'trial',
-    allQuestions: selectedYear === 'all',
+    allQuestions: false,
     trialFormFilter: selectedYear === 'trial' ? selectedTrialForm : null,
     reviewMode: true,
   });
@@ -848,7 +828,7 @@ const ExamStart = () => {
 
               <div className="space-y-2">
                 <FieldLabel>نموذج سنة الاختبار</FieldLabel>
-                <Select value={selectedYear} onValueChange={(v) => { setSelectedYear(v); if (v !== 'trial') setSelectedTrialForm('all'); }}>
+                <Select value={selectedYear} onValueChange={(v) => { setSelectedYear(v); if (v !== 'trial') setSelectedTrialForm(''); }}>
                   <SelectTrigger className="h-14 rounded-[1rem] bg-slate-50 dark:bg-muted border-slate-200 dark:border-border font-bold px-5 focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all">
                     <SelectValue placeholder="اختر السنة" />
                   </SelectTrigger>
@@ -862,7 +842,7 @@ const ExamStart = () => {
               </div>
 
               {/* السنوات والنماذج العادية - تظهر فقط عند عدم اختيار التجريبي */}
-              {selectedYear !== 'trial' && selectedYear !== 'all' && selectedYear && (
+              {selectedYear !== 'trial' && selectedYear && (
                 <div className="space-y-2">
                   <FieldLabel><span className="inline-flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" />نموذج الاختبار</span></FieldLabel>
                   <Select value={selectedExamForm} onValueChange={setSelectedExamForm}>
@@ -891,7 +871,6 @@ const ExamStart = () => {
                         <SelectValue placeholder="اختر النموذج" />
                       </SelectTrigger>
                       <SelectContent className="z-[9999] bg-white dark:bg-card border-slate-200 dark:border-border rounded-2xl shadow-2xl max-h-[280px]">
-                        <SelectItem value="all" className="h-11 rounded-xl font-bold cursor-pointer text-emerald-600">كل النماذج</SelectItem>
                         {activeTrialForms.map((form) => (
                           <SelectItem key={form.id} value={form.id} className="h-11 rounded-xl font-bold cursor-pointer">{form.name}</SelectItem>
                         ))}
@@ -900,24 +879,6 @@ const ExamStart = () => {
                   </div>
                 </>
               )}
-              {selectedYear === 'all' && (
-                <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-[1rem] px-4 py-3">
-                  <span className="text-2xl">📚</span>
-                  <div><p className="text-xs font-black text-emerald-700">جميع الأسئلة</p><p className="text-[10px] text-emerald-500 font-bold">جميع أسئلة المادة من كل الدورات مخلوطة عشوائياً</p></div>
-                </div>
-              )}
-
-              {/* إشعار التقدم المحفوظ */}
-              {selectedYear === 'all' && savedProgress && studentName && (
-                <div className="flex items-center gap-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50 rounded-[1rem] px-4 py-3">
-                  <span className="text-2xl">💾</span>
-                  <div>
-                    <p className="text-xs font-black text-blue-700 dark:text-blue-400">لديك اختبار محفوظ من {savedDate}</p>
-                    <p className="text-[10px] text-blue-500 font-bold">وصلت للسؤال {savedProgress.currentIndex + 1} من {savedProgress.questionsCount}</p>
-                  </div>
-                </div>
-              )}
-
               <div className="flex items-center justify-between bg-slate-900 rounded-[1rem] px-6 py-4">
                 <span className="text-[10px] font-black text-slate-500 dark:text-muted-foreground uppercase tracking-widest">الأسئلة المتوفرة</span>
                 <span className="text-white font-black text-lg">{countLoading ? <span className="inline-block w-8 h-5 bg-slate-700 rounded animate-pulse" /> : questionCount}</span>
@@ -956,7 +917,7 @@ const ExamStart = () => {
                 <div className="absolute inset-0 -skew-x-12 translate-x-[-150%] group-hover:translate-x-[250%] transition-transform duration-700 ease-in-out" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)', width: '50%' }} />
                 <div className="relative z-10 flex items-center justify-center gap-3">
                   <Play className="w-5 h-5 fill-current group-hover:scale-110 transition-transform" />
-                  <span>{selectedYear === 'all' && savedProgress ? 'متابعة الاختبار' : 'ابدأ الاختبار الآن'}</span>
+                  <span>ابدأ الاختبار الآن</span>
                   <Zap className="w-4 h-4 opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all" />
                 </div>
               </button>
