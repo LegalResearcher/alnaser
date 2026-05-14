@@ -68,7 +68,7 @@ const BattleCreate = () => {
   const [questionType, setQuestionType] = useState<QuestionType>('general');
   const [selectedExamYear, setSelectedExamYear] = useState('');
   const [selectedExamForm, setSelectedExamForm] = useState('General');
-  const [selectedTrialForm, setSelectedTrialForm] = useState('all');
+  const [selectedTrialForm, setSelectedTrialForm] = useState('');
 
   const { data: levels = [] } = useQuery({
     queryKey: ['levels'],
@@ -117,13 +117,12 @@ const BattleCreate = () => {
         .eq('subject_id', selectedSubject).eq('status', 'active');
       if (selectedExamYear === 'trial') {
         q = q.is('exam_year', null);
-        if (selectedTrialForm !== 'all') q = q.eq('exam_form', selectedTrialForm);
-      } else if (selectedExamYear !== 'all' && selectedExamYear) {
+        if (selectedTrialForm) q = q.eq('exam_form', selectedTrialForm);
+      } else if (selectedExamYear) {
         q = q.not('exam_year', 'is', null);
         q = q.eq('exam_year', parseInt(selectedExamYear));
         if (selectedExamForm && selectedExamForm !== 'Mixed') q = q.eq('exam_form', selectedExamForm);
       }
-      // 'all' → no extra filters
       const { count } = await q;
       return count || 0;
     },
@@ -131,7 +130,6 @@ const BattleCreate = () => {
   });
 
   const maxQ = availableCount;
-  const effectiveQuestionsCount = selectedExamYear === 'all' ? availableCount : questionsCount;
 
   // عند تغيير الفلاتر: اضبط عدد الأسئلة تلقائياً ليكون كل الأسئلة المتاحة
   useEffect(() => {
@@ -184,13 +182,12 @@ const BattleCreate = () => {
           .eq('subject_id', selectedSubject).eq('status', 'active');
         if (selectedExamYear === 'trial') {
           query = query.is('exam_year', null);
-          if (selectedTrialForm !== 'all') query = query.eq('exam_form', selectedTrialForm);
-        } else if (selectedExamYear !== 'all' && selectedExamYear) {
+          if (selectedTrialForm) query = query.eq('exam_form', selectedTrialForm);
+        } else if (selectedExamYear) {
           query = query.not('exam_year', 'is', null);
           query = query.eq('exam_year', parseInt(selectedExamYear));
           if (selectedExamForm && selectedExamForm !== 'Mixed') query = query.eq('exam_form', selectedExamForm);
         }
-        // 'all' → no extra filters
         const { data: pageData } = await query.range(from, from + PAGE_SIZE - 1);
         if (!pageData || pageData.length === 0) break;
         allRows = [...allRows, ...(pageData as any[])];
@@ -199,25 +196,20 @@ const BattleCreate = () => {
       }
 
       const shuffled = allRows.sort(() => Math.random() - 0.5);
-      const finalQuestionsCount = selectedExamYear === 'all'
-        ? shuffled.length
-        : Math.min(questionsCount, shuffled.length);
+      const finalQuestionsCount = Math.min(questionsCount, shuffled.length);
       const questionIds = shuffled.slice(0, finalQuestionsCount).map((q: any) => q.id);
 
       const code = generateCode();
       const avatarColor = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
 
-      // كلمة مرور الغرفة: إما من الأدمن (battle_password) أو من المستخدم إذا اختار خاصة
       const finalPassword = adminPassword || (isPrivate ? password.trim() : null);
       const finalIsPrivate = !!finalPassword;
 
       const examFormName = selectedExamYear === 'trial'
-        ? (activeTrialForms.find(f => f.id === selectedTrialForm)?.name || 'كل النماذج')
-        : selectedExamYear === 'all'
-        ? 'جميع الأسئلة'
+        ? (activeTrialForms.find(f => f.id === selectedTrialForm)?.name || selectedTrialForm)
         : (EXAM_FORMS.find(f => f.id === selectedExamForm)?.name || 'نموذج العام');
 
-      const qType = selectedExamYear === 'trial' ? 'trial' : selectedExamYear === 'all' ? 'general' : 'exam';
+      const qType = selectedExamYear === 'trial' ? 'trial' : 'exam';
 
       const { data: room, error } = await (supabase.from('battle_rooms' as any) as any).insert({
         code,
@@ -234,8 +226,8 @@ const BattleCreate = () => {
         team1_name: allowTeams ? team1Name : null,
         team2_name: allowTeams ? team2Name : null,
         question_type: qType,
-        exam_year: (selectedExamYear && selectedExamYear !== 'all' && selectedExamYear !== 'trial') ? parseInt(selectedExamYear) : null,
-        exam_form_id: selectedExamYear === 'trial' ? (selectedTrialForm !== 'all' ? selectedTrialForm : null) : (selectedExamForm && selectedExamForm !== 'Mixed' ? selectedExamForm : null),
+        exam_year: selectedExamYear && selectedExamYear !== 'trial' ? parseInt(selectedExamYear) : null,
+        exam_form_id: selectedExamYear === 'trial' ? (selectedTrialForm || null) : (selectedExamForm && selectedExamForm !== 'Mixed' ? selectedExamForm : null),
         exam_form_name: examFormName || null,
         time_per_question: timeMinutes,
         locked: false,
@@ -270,18 +262,16 @@ const BattleCreate = () => {
     const subjectNameStr = subjectObj?.name || '';
     const levelNameStr = levelObj?.name || '';
     const examFormName = selectedExamYear === 'trial'
-      ? (activeTrialForms.find(f => f.id === selectedTrialForm)?.name || 'كل النماذج')
-      : selectedExamYear === 'all'
-      ? 'جميع الأسئلة'
+      ? (activeTrialForms.find(f => f.id === selectedTrialForm)?.name || selectedTrialForm)
       : (EXAM_FORMS.find(f => f.id === selectedExamForm)?.name || '');
-    const yearStr = selectedExamYear === 'all' ? ' | كل السنوات' : selectedExamYear === 'trial' ? ' | تجريبي' : selectedExamYear ? ` | ${selectedExamYear}` : '';
+    const yearStr = selectedExamYear === 'trial' ? ' | تجريبي' : selectedExamYear ? ` | ${selectedExamYear}` : '';
     const formStr = examFormName ? ` | ${examFormName}` : '';
 
     return `⚔️ تحدٍّ قانوني مباشر!
 
 📚 المادة: ${subjectNameStr}
 🎓 المستوى: ${levelNameStr}${yearStr}${formStr}
-❓ الأسئلة: ${effectiveQuestionsCount} سؤال
+❓ الأسئلة: ${questionsCount} سؤال
 👨‍🏫 المنشئ: ${creatorName}
 
 🔥 هل أنت مستعد للمنافسة؟ انضم الآن!
@@ -465,7 +455,7 @@ const BattleCreate = () => {
               {selectedSubject && (
                 <div className="space-y-3 p-4 bg-slate-50 dark:bg-muted rounded-[1.25rem] border border-slate-100 dark:border-border">
                   <Label className="text-[11px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest">نموذج سنة الاختبار</Label>
-                  <Select value={selectedExamYear} onValueChange={v => { setSelectedExamYear(v); setSelectedExamForm('General'); setSelectedTrialForm('all'); }}>
+                  <Select value={selectedExamYear} onValueChange={v => { setSelectedExamYear(v); setSelectedExamForm('General'); setSelectedTrialForm(''); }}>
                     <SelectTrigger className="h-12 rounded-[1rem] bg-white dark:bg-card border-slate-200 font-bold">
                       <SelectValue placeholder="اختر السنة" />
                     </SelectTrigger>
@@ -474,12 +464,11 @@ const BattleCreate = () => {
                       {examYears.map(y => (
                         <SelectItem key={y} value={String(y)} className="h-11 rounded-xl font-bold cursor-pointer">دورة عام {y}</SelectItem>
                       ))}
-                      <SelectItem value="all" className="h-11 rounded-xl font-bold cursor-pointer text-emerald-600">📚 الكل</SelectItem>
                     </SelectContent>
                   </Select>
 
                   {/* نموذج الاختبار — يظهر عند اختيار سنة محددة */}
-                  {selectedExamYear && selectedExamYear !== 'trial' && selectedExamYear !== 'all' && (
+                  {selectedExamYear && selectedExamYear !== 'trial' && (
                     <div className="space-y-2">
                       <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">نموذج الاختبار</Label>
                       <Select value={selectedExamForm} onValueChange={setSelectedExamForm}>
@@ -511,23 +500,11 @@ const BattleCreate = () => {
                           <SelectValue placeholder="كل النماذج" />
                         </SelectTrigger>
                         <SelectContent className="z-[9999] bg-white dark:bg-card rounded-2xl shadow-2xl max-h-[260px]">
-                          <SelectItem value="all" className="font-bold rounded-xl text-emerald-600">كل النماذج</SelectItem>
                           {activeTrialForms.map(f => (
                             <SelectItem key={f.id} value={f.id} className="font-bold rounded-xl">{f.name}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
-                  )}
-
-                  {/* الكل */}
-                  {selectedExamYear === 'all' && (
-                    <div className="flex items-center gap-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-800/30 rounded-xl px-3 py-2.5">
-                      <span className="text-xl">📚</span>
-                      <div>
-                        <p className="text-xs font-black text-emerald-700 dark:text-emerald-400">جميع الأسئلة</p>
-                        <p className="text-[10px] text-emerald-500 font-bold">جميع أسئلة المادة من كل الدورات مخلوطة عشوائياً</p>
-                      </div>
                     </div>
                   )}
 
@@ -542,10 +519,10 @@ const BattleCreate = () => {
                 <div className="flex items-center justify-between">
                   <Label className="text-[11px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest">عدد الأسئلة</Label>
                   <span className="text-primary font-black text-sm bg-primary/10 px-3 py-1 rounded-xl">
-                    {selectedExamYear === 'all' ? `${availableCount} سؤال (الكل)` : `${questionsCount} سؤال`}
+                    {questionsCount} سؤال
                   </span>
                 </div>
-                <Slider value={[effectiveQuestionsCount]} onValueChange={([v]) => setQuestionsCount(v)} min={5} max={Math.max(maxQ, 5)} step={5} disabled={!selectedSubject || selectedExamYear === 'all'} className="py-1" />
+                <Slider value={[questionsCount]} onValueChange={([v]) => setQuestionsCount(v)} min={5} max={Math.max(maxQ, 5)} step={5} disabled={!selectedSubject} className="py-1" />
               </div>
 
               {/* وقت السؤال */}
