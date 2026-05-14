@@ -149,10 +149,10 @@ const BattleCreate = () => {
 
   const maxQ = availableCount;
 
-  // عند تغيير الفلاتر: اضبط عدد الأسئلة تلقائياً ليكون كل الأسئلة المتاحة
+  // عند تغيير الفلاتر: اضبط عدد الأسئلة على 20 أو الحد المتاح
   useEffect(() => {
     if (availableCount > 0) {
-      setQuestionsCount(availableCount);
+      setQuestionsCount(Math.min(20, availableCount));
     }
   }, [availableCount]);
 
