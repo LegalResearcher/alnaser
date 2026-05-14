@@ -524,6 +524,9 @@ const ExamStart = () => {
     reviewMode: true,
   });
 
+  // ── مفتاح localStorage لكلمة مرور المراجعة لكل مادة ──
+  const reviewPasswordKey = subjectId ? `review_pwd_${subjectId}` : null;
+
   // ── فتح نافذة كلمة مرور المراجعة (أو دخول مباشر إن لم توجد كلمات) ──
   const handleOpenReviewModal = async () => {
     if (!studentName.trim()) { toast({ title: 'تنبيه', description: 'يرجى إدخال اسمك الكامل أولاً', variant: 'destructive' }); return; }
@@ -538,9 +541,45 @@ const ExamStart = () => {
       .limit(1);
 
     if (!activeList || activeList.length === 0) {
-      // لا توجد كلمات مرور → دخول مباشر
       navigate(`/exam/${subjectId}/start`, { state: buildReviewState() });
       return;
+    }
+
+    // ── تحقق من كلمة مرور محفوظة في localStorage ──
+    const savedPwd = reviewPasswordKey ? localStorage.getItem(reviewPasswordKey) : null;
+    if (savedPwd) {
+      // تحقق من صلاحيتها في قاعدة البيانات
+      const fingerprint = getDeviceFingerprint();
+      const { data: match } = await (supabase as any)
+        .from('review_passwords')
+        .select('*')
+        .eq('subject_id', subjectId)
+        .eq('password', savedPwd)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (match &&
+        !(match.device_fingerprint && match.device_fingerprint !== fingerprint) &&
+        !(match.expires_at && new Date(match.expires_at) < new Date())
+      ) {
+        // تسجيل أول استخدام إن لم يكن مسجلاً
+        if (!match.first_used_at) {
+          const days = Number(match.duration_days) > 0 ? Number(match.duration_days) : 30;
+          const expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + days);
+          await (supabase as any).from('review_passwords').update({
+            device_fingerprint: fingerprint,
+            first_used_at: new Date().toISOString(),
+            expires_at: expiresAt.toISOString(),
+          }).eq('id', match.id);
+        }
+        // الكلمة المحفوظة لا تزال صالحة → دخول مباشر
+        navigate(`/exam/${subjectId}/start`, { state: buildReviewState() });
+        return;
+      } else {
+        // الكلمة المحفوظة انتهت صلاحيتها → احذفها
+        if (reviewPasswordKey) localStorage.removeItem(reviewPasswordKey);
+      }
     }
 
     setReviewPassword('');
@@ -597,6 +636,9 @@ const ExamStart = () => {
           expires_at: expiresAt.toISOString(),
         }).eq('id', match.id);
       }
+
+      // ── حفظ كلمة المرور في localStorage ──
+      if (reviewPasswordKey) localStorage.setItem(reviewPasswordKey, reviewPassword.trim());
 
       setShowReviewPasswordModal(false);
       navigate(`/exam/${subjectId}/start`, { state: buildReviewState() });
