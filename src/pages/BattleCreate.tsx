@@ -106,8 +106,26 @@ const BattleCreate = () => {
   []);
 
   const activeTrialForms = useMemo(() => {
-    const customs = examForms.map((f: any) => ({ id: f.form_id, name: f.form_name, order_index: (f as any).order_index ?? 999 }));
-    return [...defaultTrialForms, ...customs].sort((a, b) => a.order_index - b.order_index).map(({ id, name }) => ({ id, name }));
+    const overrideMap = new Map<string, any>();
+    examForms.forEach((f: any) => overrideMap.set(f.form_id, f));
+
+    const defaults = defaultTrialForms
+      .map(d => {
+        const ov = overrideMap.get(d.id);
+        if (ov) {
+          overrideMap.delete(d.id);
+          return { id: d.id, name: ov.form_name, order_index: ov.order_index ?? d.order_index, hidden: !!ov.hidden };
+        }
+        return { ...d, hidden: false };
+      })
+      .filter(d => !d.hidden);
+
+    const customs: { id: string; name: string; order_index: number }[] = [];
+    overrideMap.forEach((f: any) => {
+      if (!f.hidden) customs.push({ id: f.form_id, name: f.form_name, order_index: f.order_index });
+    });
+
+    return [...defaults, ...customs].sort((a, b) => a.order_index - b.order_index).map(({ id, name }) => ({ id, name }));
   }, [defaultTrialForms, examForms]);
 
   const { data: availableCount = 0 } = useQuery({
