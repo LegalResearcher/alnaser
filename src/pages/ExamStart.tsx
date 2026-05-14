@@ -546,34 +546,48 @@ const ExamStart = () => {
     }
 
     // ── تحقق من كلمة مرور محفوظة في localStorage ──
-    const savedPwd = reviewPasswordKey ? localStorage.getItem(reviewPasswordKey) : null;
-    if (savedPwd) {
-      // تحقق من صلاحيتها في قاعدة البيانات
-      const { data: match } = await (supabase as any)
-        .from('review_passwords')
-        .select('*')
-        .eq('subject_id', subjectId)
-        .eq('password', savedPwd)
-        .eq('is_active', true)
-        .maybeSingle();
+    const fingerprint = getDeviceFingerprint();
+    const savedData = reviewPasswordKey ? localStorage.getItem(reviewPasswordKey) : null;
+    if (savedData) {
+      try {
+        const { pwd, fp } = JSON.parse(savedData);
+        // تحقق أن نفس الجهاز محلياً
+        if (fp === fingerprint) {
+          const { data: match } = await (supabase as any)
+            .from('review_passwords')
+            .select('*')
+            .eq('subject_id', subjectId)
+            .eq('password', pwd)
+            .eq('is_active', true)
+            .maybeSingle();
 
-      // الكلمة المحفوظة في localStorage = نفس الجهاز، نتحقق فقط من الصلاحية
-      if (match && !(match.expires_at && new Date(match.expires_at) < new Date())) {
-        if (!match.first_used_at) {
-          const days = Number(match.duration_days) > 0 ? Number(match.duration_days) : 30;
-          const expiresAt = new Date();
-          expiresAt.setDate(expiresAt.getDate() + days);
-          const fingerprint = getDeviceFingerprint();
-          await (supabase as any).from('review_passwords').update({
-            device_fingerprint: fingerprint,
-            first_used_at: new Date().toISOString(),
-            expires_at: expiresAt.toISOString(),
-          }).eq('id', match.id);
+          if (match && !(match.expires_at && new Date(match.expires_at) < new Date())) {
+            // تحقق من بصمة الجهاز في قاعدة البيانات
+            if (match.device_fingerprint && match.device_fingerprint !== fingerprint) {
+              // جهاز آخر سبق واستخدمها → احذف المحفوظ واطلب كلمة المرور
+              if (reviewPasswordKey) localStorage.removeItem(reviewPasswordKey);
+            } else {
+              // نفس الجهاز أو أول استخدام → سجّل وادخل
+              if (!match.first_used_at) {
+                const days = Number(match.duration_days) > 0 ? Number(match.duration_days) : 30;
+                const expiresAt = new Date();
+                expiresAt.setDate(expiresAt.getDate() + days);
+                await (supabase as any).from('review_passwords').update({
+                  device_fingerprint: fingerprint,
+                  first_used_at: new Date().toISOString(),
+                  expires_at: expiresAt.toISOString(),
+                }).eq('id', match.id);
+              }
+              navigate(`/exam/${subjectId}/start`, { state: buildReviewState() });
+              return;
+            }
+          } else {
+            if (reviewPasswordKey) localStorage.removeItem(reviewPasswordKey);
+          }
+        } else {
+          if (reviewPasswordKey) localStorage.removeItem(reviewPasswordKey);
         }
-        navigate(`/exam/${subjectId}/start`, { state: buildReviewState() });
-        return;
-      } else {
-        // الكلمة المحفوظة انتهت صلاحيتها → احذفها
+      } catch {
         if (reviewPasswordKey) localStorage.removeItem(reviewPasswordKey);
       }
     }
@@ -633,8 +647,13 @@ const ExamStart = () => {
         }).eq('id', match.id);
       }
 
-      // ── حفظ كلمة المرور في localStorage ──
-      if (reviewPasswordKey) localStorage.setItem(reviewPasswordKey, reviewPassword.trim());
+      // ── حفظ كلمة المرور + بصمة الجهاز في localStorage ──
+      if (reviewPasswordKey) {
+        localStorage.setItem(reviewPasswordKey, JSON.stringify({
+          pwd: reviewPassword.trim(),
+          fp: getDeviceFingerprint(),
+        }));
+      }
 
       setShowReviewPasswordModal(false);
       navigate(`/exam/${subjectId}/start`, { state: buildReviewState() });
