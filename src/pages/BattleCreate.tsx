@@ -515,7 +515,7 @@ const BattleCreate = () => {
                       <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">اختر النموذج</Label>
                       <Select value={selectedTrialForm} onValueChange={setSelectedTrialForm}>
                         <SelectTrigger className="h-11 rounded-xl bg-white dark:bg-card border-slate-200 font-bold text-sm">
-                          <SelectValue placeholder="كل النماذج" />
+                          <SelectValue placeholder="اختر النموذج" />
                         </SelectTrigger>
                         <SelectContent className="z-[9999] bg-white dark:bg-card rounded-2xl shadow-2xl max-h-[260px]">
                           {activeTrialForms.map(f => (
