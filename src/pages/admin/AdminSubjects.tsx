@@ -384,6 +384,7 @@ const ReviewPasswordsSection = ({ subjectId, levels }: { subjectId: string; leve
   const [newPassword, setNewPassword] = useState('');
   const [newDuration, setNewDuration] = useState<number>(30);
   const [newContact, setNewContact] = useState('');
+  const [newContactType, setNewContactType] = useState<'whatsapp' | 'telegram'>('whatsapp');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editPassword, setEditPassword] = useState('');
   const [editDuration, setEditDuration] = useState<number>(30);
@@ -521,11 +522,11 @@ const ReviewPasswordsSection = ({ subjectId, levels }: { subjectId: string; leve
             .eq('password', newPassword.trim())
             .order('created_at', { ascending: false })
             .limit(1);
-          if (latest?.[0]?.id) saveContact(latest[0].id, newContact.trim());
+          if (latest?.[0]?.id) saveContact(latest[0].id, `${newContactType}:${newContact.trim()}`);
         }
       }
       queryClient.invalidateQueries({ queryKey: ['review_passwords', subjectId] });
-      setNewLabel(''); setNewPassword(''); setNewDuration(30); setNewContact('');
+      setNewLabel(''); setNewPassword(''); setNewDuration(30); setNewContact(''); setNewContactType('whatsapp');
       setExtraLevelId('none'); setExtraSubjectIds([]);
       toast({ title: 'تمت إضافة كلمة المرور' });
     },
@@ -623,13 +624,24 @@ const ReviewPasswordsSection = ({ subjectId, levels }: { subjectId: string; leve
           <Plus className="w-4 h-4" /> إضافة
         </Button>
       </div>
-      <Input
-        placeholder="واتساب أو تيليجرام (اختياري) — مثال: 967700000000 أو @username"
-        value={newContact}
-        onChange={(e) => setNewContact(e.target.value)}
-        className="bg-background text-xs"
-        dir="ltr"
-      />
+      <div className="flex gap-1">
+        <Select value={newContactType} onValueChange={(v) => setNewContactType(v as 'whatsapp' | 'telegram')}>
+          <SelectTrigger className="bg-background h-10 w-32 text-xs shrink-0">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="whatsapp">واتساب</SelectItem>
+            <SelectItem value="telegram">تيليجرام</SelectItem>
+          </SelectContent>
+        </Select>
+        <Input
+          placeholder={newContactType === 'whatsapp' ? 'رقم الواتساب مثال: 967700000000' : 'معرف أو رقم تيليجرام'}
+          value={newContact}
+          onChange={(e) => setNewContact(e.target.value)}
+          className="bg-background text-xs flex-1"
+          dir="ltr"
+        />
+      </div>
 
       {/* مواد إضافية */}
       <div className="space-y-2 pt-1">
