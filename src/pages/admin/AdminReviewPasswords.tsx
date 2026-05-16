@@ -25,6 +25,8 @@ export default function AdminReviewPasswords() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editPassword, setEditPassword] = useState('');
   const [editDuration, setEditDuration] = useState<number>(30);
+  const [editContact, setEditContact] = useState('');
+  const [editContactType, setEditContactType] = useState<'whatsapp' | 'telegram'>('whatsapp');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // ── بيانات التواصل من localStorage ──
@@ -34,14 +36,20 @@ export default function AdminReviewPasswords() {
   })();
 
   const handleSendMessage = (p: ReviewPassword) => {
-    const contact = contacts[p.id];
-    if (!contact) return;
+    const saved = contacts[p.id];
+    if (!saved) return;
     const subjectName = subjectMap[p.subject_id] || 'المادة';
-    const msg = `السلام عليكم 👋\nتم تفعيل اشتراكك في منصة الناصر القانونية ✅\n\n📚 المادة: ${subjectName}\n🔑 كلمة المرور: ${p.password}\n⏳ المدة: ${p.duration_days || 30} يوم\n\n🔗 رابط المنصة: https://alnaseer.org\n\nادخل الرابط واضغط على "اختبار+ المراجعة" وأدخل كلمة المرور للبدء.`;
-    const isUsername = contact.startsWith('@');
-    if (isUsername) {
-      const username = contact.replace('@', '');
-      window.open(`https://t.me/${username}?text=${encodeURIComponent(msg)}`, '_blank');
+    const subjectUrl = `https://www.alnaseer.org/exam/${p.subject_id}`;
+    const msg = `اهلا وسهلا بك 👋\nتم تفعيل اشتراكك في منصة الناصر القانونية ✅\n\n📚 المادة: ${subjectName}\n🔑 كلمة المرور: ${p.password}\n⏳ المدة: ${p.duration_days || 30} يوم\n\n🔗 رابط ${subjectName}: ${subjectUrl}\n\nادخل عبر الرابط واضغط على "اختبار+ المراجعة" وأدخل كلمة المرور للبدء.\n\nبالتوفيق والنجاح..`;
+
+    const isTelegram = saved.startsWith('telegram:');
+    const contact = saved.replace(/^(whatsapp|telegram):/, '');
+
+    if (isTelegram) {
+      // تيليجرام: لو رقم أو معرف
+      const isUsername = contact.startsWith('@') || isNaN(Number(contact));
+      const target = isUsername ? contact.replace('@', '') : contact;
+      window.open(`https://t.me/${target}?text=${encodeURIComponent(msg)}`, '_blank');
     } else {
       const phone = contact.replace(/\D/g, '');
       window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
@@ -165,7 +173,15 @@ export default function AdminReviewPasswords() {
       const { error } = await (supabase as any).from('review_passwords').update(updates).eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin_review_passwords_all'] }); setEditingId(null); toast({ title: 'تم التحديث' }); },
+    onSuccess: (_, { id }) => {
+      // حفظ contact في localStorage
+      const all = (() => { try { return JSON.parse(localStorage.getItem(CONTACTS_KEY) || '{}'); } catch { return {}; } })();
+      if (editContact.trim()) { all[id] = `${editContactType}:${editContact.trim()}`; } else { delete all[id]; }
+      localStorage.setItem(CONTACTS_KEY, JSON.stringify(all));
+      qc.invalidateQueries({ queryKey: ['admin_review_passwords_all'] });
+      setEditingId(null);
+      toast({ title: 'تم التحديث' });
+    },
     onError: (e: any) => toast({ title: 'فشل التحديث', description: e?.message, variant: 'destructive' }),
   });
 
@@ -173,6 +189,17 @@ export default function AdminReviewPasswords() {
     setEditingId(p.id);
     setEditPassword(p.password);
     setEditDuration(p.duration_days || 30);
+    const saved = contacts[p.id] || '';
+    if (saved.startsWith('telegram:')) {
+      setEditContactType('telegram');
+      setEditContact(saved.replace('telegram:', ''));
+    } else if (saved.startsWith('whatsapp:')) {
+      setEditContactType('whatsapp');
+      setEditContact(saved.replace('whatsapp:', ''));
+    } else {
+      setEditContactType('whatsapp');
+      setEditContact(saved);
+    }
   };
 
   const fmt = (d?: string | null) => d ? new Date(d).toLocaleString('ar', { dateStyle: 'short', timeStyle: 'short' }) : '—';
@@ -387,7 +414,40 @@ export default function AdminReviewPasswords() {
                     const editing = editingId === p.id;
                     return (
                       <tr key={p.id} className={`hover:bg-slate-50/50 ${expired ? 'opacity-70' : ''}`}>
-                        <td className="p-3 font-bold">{p.label || '—'}</td>
+                        <td className="p-3 font-bold">
+                          {editing
+                            ? <div className="space-y-1">
+                                <span className="text-xs text-muted-foreground">{p.label || '—'}</span>
+                                <div className="flex gap-1">
+                                  <Select value={editContactType} onValueChange={(v) => setEditContactType(v as 'whatsapp' | 'telegram')}>
+                                    <SelectTrigger className="h-8 w-24 text-xs shrink-0">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="whatsapp">واتساب</SelectItem>
+                                      <SelectItem value="telegram">تيليجرام</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <Input
+                                    placeholder={editContactType === 'whatsapp' ? '967700000000' : 'معرف أو رقم'}
+                                    value={editContact}
+                                    onChange={(e) => setEditContact(e.target.value)}
+                                    className="h-8 text-xs flex-1"
+                                    dir="ltr"
+                                  />
+                                </div>
+                              </div>
+                            : <div>
+                                <span>{p.label || '—'}</span>
+                                {contacts[p.id] && (
+                                  <p className="text-[10px] text-muted-foreground font-mono">
+                                    {contacts[p.id].startsWith('telegram:') ? '📱 ' : '💬 '}
+                                    {contacts[p.id].replace(/^(whatsapp|telegram):/, '')}
+                                  </p>
+                                )}
+                              </div>
+                          }
+                        </td>
                         <td className="p-3">{subjectMap[p.subject_id] || '—'}</td>
                         <td className="p-3 font-mono">
                           {editing
