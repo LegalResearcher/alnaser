@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { KeyRound, Search, Edit2, Trash2, CheckCircle2, XCircle, RefreshCw, Smartphone, Calendar, Clock, Download, Sparkles } from 'lucide-react';
+import { KeyRound, Search, Edit2, Trash2, CheckCircle2, XCircle, RefreshCw, Smartphone, Calendar, Clock, Download, Sparkles, Copy, Send } from 'lucide-react';
 import { AdminSEO } from '@/components/seo/SEOHead';
 import * as XLSX from 'xlsx';
 
@@ -25,6 +25,34 @@ export default function AdminReviewPasswords() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editPassword, setEditPassword] = useState('');
   const [editDuration, setEditDuration] = useState<number>(30);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // ── بيانات التواصل من localStorage ──
+  const CONTACTS_KEY = 'review_pwd_contacts';
+  const contacts: Record<string, string> = (() => {
+    try { return JSON.parse(localStorage.getItem(CONTACTS_KEY) || '{}'); } catch { return {}; }
+  })();
+
+  const handleSendMessage = (p: ReviewPassword) => {
+    const contact = contacts[p.id];
+    if (!contact) return;
+    const subjectName = subjectMap[p.subject_id] || 'المادة';
+    const msg = `السلام عليكم 👋\nتم تفعيل اشتراكك في منصة الناصر القانونية ✅\n\n📚 المادة: ${subjectName}\n🔑 كلمة المرور: ${p.password}\n⏳ المدة: ${p.duration_days || 30} يوم\n\n🔗 رابط المنصة: https://alnaseer.org\n\nادخل الرابط واضغط على "اختبار+ المراجعة" وأدخل كلمة المرور للبدء.`;
+    const isUsername = contact.startsWith('@');
+    if (isUsername) {
+      const username = contact.replace('@', '');
+      window.open(`https://t.me/${username}?text=${encodeURIComponent(msg)}`, '_blank');
+    } else {
+      const phone = contact.replace(/\D/g, '');
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+  };
+
+  const copyPassword = (id: string, pwd: string) => {
+    navigator.clipboard.writeText(pwd);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   const { data: levels = [] } = useQuery({
     queryKey: ['levels'],
@@ -362,7 +390,18 @@ export default function AdminReviewPasswords() {
                         <td className="p-3 font-bold">{p.label || '—'}</td>
                         <td className="p-3">{subjectMap[p.subject_id] || '—'}</td>
                         <td className="p-3 font-mono">
-                          {editing ? <Input value={editPassword} onChange={(e) => setEditPassword(e.target.value)} className="h-8 text-xs" /> : p.password}
+                          {editing
+                            ? <Input value={editPassword} onChange={(e) => setEditPassword(e.target.value)} className="h-8 text-xs" />
+                            : <div className="flex items-center gap-1">
+                                <span>{p.password}</span>
+                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6 shrink-0"
+                                  onClick={() => copyPassword(p.id, p.password)} title="نسخ كلمة المرور">
+                                  {copiedId === p.id
+                                    ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                    : <Copy className="w-3.5 h-3.5 text-slate-400" />}
+                                </Button>
+                              </div>
+                          }
                         </td>
                         <td className="p-3">
                           {editing ? <Input type="number" min={1} value={editDuration} onChange={(e) => setEditDuration(Number(e.target.value))} className="h-8 w-20 text-xs" /> : `${p.duration_days || 30} يوم`}
@@ -409,6 +448,12 @@ export default function AdminReviewPasswords() {
                                   onClick={() => generateMut.mutate(p.id)} disabled={generateMut.isPending} title="توليد كلمة مرور جديدة">
                                   <Sparkles className="w-4 h-4" />
                                 </Button>
+                                {contacts[p.id] && (
+                                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-blue-600"
+                                    onClick={() => handleSendMessage(p)} title={`إرسال لـ ${contacts[p.id]}`}>
+                                    <Send className="w-4 h-4" />
+                                  </Button>
+                                )}
                                 {(expired || p.first_used_at) && (
                                   <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-emerald-600"
                                     onClick={() => renewMut.mutate(p.id)} disabled={renewMut.isPending} title="تجديد (إعادة تعيين الجهاز والصلاحية)">
