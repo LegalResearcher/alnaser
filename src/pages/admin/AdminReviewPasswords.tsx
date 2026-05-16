@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { KeyRound, Search, Edit2, Trash2, CheckCircle2, XCircle, RefreshCw, Smartphone, Calendar, Clock, Download } from 'lucide-react';
+import { KeyRound, Search, Edit2, Trash2, CheckCircle2, XCircle, RefreshCw, Smartphone, Calendar, Clock, Download, Sparkles } from 'lucide-react';
 import { AdminSEO } from '@/components/seo/SEOHead';
 import * as XLSX from 'xlsx';
 
@@ -108,6 +108,22 @@ export default function AdminReviewPasswords() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin_review_passwords_all'] }); toast({ title: 'تم تجديد كلمة المرور' }); },
+  });
+
+  const generateMut = useMutation({
+    mutationFn: async (id: string) => {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789abcdefghjkmnpqrstuvwxyz';
+      const seg = () => Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+      const newPwd = `${seg()}-${seg()}-${seg()}`;
+      const { error } = await (supabase as any).from('review_passwords').update({ password: newPwd }).eq('id', id);
+      if (error) throw error;
+      return newPwd;
+    },
+    onSuccess: (newPwd) => {
+      qc.invalidateQueries({ queryKey: ['admin_review_passwords_all'] });
+      toast({ title: 'تم توليد كلمة مرور جديدة', description: newPwd });
+    },
+    onError: (e: any) => toast({ title: 'فشل التوليد', description: e?.message, variant: 'destructive' }),
   });
 
   const editMut = useMutation({
@@ -388,6 +404,10 @@ export default function AdminReviewPasswords() {
                               <>
                                 <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(p)} title="تعديل">
                                   <Edit2 className="w-4 h-4" />
+                                </Button>
+                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-violet-600"
+                                  onClick={() => generateMut.mutate(p.id)} disabled={generateMut.isPending} title="توليد كلمة مرور جديدة">
+                                  <Sparkles className="w-4 h-4" />
                                 </Button>
                                 {(expired || p.first_used_at) && (
                                   <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-emerald-600"
