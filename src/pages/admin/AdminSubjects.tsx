@@ -383,10 +383,22 @@ const ReviewPasswordsSection = ({ subjectId, levels }: { subjectId: string; leve
   const [newLabel, setNewLabel] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newDuration, setNewDuration] = useState<number>(30);
+  const [newContact, setNewContact] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editPassword, setEditPassword] = useState('');
   const [editDuration, setEditDuration] = useState<number>(30);
   const importRef = useRef<HTMLInputElement>(null);
+
+  // ── مفتاح localStorage لبيانات التواصل ──
+  const CONTACTS_KEY = 'review_pwd_contacts';
+  const getContacts = (): Record<string, string> => {
+    try { return JSON.parse(localStorage.getItem(CONTACTS_KEY) || '{}'); } catch { return {}; }
+  };
+  const saveContact = (pwdId: string, contact: string) => {
+    const all = getContacts();
+    if (contact.trim()) { all[pwdId] = contact.trim(); } else { delete all[pwdId]; }
+    localStorage.setItem(CONTACTS_KEY, JSON.stringify(all));
+  };
 
   const [extraLevelId, setExtraLevelId] = useState<string>('none');
   const [extraSubjectIds, setExtraSubjectIds] = useState<string[]>([]);
@@ -497,9 +509,24 @@ const ReviewPasswordsSection = ({ subjectId, levels }: { subjectId: string; leve
       const { error } = await (supabase as any).from('review_passwords').insert(records);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // جلب كل السجلات المضافة حديثاً لحفظ contact لكل منها
+      if (newContact.trim()) {
+        const allSubjectIds = [subjectId, ...extraSubjectIds.filter(id => id !== subjectId)];
+        for (const sid of allSubjectIds) {
+          const { data: latest } = await (supabase as any)
+            .from('review_passwords')
+            .select('id')
+            .eq('subject_id', sid)
+            .eq('password', newPassword.trim())
+            .order('created_at', { ascending: false })
+            .limit(1);
+          if (latest?.[0]?.id) saveContact(latest[0].id, newContact.trim());
+        }
+      }
       queryClient.invalidateQueries({ queryKey: ['review_passwords', subjectId] });
-      setNewLabel(''); setNewPassword(''); setNewDuration(30); setExtraLevelId('none'); setExtraSubjectIds([]);
+      setNewLabel(''); setNewPassword(''); setNewDuration(30); setNewContact('');
+      setExtraLevelId('none'); setExtraSubjectIds([]);
       toast({ title: 'تمت إضافة كلمة المرور' });
     },
     onError: (e: any) => toast({ title: 'حدث خطأ', description: e?.message, variant: 'destructive' }),
@@ -596,6 +623,13 @@ const ReviewPasswordsSection = ({ subjectId, levels }: { subjectId: string; leve
           <Plus className="w-4 h-4" /> إضافة
         </Button>
       </div>
+      <Input
+        placeholder="واتساب أو تيليجرام (اختياري) — مثال: 967700000000 أو @username"
+        value={newContact}
+        onChange={(e) => setNewContact(e.target.value)}
+        className="bg-background text-xs"
+        dir="ltr"
+      />
 
       {/* مواد إضافية */}
       <div className="space-y-2 pt-1">
