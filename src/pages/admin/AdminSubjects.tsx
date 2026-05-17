@@ -443,7 +443,11 @@ const ReviewPasswordsSection = ({ subjectId, levels }: { subjectId: string; leve
       setNewLabel(selected[0].label);
       setNewPassword(selected[0].password);
       setNewDuration(selected[0].duration);
-      if (selected[0].contact) setNewContact(selected[0].contact);
+      if (selected[0].contact) {
+        setNewContact(selected[0].contact);
+        const autoType = (selected[0].contact.startsWith('@') || /[a-zA-Z]/.test(selected[0].contact)) ? 'telegram' : 'whatsapp';
+        setNewContactType(autoType);
+      }
       setImportRows([]); setImportSelected(new Set());
       toast({ title: 'تم تعبئة البيانات', description: `${selected[0].label} — ${selected[0].password}` });
       return;
