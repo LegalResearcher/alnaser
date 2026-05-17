@@ -404,7 +404,7 @@ const ReviewPasswordsSection = ({ subjectId, levels }: { subjectId: string; leve
   const [extraLevelId, setExtraLevelId] = useState<string>('none');
   const [extraSubjectIds, setExtraSubjectIds] = useState<string[]>([]);
 
-  type ImportRow = { id: string; label: string; password: string; duration: number };
+  type ImportRow = { id: string; label: string; password: string; duration: number; contact: string };
   const [importRows, setImportRows] = useState<ImportRow[]>([]);
   const [importSelected, setImportSelected] = useState<Set<string>>(new Set());
   const [importPending, setImportPending] = useState(false);
@@ -440,7 +440,10 @@ const ReviewPasswordsSection = ({ subjectId, levels }: { subjectId: string; leve
     if (selected.length === 0) { toast({ title: 'لم تحدد أي اسم', variant: 'destructive' }); return; }
     const allSubjectIds = [subjectId, ...extraSubjectIds.filter(id => id !== subjectId)];
     if (selected.length === 1) {
-      setNewLabel(selected[0].label); setNewPassword(selected[0].password); setNewDuration(selected[0].duration);
+      setNewLabel(selected[0].label);
+      setNewPassword(selected[0].password);
+      setNewDuration(selected[0].duration);
+      if (selected[0].contact) setNewContact(selected[0].contact);
       setImportRows([]); setImportSelected(new Set());
       toast({ title: 'تم تعبئة البيانات', description: `${selected[0].label} — ${selected[0].password}` });
       return;
@@ -450,6 +453,20 @@ const ReviewPasswordsSection = ({ subjectId, levels }: { subjectId: string; leve
     const { error } = await (supabase as any).from('review_passwords').insert(records);
     setImportPending(false);
     if (error) { toast({ title: 'فشل الاستيراد', description: error.message, variant: 'destructive' }); return; }
+
+    // حفظ contacts لكل سجل مضاف مع تحديد النوع تلقائياً
+    for (const r of selected) {
+      if (!r.contact) continue;
+      const contactType = (r.contact.startsWith('@') || /[a-zA-Z]/.test(r.contact)) ? 'telegram' : 'whatsapp';
+      for (const sid of allSubjectIds) {
+        const { data: latest } = await (supabase as any)
+          .from('review_passwords').select('id')
+          .eq('subject_id', sid).eq('password', r.password)
+          .order('created_at', { ascending: false }).limit(1);
+        if (latest?.[0]?.id) saveContact(latest[0].id, `${contactType}:${r.contact}`);
+      }
+    }
+
     queryClient.invalidateQueries({ queryKey: ['review_passwords', subjectId] });
     setImportRows([]); setImportSelected(new Set());
     toast({ title: allSubjectIds.length > 1 ? `تم استيراد ${selected.length} طالب × ${allSubjectIds.length} مواد = ${records.length} سجل` : `تم استيراد ${records.length} طالب بنجاح` });
@@ -469,7 +486,13 @@ const ReviewPasswordsSection = ({ subjectId, levels }: { subjectId: string; leve
         const startIdx = (typeof rows[0][1] === 'string' && isNaN(Number(rows[0][1]))) ? 1 : 0;
         const dataRows = rows.slice(startIdx);
         if (dataRows.length === 0) { toast({ title: 'لا توجد بيانات بعد الهيدر', variant: 'destructive' }); return; }
-        const parsed: ImportRow[] = dataRows.map((r: any[], i: number) => ({ id: `import-${i}`, label: String(r[0] || '').trim(), password: String(r[1] || '').trim(), duration: Number(r[2]) > 0 ? Number(r[2]) : 30 })).filter(r => r.password);
+        const parsed: ImportRow[] = dataRows.map((r: any[], i: number) => ({
+          id: `import-${i}`,
+          label: String(r[0] || '').trim(),
+          password: String(r[1] || '').trim(),
+          duration: Number(r[2]) > 0 ? Number(r[2]) : 30,
+          contact: String(r[3] || '').trim(),
+        })).filter(r => r.password);
         if (parsed.length === 0) { toast({ title: 'لا توجد كلمات مرور صالحة', variant: 'destructive' }); return; }
         setImportRows(parsed); setImportSelected(new Set(parsed.map(r => r.id)));
       } catch { toast({ title: 'تعذّر قراءة الملف', variant: 'destructive' }); }
@@ -600,6 +623,7 @@ const ReviewPasswordsSection = ({ subjectId, levels }: { subjectId: string; leve
                 <input type="checkbox" checked={importSelected.has(r.id)} onChange={() => toggleImportRow(r.id)} className="accent-emerald-600 w-3.5 h-3.5 shrink-0" />
                 <span className="text-xs font-semibold flex-1 truncate">{r.label || '—'}</span>
                 <span className="text-xs font-mono text-muted-foreground">{r.password}</span>
+                {r.contact && <span className="text-[11px] text-blue-500 font-mono shrink-0">{r.contact}</span>}
                 <span className="text-[11px] text-muted-foreground shrink-0">{r.duration} يوم</span>
               </label>
             ))}
