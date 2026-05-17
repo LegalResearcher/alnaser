@@ -299,17 +299,24 @@ export default function AdminReviewPasswords() {
       toast({ title: 'لا توجد بيانات للتصدير', variant: 'destructive' });
       return;
     }
-    const exportData = rows.map(r => ({
-      'الاسم': r.label || '—',
-      'كلمة المرور': r.password,
-      'المادة': subjectMap[r.subject_id] || '—',
-      'المدة (يوم)': r.duration_days || 30,
-      'الحالة': isExpired(r) ? 'منتهية' : r.first_used_at ? 'قيد الاستخدام' : 'جاهزة',
-      'أول استخدام': r.first_used_at ? new Date(r.first_used_at).toLocaleDateString('ar') : '—',
-      'تاريخ الانتهاء': r.expires_at ? new Date(r.expires_at).toLocaleDateString('ar') : '—',
-    }));
+    const exportData = rows.map(r => {
+      const saved = contacts[r.id] || '';
+      const contactType = saved.startsWith('telegram:') ? 'تيليجرام' : saved.startsWith('whatsapp:') ? 'واتساب' : '';
+      const contactValue = saved.replace(/^(whatsapp|telegram):/, '');
+      return {
+        'الاسم': r.label || '—',
+        'كلمة المرور': r.password,
+        'المادة': subjectMap[r.subject_id] || '—',
+        'المدة (يوم)': r.duration_days || 30,
+        'نوع التواصل': contactType,
+        'رقم/معرف التواصل': contactValue,
+        'الحالة': isExpired(r) ? 'منتهية' : r.first_used_at ? 'قيد الاستخدام' : 'جاهزة',
+        'أول استخدام': r.first_used_at ? new Date(r.first_used_at).toLocaleDateString('ar') : '—',
+        'تاريخ الانتهاء': r.expires_at ? new Date(r.expires_at).toLocaleDateString('ar') : '—',
+      };
+    });
     const ws = XLSX.utils.json_to_sheet(exportData);
-    ws['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 25 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
+    ws['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 25 }, { wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 15 }, { wch: 15 }, { wch: 15 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'كلمات المرور');
     XLSX.writeFile(wb, `review-passwords-${new Date().toISOString().slice(0,10)}.xlsx`);
