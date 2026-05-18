@@ -444,8 +444,11 @@ const ReviewPasswordsSection = ({ subjectId, levels }: { subjectId: string; leve
       setNewPassword(selected[0].password);
       setNewDuration(selected[0].duration);
       if (selected[0].contact) {
-        setNewContact(selected[0].contact);
-        const autoType = (selected[0].contact.startsWith('@') || /[a-zA-Z]/.test(selected[0].contact)) ? 'telegram' : 'whatsapp';
+        setNewContact(selected[0].contact.replace(/^(whatsapp|telegram):/, ''));
+        const raw = selected[0].contact;
+        const autoType = raw.startsWith('telegram:') ? 'telegram'
+          : raw.startsWith('whatsapp:') ? 'whatsapp'
+          : (raw.startsWith('@') || /[a-zA-Z]/.test(raw.replace(/^\d+/, ''))) ? 'telegram' : 'whatsapp';
         setNewContactType(autoType);
       }
       setImportRows([]); setImportSelected(new Set());
@@ -461,13 +464,17 @@ const ReviewPasswordsSection = ({ subjectId, levels }: { subjectId: string; leve
     // حفظ contacts لكل سجل مضاف مع تحديد النوع تلقائياً
     for (const r of selected) {
       if (!r.contact) continue;
-      const contactType = (r.contact.startsWith('@') || /[a-zA-Z]/.test(r.contact)) ? 'telegram' : 'whatsapp';
+      // لو بصيغة whatsapp:xxx أو telegram:xxx → استخدمها مباشرة
+      // وإلا حدد النوع تلقائياً
+      const contactToSave = (r.contact.startsWith('whatsapp:') || r.contact.startsWith('telegram:'))
+        ? r.contact
+        : `${(r.contact.startsWith('@') || /[a-zA-Z]/.test(r.contact.replace(/^\d+/, ''))) ? 'telegram' : 'whatsapp'}:${r.contact}`;
       for (const sid of allSubjectIds) {
         const { data: latest } = await (supabase as any)
           .from('review_passwords').select('id')
           .eq('subject_id', sid).eq('password', r.password)
           .order('created_at', { ascending: false }).limit(1);
-        if (latest?.[0]?.id) saveContact(latest[0].id, `${contactType}:${r.contact}`);
+        if (latest?.[0]?.id) saveContact(latest[0].id, contactToSave);
       }
     }
 
@@ -490,13 +497,19 @@ const ReviewPasswordsSection = ({ subjectId, levels }: { subjectId: string; leve
         const startIdx = (typeof rows[0][1] === 'string' && isNaN(Number(rows[0][1]))) ? 1 : 0;
         const dataRows = rows.slice(startIdx);
         if (dataRows.length === 0) { toast({ title: 'لا توجد بيانات بعد الهيدر', variant: 'destructive' }); return; }
-        const parsed: ImportRow[] = dataRows.map((r: any[], i: number) => ({
-          id: `import-${i}`,
-          label: String(r[0] || '').trim(),
-          password: String(r[1] || '').trim(),
-          duration: Number(r[2]) > 0 ? Number(r[2]) : 30,
-          contact: String(r[3] || '').trim(),
-        })).filter(r => r.password);
+        const parsed: ImportRow[] = dataRows.map((r: any[], i: number) => {
+          const rawContact = String(r[3] || '').trim();
+          // لو العمود الرابع بصيغة whatsapp:xxx أو telegram:xxx → استخدمه مباشرة
+          // لو رقم عادي أو @username → التعرف تلقائياً
+          let contact = rawContact;
+          return {
+            id: `import-${i}`,
+            label: String(r[0] || '').trim(),
+            password: String(r[1] || '').trim(),
+            duration: Number(r[2]) > 0 ? Number(r[2]) : 30,
+            contact,
+          };
+        }).filter(r => r.password);
         if (parsed.length === 0) { toast({ title: 'لا توجد كلمات مرور صالحة', variant: 'destructive' }); return; }
         setImportRows(parsed); setImportSelected(new Set(parsed.map(r => r.id)));
       } catch { toast({ title: 'تعذّر قراءة الملف', variant: 'destructive' }); }
