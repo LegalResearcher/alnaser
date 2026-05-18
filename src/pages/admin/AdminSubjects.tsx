@@ -498,34 +498,43 @@ const ReviewPasswordsSection = ({ subjectId, levels }: { subjectId: string; leve
         const dataRows = rows.slice(startIdx);
         if (dataRows.length === 0) { toast({ title: 'لا توجد بيانات بعد الهيدر', variant: 'destructive' }); return; }
         const parsed: ImportRow[] = dataRows.map((r: any[], i: number) => {
-          // تحديد نوع الملف: مُصدَّر (9 أعمدة) أو يدوي (4 أعمدة)
-          // الملف المُصدَّر: الاسم | كلمة المرور | المادة | المدة | نوع التواصل | الرقم | الحالة | ...
-          // الملف اليدوي:  الاسم | كلمة المرور | الأيام | المعرف
+          // تحديد نوع الملف:
+          // مُصدَّر جديد (8 أعمدة):  الاسم | كلمة المرور | المادة | المدة | المعرف | الحالة | ...
+          // مُصدَّر قديم (9 أعمدة):  الاسم | كلمة المرور | المادة | المدة | نوع التواصل | الرقم | الحالة | ...
+          // يدوي (4 أعمدة):          الاسم | كلمة المرور | الأيام | المعرف
 
-          const col3 = String(r[2] || '').trim(); // المادة (مُصدَّر) أو الأيام (يدوي)
-          const col4 = String(r[3] || '').trim(); // المدة (مُصدَّر) أو المعرف (يدوي)
-          const col5 = String(r[4] || '').trim(); // نوع التواصل (مُصدَّر)
-          const col6 = String(r[5] || '').trim(); // الرقم/المعرف (مُصدَّر)
+          const col3 = String(r[2] || '').trim();
+          const col4 = String(r[3] || '').trim();
+          const col5 = String(r[4] || '').trim();
+          const col6 = String(r[5] || '').trim();
 
-          // لو العمود الخامس يحتوي واتساب/تيليجرام → ملف مُصدَّر
-          const isExportedFile = col5 === 'واتساب' || col5 === 'تيليجرام' || col5 === 'whatsapp' || col5 === 'telegram';
+          // ملف مُصدَّر قديم: العمود 5 = واتساب/تيليجرام نصاً
+          const isOldExport = col5 === 'واتساب' || col5 === 'تيليجرام' || col5 === 'whatsapp' || col5 === 'telegram';
+          // ملف مُصدَّر جديد: العمود 5 يبدأ بـ whatsapp: أو telegram: أو فارغ، والعمود 3 نص (المادة)
+          const isNewExport = (col5.startsWith('whatsapp:') || col5.startsWith('telegram:') || col5 === '') && isNaN(Number(col3)) && col3 !== '';
+          // ملف يدوي: العمود 3 رقم (الأيام) أو فارغ
+          const isManual = !isOldExport && !isNewExport;
 
           let duration = 30;
           let contact = '';
 
-          if (isExportedFile) {
-            // ملف مُصدَّر: المدة في العمود 4، النوع في 5، الرقم في 6
+          if (isOldExport) {
             duration = Number(col4) > 0 ? Number(col4) : 30;
             if (col6) {
               const type = (col5 === 'تيليجرام' || col5 === 'telegram') ? 'telegram' : 'whatsapp';
               contact = `${type}:${col6.replace(/\s/g, '')}`;
             }
+          } else if (isNewExport) {
+            duration = Number(col4) > 0 ? Number(col4) : 30;
+            if (col5.startsWith('whatsapp:') || col5.startsWith('telegram:')) {
+              contact = col5.replace(/\s/g, '');
+            }
           } else {
-            // ملف يدوي: الأيام في العمود 3، المعرف في العمود 4
+            // يدوي
             duration = Number(col3) > 0 ? Number(col3) : 30;
             if (col4) {
               if (col4.startsWith('whatsapp:') || col4.startsWith('telegram:')) {
-                contact = col4;
+                contact = col4.replace(/\s/g, '');
               } else {
                 const autoType = (col4.startsWith('@') || /[a-zA-Z]/.test(col4.replace(/^\d+/, ''))) ? 'telegram' : 'whatsapp';
                 contact = `${autoType}:${col4.replace(/\s/g, '')}`;
