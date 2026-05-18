@@ -498,15 +498,46 @@ const ReviewPasswordsSection = ({ subjectId, levels }: { subjectId: string; leve
         const dataRows = rows.slice(startIdx);
         if (dataRows.length === 0) { toast({ title: 'لا توجد بيانات بعد الهيدر', variant: 'destructive' }); return; }
         const parsed: ImportRow[] = dataRows.map((r: any[], i: number) => {
-          const rawContact = String(r[3] || '').trim();
-          // لو العمود الرابع بصيغة whatsapp:xxx أو telegram:xxx → استخدمه مباشرة
-          // لو رقم عادي أو @username → التعرف تلقائياً
-          let contact = rawContact;
+          // تحديد نوع الملف: مُصدَّر (9 أعمدة) أو يدوي (4 أعمدة)
+          // الملف المُصدَّر: الاسم | كلمة المرور | المادة | المدة | نوع التواصل | الرقم | الحالة | ...
+          // الملف اليدوي:  الاسم | كلمة المرور | الأيام | المعرف
+
+          const col3 = String(r[2] || '').trim(); // المادة (مُصدَّر) أو الأيام (يدوي)
+          const col4 = String(r[3] || '').trim(); // المدة (مُصدَّر) أو المعرف (يدوي)
+          const col5 = String(r[4] || '').trim(); // نوع التواصل (مُصدَّر)
+          const col6 = String(r[5] || '').trim(); // الرقم/المعرف (مُصدَّر)
+
+          // لو العمود الخامس يحتوي واتساب/تيليجرام → ملف مُصدَّر
+          const isExportedFile = col5 === 'واتساب' || col5 === 'تيليجرام' || col5 === 'whatsapp' || col5 === 'telegram';
+
+          let duration = 30;
+          let contact = '';
+
+          if (isExportedFile) {
+            // ملف مُصدَّر: المدة في العمود 4، النوع في 5، الرقم في 6
+            duration = Number(col4) > 0 ? Number(col4) : 30;
+            if (col6) {
+              const type = (col5 === 'تيليجرام' || col5 === 'telegram') ? 'telegram' : 'whatsapp';
+              contact = `${type}:${col6.replace(/\s/g, '')}`;
+            }
+          } else {
+            // ملف يدوي: الأيام في العمود 3، المعرف في العمود 4
+            duration = Number(col3) > 0 ? Number(col3) : 30;
+            if (col4) {
+              if (col4.startsWith('whatsapp:') || col4.startsWith('telegram:')) {
+                contact = col4;
+              } else {
+                const autoType = (col4.startsWith('@') || /[a-zA-Z]/.test(col4.replace(/^\d+/, ''))) ? 'telegram' : 'whatsapp';
+                contact = `${autoType}:${col4.replace(/\s/g, '')}`;
+              }
+            }
+          }
+
           return {
             id: `import-${i}`,
             label: String(r[0] || '').trim(),
             password: String(r[1] || '').trim(),
-            duration: Number(r[2]) > 0 ? Number(r[2]) : 30,
+            duration,
             contact,
           };
         }).filter(r => r.password);
