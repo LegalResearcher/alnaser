@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { KeyRound, Search, Edit2, Trash2, CheckCircle2, XCircle, RefreshCw, Smartphone, Calendar, Clock, Download, Sparkles, Copy, Send } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { KeyRound, Search, Edit2, Trash2, CheckCircle2, XCircle, RefreshCw, Smartphone, Calendar, Clock, Download, Sparkles, Copy, Send, ListChecks, X } from 'lucide-react';
 import { AdminSEO } from '@/components/seo/SEOHead';
 import * as XLSX from 'xlsx';
 
@@ -29,6 +30,10 @@ export default function AdminReviewPasswords() {
   const [editContactType, setEditContactType] = useState<'whatsapp' | 'telegram'>('whatsapp');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // ── Multi-select state ──
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
   // ── بيانات التواصل من localStorage ──
   const CONTACTS_KEY = 'review_pwd_contacts';
   const contacts: Record<string, string> = (() => {
@@ -46,7 +51,6 @@ export default function AdminReviewPasswords() {
     const contact = saved.replace(/^(whatsapp|telegram):/, '');
 
     if (isTelegram) {
-      // تيليجرام: لو رقم أو معرف
       const isUsername = contact.startsWith('@') || isNaN(Number(contact));
       const target = isUsername ? contact.replace('@', '') : contact;
       window.open(`https://t.me/${target}?text=${encodeURIComponent(msg)}`, '_blank');
@@ -80,14 +84,13 @@ export default function AdminReviewPasswords() {
     },
   });
 
-  // مواد المستوى المختار فقط
   const filteredSubjects = useMemo(() =>
     levelFilter === 'all' ? subjects : subjects.filter((s: any) => s.level_id === levelFilter)
   , [subjects, levelFilter]);
 
   const handleLevelFilterChange = (val: string) => {
     setLevelFilter(val);
-    setSubjectFilter('all'); // إعادة تعيين المادة عند تغيير المستوى
+    setSubjectFilter('all');
   };
 
   const subjectMap = useMemo(() => Object.fromEntries(subjects.map((s: any) => [s.id, s.name])), [subjects]);
@@ -126,6 +129,54 @@ export default function AdminReviewPasswords() {
       return true;
     });
   }, [rows, search, levelFilter, subjectFilter, statusFilter, subjectMap, subjects]);
+
+  // ── Multi-select helpers ──
+  const allFilteredSelected = filtered.length > 0 && filtered.every(r => selectedIds.has(r.id));
+  const someSelected = selectedIds.size > 0;
+
+  const toggleSelectAll = () => {
+    if (allFilteredSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map(r => r.id)));
+    }
+  };
+
+  const toggleSelectOne = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  };
+
+  // ── Bulk delete mutation ──
+  const bulkDeleteMut = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await (supabase as any).from('review_passwords').delete().in('id', ids);
+      if (error) throw error;
+    },
+    onSuccess: (_, ids) => {
+      qc.invalidateQueries({ queryKey: ['admin_review_passwords_all'] });
+      toast({ title: `تم حذف ${ids.length} طالب بنجاح` });
+      exitSelectMode();
+    },
+    onError: (e: any) => toast({ title: 'فشل الحذف', description: e?.message, variant: 'destructive' }),
+  });
+
+  const handleBulkDelete = () => {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    if (confirm(`هل تريد حذف ${ids.length} طالب؟ لا يمكن التراجع عن هذا الإجراء.`)) {
+      bulkDeleteMut.mutate(ids);
+    }
+  };
 
   const deleteMut = useMutation({
     mutationFn: async (id: string) => {
@@ -174,7 +225,6 @@ export default function AdminReviewPasswords() {
       if (error) throw error;
     },
     onSuccess: (_, { id }) => {
-      // حفظ contact في localStorage
       const all = (() => { try { return JSON.parse(localStorage.getItem(CONTACTS_KEY) || '{}'); } catch { return {}; } })();
       if (editContact.trim()) { all[id] = `${editContactType}:${editContact.trim()}`; } else { delete all[id]; }
       localStorage.setItem(CONTACTS_KEY, JSON.stringify(all));
@@ -212,7 +262,6 @@ export default function AdminReviewPasswords() {
       const ua = parts[0];
       const timezone = parts[4] || '—';
 
-      // ── المتصفح وإصداره ──
       let browser = 'غير معروف';
       const samsungBrowserMatch = ua.match(/SamsungBrowser\/([\d]+)/);
       const edgeMatch = ua.match(/Edg\/([\d]+)/);
@@ -225,61 +274,24 @@ export default function AdminReviewPasswords() {
       else if (firefoxMatch) browser = `Firefox ${firefoxMatch[1]}`;
       else if (safariMatch) browser = `Safari ${safariMatch[1]}`;
 
-      // ── الجهاز والموديل ──
       let device = 'غير معروف';
       let model = '—';
 
-      if (/iPhone/.test(ua)) {
-        device = 'Apple iPhone';
-        const v = ua.match(/OS (\d+_\d+)/);
-        model = v ? `iOS ${v[1].replace('_', '.')}` : 'iOS';
-      } else if (/iPad/.test(ua)) {
-        device = 'Apple iPad';
-        const v = ua.match(/OS (\d+_\d+)/);
-        model = v ? `iOS ${v[1].replace('_', '.')}` : 'iOS';
-      } else if (/SM-N/.test(ua)) {
-        device = 'Samsung Note';
-        model = ua.match(/SM-N[\w]+/)?.[0] || '—';
-      } else if (/SM-S/.test(ua)) {
-        device = 'Samsung S Series';
-        model = ua.match(/SM-S[\w]+/)?.[0] || '—';
-      } else if (/SM-A/.test(ua)) {
-        device = 'Samsung A Series';
-        model = ua.match(/SM-A[\w]+/)?.[0] || '—';
-      } else if (/SM-G/.test(ua)) {
-        device = 'Samsung Galaxy';
-        model = ua.match(/SM-G[\w]+/)?.[0] || '—';
-      } else if (/SM-F/.test(ua)) {
-        device = 'Samsung Fold/Flip';
-        model = ua.match(/SM-F[\w]+/)?.[0] || '—';
-      } else if (/SM-/.test(ua)) {
-        device = 'Samsung';
-        model = ua.match(/SM-[\w]+/)?.[0] || '—';
-      } else if (/Huawei|HUAWEI/.test(ua)) {
-        device = 'Huawei';
-        const m = ua.match(/(?:Huawei|HUAWEI)[- ]([\w]+)/);
-        model = m ? m[1] : '—';
-      } else if (/Xiaomi|Redmi|MIUI/.test(ua)) {
-        device = 'Xiaomi';
-        const m = ua.match(/(?:Xiaomi|Redmi)[- ]([\w]+)/);
-        model = m ? m[1] : '—';
-      } else if (/OPPO/.test(ua)) {
-        device = 'OPPO';
-        model = ua.match(/OPPO[- ]?([\w]+)/)?.[1] || '—';
-      } else if (/vivo/.test(ua)) {
-        device = 'Vivo';
-        model = ua.match(/vivo[- ]?([\w]+)/)?.[1] || '—';
-      } else if (/Android/.test(ua)) {
-        device = 'Android';
-        const android = ua.match(/Android ([\d.]+)/)?.[1] || '';
-        model = android ? `Android ${android}` : '—';
-      } else if (/Windows NT/.test(ua)) {
-        device = 'Windows PC';
-        model = '—';
-      } else if (/Macintosh/.test(ua)) {
-        device = 'Mac';
-        model = '—';
-      }
+      if (/iPhone/.test(ua)) { device = 'Apple iPhone'; const v = ua.match(/OS (\d+_\d+)/); model = v ? `iOS ${v[1].replace('_', '.')}` : 'iOS'; }
+      else if (/iPad/.test(ua)) { device = 'Apple iPad'; const v = ua.match(/OS (\d+_\d+)/); model = v ? `iOS ${v[1].replace('_', '.')}` : 'iOS'; }
+      else if (/SM-N/.test(ua)) { device = 'Samsung Note'; model = ua.match(/SM-N[\w]+/)?.[0] || '—'; }
+      else if (/SM-S/.test(ua)) { device = 'Samsung S Series'; model = ua.match(/SM-S[\w]+/)?.[0] || '—'; }
+      else if (/SM-A/.test(ua)) { device = 'Samsung A Series'; model = ua.match(/SM-A[\w]+/)?.[0] || '—'; }
+      else if (/SM-G/.test(ua)) { device = 'Samsung Galaxy'; model = ua.match(/SM-G[\w]+/)?.[0] || '—'; }
+      else if (/SM-F/.test(ua)) { device = 'Samsung Fold/Flip'; model = ua.match(/SM-F[\w]+/)?.[0] || '—'; }
+      else if (/SM-/.test(ua)) { device = 'Samsung'; model = ua.match(/SM-[\w]+/)?.[0] || '—'; }
+      else if (/Huawei|HUAWEI/.test(ua)) { device = 'Huawei'; const m = ua.match(/(?:Huawei|HUAWEI)[- ]([\w]+)/); model = m ? m[1] : '—'; }
+      else if (/Xiaomi|Redmi|MIUI/.test(ua)) { device = 'Xiaomi'; const m = ua.match(/(?:Xiaomi|Redmi)[- ]([\w]+)/); model = m ? m[1] : '—'; }
+      else if (/OPPO/.test(ua)) { device = 'OPPO'; model = ua.match(/OPPO[- ]?([\w]+)/)?.[1] || '—'; }
+      else if (/vivo/.test(ua)) { device = 'Vivo'; model = ua.match(/vivo[- ]?([\w]+)/)?.[1] || '—'; }
+      else if (/Android/.test(ua)) { device = 'Android'; const android = ua.match(/Android ([\d.]+)/)?.[1] || ''; model = android ? `Android ${android}` : '—'; }
+      else if (/Windows NT/.test(ua)) { device = 'Windows PC'; model = '—'; }
+      else if (/Macintosh/.test(ua)) { device = 'Mac'; model = '—'; }
 
       return { device, model, browser, timezone };
     } catch {
@@ -301,13 +313,12 @@ export default function AdminReviewPasswords() {
     }
     const exportData = rows.map(r => {
       const saved = contacts[r.id] || '';
-      const contactValue = saved || '';
       return {
         'الاسم': r.label || '—',
         'كلمة المرور': r.password,
         'المادة': subjectMap[r.subject_id] || '—',
         'المدة (يوم)': r.duration_days || 30,
-        'المعرف (whatsapp:رقم أو telegram:رقم/معرف)': contactValue,
+        'المعرف (whatsapp:رقم أو telegram:رقم/معرف)': saved || '',
         'الحالة': isExpired(r) ? 'منتهية' : r.first_used_at ? 'قيد الاستخدام' : 'جاهزة',
         'أول استخدام': r.first_used_at ? new Date(r.first_used_at).toLocaleDateString('ar') : '—',
         'تاريخ الانتهاء': r.expires_at ? new Date(r.expires_at).toLocaleDateString('ar') : '—',
@@ -325,6 +336,7 @@ export default function AdminReviewPasswords() {
     <AdminLayout>
       <AdminSEO pageName="سجل كلمات مرور المراجعة" />
       <div className="space-y-6">
+        {/* Header */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
@@ -335,10 +347,46 @@ export default function AdminReviewPasswords() {
               <p className="text-sm text-slate-500 font-medium">إدارة شاملة لكل الطلاب وأجهزتهم وصلاحية كلمات المرور</p>
             </div>
           </div>
-          <Button onClick={handleExport} disabled={rows.length === 0} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shrink-0">
-            <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">تصدير Excel</span>
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Select mode toggle */}
+            {!selectMode ? (
+              <Button
+                variant="outline"
+                onClick={() => setSelectMode(true)}
+                className="flex items-center gap-2 border-slate-300 text-slate-700 hover:bg-slate-50"
+              >
+                <ListChecks className="w-4 h-4" />
+                <span className="hidden sm:inline">تحديد متعدد</span>
+              </Button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-slate-600 hidden sm:inline">
+                  {selectedIds.size > 0 ? `تم تحديد ${selectedIds.size}` : 'حدد عناصر'}
+                </span>
+                <Button
+                  variant="destructive"
+                  onClick={handleBulkDelete}
+                  disabled={selectedIds.size === 0 || bulkDeleteMut.isPending}
+                  className="flex items-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>حذف ({selectedIds.size})</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={exitSelectMode}
+                  className="flex items-center gap-2 border-slate-300"
+                >
+                  <X className="w-4 h-4" />
+                  <span className="hidden sm:inline">إلغاء</span>
+                </Button>
+              </div>
+            )}
+            <Button onClick={handleExport} disabled={rows.length === 0} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">تصدير Excel</span>
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}
@@ -388,6 +436,27 @@ export default function AdminReviewPasswords() {
           </Select>
         </div>
 
+        {/* Select all banner — shown only in select mode */}
+        {selectMode && filtered.length > 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Checkbox
+                checked={allFilteredSelected}
+                onCheckedChange={toggleSelectAll}
+                id="select-all"
+              />
+              <label htmlFor="select-all" className="text-sm font-bold text-blue-700 cursor-pointer select-none">
+                {allFilteredSelected ? 'إلغاء تحديد الكل' : `تحديد الكل (${filtered.length})`}
+              </label>
+            </div>
+            {someSelected && (
+              <span className="text-xs font-bold text-blue-600 bg-blue-100 px-3 py-1 rounded-full">
+                {selectedIds.size} محدد
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Table */}
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
           {isLoading ? (
@@ -399,6 +468,14 @@ export default function AdminReviewPasswords() {
               <table className="w-full text-xs sm:text-sm">
                 <thead className="bg-slate-50 text-slate-700">
                   <tr className="text-right">
+                    {selectMode && (
+                      <th className="p-3 w-10">
+                        <Checkbox
+                          checked={allFilteredSelected}
+                          onCheckedChange={toggleSelectAll}
+                        />
+                      </th>
+                    )}
                     <th className="p-3 font-black">الطالب</th>
                     <th className="p-3 font-black">المادة</th>
                     <th className="p-3 font-black">كلمة المرور</th>
@@ -410,17 +487,32 @@ export default function AdminReviewPasswords() {
                     <th className="p-3 font-black hidden md:table-cell">المنطقة الزمنية</th>
                     <th className="p-3 font-black hidden md:table-cell"><Clock className="w-3 h-3 inline ml-1" />أول استخدام</th>
                     <th className="p-3 font-black hidden md:table-cell"><Calendar className="w-3 h-3 inline ml-1" />الانتهاء</th>
-                    <th className="p-3 font-black">إجراءات</th>
+                    {!selectMode && <th className="p-3 font-black">إجراءات</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filtered.map((p) => {
                     const expired = isExpired(p);
                     const editing = editingId === p.id;
+                    const isSelected = selectedIds.has(p.id);
                     return (
-                      <tr key={p.id} className={`hover:bg-slate-50/50 ${expired ? 'opacity-70' : ''}`}>
+                      <tr
+                        key={p.id}
+                        className={`hover:bg-slate-50/50 transition-colors ${expired ? 'opacity-70' : ''} ${isSelected ? 'bg-blue-50/60' : ''}`}
+                        onClick={selectMode ? () => toggleSelectOne(p.id) : undefined}
+                        style={selectMode ? { cursor: 'pointer' } : undefined}
+                      >
+                        {selectMode && (
+                          <td className="p-3">
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => toggleSelectOne(p.id)}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </td>
+                        )}
                         <td className="p-3 font-bold">
-                          {editing
+                          {!selectMode && editing
                             ? <div className="space-y-1">
                                 <span className="text-xs text-muted-foreground">{p.label || '—'}</span>
                                 <div className="flex gap-1">
@@ -455,21 +547,25 @@ export default function AdminReviewPasswords() {
                         </td>
                         <td className="p-3">{subjectMap[p.subject_id] || '—'}</td>
                         <td className="p-3 font-mono">
-                          {editing
+                          {!selectMode && editing
                             ? <Input value={editPassword} onChange={(e) => setEditPassword(e.target.value)} className="h-8 text-xs" />
                             : <div className="flex items-center gap-1">
                                 <span>{p.password}</span>
-                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6 shrink-0"
-                                  onClick={() => copyPassword(p.id, p.password)} title="نسخ كلمة المرور">
-                                  {copiedId === p.id
-                                    ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                                    : <Copy className="w-3.5 h-3.5 text-slate-400" />}
-                                </Button>
+                                {!selectMode && (
+                                  <Button type="button" variant="ghost" size="icon" className="h-6 w-6 shrink-0"
+                                    onClick={(e) => { e.stopPropagation(); copyPassword(p.id, p.password); }} title="نسخ كلمة المرور">
+                                    {copiedId === p.id
+                                      ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                      : <Copy className="w-3.5 h-3.5 text-slate-400" />}
+                                  </Button>
+                                )}
                               </div>
                           }
                         </td>
                         <td className="p-3">
-                          {editing ? <Input type="number" min={1} value={editDuration} onChange={(e) => setEditDuration(Number(e.target.value))} className="h-8 w-20 text-xs" /> : `${p.duration_days || 30} يوم`}
+                          {!selectMode && editing
+                            ? <Input type="number" min={1} value={editDuration} onChange={(e) => setEditDuration(Number(e.target.value))} className="h-8 w-20 text-xs" />
+                            : `${p.duration_days || 30} يوم`}
                         </td>
                         <td className="p-3">
                           {expired
@@ -482,7 +578,7 @@ export default function AdminReviewPasswords() {
                           const info = parseDevice(p.device_fingerprint);
                           return (
                             <>
-                              <td className="p-3 hidden md:table-cell font-semibold text-slate-700 dark:text-slate-300 text-xs">{info.device}</td>
+                              <td className="p-3 hidden md:table-cell font-semibold text-slate-700 text-xs">{info.device}</td>
                               <td className="p-3 hidden md:table-cell font-mono text-[11px] text-slate-500">{info.model}</td>
                               <td className="p-3 hidden md:table-cell text-xs text-slate-500">{info.browser}</td>
                               <td className="p-3 hidden md:table-cell text-xs text-slate-500">{info.timezone}</td>
@@ -491,49 +587,51 @@ export default function AdminReviewPasswords() {
                         })()}
                         <td className="p-3 hidden md:table-cell whitespace-nowrap">{fmt(p.first_used_at)}</td>
                         <td className="p-3 hidden md:table-cell whitespace-nowrap">{fmt(p.expires_at)}</td>
-                        <td className="p-3">
-                          <div className="flex items-center gap-1">
-                            {editing ? (
-                              <>
-                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-emerald-600"
-                                  disabled={editMut.isPending || !editPassword.trim()}
-                                  onClick={() => editMut.mutate({ id: p.id, password: editPassword, duration_days: editDuration, p })} title="حفظ">
-                                  <CheckCircle2 className="w-4 h-4" />
-                                </Button>
-                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingId(null)} title="إلغاء">
-                                  <XCircle className="w-4 h-4" />
-                                </Button>
-                              </>
-                            ) : (
-                              <>
-                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(p)} title="تعديل">
-                                  <Edit2 className="w-4 h-4" />
-                                </Button>
-                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-violet-600"
-                                  onClick={() => generateMut.mutate(p.id)} disabled={generateMut.isPending} title="توليد كلمة مرور جديدة">
-                                  <Sparkles className="w-4 h-4" />
-                                </Button>
-                                {contacts[p.id] && (
-                                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-blue-600"
-                                    onClick={() => handleSendMessage(p)} title={`إرسال لـ ${contacts[p.id]}`}>
-                                    <Send className="w-4 h-4" />
-                                  </Button>
-                                )}
-                                {(expired || p.first_used_at) && (
+                        {!selectMode && (
+                          <td className="p-3">
+                            <div className="flex items-center gap-1">
+                              {editing ? (
+                                <>
                                   <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-emerald-600"
-                                    onClick={() => renewMut.mutate(p.id)} disabled={renewMut.isPending} title="تجديد (إعادة تعيين الجهاز والصلاحية)">
-                                    <RefreshCw className="w-4 h-4" />
+                                    disabled={editMut.isPending || !editPassword.trim()}
+                                    onClick={() => editMut.mutate({ id: p.id, password: editPassword, duration_days: editDuration, p })} title="حفظ">
+                                    <CheckCircle2 className="w-4 h-4" />
                                   </Button>
-                                )}
-                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive"
-                                  onClick={() => { if (confirm(`حذف الطالب "${p.label || p.password}"؟`)) deleteMut.mutate(p.id); }}
-                                  disabled={deleteMut.isPending} title="حذف الطالب">
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </td>
+                                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingId(null)} title="إلغاء">
+                                    <XCircle className="w-4 h-4" />
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(p)} title="تعديل">
+                                    <Edit2 className="w-4 h-4" />
+                                  </Button>
+                                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-violet-600"
+                                    onClick={() => generateMut.mutate(p.id)} disabled={generateMut.isPending} title="توليد كلمة مرور جديدة">
+                                    <Sparkles className="w-4 h-4" />
+                                  </Button>
+                                  {contacts[p.id] && (
+                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-blue-600"
+                                      onClick={() => handleSendMessage(p)} title={`إرسال لـ ${contacts[p.id]}`}>
+                                      <Send className="w-4 h-4" />
+                                    </Button>
+                                  )}
+                                  {(expired || p.first_used_at) && (
+                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-emerald-600"
+                                      onClick={() => renewMut.mutate(p.id)} disabled={renewMut.isPending} title="تجديد">
+                                      <RefreshCw className="w-4 h-4" />
+                                    </Button>
+                                  )}
+                                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive"
+                                    onClick={() => { if (confirm(`حذف الطالب "${p.label || p.password}"؟`)) deleteMut.mutate(p.id); }}
+                                    disabled={deleteMut.isPending} title="حذف الطالب">
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
