@@ -636,11 +636,30 @@ const ExamStart = () => {
 
               {selectedYear === 'trial' && (
                 <>
-                  <div className="flex items-center gap-3 bg-violet-50 border border-violet-100 rounded-[1rem] px-4 py-3"><span className="text-2xl">🧪</span><div><p className="text-xs font-black text-violet-700">أسئلة تجريبية</p><p className="text-[10px] text-violet-500 font-bold">أسئلة تدريبية إضافية شاملة من المقرر تساعدك على الاستعداد للاختبار</p></div></div>
-                  <div className="space-y-2">
+                  {/* ── بطاقة: الأسئلة التجريبية حصرية لاختبار+ المراجعة ── */}
+                  <div className="relative overflow-hidden rounded-[1.25rem] animate-in fade-in slide-in-from-top-2 duration-300"
+                    style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef9ec 100%)', border: '1.5px solid rgba(245,158,11,0.35)', boxShadow: '0 4px 24px rgba(245,158,11,0.12)' }}>
+                    <div className="h-1 w-full" style={{ background: 'linear-gradient(90deg, #f59e0b, #fbbf24, #f59e0b)' }} />
+                    <div className="p-4 flex items-start gap-3.5">
+                      <div className="shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center shadow-md"
+                        style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', boxShadow: '0 4px 14px rgba(245,158,11,0.45)' }}>
+                        <Lock className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="flex-1 text-right">
+                        <p className="text-sm font-black text-amber-900 leading-snug mb-1">
+                          الأسئلة التجريبية متاحة حصرياً في وضع اختبار+ المراجعة
+                        </p>
+                        <p className="text-[11px] font-semibold leading-relaxed" style={{ color: '#92400e' }}>
+                          فعّل وضع المراجعة من الزر أدناه للوصول إلى الأسئلة التجريبية الشاملة مع التلميحات والشروح القانونية الكاملة.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  {/* قائمة النموذج معطلة بصرياً */}
+                  <div className="space-y-2 opacity-40 pointer-events-none select-none">
                     <FieldLabel><span className="inline-flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" />اختر النموذج</span></FieldLabel>
                     <Select value={selectedTrialForm} onValueChange={setSelectedTrialForm}>
-                      <SelectTrigger className="h-14 rounded-[1rem] bg-slate-50 dark:bg-muted border-slate-200 dark:border-border font-bold px-5 focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"><SelectValue placeholder="اختر النموذج" /></SelectTrigger>
+                      <SelectTrigger className="h-14 rounded-[1rem] bg-slate-50 dark:bg-muted border-slate-200 dark:border-border font-bold px-5"><SelectValue placeholder="اختر النموذج" /></SelectTrigger>
                       <SelectContent className="z-[9999] bg-white dark:bg-card border-slate-200 dark:border-border rounded-2xl shadow-2xl max-h-[280px]">
                         {activeTrialForms.map((form) => (<SelectItem key={form.id} value={form.id} className="h-11 rounded-xl font-bold cursor-pointer">{form.name}</SelectItem>))}
                       </SelectContent>
@@ -676,18 +695,13 @@ const ExamStart = () => {
                     <label className="flex items-center gap-2 text-xs font-black text-amber-700"><Lock className="w-3.5 h-3.5" />هذا الاختبار محمي بكلمة مرور</label>
                     <Input type="password" placeholder="أدخل كلمة السر" value={password} onChange={(e) => setPassword(e.target.value)} className="h-13 rounded-[1rem] bg-white dark:bg-card border-amber-200 text-center font-black tracking-[0.4em] focus:border-amber-400 focus:ring-2 focus:ring-amber-100 transition-all" />
                   </div>
-                ) : (
-                  <div className="flex items-center gap-2 px-4 py-3 bg-emerald-50 border border-emerald-100 rounded-[1rem]">
-                    <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
-                    <p className="text-xs font-black text-emerald-700">تم التحقق من هويتك — يمكنك البدء مباشرة</p>
-                  </div>
-                );
+                ) : null;
               })()}
 
               {/* ── زر ابدأ الاختبار ── */}
               <button
                 onClick={handleStartExam}
-                disabled={!studentName.trim() || !selectedYear || questionCount === 0}
+                disabled={!studentName.trim() || !selectedYear || questionCount === 0 || selectedYear === 'trial'}
                 className="relative w-full h-16 rounded-[1.25rem] font-black text-base text-white overflow-hidden transition-all duration-300 hover:-translate-y-1 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 group"
                 style={{ background: 'linear-gradient(135deg, #1d4ed8, #4f46e5, #7c3aed)', boxShadow: '0 8px 32px rgba(99,102,241,0.45), 0 0 0 1px rgba(255,255,255,0.1) inset' }}
               >
