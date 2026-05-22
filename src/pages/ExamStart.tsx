@@ -189,6 +189,7 @@ const ExamStart = () => {
 
   // ── وضع الاختبار العادي بكلمة مرور ──
   const [showExamPasswordModal, setShowExamPasswordModal] = useState(false);
+  const [showTrialBlockedModal, setShowTrialBlockedModal] = useState(false);
   const [examPasswordInput, setExamPasswordInput] = useState('');
   const [examPasswordError, setExamPasswordError] = useState(false);
 
@@ -367,6 +368,7 @@ const ExamStart = () => {
   const handleStartExam = async () => {
     if (!studentName.trim()) { toast({ title: 'تنبيه', description: 'يرجى إدخال اسمك الكامل للمتابعة', variant: 'destructive' }); return; }
     if (!selectedYear) { toast({ title: 'تنبيه', description: 'يرجى اختيار نموذج سنة الاختبار', variant: 'destructive' }); return; }
+    if (selectedYear === 'trial') { setShowTrialBlockedModal(true); return; }
     if (selectedYear === 'trial' && !selectedTrialForm) { toast({ title: 'تنبيه', description: 'يرجى اختيار النموذج التجريبي', variant: 'destructive' }); return; }
     if (questionCount === 0) { toast({ title: 'نعتذر', description: 'لا توجد أسئلة متوفرة لهذا الاختيار حالياً', variant: 'destructive' }); return; }
 
@@ -434,6 +436,7 @@ const ExamStart = () => {
   const handleOpenReviewModal = async () => {
     if (!studentName.trim()) { toast({ title: 'تنبيه', description: 'يرجى إدخال اسمك الكامل أولاً', variant: 'destructive' }); return; }
     if (!selectedYear) { toast({ title: 'تنبيه', description: 'يرجى اختيار نموذج سنة الاختبار', variant: 'destructive' }); return; }
+    if (selectedYear === 'trial' && !selectedTrialForm) { toast({ title: 'تنبيه', description: 'يرجى اختيار النموذج التجريبي أولاً', variant: 'destructive' }); return; }
 
     const { data: activeList } = await (supabase as any).from('review_passwords').select('id').eq('subject_id', subjectId).eq('is_active', true).limit(1);
     if (!activeList || activeList.length === 0) { navigate(`/exam/${subjectId}/start`, { state: buildReviewState() }); return; }
@@ -655,11 +658,10 @@ const ExamStart = () => {
                       </div>
                     </div>
                   </div>
-                  {/* قائمة النموذج معطلة بصرياً */}
-                  <div className="space-y-2 opacity-40 pointer-events-none select-none">
+                  <div className="space-y-2">
                     <FieldLabel><span className="inline-flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" />اختر النموذج</span></FieldLabel>
                     <Select value={selectedTrialForm} onValueChange={setSelectedTrialForm}>
-                      <SelectTrigger className="h-14 rounded-[1rem] bg-slate-50 dark:bg-muted border-slate-200 dark:border-border font-bold px-5"><SelectValue placeholder="اختر النموذج" /></SelectTrigger>
+                      <SelectTrigger className="h-14 rounded-[1rem] bg-slate-50 dark:bg-muted border-slate-200 dark:border-border font-bold px-5 focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"><SelectValue placeholder="اختر النموذج" /></SelectTrigger>
                       <SelectContent className="z-[9999] bg-white dark:bg-card border-slate-200 dark:border-border rounded-2xl shadow-2xl max-h-[280px]">
                         {activeTrialForms.map((form) => (<SelectItem key={form.id} value={form.id} className="h-11 rounded-xl font-bold cursor-pointer">{form.name}</SelectItem>))}
                       </SelectContent>
@@ -701,7 +703,7 @@ const ExamStart = () => {
               {/* ── زر ابدأ الاختبار ── */}
               <button
                 onClick={handleStartExam}
-                disabled={!studentName.trim() || !selectedYear || questionCount === 0 || selectedYear === 'trial'}
+                disabled={!studentName.trim() || !selectedYear || questionCount === 0}
                 className="relative w-full h-16 rounded-[1.25rem] font-black text-base text-white overflow-hidden transition-all duration-300 hover:-translate-y-1 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 group"
                 style={{ background: 'linear-gradient(135deg, #1d4ed8, #4f46e5, #7c3aed)', boxShadow: '0 8px 32px rgba(99,102,241,0.45), 0 0 0 1px rgba(255,255,255,0.1) inset' }}
               >
@@ -766,6 +768,62 @@ const ExamStart = () => {
           </div>
         </div>
       </section>
+
+      {/* ── مودال الأسئلة التجريبية محظورة في الاختبار العادي ── */}
+      {showTrialBlockedModal && (
+        <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center"
+          onClick={(e) => e.target === e.currentTarget && setShowTrialBlockedModal(false)}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowTrialBlockedModal(false)} />
+          <div className="relative w-full sm:max-w-sm bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-2xl animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-300 overflow-hidden">
+            <div className="h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #f59e0b, #fbbf24, #f59e0b)' }} />
+            <div className="p-6 space-y-5">
+              {/* رأس */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl flex items-center justify-center shadow-md"
+                    style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', boxShadow: '0 4px 14px rgba(245,158,11,0.45)' }}>
+                    <Lock className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-slate-800 dark:text-slate-100 text-base">أسئلة تجريبية</h3>
+                    <p className="text-[11px] text-slate-400 font-semibold">وضع محمي</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowTrialBlockedModal(false)}
+                  className="w-9 h-9 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors">
+                  <X className="w-4 h-4 text-slate-500" />
+                </button>
+              </div>
+              {/* البطاقة */}
+              <div className="rounded-2xl p-4 text-right space-y-1.5"
+                style={{ background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', border: '1.5px solid rgba(245,158,11,0.3)' }}>
+                <p className="text-sm font-black text-amber-900 leading-snug">
+                  الأسئلة التجريبية متاحة حصرياً في وضع اختبار+ المراجعة
+                </p>
+                <p className="text-[11px] font-semibold leading-relaxed" style={{ color: '#92400e' }}>
+                  فعّل وضع المراجعة من الزر أدناه للوصول إلى الأسئلة التجريبية الشاملة مع التلميحات والشروح القانونية الكاملة.
+                </p>
+              </div>
+              {/* زر الانتقال لاختبار+ المراجعة */}
+              <button
+                onClick={() => {
+                  setShowTrialBlockedModal(false);
+                  if (!selectedTrialForm) {
+                    toast({ title: 'تنبيه', description: 'يرجى اختيار النموذج التجريبي أولاً', variant: 'destructive' });
+                    return;
+                  }
+                  handleOpenReviewModal();
+                }}
+                className="w-full h-13 rounded-2xl font-black text-sm text-white flex items-center justify-center gap-2.5 transition-all active:scale-[0.98]"
+                style={{ background: 'linear-gradient(135deg, #065f46, #059669)', boxShadow: '0 6px 20px rgba(5,150,105,0.4)' }}
+              >
+                <BookOpen className="w-4 h-4" />
+                انتقل إلى اختبار+ المراجعة
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── مودال كلمة مرور الاختبار العادي ── */}
       {showExamPasswordModal && (
