@@ -263,11 +263,27 @@ const ExamStart = () => {
       const { data, error } = await supabase.from('questions').select('exam_year, exam_form, created_at').eq('subject_id', subjectId).eq('status', 'active').gte('created_at', since);
       if (error) throw error;
       if (!data || data.length === 0) return [];
+
+      // ── جلب أسماء النماذج التجريبية الحقيقية ──
+      const { data: formOverrides } = await (supabase.from('subject_exam_forms' as any) as any)
+        .select('form_id, form_name')
+        .eq('subject_id', subjectId);
+      const formNameMap: Record<string, string> = {};
+      (formOverrides || []).forEach((f: any) => { formNameMap[f.form_id] = f.form_name; });
+
       const groups: Record<string, number> = {};
       for (const q of data) {
         let label = '';
-        if (!q.exam_year) { const form = q.exam_form || ''; label = form ? `أسئلة تجريبية — ${form.replace('Model_', 'نموذج ')}` : 'أسئلة تجريبية'; }
-        else { const formMap: Record<string, string> = { General: 'نموذج العام', Parallel: 'نموذج الموازي', Mixed: 'نموذج مختلط' }; const formName = formMap[q.exam_form] || q.exam_form || ''; label = formName ? `دورة ${q.exam_year} — ${formName}` : `دورة ${q.exam_year}`; }
+        if (!q.exam_year) {
+          const form = q.exam_form || '';
+          // استخدم الاسم الحقيقي من قاعدة البيانات إن وجد، وإلا افتراضي
+          const realName = formNameMap[form] || form.replace('Model_', 'نموذج ');
+          label = realName ? `أسئلة تجريبية — ${realName}` : 'أسئلة تجريبية';
+        } else {
+          const formMap: Record<string, string> = { General: 'نموذج العام', Parallel: 'نموذج الموازي', Mixed: 'نموذج مختلط' };
+          const formName = formMap[q.exam_form] || q.exam_form || '';
+          label = formName ? `دورة ${q.exam_year} — ${formName}` : `دورة ${q.exam_year}`;
+        }
         groups[label] = (groups[label] || 0) + 1;
       }
       return Object.entries(groups).map(([label, count]) => ({ label, count }));
