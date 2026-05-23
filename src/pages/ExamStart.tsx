@@ -195,6 +195,25 @@ const ExamStart = () => {
 
   const newQsDismissKey = subjectId ? `new_qs_dismissed_${subjectId}` : null;
 
+  // ── مودال التخرج — مادة مناهج البحث ──
+  const GRAD_SUBJECT_ID = '20ba484d-524a-45c2-9d42-e6bd66dbcb3b';
+  const gradDismissKey = `grad_modal_dismissed_${GRAD_SUBJECT_ID}`;
+  const [showGradModal, setShowGradModal] = useState(false);
+
+  useEffect(() => {
+    if (subjectId !== GRAD_SUBJECT_ID) return;
+    const dismissed = sessionStorage.getItem(gradDismissKey);
+    if (!dismissed) {
+      const timer = setTimeout(() => setShowGradModal(true), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [subjectId]);
+
+  const handleCloseGradModal = () => {
+    sessionStorage.setItem(gradDismissKey, '1');
+    setShowGradModal(false);
+  };
+
   useEffect(() => { if (!subjectId) return; setWrongQuestions(getWrongQuestions(subjectId)); }, [subjectId]);
   useEffect(() => { setSavedProgress(null); }, [subjectId, studentName, selectedYear]);
 
@@ -982,6 +1001,187 @@ const ExamStart = () => {
 
       {showSummaryModal && subject?.summary_url && (
         <SummaryModal url={subject.summary_url} subjectName={subject.name} onClose={() => setShowSummaryModal(false)} />
+      )}
+
+      {/* ── مودال التخرج الاحتفالي 2026 ── */}
+      {showGradModal && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4" dir="rtl">
+          <style>{`
+            @keyframes gradConfetti {
+              0%   { transform: translateY(-20px) rotate(0deg);   opacity: 1; }
+              100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+            }
+            @keyframes gradPulseRing {
+              0%   { transform: scale(1);   opacity: 0.8; }
+              100% { transform: scale(2.2); opacity: 0; }
+            }
+            @keyframes gradShine {
+              0%   { left: -100%; }
+              100% { left: 200%; }
+            }
+            @keyframes gradFloat {
+              0%, 100% { transform: translateY(0px) rotate(-2deg); }
+              50%       { transform: translateY(-10px) rotate(2deg); }
+            }
+            @keyframes gradGlow {
+              0%, 100% { box-shadow: 0 0 30px rgba(251,191,36,0.4), 0 0 60px rgba(99,102,241,0.3); }
+              50%       { box-shadow: 0 0 60px rgba(251,191,36,0.8), 0 0 100px rgba(99,102,241,0.6); }
+            }
+            @keyframes gradTextGlow {
+              0%, 100% { text-shadow: 0 0 20px rgba(251,191,36,0.5); }
+              50%       { text-shadow: 0 0 40px rgba(251,191,36,1), 0 0 80px rgba(251,191,36,0.5); }
+            }
+            @keyframes gradBorderRotate {
+              0%   { background-position: 0% 50%; }
+              50%  { background-position: 100% 50%; }
+              100% { background-position: 0% 50%; }
+            }
+            .grad-confetti-piece {
+              position: absolute;
+              top: -10px;
+              animation: gradConfetti linear infinite;
+              border-radius: 2px;
+            }
+            .grad-pulse-ring {
+              position: absolute;
+              inset: 0;
+              border-radius: 9999px;
+              border: 2px solid rgba(251,191,36,0.6);
+              animation: gradPulseRing 1.8s ease-out infinite;
+            }
+            .grad-icon-float { animation: gradFloat 3s ease-in-out infinite; }
+            .grad-card-glow  { animation: gradGlow 2.5s ease-in-out infinite; }
+            .grad-text-glow  { animation: gradTextGlow 2s ease-in-out infinite; }
+            .grad-shine::after {
+              content: '';
+              position: absolute;
+              top: 0; bottom: 0;
+              width: 60%;
+              background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+              animation: gradShine 3s ease-in-out infinite;
+            }
+          `}</style>
+
+          {/* Confetti — ثابت بـ useMemo-style array */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            {[
+              { l:'8%',  d:'0s',   dur:'3.2s', w:8,  h:8,  c:'#fbbf24', r:'0deg'   },
+              { l:'15%', d:'0.3s', dur:'2.8s', w:6,  h:12, c:'#818cf8', r:'45deg'  },
+              { l:'23%', d:'0.8s', dur:'3.5s', w:10, h:6,  c:'#34d399', r:'20deg'  },
+              { l:'31%', d:'0.1s', dur:'2.6s', w:7,  h:7,  c:'#f87171', r:'60deg'  },
+              { l:'40%', d:'0.5s', dur:'3.8s', w:9,  h:5,  c:'#fbbf24', r:'10deg'  },
+              { l:'48%', d:'1.1s', dur:'2.9s', w:6,  h:10, c:'#a78bfa', r:'80deg'  },
+              { l:'57%', d:'0.4s', dur:'3.3s', w:8,  h:8,  c:'#60a5fa', r:'35deg'  },
+              { l:'65%', d:'0.9s', dur:'2.7s', w:5,  h:11, c:'#fbbf24', r:'55deg'  },
+              { l:'73%', d:'0.2s', dur:'3.6s', w:10, h:6,  c:'#f472b6', r:'15deg'  },
+              { l:'81%', d:'0.7s', dur:'3.1s', w:7,  h:7,  c:'#818cf8', r:'70deg'  },
+              { l:'88%', d:'1.3s', dur:'2.5s', w:9,  h:5,  c:'#34d399', r:'40deg'  },
+              { l:'5%',  d:'1.5s', dur:'3.4s', w:6,  h:9,  c:'#fbbf24', r:'25deg'  },
+              { l:'93%', d:'0.6s', dur:'2.8s', w:8,  h:6,  c:'#f87171', r:'65deg'  },
+              { l:'50%', d:'1.8s', dur:'3.0s', w:7,  h:7,  c:'#a78bfa', r:'50deg'  },
+            ].map((p, i) => (
+              <div key={i} className="grad-confetti-piece"
+                style={{ left: p.l, animationDelay: p.d, animationDuration: p.dur, width: p.w, height: p.h, background: p.c, transform: `rotate(${p.r})` }} />
+            ))}
+          </div>
+
+          {/* Overlay */}
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-lg animate-in fade-in duration-400" />
+
+          {/* البطاقة الرئيسية */}
+          <div className="grad-card-glow grad-shine relative w-full max-w-[360px] rounded-[2.5rem] overflow-hidden animate-in zoom-in-90 slide-in-from-bottom-8 duration-600"
+            style={{ background: 'linear-gradient(160deg, #060d1f 0%, #0d1b3e 50%, #07101a 100%)', border: '1.5px solid rgba(251,191,36,0.3)' }}>
+
+            {/* شريط علوي متحرك */}
+            <div className="h-1 w-full" style={{ background: 'linear-gradient(90deg, #7c3aed, #4f46e5, #60a5fa, #fbbf24, #f59e0b, #fbbf24, #60a5fa, #4f46e5, #7c3aed)', backgroundSize: '200%', animation: 'gradBorderRotate 3s linear infinite' }} />
+
+            <div className="p-7 space-y-5 text-center">
+
+              {/* أيقونة التخرج العائمة */}
+              <div className="flex justify-center">
+                <div className="relative grad-icon-float">
+                  {/* حلقات نابضة */}
+                  <div className="grad-pulse-ring" style={{ animationDelay: '0s' }} />
+                  <div className="grad-pulse-ring" style={{ animationDelay: '0.6s' }} />
+                  <div className="grad-pulse-ring" style={{ animationDelay: '1.2s' }} />
+                  {/* توهج خلفي */}
+                  <div className="absolute inset-0 rounded-full blur-3xl opacity-70"
+                    style={{ background: 'radial-gradient(circle, rgba(251,191,36,0.6), rgba(99,102,241,0.4), transparent)', transform: 'scale(2)' }} />
+                  {/* الأيقونة */}
+                  <div className="relative w-24 h-24 rounded-[2rem] flex items-center justify-center text-5xl"
+                    style={{ background: 'linear-gradient(135deg, #1d4ed8 0%, #4f46e5 50%, #7c3aed 100%)', boxShadow: '0 0 0 1px rgba(251,191,36,0.4) inset, 0 20px 60px rgba(0,0,0,0.5)' }}>
+                    🎓
+                  </div>
+                </div>
+              </div>
+
+              {/* شارة */}
+              <div className="flex justify-center">
+                <div className="relative overflow-hidden inline-flex items-center gap-2 px-5 py-2 rounded-full text-[11px] font-black tracking-[0.15em]"
+                  style={{ background: 'linear-gradient(90deg, #92400e, #b45309, #d97706, #fbbf24, #d97706, #b45309, #92400e)', backgroundSize: '200%', animation: 'gradBorderRotate 2s linear infinite', color: '#fff', boxShadow: '0 4px 20px rgba(251,191,36,0.5)' }}>
+                  ⭐ &nbsp;آخر اختبار في مسيرتك الأكاديمية&nbsp; ⭐
+                </div>
+              </div>
+
+              {/* العنوان الرئيسي */}
+              <div className="space-y-1">
+                <h2 className="grad-text-glow text-[28px] font-black leading-tight"
+                  style={{ background: 'linear-gradient(90deg, #fde68a, #fbbf24, #f59e0b, #fbbf24, #fde68a)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundSize: '200%', animation: 'gradBorderRotate 3s linear infinite' }}>
+                  مبروك على آخر اختبار!
+                </h2>
+                <p className="text-[13px] font-bold" style={{ color: 'rgba(196,181,253,0.9)' }}>
+                  أنت على بُعد خطوة واحدة من حلمك 🏆
+                </p>
+              </div>
+
+              {/* النص التحفيزي — glassmorphism card */}
+              <div className="rounded-2xl p-4 text-right space-y-3"
+                style={{ background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)' }}>
+                <p className="text-[13px] leading-relaxed" style={{ color: 'rgba(226,232,240,0.9)' }}>
+                  💡 كل السهر والمذاكرة والجهد كان من أجل <span className="font-black text-white">هذه اللحظة بالذات.</span>
+                </p>
+                <div className="w-full h-px" style={{ background: 'rgba(251,191,36,0.15)' }} />
+                <p className="text-[13px] leading-relaxed" style={{ color: 'rgba(226,232,240,0.9)' }}>
+                  ⚖️ دخلت كلية الشريعة والقانون وستخرج منها حاملاً لقباً يُفخر به —
+                  <span className="font-black mr-1" style={{ color: '#fbbf24' }}>حقوقي.</span>
+                </p>
+                <div className="w-full h-px" style={{ background: 'rgba(251,191,36,0.15)' }} />
+                <p className="text-[13px] leading-relaxed" style={{ color: 'rgba(226,232,240,0.9)' }}>
+                  💪 ثق بنفسك، أجب بهدوء — أنت <span className="font-black text-white">مستعد.</span>
+                </p>
+              </div>
+
+              {/* زر البدء */}
+              <button
+                onClick={handleCloseGradModal}
+                className="relative w-full h-14 rounded-2xl font-black text-base text-white overflow-hidden transition-all duration-300 hover:-translate-y-1 active:scale-[0.97] group"
+                style={{ background: 'linear-gradient(135deg, #1d4ed8, #4f46e5, #7c3aed)', boxShadow: '0 8px 32px rgba(99,102,241,0.6), 0 0 0 1px rgba(255,255,255,0.1) inset' }}
+              >
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                  style={{ background: 'linear-gradient(135deg, #2563eb, #7c3aed)' }} />
+                <div className="absolute inset-0 -skew-x-12 translate-x-[-150%] group-hover:translate-x-[250%] transition-transform duration-700"
+                  style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)', width: '50%' }} />
+                <span className="relative z-10 flex items-center justify-center gap-2">
+                  🚀 أنا مستعد — لنبدأ الآن
+                </span>
+              </button>
+
+              {/* توقيع */}
+              <div className="space-y-1">
+                <p className="text-[11px] font-bold" style={{ color: 'rgba(251,191,36,0.6)' }}>
+                  مع تحيات &nbsp;<span className="font-black" style={{ color: '#fbbf24' }}>أ. معين الناصر</span>
+                </p>
+                <p className="text-[10px] font-bold tracking-wider" style={{ color: 'rgba(251,191,36,0.35)' }}>
+                  ✦ &nbsp; منصة الناصر القانونية — معك حتى التخرج &nbsp; ✦
+                </p>
+              </div>
+
+            </div>
+
+            {/* شريط سفلي */}
+            <div className="h-1 w-full" style={{ background: 'linear-gradient(90deg, #7c3aed, #4f46e5, #60a5fa, #fbbf24, #f59e0b, #fbbf24, #60a5fa, #4f46e5, #7c3aed)', backgroundSize: '200%', animation: 'gradBorderRotate 3s linear infinite' }} />
+          </div>
+        </div>
       )}
     </MainLayout>
   );
