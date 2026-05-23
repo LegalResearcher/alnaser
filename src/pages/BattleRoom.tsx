@@ -416,6 +416,8 @@ const BattleRoom = () => {
   const [nextTimePerQuestion, setNextTimePerQuestion] = useState<number>(60);
   const [nextQuestionsCount, setNextQuestionsCount] = useState<number>(0);
   const [showNextExamAlert, setShowNextExamAlert] = useState(false);
+  const [availableForms, setAvailableForms] = useState<{id:string,label:string}[]>([]);
+  const [loadingForms, setLoadingForms] = useState(false);
   const lastNextExamAlertRef = useRef<string | null>(null);
 
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -431,6 +433,56 @@ const BattleRoom = () => {
   const myPlayerId = useRef<string | null>(null);
   // ── Debounce progress writes to avoid DB write storm with 10+ players ──
   const progressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── جلب النماذج المتاحة من DB عند تغيير السنة أو فتح المودال ──
+  useEffect(() => {
+    if (!room?.subject_id || !nextExamPanel) { setAvailableForms([]); return; }
+    if (!nextExamYear) { setAvailableForms([]); setNextExamForm(''); return; }
+    setLoadingForms(true);
+    setAvailableForms([]);
+    setNextExamForm('');
+    const fetchForms = async () => {
+      const FORM_LABELS: Record<string, string> = {
+        General: 'عام', Parallel: 'موازي', Mixed: 'مختلط',
+        Model_1: 'نموذج 1', Model_2: 'نموذج 2', Model_3: 'نموذج 3',
+        Model_4: 'نموذج 4', Model_5: 'نموذج 5', Model_6: 'نموذج 6',
+        Model_7: 'نموذج 7', Model_8: 'نموذج 8', Model_9: 'نموذج 9',
+        Model_10: 'نموذج 10', Model_11: 'نموذج 11', Model_12: 'نموذج 12',
+        Model_13: 'نموذج 13', Model_14: 'نموذج 14', Model_15: 'نموذج 15',
+      };
+      const { data: customFormNames } = await (supabase.from('subject_exam_forms' as any) as any)
+        .select('form_id, form_name, hidden')
+        .eq('subject_id', room!.subject_id);
+      const customMap: Record<string, string> = {};
+      const hiddenSet = new Set<string>();
+      (customFormNames || []).forEach((f: any) => {
+        if (f.hidden) hiddenSet.add(f.form_id);
+        else customMap[f.form_id] = f.form_name;
+      });
+      let query = (supabase.from('questions') as any)
+        .select('exam_form')
+        .eq('subject_id', room!.subject_id)
+        .eq('status', 'active')
+        .not('exam_form', 'is', null);
+      if (nextExamYear === 'تجريبية') query = query.is('exam_year', null);
+      else query = query.eq('exam_year', parseInt(nextExamYear));
+      const { data } = await query;
+      const allForms = [...new Set((data || []).map((r: any) => r.exam_form).filter(Boolean))] as string[];
+      // استبعاد النماذج المخفية من الأدمن
+      const unique = allForms.filter(id => !hiddenSet.has(id));
+      const order = ['General', 'Parallel', 'Mixed'];
+      unique.sort((a, b) => {
+        const ai = order.indexOf(a), bi = order.indexOf(b);
+        if (ai !== -1 && bi !== -1) return ai - bi;
+        if (ai !== -1) return -1;
+        if (bi !== -1) return 1;
+        return a.localeCompare(b);
+      });
+      setAvailableForms(unique.map(id => ({ id, label: customMap[id] || FORM_LABELS[id] || id })));
+      setLoadingForms(false);
+    };
+    fetchForms();
+  }, [nextExamYear, nextExamPanel, room?.subject_id]);
 
   // Keep refs in sync
   useEffect(() => { questionsRef.current = questions; }, [questions]);
@@ -2072,22 +2124,25 @@ const BattleRoom = () => {
             </div>
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">نموذج الاختبار</p>
-              <div className="flex gap-2 flex-wrap">
-                {([
-                  { id: 'General', label: 'عام' },
-                  { id: 'Parallel', label: 'موازي' },
-                  { id: 'Mixed', label: 'مختلط' },
-                  { id: 'Model_1', label: 'نموذج 1' },
-                  { id: 'Model_2', label: 'نموذج 2' },
-                  { id: 'Model_3', label: 'نموذج 3' },
-                ] as {id:string,label:string}[]).map(f => (
-                  <button key={f.id} onClick={() => setNextExamForm(prev => prev === f.id ? '' : f.id)}
-                    className={cn('px-3 py-1.5 rounded-xl border-2 text-xs font-black transition-all',
-                      nextExamForm === f.id ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600' : 'border-slate-200 dark:border-border text-slate-500 hover:border-slate-300')}>
-                    {f.label}
-                  </button>
-                ))}
-              </div>
+              {loadingForms ? (
+                <p className="text-xs text-slate-400 flex items-center gap-1">
+                  <Loader2 className="w-3 h-3 animate-spin" /> جارٍ التحميل...
+                </p>
+              ) : !nextExamYear ? (
+                <p className="text-xs text-slate-400">اختر السنة أولاً لعرض النماذج</p>
+              ) : availableForms.length === 0 ? (
+                <p className="text-xs text-slate-400">لا توجد نماذج لهذه السنة</p>
+              ) : (
+                <div className="flex gap-2 flex-wrap">
+                  {availableForms.map(f => (
+                    <button key={f.id} onClick={() => setNextExamForm(prev => prev === f.id ? '' : f.id)}
+                      className={cn('px-3 py-1.5 rounded-xl border-2 text-xs font-black transition-all',
+                        nextExamForm === f.id ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600' : 'border-slate-200 dark:border-border text-slate-500 hover:border-slate-300')}>
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">وقت كل سؤال</p>
