@@ -197,28 +197,16 @@ const ExamStart = () => {
 
   // ── مودال التخرج — مادة مناهج البحث ──
   const GRAD_SUBJECT_ID = '20ba484d-524a-45c2-9d42-e6bd66dbcb3b';
-  // v2 = cache bust key — غيّر الرقم لإعادة إظهار الرسالة لجميع الطلاب
-  const GRAD_MODAL_VERSION = 'v2';
-  const gradDismissKey = `grad_modal_dismissed_${GRAD_SUBJECT_ID}_${GRAD_MODAL_VERSION}`;
   const [showGradModal, setShowGradModal] = useState(false);
 
+  // تظهر في كل زيارة للصفحة
   useEffect(() => {
     if (subjectId !== GRAD_SUBJECT_ID) return;
-    // تنظيف الإصدارات القديمة
-    Object.keys(localStorage).forEach(k => {
-      if (k.startsWith(`grad_modal_dismissed_${GRAD_SUBJECT_ID}`) && k !== gradDismissKey) {
-        localStorage.removeItem(k);
-      }
-    });
-    const dismissed = localStorage.getItem(gradDismissKey);
-    if (!dismissed) {
-      const timer = setTimeout(() => setShowGradModal(true), 600);
-      return () => clearTimeout(timer);
-    }
+    const timer = setTimeout(() => setShowGradModal(true), 600);
+    return () => clearTimeout(timer);
   }, [subjectId]);
 
   const handleCloseGradModal = () => {
-    localStorage.setItem(gradDismissKey, '1');
     setShowGradModal(false);
   };
 
