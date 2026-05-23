@@ -3,7 +3,7 @@
  * Project: Alnaser Legal Platform
  * Component: Exam Start & Setup
  * Developed by: Mueen Al-Nasser
- * Version: 4.0 (Wrong Questions Bank + Resume Exam)
+ * Version: 4.1 (Password Save + Device Lock for Regular Exam)
  */
 
 import { useState, useEffect, useMemo } from 'react';
@@ -102,65 +102,26 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ── مكوّن عرض ملخص المادة ── */
-/* دالة حقن الثيم في HTML الملخص */
 function injectTheme(rawHtml: string, theme: string): string {
   const q = String.fromCharCode(34);
   const dqLight = `data-theme=${q}light${q}`;
   const dqDark  = `data-theme=${q}dark${q}`;
   const dqTheme = `data-theme=${q}${theme}${q}`;
-
-  // 1) استبدال data-theme الموجود
   let result = rawHtml.split(dqLight).join(dqTheme).split(dqDark).join(dqTheme);
-
-  // 2) إذا لم يكن هناك data-theme، أضفه على <html> أو <body>
   if (result === rawHtml) {
-    if (result.includes('<html')) {
-      result = result.replace('<html', `<html ${dqTheme}`);
-    } else {
-      const openBody = String.fromCharCode(60) + 'body';
-      result = result.split(openBody).join(openBody + ' ' + dqTheme);
-    }
+    if (result.includes('<html')) { result = result.replace('<html', `<html ${dqTheme}`); }
+    else { const openBody = String.fromCharCode(60) + 'body'; result = result.split(openBody).join(openBody + ' ' + dqTheme); }
   }
-
-  // 3) حقن CSS قسري للوضع النهاري لأن الملخص مبني على dark افتراضياً
   if (theme === 'light') {
-    const lightOverride = `<style id="__theme_override__">
-  :root, [data-theme="light"], body, html {
-    --bg: #f8f5ec !important;
-    --bg-secondary: #ffffff !important;
-    --text: #1a1a1a !important;
-    --text-secondary: #4a4a4a !important;
-    color-scheme: light !important;
+    const lightOverride = `<style id="__theme_override__">:root,[data-theme="light"],body,html{--bg:#f8f5ec!important;--bg-secondary:#ffffff!important;--text:#1a1a1a!important;--text-secondary:#4a4a4a!important;color-scheme:light!important;}body,html{background-color:#f8f5ec!important;color:#1a1a1a!important;}</style>`;
+    if (result.includes('</head>')) result = result.replace('</head>', lightOverride + '</head>');
+    else if (result.includes('<head>')) result = result.replace('<head>', '<head>' + lightOverride);
+    else result = lightOverride + result;
   }
-  body, html {
-    background-color: #f8f5ec !important;
-    color: #1a1a1a !important;
-  }
-</style>`;
-    if (result.includes('</head>')) {
-      result = result.replace('</head>', lightOverride + '</head>');
-    } else if (result.includes('<head>')) {
-      result = result.replace('<head>', '<head>' + lightOverride);
-    } else {
-      result = lightOverride + result;
-    }
-  }
-
   return result;
 }
 
-
-
-const SummaryModal = ({
-  url,
-  subjectName,
-  onClose,
-}: {
-  url: string;
-  subjectName: string;
-  onClose: () => void;
-}) => {
+const SummaryModal = ({ url, subjectName, onClose }: { url: string; subjectName: string; onClose: () => void }) => {
   const [html, setHtml] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -168,84 +129,35 @@ const SummaryModal = ({
   const isDark = resolvedTheme === 'dark';
 
   useEffect(() => {
-    setLoading(true);
-    setError(false);
-    fetch(url)
-      .then(r => r.text())
-      .then(text => { setHtml(text); setLoading(false); })
-      .catch(() => { setError(true); setLoading(false); });
+    setLoading(true); setError(false);
+    fetch(url).then(r => r.text()).then(text => { setHtml(text); setLoading(false); }).catch(() => { setError(true); setLoading(false); });
   }, [url]);
 
-  // نستبدل data-theme على <body> مباشرة حسب ثيم المنصة الحالي
-  // نستبدل data-theme على <body> حسب ثيم المنصة
-  const targetTheme = 'dark'; // الملخص دائماً بالوضع الليلي لأن تصميمه مُحسَّن له
+  const targetTheme = 'dark';
   const themedHtml = html ? injectTheme(html, targetTheme) : '';
 
   return (
     <div className="fixed inset-0 z-[99999] flex flex-col">
-      {/* شريط العنوان */}
-      <div
-        dir="rtl"
-        className="flex items-center justify-between px-4 py-3 shrink-0"
-        style={{
-          background: 'linear-gradient(135deg, #0d1b2a, #1a3320)',
-          borderBottom: '2px solid rgba(201,168,76,0.5)',
-        }}
-      >
+      <div dir="rtl" className="flex items-center justify-between px-4 py-3 shrink-0"
+        style={{ background: 'linear-gradient(135deg, #0d1b2a, #1a3320)', borderBottom: '2px solid rgba(201,168,76,0.5)' }}>
         <div className="flex items-center gap-2">
           <BookOpen className="w-5 h-5" style={{ color: '#c9a84c' }} />
           <span className="font-black text-base" style={{ color: '#e8c97a' }}>📖 ملخص المادة</span>
           <span className="text-sm font-bold text-white/60 mr-1">— {subjectName}</span>
         </div>
-        <button
-          onClick={onClose}
-          className="flex items-center justify-center w-9 h-9 rounded-full"
-          style={{ background: 'rgba(201,168,76,0.15)', border: '1px solid rgba(201,168,76,0.4)', color: '#e8c97a' }}
-        >
+        <button onClick={onClose} className="flex items-center justify-center w-9 h-9 rounded-full"
+          style={{ background: 'rgba(201,168,76,0.15)', border: '1px solid rgba(201,168,76,0.4)', color: '#e8c97a' }}>
           <X className="w-4 h-4" />
         </button>
       </div>
-
-      {/* المحتوى */}
       <div className="flex-1 overflow-hidden" style={{ background: isDark ? '#0a1520' : '#fff' }}>
-        {loading && (
-          <div className="flex items-center justify-center h-full min-h-[300px]" style={{ background: isDark ? '#0a1520' : '#fff' }}>
-            <div className="text-center">
-              <div className="w-10 h-10 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-              <p className="font-bold" style={{ color: isDark ? '#c9a84c' : '#666' }}>جاري تحميل الملخص...</p>
-            </div>
-          </div>
-        )}
-        {error && (
-          <div className="flex items-center justify-center h-full min-h-[300px]">
-            <div className="text-center px-6">
-              <p className="text-red-500 font-black text-lg mb-2">⚠️ تعذّر تحميل الملخص</p>
-              <p className="text-gray-500 text-sm">تحقق من اتصالك بالإنترنت وحاول مرة أخرى</p>
-            </div>
-          </div>
-        )}
-        {!loading && !error && html !== null && (
-          <iframe
-            key={isDark ? 'dark' : 'light'}
-            srcDoc={themedHtml}
-            title="ملخص المادة"
-            className="w-full h-full border-0"
-          />
-        )}
+        {loading && (<div className="flex items-center justify-center h-full min-h-[300px]" style={{ background: isDark ? '#0a1520' : '#fff' }}><div className="text-center"><div className="w-10 h-10 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin mx-auto mb-3" /><p className="font-bold" style={{ color: isDark ? '#c9a84c' : '#666' }}>جاري تحميل الملخص...</p></div></div>)}
+        {error && (<div className="flex items-center justify-center h-full min-h-[300px]"><div className="text-center px-6"><p className="text-red-500 font-black text-lg mb-2">⚠️ تعذّر تحميل الملخص</p><p className="text-gray-500 text-sm">تحقق من اتصالك بالإنترنت وحاول مرة أخرى</p></div></div>)}
+        {!loading && !error && html !== null && (<iframe key={isDark ? 'dark' : 'light'} srcDoc={themedHtml} title="ملخص المادة" className="w-full h-full border-0" />)}
       </div>
-
-      {/* زر الإغلاق السفلي */}
-      <div
-        className="flex justify-center py-3 shrink-0"
-        style={{ background: '#0d1b2a', borderTop: '1px solid rgba(201,168,76,0.2)' }}
-      >
-        <button
-          onClick={onClose}
-          className="px-8 py-2 rounded-2xl font-black text-sm"
-          style={{ background: 'linear-gradient(135deg, #c9a84c, #e8c97a)', color: '#0d1b2a' }}
-        >
-          إغلاق الملخص
-        </button>
+      <div className="flex justify-center py-3 shrink-0" style={{ background: '#0d1b2a', borderTop: '1px solid rgba(201,168,76,0.2)' }}>
+        <button onClick={onClose} className="px-8 py-2 rounded-2xl font-black text-sm"
+          style={{ background: 'linear-gradient(135deg, #c9a84c, #e8c97a)', color: '#0d1b2a' }}>إغلاق الملخص</button>
       </div>
     </div>
   );
@@ -267,22 +179,43 @@ const ExamStart = () => {
   const [showResumeDialog, setShowResumeDialog] = useState(false);
   const [showNewQsNotif,   setShowNewQsNotif]   = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
+
   // ── وضع المراجعة ──
   const [showReviewPasswordModal, setShowReviewPasswordModal] = useState(false);
   const [reviewPassword, setReviewPassword] = useState('');
   const [reviewPasswordError, setReviewPasswordError] = useState(false);
   const [reviewPasswordErrorMsg, setReviewPasswordErrorMsg] = useState('');
   const [reviewPasswordLoading, setReviewPasswordLoading] = useState(false);
+
+  // ── وضع الاختبار العادي بكلمة مرور ──
+  const [showExamPasswordModal, setShowExamPasswordModal] = useState(false);
+  const [showTrialBlockedModal, setShowTrialBlockedModal] = useState(false);
+  const [examPasswordInput, setExamPasswordInput] = useState('');
+  const [examPasswordError, setExamPasswordError] = useState(false);
+
   const newQsDismissKey = subjectId ? `new_qs_dismissed_${subjectId}` : null;
 
-  useEffect(() => {
-    if (!subjectId) return;
-    setWrongQuestions(getWrongQuestions(subjectId));
-  }, [subjectId]);
+  // ── مودال التخرج — مادة مناهج البحث ──
+  const GRAD_SUBJECT_ID = '20ba484d-524a-45c2-9d42-e6bd66dbcb3b';
+  const gradDismissKey = `grad_modal_dismissed_${GRAD_SUBJECT_ID}`;
+  const [showGradModal, setShowGradModal] = useState(false);
 
   useEffect(() => {
-    setSavedProgress(null);
-  }, [subjectId, studentName, selectedYear]);
+    if (subjectId !== GRAD_SUBJECT_ID) return;
+    const dismissed = sessionStorage.getItem(gradDismissKey);
+    if (!dismissed) {
+      const timer = setTimeout(() => setShowGradModal(true), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [subjectId]);
+
+  const handleCloseGradModal = () => {
+    sessionStorage.setItem(gradDismissKey, '1');
+    setShowGradModal(false);
+  };
+
+  useEffect(() => { if (!subjectId) return; setWrongQuestions(getWrongQuestions(subjectId)); }, [subjectId]);
+  useEffect(() => { setSavedProgress(null); }, [subjectId, studentName, selectedYear]);
 
   const { data: subject, isLoading } = useCachedQuery<
     (Subject & { levels: { name: string; is_disabled: boolean; disabled_message: string | null } | null }) | null
@@ -311,23 +244,13 @@ const ExamStart = () => {
   const activeTrialForms = useMemo(() => {
     const overrideMap = new Map<string, { form_id: string; form_name: string; order_index: number; hidden?: boolean }>();
     customForms.forEach(f => overrideMap.set(f.form_id, f));
-
-    const defaults = defaultTrialForms
-      .map(d => {
-        const ov = overrideMap.get(d.id);
-        if (ov) {
-          overrideMap.delete(d.id);
-          return { id: d.id, name: ov.form_name, order_index: ov.order_index ?? d.order_index, hidden: !!ov.hidden };
-        }
-        return { ...d, hidden: false };
-      })
-      .filter(d => !d.hidden);
-
+    const defaults = defaultTrialForms.map(d => {
+      const ov = overrideMap.get(d.id);
+      if (ov) { overrideMap.delete(d.id); return { id: d.id, name: ov.form_name, order_index: ov.order_index ?? d.order_index, hidden: !!ov.hidden }; }
+      return { ...d, hidden: false };
+    }).filter(d => !d.hidden);
     const customs: { id: string; name: string; order_index: number }[] = [];
-    overrideMap.forEach(f => {
-      if (!f.hidden) customs.push({ id: f.form_id, name: f.form_name, order_index: f.order_index });
-    });
-
+    overrideMap.forEach(f => { if (!f.hidden) customs.push({ id: f.form_id, name: f.form_name, order_index: f.order_index }); });
     return [...defaults, ...customs].sort((a, b) => a.order_index - b.order_index).map(({ id, name }) => ({ id, name }));
   }, [defaultTrialForms, customForms]);
 
@@ -351,26 +274,30 @@ const ExamStart = () => {
     enabled: !!subjectId,
   });
 
-  // ── جلب الأسئلة الجديدة (آخر 7 أيام) ──
   interface NewQGroup { label: string; count: number; }
   const { data: newQsGroups = [] } = useQuery<NewQGroup[]>({
     queryKey: ['new-questions', subjectId],
     queryFn: async () => {
       const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-      const { data, error } = await supabase
-        .from('questions')
-        .select('exam_year, exam_form, created_at')
-        .eq('subject_id', subjectId)
-        .eq('status', 'active')
-        .gte('created_at', since);
+      const { data, error } = await supabase.from('questions').select('exam_year, exam_form, created_at').eq('subject_id', subjectId).eq('status', 'active').gte('created_at', since);
       if (error) throw error;
       if (!data || data.length === 0) return [];
+
+      // ── جلب أسماء النماذج التجريبية الحقيقية ──
+      const { data: formOverrides } = await (supabase.from('subject_exam_forms' as any) as any)
+        .select('form_id, form_name')
+        .eq('subject_id', subjectId);
+      const formNameMap: Record<string, string> = {};
+      (formOverrides || []).forEach((f: any) => { formNameMap[f.form_id] = f.form_name; });
+
       const groups: Record<string, number> = {};
       for (const q of data) {
         let label = '';
         if (!q.exam_year) {
           const form = q.exam_form || '';
-          label = form ? `أسئلة تجريبية — ${form.replace('Model_', 'نموذج ')}` : 'أسئلة تجريبية';
+          // استخدم الاسم الحقيقي من قاعدة البيانات إن وجد، وإلا افتراضي
+          const realName = formNameMap[form] || form.replace('Model_', 'نموذج ');
+          label = realName ? `أسئلة تجريبية — ${realName}` : 'أسئلة تجريبية';
         } else {
           const formMap: Record<string, string> = { General: 'نموذج العام', Parallel: 'نموذج الموازي', Mixed: 'نموذج مختلط' };
           const formName = formMap[q.exam_form] || q.exam_form || '';
@@ -395,116 +322,67 @@ const ExamStart = () => {
   };
 
   useEffect(() => {
-    if (subject?.levels?.is_disabled) {
-      toast({ title: subject.levels.disabled_message || 'هذا القسم غير متاح حالياً', variant: 'destructive' });
-      navigate('/levels', { replace: true });
-    }
+    if (subject?.levels?.is_disabled) { toast({ title: subject.levels.disabled_message || 'هذا القسم غير متاح حالياً', variant: 'destructive' }); navigate('/levels', { replace: true }); }
   }, [subject, navigate, toast]);
 
   useEffect(() => {
     if (subject) {
       setExamTime(subject.default_time_minutes || 30);
-      // تعيين "أسئلة تجريبية" افتراضياً لقسم ثالث ثانوي
-      setSelectedYear(prev => {
-        if (!prev && subject.levels?.name?.includes('ثالث ثانوي')) {
-          return 'trial';
-        }
-        return prev;
-      });
+      setSelectedYear(prev => { if (!prev && subject.levels?.name?.includes('ثالث ثانوي')) return 'trial'; return prev; });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subject]);
 
-  useEffect(() => {
-    if (subject) {
-      setExamTime(subject.default_time_minutes || 30);
-    }
-  }, [selectedYear, selectedTrialForm, subject]);
+  useEffect(() => { if (subject) setExamTime(subject.default_time_minutes || 30); }, [selectedYear, selectedTrialForm, subject]);
 
   const navigateToExam = (resume: boolean) => {
     const examFormName = selectedYear === 'trial'
       ? (activeTrialForms.find(f => f.id === selectedTrialForm)?.name ?? selectedTrialForm)
       : (activeExamForms.find(f => f.id === selectedExamForm)?.name ?? selectedExamForm);
-
     const baseState = {
-      studentName,
-      examYear:       selectedYear === 'trial' ? 0 : parseInt(selectedYear),
-      examForm:       selectedYear === 'trial' ? selectedTrialForm : selectedExamForm,
-      examFormName,
-      examTime,
-      questionsCount: questionCount,
-      subjectName:    subject?.name,
-      levelName:      subject?.levels?.name,
-      isTrial:        selectedYear === 'trial',
-      allQuestions:   false,
+      studentName, examYear: selectedYear === 'trial' ? 0 : parseInt(selectedYear),
+      examForm: selectedYear === 'trial' ? selectedTrialForm : selectedExamForm,
+      examFormName, examTime, questionsCount: questionCount,
+      subjectName: subject?.name, levelName: subject?.levels?.name,
+      isTrial: selectedYear === 'trial', allQuestions: false,
       trialFormFilter: selectedYear === 'trial' ? selectedTrialForm : null,
     };
-    if (resume && savedProgress) {
-      navigate(`/exam/${subjectId}/start`, { state: { ...baseState, resumeProgress: savedProgress } });
-    } else {
-      navigate(`/exam/${subjectId}/start`, { state: baseState });
-    }
-  };
-
-  const handleStartExam = () => {
-    if (!studentName.trim()) { toast({ title: 'تنبيه', description: 'يرجى إدخال اسمك الكامل للمتابعة', variant: 'destructive' }); return; }
-    if (!selectedYear) { toast({ title: 'تنبيه', description: 'يرجى اختيار نموذج سنة الاختبار', variant: 'destructive' }); return; }
-    if (selectedYear === 'trial' && !selectedTrialForm) { toast({ title: 'تنبيه', description: 'يرجى اختيار النموذج التجريبي', variant: 'destructive' }); return; }
-    if (subject?.password && password !== subject.password) { toast({ title: 'خطأ في الدخول', description: 'كلمة مرور الاختبار غير صحيحة', variant: 'destructive' }); return; }
-    if (questionCount === 0) { toast({ title: 'نعتذر', description: 'لا توجد أسئلة متوفرة لهذا الاختيار حالياً', variant: 'destructive' }); return; }
-    navigateToExam(false);
+    if (resume && savedProgress) navigate(`/exam/${subjectId}/start`, { state: { ...baseState, resumeProgress: savedProgress } });
+    else navigate(`/exam/${subjectId}/start`, { state: baseState });
   };
 
   const handleStartWrongExam = () => {
     if (!studentName.trim()) { toast({ title: 'تنبيه', description: 'يرجى إدخال اسمك الكامل أولاً', variant: 'destructive' }); return; }
     navigate(`/exam/${subjectId}/start`, {
-      state: {
-        studentName, examYear: 0, examForm: 'WrongReview', examTime,
-        questionsCount: wrongQuestions.length, subjectName: subject?.name,
-        levelName: subject?.levels?.name, isTrial: false, allQuestions: false,
-        forcedQuestionIds: wrongQuestions, isWrongReview: true,
-      },
+      state: { studentName, examYear: 0, examForm: 'WrongReview', examTime, questionsCount: wrongQuestions.length, subjectName: subject?.name, levelName: subject?.levels?.name, isTrial: false, allQuestions: false, forcedQuestionIds: wrongQuestions, isWrongReview: true },
     });
   };
 
-  // ── توليد بصمة الجهاز (معززة) ──
-  const getDeviceFingerprint = (): string => {
+  // ── توليد بصمة الجهاز (مرة واحدة فقط عند التحميل) ──
+  const deviceFingerprint = useMemo((): string => {
     try {
-      // ── بيانات الكانفاس (فريدة لكل جهاز/معالج رسومي) ──
       let canvasHash = '';
       try {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         if (ctx) {
-          ctx.textBaseline = 'top';
-          ctx.font = '14px Arial';
-          ctx.fillStyle = '#f60';
-          ctx.fillRect(125, 1, 62, 20);
-          ctx.fillStyle = '#069';
-          ctx.fillText('alnaseer🔑', 2, 15);
-          ctx.fillStyle = 'rgba(102,204,0,0.7)';
-          ctx.fillText('alnaseer🔑', 4, 17);
+          ctx.textBaseline = 'top'; ctx.font = '14px Arial';
+          ctx.fillStyle = '#f60'; ctx.fillRect(125, 1, 62, 20);
+          ctx.fillStyle = '#069'; ctx.fillText('alnaseer🔑', 2, 15);
+          ctx.fillStyle = 'rgba(102,204,0,0.7)'; ctx.fillText('alnaseer🔑', 4, 17);
           canvasHash = canvas.toDataURL().slice(-40);
         }
       } catch { /* تجاهل إذا محظور */ }
-
-      const parts = [
-        navigator.userAgent,
-        screen.width + 'x' + screen.height,
-        screen.colorDepth,
-        navigator.language || navigator.languages?.join(',') || '',
-        Intl.DateTimeFormat().resolvedOptions().timeZone,
-        navigator.hardwareConcurrency || 0,
-        (navigator as any).deviceMemory || 0,
-        new Date().getTimezoneOffset(),
-        navigator.platform || '',
-        canvasHash,
-      ];
+      const parts = [navigator.userAgent, screen.width + 'x' + screen.height, screen.colorDepth, navigator.language || navigator.languages?.join(',') || '', Intl.DateTimeFormat().resolvedOptions().timeZone, navigator.hardwareConcurrency || 0, (navigator as any).deviceMemory || 0, new Date().getTimezoneOffset(), navigator.platform || '', canvasHash];
       return btoa(unescape(encodeURIComponent(parts.join('|'))));
-    } catch {
-      return btoa([navigator.userAgent, screen.width, screen.height].join('|'));
-    }
-  };
+    } catch { return btoa([navigator.userAgent, screen.width, screen.height].join('|')); }
+  }, []);
+
+  // ── مفتاح localStorage لكلمة مرور الاختبار العادي ──
+  const examPasswordKey = subjectId ? `exam_pwd_${subjectId}` : null;
+
+  // ── مفتاح localStorage لكلمة مرور المراجعة ──
+  const reviewPasswordKey = subjectId ? `review_pwd_${subjectId}` : null;
 
   // ── بناء state للدخول إلى وضع المراجعة ──
   const buildReviewState = () => ({
@@ -514,169 +392,141 @@ const ExamStart = () => {
     examFormName: selectedYear === 'trial'
       ? (activeTrialForms.find(f => f.id === selectedTrialForm)?.name ?? selectedTrialForm)
       : (activeExamForms.find(f => f.id === selectedExamForm)?.name ?? selectedExamForm),
-    examTime,
-    questionsCount: questionCount,
-    subjectName: subject?.name,
-    levelName: subject?.levels?.name,
-    isTrial: selectedYear === 'trial',
-    allQuestions: false,
+    examTime, questionsCount: questionCount,
+    subjectName: subject?.name, levelName: subject?.levels?.name,
+    isTrial: selectedYear === 'trial', allQuestions: false,
     trialFormFilter: selectedYear === 'trial' ? selectedTrialForm : null,
     reviewMode: true,
   });
 
-  // ── مفتاح localStorage لكلمة مرور المراجعة لكل مادة ──
-  const reviewPasswordKey = subjectId ? `review_pwd_${subjectId}` : null;
-
-  // ── فتح نافذة كلمة مرور المراجعة (أو دخول مباشر إن لم توجد كلمات) ──
-  const handleOpenReviewModal = async () => {
-    if (!studentName.trim()) { toast({ title: 'تنبيه', description: 'يرجى إدخال اسمك الكامل أولاً', variant: 'destructive' }); return; }
+  // ── بدء الاختبار العادي: مع دعم حفظ كلمة المرور + تقييد الجهاز ──
+  const handleStartExam = async () => {
+    if (!studentName.trim()) { toast({ title: 'تنبيه', description: 'يرجى إدخال اسمك الكامل للمتابعة', variant: 'destructive' }); return; }
     if (!selectedYear) { toast({ title: 'تنبيه', description: 'يرجى اختيار نموذج سنة الاختبار', variant: 'destructive' }); return; }
+    if (selectedYear === 'trial') { setShowTrialBlockedModal(true); return; }
+    if (selectedYear === 'trial' && !selectedTrialForm) { toast({ title: 'تنبيه', description: 'يرجى اختيار النموذج التجريبي', variant: 'destructive' }); return; }
+    if (questionCount === 0) { toast({ title: 'نعتذر', description: 'لا توجد أسئلة متوفرة لهذا الاختيار حالياً', variant: 'destructive' }); return; }
 
-    // تحقق إن كانت توجد أي كلمات مرور نشطة لهذه المادة
-    const { data: activeList } = await (supabase as any)
-      .from('review_passwords')
-      .select('id')
-      .eq('subject_id', subjectId)
-      .eq('is_active', true)
-      .limit(1);
-
-    if (!activeList || activeList.length === 0) {
-      navigate(`/exam/${subjectId}/start`, { state: buildReviewState() });
+    // إذا لم يكن هناك كلمة مرور على الاختبار → ابدأ مباشرة
+    if (!subject?.password) {
+      navigateToExam(false);
       return;
     }
 
+    const fingerprint = deviceFingerprint;
+
     // ── تحقق من كلمة مرور محفوظة في localStorage ──
-    const fingerprint = getDeviceFingerprint();
+    const savedData = examPasswordKey ? localStorage.getItem(examPasswordKey) : null;
+    if (savedData) {
+      try {
+        const { pwd, fp } = JSON.parse(savedData);
+        if (fp === fingerprint && pwd === subject.password) {
+          // نفس الجهاز + كلمة المرور صحيحة → ادخل مباشرة
+          navigateToExam(false);
+          return;
+        } else {
+          // بصمة مختلفة أو كلمة مرور تغيرت → احذف المحفوظ
+          if (examPasswordKey) localStorage.removeItem(examPasswordKey);
+        }
+      } catch {
+        if (examPasswordKey) localStorage.removeItem(examPasswordKey);
+      }
+    }
+
+    // ── إذا تم إدخال كلمة المرور يدوياً في الحقل ──
+    if (password) {
+      if (password !== subject.password) {
+        toast({ title: 'خطأ في الدخول', description: 'كلمة مرور الاختبار غير صحيحة', variant: 'destructive' });
+        return;
+      }
+      // حفظ كلمة المرور + بصمة الجهاز
+      if (examPasswordKey) {
+        localStorage.setItem(examPasswordKey, JSON.stringify({ pwd: password, fp: fingerprint }));
+      }
+      navigateToExam(false);
+      return;
+    }
+
+    // ── لا توجد كلمة مرور محفوظة ولا مدخلة → افتح المودال ──
+    setExamPasswordInput('');
+    setExamPasswordError(false);
+    setShowExamPasswordModal(true);
+  };
+
+  // ── تأكيد كلمة مرور الاختبار العادي من المودال ──
+  const handleConfirmExamPassword = () => {
+    if (!examPasswordInput.trim() || examPasswordInput !== subject?.password) {
+      setExamPasswordError(true);
+      return;
+    }
+    const fingerprint = deviceFingerprint;
+    if (examPasswordKey) {
+      localStorage.setItem(examPasswordKey, JSON.stringify({ pwd: examPasswordInput, fp: fingerprint }));
+    }
+    setShowExamPasswordModal(false);
+    navigateToExam(false);
+  };
+
+  // ── فتح نافذة كلمة مرور المراجعة ──
+  const handleOpenReviewModal = async () => {
+    if (!studentName.trim()) { toast({ title: 'تنبيه', description: 'يرجى إدخال اسمك الكامل أولاً', variant: 'destructive' }); return; }
+    if (!selectedYear) { toast({ title: 'تنبيه', description: 'يرجى اختيار نموذج سنة الاختبار', variant: 'destructive' }); return; }
+    if (selectedYear === 'trial' && !selectedTrialForm) { toast({ title: 'تنبيه', description: 'يرجى اختيار النموذج التجريبي أولاً', variant: 'destructive' }); return; }
+
+    const { data: activeList } = await (supabase as any).from('review_passwords').select('id').eq('subject_id', subjectId).eq('is_active', true).limit(1);
+    if (!activeList || activeList.length === 0) { navigate(`/exam/${subjectId}/start`, { state: buildReviewState() }); return; }
+
+    const fingerprint = deviceFingerprint;
     const savedData = reviewPasswordKey ? localStorage.getItem(reviewPasswordKey) : null;
     if (savedData) {
       try {
         const { pwd, fp } = JSON.parse(savedData);
-        // تحقق أن نفس الجهاز محلياً
         if (fp === fingerprint) {
-          const { data: match } = await (supabase as any)
-            .from('review_passwords')
-            .select('*')
-            .eq('subject_id', subjectId)
-            .eq('password', pwd)
-            .eq('is_active', true)
-            .maybeSingle();
-
+          const { data: match } = await (supabase as any).from('review_passwords').select('*').eq('subject_id', subjectId).eq('password', pwd).eq('is_active', true).maybeSingle();
           if (match && !(match.expires_at && new Date(match.expires_at) < new Date())) {
-            // تحقق من بصمة الجهاز في قاعدة البيانات
             if (match.device_fingerprint && match.device_fingerprint !== fingerprint) {
-              // جهاز آخر سبق واستخدمها → احذف المحفوظ واطلب كلمة المرور
               if (reviewPasswordKey) localStorage.removeItem(reviewPasswordKey);
             } else {
-              // نفس الجهاز أو أول استخدام → سجّل وادخل
               if (!match.first_used_at) {
                 const days = Number(match.duration_days) > 0 ? Number(match.duration_days) : 30;
-                const expiresAt = new Date();
-                expiresAt.setDate(expiresAt.getDate() + days);
-                await (supabase as any).from('review_passwords').update({
-                  device_fingerprint: fingerprint,
-                  first_used_at: new Date().toISOString(),
-                  expires_at: expiresAt.toISOString(),
-                }).eq('id', match.id);
+                const expiresAt = new Date(); expiresAt.setDate(expiresAt.getDate() + days);
+                await (supabase as any).from('review_passwords').update({ device_fingerprint: fingerprint, first_used_at: new Date().toISOString(), expires_at: expiresAt.toISOString() }).eq('id', match.id);
               }
-              navigate(`/exam/${subjectId}/start`, { state: buildReviewState() });
-              return;
+              navigate(`/exam/${subjectId}/start`, { state: buildReviewState() }); return;
             }
-          } else {
-            if (reviewPasswordKey) localStorage.removeItem(reviewPasswordKey);
-          }
-        } else {
-          if (reviewPasswordKey) localStorage.removeItem(reviewPasswordKey);
-        }
-      } catch {
-        if (reviewPasswordKey) localStorage.removeItem(reviewPasswordKey);
-      }
+          } else { if (reviewPasswordKey) localStorage.removeItem(reviewPasswordKey); }
+        } else { if (reviewPasswordKey) localStorage.removeItem(reviewPasswordKey); }
+      } catch { if (reviewPasswordKey) localStorage.removeItem(reviewPasswordKey); }
     }
 
-    setReviewPassword('');
-    setReviewPasswordError(false);
-    setReviewPasswordErrorMsg('');
+    setReviewPassword(''); setReviewPasswordError(false); setReviewPasswordErrorMsg('');
     setShowReviewPasswordModal(true);
   };
 
   // ── التحقق من كلمة المرور وبدء اختبار المراجعة ──
   const handleConfirmReviewPassword = async () => {
     if (!reviewPassword.trim()) { setReviewPasswordError(true); setReviewPasswordErrorMsg('كلمة المرور غير صحيحة'); return; }
-    setReviewPasswordLoading(true);
-    setReviewPasswordError(false);
-    setReviewPasswordErrorMsg('');
+    setReviewPasswordLoading(true); setReviewPasswordError(false); setReviewPasswordErrorMsg('');
     try {
-      const { data: match } = await (supabase as any)
-        .from('review_passwords')
-        .select('*')
-        .eq('subject_id', subjectId)
-        .eq('password', reviewPassword.trim())
-        .eq('is_active', true)
-        .maybeSingle();
-
-      if (!match) {
-        setReviewPasswordError(true);
-        setReviewPasswordErrorMsg('كلمة المرور غير صحيحة');
-        setReviewPasswordLoading(false);
-        return;
-      }
-
-      const fingerprint = getDeviceFingerprint();
-
-      if (match.device_fingerprint && match.device_fingerprint !== fingerprint) {
-        setReviewPasswordError(true);
-        setReviewPasswordErrorMsg('كلمة المرور خاطئة');
-        setReviewPasswordLoading(false);
-        return;
-      }
-
-      if (match.expires_at && new Date(match.expires_at) < new Date()) {
-        setReviewPasswordError(true);
-        setReviewPasswordErrorMsg('انتهت صلاحية كلمة المرور، تواصل مع الإدارة');
-        setReviewPasswordLoading(false);
-        return;
-      }
-
+      const { data: match } = await (supabase as any).from('review_passwords').select('*').eq('subject_id', subjectId).eq('password', reviewPassword.trim()).eq('is_active', true).maybeSingle();
+      if (!match) { setReviewPasswordError(true); setReviewPasswordErrorMsg('كلمة المرور غير صحيحة'); setReviewPasswordLoading(false); return; }
+      const fingerprint = deviceFingerprint;
+      if (match.device_fingerprint && match.device_fingerprint !== fingerprint) { setReviewPasswordError(true); setReviewPasswordErrorMsg('كلمة المرور خاطئة'); setReviewPasswordLoading(false); return; }
+      if (match.expires_at && new Date(match.expires_at) < new Date()) { setReviewPasswordError(true); setReviewPasswordErrorMsg('انتهت صلاحية كلمة المرور، تواصل مع الإدارة'); setReviewPasswordLoading(false); return; }
       if (!match.first_used_at) {
         const days = Number(match.duration_days) > 0 ? Number(match.duration_days) : 30;
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + days);
-        await (supabase as any).from('review_passwords').update({
-          device_fingerprint: fingerprint,
-          first_used_at: new Date().toISOString(),
-          expires_at: expiresAt.toISOString(),
-        }).eq('id', match.id);
+        const expiresAt = new Date(); expiresAt.setDate(expiresAt.getDate() + days);
+        await (supabase as any).from('review_passwords').update({ device_fingerprint: fingerprint, first_used_at: new Date().toISOString(), expires_at: expiresAt.toISOString() }).eq('id', match.id);
       }
-
-      // ── حفظ كلمة المرور + بصمة الجهاز في localStorage ──
-      if (reviewPasswordKey) {
-        localStorage.setItem(reviewPasswordKey, JSON.stringify({
-          pwd: reviewPassword.trim(),
-          fp: getDeviceFingerprint(),
-        }));
-      }
-
+      if (reviewPasswordKey) localStorage.setItem(reviewPasswordKey, JSON.stringify({ pwd: reviewPassword.trim(), fp: deviceFingerprint }));
       setShowReviewPasswordModal(false);
       navigate(`/exam/${subjectId}/start`, { state: buildReviewState() });
-    } catch {
-      setReviewPasswordError(true);
-      setReviewPasswordErrorMsg('حدث خطأ، حاول مرة أخرى');
-    } finally {
-      setReviewPasswordLoading(false);
-    }
+    } catch { setReviewPasswordError(true); setReviewPasswordErrorMsg('حدث خطأ، حاول مرة أخرى'); }
+    finally { setReviewPasswordLoading(false); }
   };
 
-  if (isLoading && !subject) return (
-    <MainLayout><div className="container mx-auto px-6 py-24"><div className="h-[560px] max-w-lg mx-auto rounded-[2.5rem] bg-slate-100 dark:bg-muted animate-pulse" /></div></MainLayout>
-  );
-  if (!subject) return (
-    <MainLayout>
-      <div className="container mx-auto px-6 py-24 text-center">
-        <div className="w-20 h-20 bg-slate-100 dark:bg-muted rounded-full flex items-center justify-center mx-auto mb-6"><Info className="w-10 h-10 text-slate-400 dark:text-muted-foreground" /></div>
-        <p className="text-slate-500 dark:text-muted-foreground text-xl font-bold">عذراً، المادة المطلوبة غير متوفرة</p>
-        <Link to="/levels"><Button variant="outline" className="mt-6 rounded-2xl h-12 px-8">العودة للمستويات</Button></Link>
-      </div>
-    </MainLayout>
-  );
+  if (isLoading && !subject) return (<MainLayout><div className="container mx-auto px-6 py-24"><div className="h-[560px] max-w-lg mx-auto rounded-[2.5rem] bg-slate-100 dark:bg-muted animate-pulse" /></div></MainLayout>);
+  if (!subject) return (<MainLayout><div className="container mx-auto px-6 py-24 text-center"><div className="w-20 h-20 bg-slate-100 dark:bg-muted rounded-full flex items-center justify-center mx-auto mb-6"><Info className="w-10 h-10 text-slate-400 dark:text-muted-foreground" /></div><p className="text-slate-500 dark:text-muted-foreground text-xl font-bold">عذراً، المادة المطلوبة غير متوفرة</p><Link to="/levels"><Button variant="outline" className="mt-6 rounded-2xl h-12 px-8">العودة للمستويات</Button></Link></div></MainLayout>);
 
   const savedDate = savedProgress ? new Date(savedProgress.savedAt).toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
 
@@ -684,184 +534,100 @@ const ExamStart = () => {
     <MainLayout>
       <ExamStartSEO subjectName={subject?.name ?? ''} questionsCount={questionCount} />
 
-      {/* ── شريط الملخص الذهبي ── */}
       {subject?.summary_url && (
-        <div
-          dir="rtl"
-          onClick={() => setShowSummaryModal(true)}
+        <div dir="rtl" onClick={() => setShowSummaryModal(true)}
           className="sticky top-0 left-0 right-0 z-[9999] flex items-center justify-between gap-3 px-4 py-3 cursor-pointer group overflow-hidden"
-          style={{
-            background: 'linear-gradient(135deg, #0d1b2a 0%, #1a3320 50%, #0d1b2a 100%)',
-            borderBottom: '2px solid rgba(201,168,76,0.55)',
-            boxShadow: '0 4px 28px rgba(201,168,76,0.28)',
-          }}
-        >
-          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-            style={{ background: 'linear-gradient(135deg, #152338, #1f4a30, #152338)' }} />
-          <div className="absolute inset-0 -skew-x-12 translate-x-[-150%] group-hover:translate-x-[250%] transition-transform duration-1000 ease-in-out"
-            style={{ background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.22), transparent)', width: '40%' }} />
-          <div className="absolute top-0 left-0 right-0 h-[2px]"
-            style={{ background: 'linear-gradient(90deg, transparent, #c9a84c, #e8c97a, #c9a84c, transparent)' }} />
+          style={{ background: 'linear-gradient(135deg, #0d1b2a 0%, #1a3320 50%, #0d1b2a 100%)', borderBottom: '2px solid rgba(201,168,76,0.55)', boxShadow: '0 4px 28px rgba(201,168,76,0.28)' }}>
+          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: 'linear-gradient(135deg, #152338, #1f4a30, #152338)' }} />
+          <div className="absolute inset-0 -skew-x-12 translate-x-[-150%] group-hover:translate-x-[250%] transition-transform duration-1000 ease-in-out" style={{ background: 'linear-gradient(90deg, transparent, rgba(201,168,76,0.22), transparent)', width: '40%' }} />
+          <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(90deg, transparent, #c9a84c, #e8c97a, #c9a84c, transparent)' }} />
           <div className="relative z-10 flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300"
-              style={{ background: 'linear-gradient(135deg, #c9a84c, #8a6d1e)', boxShadow: '0 3px 12px rgba(201,168,76,0.55)' }}>
-              <BookOpen className="w-4 h-4 text-white" />
-            </div>
-            <div className="text-right">
-              <p className="text-xs font-black leading-tight" style={{ color: '#e8c97a' }}>📖 ملخص المادة</p>
-              <p className="text-[9px] font-bold leading-tight" style={{ color: '#a89060' }}>اضغط للمراجعة قبل الاختبار</p>
-            </div>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300" style={{ background: 'linear-gradient(135deg, #c9a84c, #8a6d1e)', boxShadow: '0 3px 12px rgba(201,168,76,0.55)' }}><BookOpen className="w-4 h-4 text-white" /></div>
+            <div className="text-right"><p className="text-xs font-black leading-tight" style={{ color: '#e8c97a' }}>📖 ملخص المادة</p><p className="text-[9px] font-bold leading-tight" style={{ color: '#a89060' }}>اضغط للمراجعة قبل الاختبار</p></div>
           </div>
           <div className="relative z-10 flex items-center gap-2">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: '#c9a84c' }} />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5" style={{ background: '#c9a84c' }} />
-            </span>
-            <div className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-black group-hover:scale-105 transition-transform duration-300"
-              style={{ background: 'rgba(201,168,76,0.18)', color: '#e8c97a', border: '1px solid rgba(201,168,76,0.4)', boxShadow: '0 2px 8px rgba(201,168,76,0.2)' }}>
-              <span>اقرأ الآن</span>
-              <ChevronLeft className="w-3 h-3" />
-            </div>
+            <span className="relative flex h-2.5 w-2.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: '#c9a84c' }} /><span className="relative inline-flex rounded-full h-2.5 w-2.5" style={{ background: '#c9a84c' }} /></span>
+            <div className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-black group-hover:scale-105 transition-transform duration-300" style={{ background: 'rgba(201,168,76,0.18)', color: '#e8c97a', border: '1px solid rgba(201,168,76,0.4)', boxShadow: '0 2px 8px rgba(201,168,76,0.2)' }}><span>اقرأ الآن</span><ChevronLeft className="w-3 h-3" /></div>
           </div>
         </div>
       )}
 
-
       <section className="py-8 md:py-16 bg-slate-50 dark:bg-muted/50 min-h-[calc(100vh-80px)]" dir="rtl">
         <div className="container mx-auto px-4 md:px-6">
-
           <button onClick={() => navigate(-1)} className="mb-5 inline-flex items-center gap-1.5 text-xs font-black text-slate-500 dark:text-muted-foreground uppercase tracking-wide bg-white dark:bg-card border border-slate-200 dark:border-border rounded-xl px-4 py-2 hover:border-primary hover:text-primary transition-all duration-200">
             <ChevronLeft className="w-4 h-4" />العودة
           </button>
 
-          {/* ── بنك الأسئلة الخاطئة ── */}
           {wrongQuestions.length >= 3 && (
             <div className="max-w-lg mx-auto mb-4 animate-in fade-in slide-in-from-top-4 duration-500">
               <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 rounded-[1.5rem] p-4 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-rose-100 dark:bg-rose-900/50 rounded-xl flex items-center justify-center shrink-0">
-                    <AlertCircle className="w-5 h-5 text-rose-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-black text-rose-700 dark:text-rose-400">لديك {wrongQuestions.length} سؤال أخطأت فيه</p>
-                    <p className="text-[10px] text-rose-500 font-bold">راجع أخطاءك قبل الاختبار</p>
-                  </div>
+                  <div className="w-10 h-10 bg-rose-100 dark:bg-rose-900/50 rounded-xl flex items-center justify-center shrink-0"><AlertCircle className="w-5 h-5 text-rose-500" /></div>
+                  <div><p className="text-sm font-black text-rose-700 dark:text-rose-400">لديك {wrongQuestions.length} سؤال أخطأت فيه</p><p className="text-[10px] text-rose-500 font-bold">راجع أخطاءك قبل الاختبار</p></div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <button onClick={handleStartWrongExam} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-black transition-colors">
-                    <BookOpen className="w-3.5 h-3.5" />راجع أخطاءك
-                  </button>
-                  <button onClick={() => { clearWrongQuestions(subjectId!); setWrongQuestions([]); }} className="p-2 rounded-xl border border-rose-200 dark:border-rose-800 text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors" title="مسح الأخطاء">
-                    <RotateCcw className="w-3.5 h-3.5" />
-                  </button>
+                  <button onClick={handleStartWrongExam} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-black transition-colors"><BookOpen className="w-3.5 h-3.5" />راجع أخطاءك</button>
+                  <button onClick={() => { clearWrongQuestions(subjectId!); setWrongQuestions([]); }} className="p-2 rounded-xl border border-rose-200 dark:border-rose-800 text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors" title="مسح الأخطاء"><RotateCcw className="w-3.5 h-3.5" /></button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* ── إشعار الأسئلة الجديدة ── */}
           {showNewQsNotif && newQsGroups.length > 0 && (
             <div className="max-w-lg mx-auto mb-5 animate-in fade-in slide-in-from-top-4 duration-500 zoom-in-95">
-              <div className="relative overflow-hidden rounded-[1.75rem] border border-amber-300/60 shadow-2xl shadow-amber-500/20"
-                style={{ background: 'linear-gradient(135deg, #0f0f1a 0%, #1a1025 40%, #0d1a2e 100%)' }}>
-                <div className="absolute inset-0 opacity-30"
-                  style={{ backgroundImage: 'radial-gradient(ellipse at 20% 50%, rgba(251,191,36,0.3) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(99,102,241,0.3) 0%, transparent 60%)' }} />
-                <div className="absolute top-0 left-0 right-0 h-[2px]"
-                  style={{ background: 'linear-gradient(90deg, transparent, #fbbf24, #a78bfa, #fbbf24, transparent)' }} />
+              <div className="relative overflow-hidden rounded-[1.75rem] border border-amber-300/60 shadow-2xl shadow-amber-500/20" style={{ background: 'linear-gradient(135deg, #0f0f1a 0%, #1a1025 40%, #0d1a2e 100%)' }}>
+                <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'radial-gradient(ellipse at 20% 50%, rgba(251,191,36,0.3) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(99,102,241,0.3) 0%, transparent 60%)' }} />
+                <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(90deg, transparent, #fbbf24, #a78bfa, #fbbf24, transparent)' }} />
                 <div className="relative z-10 p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 flex-1">
-                      <div className="shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center shadow-lg"
-                        style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', boxShadow: '0 0 20px rgba(251,191,36,0.5)' }}>
-                        <Sparkles className="w-5 h-5 text-white" />
-                      </div>
+                      <div className="shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', boxShadow: '0 0 20px rgba(251,191,36,0.5)' }}><Sparkles className="w-5 h-5 text-white" /></div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1.5">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest"
-                            style={{ background: 'linear-gradient(90deg, #f59e0b, #d97706)', color: '#000' }}>
-                            <Zap className="w-2.5 h-2.5" /> جديد
-                          </span>
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest" style={{ background: 'linear-gradient(90deg, #f59e0b, #d97706)', color: '#000' }}><Zap className="w-2.5 h-2.5" /> جديد</span>
                           <span className="text-amber-300/70 text-[9px] font-bold">خلال آخر 7 أيام</span>
                         </div>
-                        <p className="text-white font-black text-sm leading-snug mb-3">
-                          🎯 تم إضافة أسئلة جديدة لهذه المادة!
-                        </p>
+                        <p className="text-white font-black text-sm leading-snug mb-3">🎯 تم إضافة أسئلة جديدة لهذه المادة!</p>
                         <div className="space-y-1.5">
                           {newQsGroups.map((g, i) => (
-                            <div key={i} className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl"
-                              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                            <div key={i} className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
                               <span className="text-[11px] font-bold text-slate-300">{g.label}</span>
-                              <span className="shrink-0 text-[10px] font-black px-2 py-0.5 rounded-full"
-                                style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }}>
-                                +{g.count} سؤال
-                              </span>
+                              <span className="shrink-0 text-[10px] font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }}>+{g.count} سؤال</span>
                             </div>
                           ))}
                         </div>
-                        <p className="text-slate-400 text-[10px] font-bold mt-2.5">
-                          🎯 راجعها قبل الامتحان وكن مستعداً
-                        </p>
+                        <p className="text-slate-400 text-[10px] font-bold mt-2.5">🎯 راجعها قبل الامتحان وكن مستعداً</p>
                       </div>
                     </div>
-                    <button onClick={handleDismissNewQs}
-                      className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all hover:scale-110"
-                      style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
-                      <X className="w-3.5 h-3.5 text-slate-400" />
-                    </button>
+                    <button onClick={handleDismissNewQs} className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all hover:scale-110" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}><X className="w-3.5 h-3.5 text-slate-400" /></button>
                   </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Card */}
           <div className="max-w-lg mx-auto bg-white dark:bg-card rounded-[2.5rem] border border-slate-200 dark:border-border shadow-xl shadow-slate-200/60 overflow-hidden animate-in fade-in slide-in-from-bottom-6 duration-500">
-
             {/* Header */}
             <div className="relative px-10 py-12 text-center overflow-hidden" style={{ background: 'linear-gradient(135deg, #0a0f1e 0%, #0d1b3e 50%, #0a1628 100%)' }}>
-              {/* شبكة خلفية */}
               <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)', backgroundSize: '28px 28px' }} />
-              {/* توهجات */}
               <div className="absolute top-0 right-1/4 w-48 h-48 rounded-full opacity-25 blur-3xl pointer-events-none" style={{ background: 'radial-gradient(circle, #3b82f6 0%, transparent 70%)' }} />
               <div className="absolute bottom-0 left-1/4 w-40 h-40 rounded-full opacity-20 blur-3xl pointer-events-none" style={{ background: 'radial-gradient(circle, #6366f1 0%, transparent 70%)' }} />
-              {/* شريط علوي */}
               <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(90deg, transparent, #3b82f6, #818cf8, #3b82f6, transparent)' }} />
               <div className="relative z-10 flex flex-col items-center">
-                {/* أيقونة كبيرة متوهجة */}
                 <div className="relative mb-5">
-                  <div className="w-20 h-20 rounded-[1.5rem] flex items-center justify-center shadow-2xl"
-                    style={{ background: 'linear-gradient(135deg, #1d4ed8, #4f46e5)', boxShadow: '0 0 40px rgba(99,102,241,0.5), 0 8px 32px rgba(0,0,0,0.3)' }}>
-                    <ShieldCheck className="w-10 h-10 text-white" />
-                  </div>
-                  {/* نقطة نابضة */}
-                  <span className="absolute -top-1 -right-1 flex w-4 h-4">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-50" />
-                    <span className="relative inline-flex rounded-full w-4 h-4 bg-blue-500 border-2 border-white/20" />
-                  </span>
+                  <div className="w-20 h-20 rounded-[1.5rem] flex items-center justify-center shadow-2xl" style={{ background: 'linear-gradient(135deg, #1d4ed8, #4f46e5)', boxShadow: '0 0 40px rgba(99,102,241,0.5), 0 8px 32px rgba(0,0,0,0.3)' }}><ShieldCheck className="w-10 h-10 text-white" /></div>
+                  <span className="absolute -top-1 -right-1 flex w-4 h-4"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-50" /><span className="relative inline-flex rounded-full w-4 h-4 bg-blue-500 border-2 border-white/20" /></span>
                 </div>
-                {subject.levels?.name && (
-                  <span className="inline-flex items-center gap-1.5 mb-3 px-4 py-1.5 rounded-full border border-blue-400/30 bg-blue-500/10 text-[10px] font-black uppercase tracking-[0.18em] text-blue-300">
-                    <Sparkles className="w-3 h-3" />{subject.levels.name}
-                  </span>
-                )}
+                {subject.levels?.name && (<span className="inline-flex items-center gap-1.5 mb-3 px-4 py-1.5 rounded-full border border-blue-400/30 bg-blue-500/10 text-[10px] font-black uppercase tracking-[0.18em] text-blue-300"><Sparkles className="w-3 h-3" />{subject.levels.name}</span>)}
                 <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em] mb-2">تجهيز اختبار</p>
-                <h1 className="text-3xl font-black tracking-tight leading-snug" style={{ background: 'linear-gradient(90deg, #60a5fa, #a5b4fc, #60a5fa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                  {subject.name}
-                </h1>
+                <h1 className="text-3xl font-black tracking-tight leading-snug" style={{ background: 'linear-gradient(90deg, #60a5fa, #a5b4fc, #60a5fa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{subject.name}</h1>
                 {subject.author_name && (
                   <div className="flex items-center justify-center mt-4">
-                    <div className="flex items-center gap-2 px-4 py-2 rounded-2xl"
-                      style={{
-                        background: 'linear-gradient(135deg, rgba(99,102,241,0.18), rgba(168,85,247,0.13))',
-                        border: '1px solid rgba(139,92,246,0.30)',
-                        backdropFilter: 'blur(8px)',
-                      }}>
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-2xl" style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.18), rgba(168,85,247,0.13))', border: '1px solid rgba(139,92,246,0.30)', backdropFilter: 'blur(8px)' }}>
                       <span style={{ fontSize: 13 }}>✍️</span>
                       <span className="text-[11px] font-black tracking-widest uppercase" style={{ color: 'rgba(196,181,253,0.75)', letterSpacing: '0.15em' }}>إعداد</span>
                       <div className="w-px h-3 mx-0.5" style={{ background: 'rgba(139,92,246,0.4)' }} />
-                      <span className="text-[13px] font-black" style={{ background: 'linear-gradient(90deg, #c4b5fd, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                        {subject.author_name}
-                      </span>
+                      <span className="text-[13px] font-black" style={{ background: 'linear-gradient(90deg, #c4b5fd, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{subject.author_name}</span>
                     </div>
                   </div>
                 )}
@@ -886,30 +652,21 @@ const ExamStart = () => {
               <div className="space-y-2">
                 <FieldLabel>نموذج سنة الاختبار</FieldLabel>
                 <Select value={selectedYear} onValueChange={(v) => { setSelectedYear(v); if (v !== 'trial') setSelectedTrialForm(''); }}>
-                  <SelectTrigger className="h-14 rounded-[1rem] bg-slate-50 dark:bg-muted border-slate-200 dark:border-border font-bold px-5 focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all">
-                    <SelectValue placeholder="اختر السنة" />
-                  </SelectTrigger>
+                  <SelectTrigger className="h-14 rounded-[1rem] bg-slate-50 dark:bg-muted border-slate-200 dark:border-border font-bold px-5 focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"><SelectValue placeholder="اختر السنة" /></SelectTrigger>
                   <SelectContent className="z-[9999] bg-white dark:bg-card border-slate-200 dark:border-border rounded-2xl shadow-2xl max-h-[280px]">
                     <SelectItem value="trial" className="h-11 rounded-xl font-bold cursor-pointer text-violet-600">🧪 أسئلة تجريبية</SelectItem>
-                    {EXAM_YEARS.map((year) => (
-                      <SelectItem key={year} value={year.toString()} className="h-11 rounded-xl font-bold cursor-pointer">دورة عام {year}</SelectItem>
-                    ))}
+                    {EXAM_YEARS.map((year) => (<SelectItem key={year} value={year.toString()} className="h-11 rounded-xl font-bold cursor-pointer">دورة عام {year}</SelectItem>))}
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* السنوات والنماذج العادية - تظهر فقط عند عدم اختيار التجريبي */}
               {selectedYear !== 'trial' && selectedYear && (
                 <div className="space-y-2">
                   <FieldLabel><span className="inline-flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" />نموذج الاختبار</span></FieldLabel>
                   <Select value={selectedExamForm} onValueChange={setSelectedExamForm}>
-                    <SelectTrigger className="h-14 rounded-[1rem] bg-slate-50 dark:bg-muted border-slate-200 dark:border-border font-bold px-5 focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all">
-                      <SelectValue placeholder="اختر النموذج" />
-                    </SelectTrigger>
+                    <SelectTrigger className="h-14 rounded-[1rem] bg-slate-50 dark:bg-muted border-slate-200 dark:border-border font-bold px-5 focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"><SelectValue placeholder="اختر النموذج" /></SelectTrigger>
                     <SelectContent className="z-[9999] bg-white dark:bg-card border-slate-200 dark:border-border rounded-2xl shadow-2xl max-h-[280px]">
-                      {activeExamForms.map((form) => (
-                        <SelectItem key={form.id} value={form.id} className="h-11 rounded-xl font-bold cursor-pointer">{form.name}</SelectItem>
-                      ))}
+                      {activeExamForms.map((form) => (<SelectItem key={form.id} value={form.id} className="h-11 rounded-xl font-bold cursor-pointer">{form.name}</SelectItem>))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -917,25 +674,37 @@ const ExamStart = () => {
 
               {selectedYear === 'trial' && (
                 <>
-                  <div className="flex items-center gap-3 bg-violet-50 border border-violet-100 rounded-[1rem] px-4 py-3">
-                    <span className="text-2xl">🧪</span>
-                    <div><p className="text-xs font-black text-violet-700">أسئلة تجريبية</p><p className="text-[10px] text-violet-500 font-bold">أسئلة تدريبية إضافية شاملة من المقرر تساعدك على الاستعداد للاختبار</p></div>
+                  {/* ── بطاقة: الأسئلة التجريبية حصرية لاختبار+ المراجعة ── */}
+                  <div className="relative overflow-hidden rounded-[1.25rem] animate-in fade-in slide-in-from-top-2 duration-300"
+                    style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef9ec 100%)', border: '1.5px solid rgba(245,158,11,0.35)', boxShadow: '0 4px 24px rgba(245,158,11,0.12)' }}>
+                    <div className="h-1 w-full" style={{ background: 'linear-gradient(90deg, #f59e0b, #fbbf24, #f59e0b)' }} />
+                    <div className="p-4 flex items-start gap-3.5">
+                      <div className="shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center shadow-md"
+                        style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', boxShadow: '0 4px 14px rgba(245,158,11,0.45)' }}>
+                        <Lock className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="flex-1 text-right">
+                        <p className="text-sm font-black text-amber-900 leading-snug mb-1">
+                          الأسئلة التجريبية متاحة حصرياً في وضع اختبار+ المراجعة
+                        </p>
+                        <p className="text-[11px] font-semibold leading-relaxed" style={{ color: '#92400e' }}>
+                          اضغط على زر "اختبار+ المراجعة" أدناه للوصول إلى الأسئلة التجريبية الشاملة مع التلميحات والشروح القانونية الكاملة.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <FieldLabel><span className="inline-flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" />اختر النموذج</span></FieldLabel>
                     <Select value={selectedTrialForm} onValueChange={setSelectedTrialForm}>
-                      <SelectTrigger className="h-14 rounded-[1rem] bg-slate-50 dark:bg-muted border-slate-200 dark:border-border font-bold px-5 focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all">
-                        <SelectValue placeholder="اختر النموذج" />
-                      </SelectTrigger>
+                      <SelectTrigger className="h-14 rounded-[1rem] bg-slate-50 dark:bg-muted border-slate-200 dark:border-border font-bold px-5 focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"><SelectValue placeholder="اختر النموذج" /></SelectTrigger>
                       <SelectContent className="z-[9999] bg-white dark:bg-card border-slate-200 dark:border-border rounded-2xl shadow-2xl max-h-[280px]">
-                        {activeTrialForms.map((form) => (
-                          <SelectItem key={form.id} value={form.id} className="h-11 rounded-xl font-bold cursor-pointer">{form.name}</SelectItem>
-                        ))}
+                        {activeTrialForms.map((form) => (<SelectItem key={form.id} value={form.id} className="h-11 rounded-xl font-bold cursor-pointer">{form.name}</SelectItem>))}
                       </SelectContent>
                     </Select>
                   </div>
                 </>
               )}
+
               <div className="flex items-center justify-between bg-slate-900 rounded-[1rem] px-6 py-4">
                 <span className="text-[10px] font-black text-slate-500 dark:text-muted-foreground uppercase tracking-widest">الأسئلة المتوفرة</span>
                 <span className="text-white font-black text-lg">{countLoading ? <span className="inline-block w-8 h-5 bg-slate-700 rounded animate-pulse" /> : questionCount}</span>
@@ -944,26 +713,29 @@ const ExamStart = () => {
               {subject.allow_time_modification && (
                 <div className="space-y-4 p-5 bg-slate-50 dark:bg-muted border border-slate-100 dark:border-border rounded-[1.5rem] animate-in zoom-in-95 duration-300">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-black text-slate-700 dark:text-foreground/90 uppercase tracking-wide">تخصيص وقت الاختبار</p>
-                      <p className="text-[10px] text-slate-400 dark:text-muted-foreground font-medium mt-0.5">اسحب الشريط لتحديد مدة المحاولة</p>
-                    </div>
-                    <div className="flex items-center gap-1.5 bg-primary text-white px-4 py-1.5 rounded-xl text-sm font-black shadow-md shadow-primary/25">
-                      <Clock className="w-3.5 h-3.5" />{examTime} دقيقة
-                    </div>
+                    <div><p className="text-xs font-black text-slate-700 dark:text-foreground/90 uppercase tracking-wide">تخصيص وقت الاختبار</p><p className="text-[10px] text-slate-400 dark:text-muted-foreground font-medium mt-0.5">اسحب الشريط لتحديد مدة المحاولة</p></div>
+                    <div className="flex items-center gap-1.5 bg-primary text-white px-4 py-1.5 rounded-xl text-sm font-black shadow-md shadow-primary/25"><Clock className="w-3.5 h-3.5" />{examTime} دقيقة</div>
                   </div>
                   <Slider value={[examTime]} onValueChange={([value]) => setExamTime(value)} min={subject.min_time_minutes || 10} max={subject.max_time_minutes || 120} step={5} className="py-2" />
                 </div>
               )}
 
-              {subject.password && (
-                <div className="space-y-3 p-5 bg-amber-50 border border-amber-100 rounded-[1.5rem]">
-                  <label className="flex items-center gap-2 text-xs font-black text-amber-700"><Lock className="w-3.5 h-3.5" />هذا الاختبار محمي بكلمة مرور</label>
-                  <Input type="password" placeholder="أدخل كلمة السر" value={password} onChange={(e) => setPassword(e.target.value)} className="h-13 rounded-[1rem] bg-white dark:bg-card border-amber-200 text-center font-black tracking-[0.4em] focus:border-amber-400 focus:ring-2 focus:ring-amber-100 transition-all" />
-                </div>
-              )}
+              {/* حقل كلمة المرور — يُخفى إذا كانت محفوظة بنفس الجهاز */}
+              {subject.password && (() => {
+                const savedData = examPasswordKey ? localStorage.getItem(examPasswordKey) : null;
+                let isSaved = false;
+                if (savedData) {
+                  try { const { pwd, fp } = JSON.parse(savedData); if (fp === deviceFingerprint && pwd === subject.password) isSaved = true; } catch { /* ignore */ }
+                }
+                return !isSaved ? (
+                  <div className="space-y-3 p-5 bg-amber-50 border border-amber-100 rounded-[1.5rem]">
+                    <label className="flex items-center gap-2 text-xs font-black text-amber-700"><Lock className="w-3.5 h-3.5" />هذا الاختبار محمي بكلمة مرور</label>
+                    <Input type="password" placeholder="أدخل كلمة السر" value={password} onChange={(e) => setPassword(e.target.value)} className="h-13 rounded-[1rem] bg-white dark:bg-card border-amber-200 text-center font-black tracking-[0.4em] focus:border-amber-400 focus:ring-2 focus:ring-amber-100 transition-all" />
+                  </div>
+                ) : null;
+              })()}
 
-              {/* ── زر ابدأ الاختبار (الأصلي) ── */}
+              {/* ── زر ابدأ الاختبار ── */}
               <button
                 onClick={handleStartExam}
                 disabled={!studentName.trim() || !selectedYear || questionCount === 0}
@@ -980,89 +752,47 @@ const ExamStart = () => {
               </button>
 
               {/* ── زر اختبار+ المراجعة ── */}
-              {/* الزر يظهر دائماً */}
               {true && (
                 <button
                   onClick={handleOpenReviewModal}
                   disabled={!studentName.trim() || !selectedYear || questionCount === 0}
                   className="relative w-full h-14 rounded-[1.25rem] font-black text-sm overflow-hidden transition-all duration-300 hover:-translate-y-1 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 group"
-                  style={{
-                    background: 'linear-gradient(135deg, #065f46 0%, #047857 50%, #059669 100%)',
-                    boxShadow: '0 6px 28px rgba(5,150,105,0.45), 0 0 0 1px rgba(255,255,255,0.08) inset',
-                  }}
+                  style={{ background: 'linear-gradient(135deg, #065f46 0%, #047857 50%, #059669 100%)', boxShadow: '0 6px 28px rgba(5,150,105,0.45), 0 0 0 1px rgba(255,255,255,0.08) inset' }}
                 >
-                  {/* توهج داخلي عند hover */}
-                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                    style={{ background: 'linear-gradient(135deg, #047857, #10b981)' }} />
-                  {/* بريق متحرك */}
-                  <div className="absolute inset-0 -skew-x-12 translate-x-[-150%] group-hover:translate-x-[250%] transition-transform duration-700"
-                    style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent)', width: '50%' }} />
-                  {/* حدود لامعة */}
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: 'linear-gradient(135deg, #047857, #10b981)' }} />
+                  <div className="absolute inset-0 -skew-x-12 translate-x-[-150%] group-hover:translate-x-[250%] transition-transform duration-700" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent)', width: '50%' }} />
                   <div className="absolute inset-0 rounded-[1.25rem]" style={{ boxShadow: '0 0 0 1.5px rgba(52,211,153,0.5) inset' }} />
                   <div className="relative z-10 flex items-center justify-center gap-2.5 text-white">
-                    <div className="w-7 h-7 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
-                      <BookOpen className="w-4 h-4" />
-                    </div>
+                    <div className="w-7 h-7 rounded-xl bg-white/15 flex items-center justify-center shrink-0"><BookOpen className="w-4 h-4" /></div>
                     <span style={{ textShadow: '0 1px 8px rgba(0,0,0,0.3)' }}>اختبار+ المراجعة</span>
-                    <div className="w-6 h-6 rounded-lg bg-emerald-300/20 flex items-center justify-center shrink-0">
-                      <Lock className="w-3.5 h-3.5 text-emerald-200" />
-                    </div>
+                    <div className="w-6 h-6 rounded-lg bg-emerald-300/20 flex items-center justify-center shrink-0"><Lock className="w-3.5 h-3.5 text-emerald-200" /></div>
                   </div>
                 </button>
               )}
 
               {/* ── زر إنشاء غرفة تحدي جماعي ── */}
               <button
-                onClick={() => {
-                  const params = new URLSearchParams();
-                  if (subject?.level_id) params.set('levelId', subject.level_id);
-                  if (subjectId) params.set('subjectId', subjectId);
-                  navigate(`/battle/create?${params.toString()}`);
-                }}
+                onClick={() => { const params = new URLSearchParams(); if (subject?.level_id) params.set('levelId', subject.level_id); if (subjectId) params.set('subjectId', subjectId); navigate(`/battle/create?${params.toString()}`); }}
                 className="relative w-full h-14 rounded-[1.25rem] font-black text-base overflow-hidden transition-all duration-300 hover:-translate-y-1 active:scale-[0.98] group"
-                style={{
-                  background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)',
-                  border: '1.5px solid rgba(251,191,36,0.5)',
-                  boxShadow: '0 6px 28px rgba(251,191,36,0.18), inset 0 1px 0 rgba(255,255,255,0.06)',
-                  color: '#fde68a',
-                }}
+                style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)', border: '1.5px solid rgba(251,191,36,0.5)', boxShadow: '0 6px 28px rgba(251,191,36,0.18), inset 0 1px 0 rgba(255,255,255,0.06)', color: '#fde68a' }}
               >
-                {/* توهج داخلي عند hover */}
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                  style={{ background: 'linear-gradient(135deg, #1e1b4b, #312e81)' }} />
-                {/* بريق ذهبي */}
-                <div className="absolute inset-0 -skew-x-12 translate-x-[-150%] group-hover:translate-x-[250%] transition-transform duration-700"
-                  style={{ background: 'linear-gradient(90deg, transparent, rgba(251,191,36,0.2), transparent)', width: '50%' }} />
-                {/* توهج الحدود عند hover */}
-                <div className="absolute inset-0 rounded-[1.25rem] opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                  style={{ boxShadow: '0 0 24px rgba(251,191,36,0.4)' }} />
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: 'linear-gradient(135deg, #1e1b4b, #312e81)' }} />
+                <div className="absolute inset-0 -skew-x-12 translate-x-[-150%] group-hover:translate-x-[250%] transition-transform duration-700" style={{ background: 'linear-gradient(90deg, transparent, rgba(251,191,36,0.2), transparent)', width: '50%' }} />
+                <div className="absolute inset-0 rounded-[1.25rem] opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ boxShadow: '0 0 24px rgba(251,191,36,0.4)' }} />
                 <div className="relative z-10 flex items-center justify-center gap-2.5">
-                  <Swords className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300"
-                    style={{ filter: 'drop-shadow(0 0 6px rgba(251,191,36,0.8))' }} />
-                  <span style={{ textShadow: '0 0 16px rgba(251,191,36,0.5)' }}>
-                    تحدَّ أصدقاءك — غرفة جماعية
-                  </span>
+                  <Swords className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" style={{ filter: 'drop-shadow(0 0 6px rgba(251,191,36,0.8))' }} />
+                  <span style={{ textShadow: '0 0 16px rgba(251,191,36,0.5)' }}>تحدَّ أصدقاءك — غرفة جماعية</span>
                   <Users className="w-4 h-4 opacity-60 group-hover:opacity-100 transition-opacity" />
                 </div>
               </button>
 
-              <Link
-                to={`/suggest?level=${subject?.level_id || ''}&subject=${subjectId || ''}`}
+              <Link to={`/suggest?level=${subject?.level_id || ''}&subject=${subjectId || ''}`}
                 className="group relative w-full flex items-center justify-center gap-3 rounded-[1.25rem] overflow-hidden transition-all duration-300 hover:-translate-y-0.5 active:scale-[0.98]"
-                style={{ background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', border: '1.5px solid rgba(245,158,11,0.35)', padding: '14px 20px', boxShadow: '0 4px 16px rgba(245,158,11,0.15)' }}
-              >
-                {/* بريق متحرك */}
+                style={{ background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', border: '1.5px solid rgba(245,158,11,0.35)', padding: '14px 20px', boxShadow: '0 4px 16px rgba(245,158,11,0.15)' }}>
                 <div className="absolute inset-0 -skew-x-12 translate-x-[-150%] group-hover:translate-x-[250%] transition-transform duration-700" style={{ background: 'linear-gradient(90deg, transparent, rgba(245,158,11,0.15), transparent)', width: '50%' }} />
-                <div className="relative z-10 w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', boxShadow: '0 4px 10px rgba(245,158,11,0.4)' }}>
-                  <PenLine className="w-4 h-4 text-white" />
-                </div>
-                <div className="relative z-10 text-right">
-                  <p className="text-sm font-black text-amber-800">أضف سؤالاً لهذه المادة</p>
-                  <p className="text-[10px] font-bold text-amber-600">ساهم في تطوير المحتوى وساعد زملاءك</p>
-                </div>
-                <div className="relative z-10 mr-auto">
-                  <ChevronLeft className="w-4 h-4 text-amber-500 group-hover:-translate-x-1 transition-transform" />
-                </div>
+                <div className="relative z-10 w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', boxShadow: '0 4px 10px rgba(245,158,11,0.4)' }}><PenLine className="w-4 h-4 text-white" /></div>
+                <div className="relative z-10 text-right"><p className="text-sm font-black text-amber-800">أضف سؤالاً لهذه المادة</p><p className="text-[10px] font-bold text-amber-600">ساهم في تطوير المحتوى وساعد زملاءك</p></div>
+                <div className="relative z-10 mr-auto"><ChevronLeft className="w-4 h-4 text-amber-500 group-hover:-translate-x-1 transition-transform" /></div>
               </Link>
             </div>
 
@@ -1074,41 +804,134 @@ const ExamStart = () => {
         </div>
       </section>
 
-      {/* ── مودال كلمة مرور اختبار+ المراجعة ── */}
-      {showReviewPasswordModal && (
+      {/* ── مودال الأسئلة التجريبية محظورة في الاختبار العادي ── */}
+      {showTrialBlockedModal && (
         <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center"
-          onClick={(e) => e.target === e.currentTarget && setShowReviewPasswordModal(false)}>
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
-            onClick={() => setShowReviewPasswordModal(false)} />
+          onClick={(e) => e.target === e.currentTarget && setShowTrialBlockedModal(false)}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowTrialBlockedModal(false)} />
           <div className="relative w-full sm:max-w-sm bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-2xl animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-300 overflow-hidden">
-            {/* شريط علوي أخضر */}
-            <div className="h-1.5 w-full bg-gradient-to-l from-emerald-400 via-teal-500 to-emerald-600" />
+            <div className="h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #f59e0b, #fbbf24, #f59e0b)' }} />
             <div className="p-6 space-y-5">
               {/* رأس */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/40 dark:to-teal-900/40 flex items-center justify-center">
-                    <BookOpen className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                  <div className="w-11 h-11 rounded-2xl flex items-center justify-center shadow-md"
+                    style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', boxShadow: '0 4px 14px rgba(245,158,11,0.45)' }}>
+                    <Lock className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-black text-slate-800 dark:text-slate-100 text-base">اختبار+ المراجعة</h3>
-                    <p className="text-[11px] text-slate-400 font-semibold">أدخل كلمة المرور للمتابعة</p>
+                    <h3 className="font-black text-slate-800 dark:text-slate-100 text-base">أسئلة تجريبية</h3>
+                    <p className="text-[11px] text-slate-400 font-semibold">وضع محمي</p>
                   </div>
                 </div>
-                <button onClick={() => setShowReviewPasswordModal(false)}
+                <button onClick={() => setShowTrialBlockedModal(false)}
                   className="w-9 h-9 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors">
                   <X className="w-4 h-4 text-slate-500" />
                 </button>
               </div>
-
-              {/* وصف */}
-              <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl p-3.5 border border-emerald-100 dark:border-emerald-800/40">
-                <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 text-right leading-relaxed" dir="rtl">
-                  في هذا الوضع ستظهر لك <span className="font-black">التلميحات والشرح المفصل</span> بعد كل إجابة — صحيحة كانت أم خاطئة.
+              {/* البطاقة */}
+              <div className="rounded-2xl p-4 text-right space-y-1.5"
+                style={{ background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', border: '1.5px solid rgba(245,158,11,0.3)' }}>
+                <p className="text-sm font-black text-amber-900 leading-snug">
+                  الأسئلة التجريبية متاحة حصرياً في وضع اختبار+ المراجعة
+                </p>
+                <p className="text-[11px] font-semibold leading-relaxed" style={{ color: '#92400e' }}>
+                  اضغط على زر "اختبار+ المراجعة" أدناه للوصول إلى الأسئلة التجريبية الشاملة مع التلميحات والشروح القانونية الكاملة.
                 </p>
               </div>
+              {/* زر الانتقال لاختبار+ المراجعة */}
+              <button
+                onClick={() => {
+                  setShowTrialBlockedModal(false);
+                  if (!selectedTrialForm) {
+                    toast({ title: 'تنبيه', description: 'يرجى اختيار النموذج التجريبي أولاً', variant: 'destructive' });
+                    return;
+                  }
+                  handleOpenReviewModal();
+                }}
+                className="w-full h-13 rounded-2xl font-black text-sm text-white flex items-center justify-center gap-2.5 transition-all active:scale-[0.98]"
+                style={{ background: 'linear-gradient(135deg, #065f46, #059669)', boxShadow: '0 6px 20px rgba(5,150,105,0.4)' }}
+              >
+                <BookOpen className="w-4 h-4" />
+                انتقل إلى اختبار+ المراجعة
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-              {/* حقل كلمة المرور */}
+      {/* ── مودال كلمة مرور الاختبار العادي ── */}
+      {showExamPasswordModal && (
+        <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center"
+          onClick={(e) => e.target === e.currentTarget && setShowExamPasswordModal(false)}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowExamPasswordModal(false)} />
+          <div className="relative w-full sm:max-w-sm bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-2xl animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-300 overflow-hidden">
+            <div className="h-1.5 w-full bg-gradient-to-l from-blue-400 via-indigo-500 to-violet-600" />
+            <div className="p-6 space-y-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 flex items-center justify-center">
+                    <Lock className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-slate-800 dark:text-slate-100 text-base">اختبار محمي</h3>
+                    <p className="text-[11px] text-slate-400 font-semibold">أدخل كلمة المرور للمتابعة</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowExamPasswordModal(false)} className="w-9 h-9 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors">
+                  <X className="w-4 h-4 text-slate-500" />
+                </button>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-500 uppercase tracking-wider">كلمة المرور</label>
+                <input
+                  type="password"
+                  value={examPasswordInput}
+                  onChange={(e) => { setExamPasswordInput(e.target.value); setExamPasswordError(false); }}
+                  onKeyDown={(e) => e.key === 'Enter' && handleConfirmExamPassword()}
+                  placeholder="● ● ● ● ● ●"
+                  autoFocus
+                  className={cn(
+                    "w-full h-13 rounded-2xl border-2 bg-slate-50 dark:bg-slate-800 text-center font-black tracking-[0.4em] text-lg focus:outline-none transition-all",
+                    examPasswordError
+                      ? "border-red-400 focus:border-red-500 bg-red-50 dark:bg-red-950/20 text-red-600"
+                      : "border-slate-200 dark:border-slate-700 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30"
+                  )}
+                  dir="ltr"
+                />
+                {examPasswordError && (<p className="text-xs font-black text-red-500 text-center animate-in fade-in duration-200">❌ كلمة المرور غير صحيحة</p>)}
+              </div>
+              <button
+                onClick={handleConfirmExamPassword}
+                disabled={!examPasswordInput.trim()}
+                className="w-full h-13 rounded-2xl font-black text-sm text-white transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                style={{ background: 'linear-gradient(135deg, #1d4ed8, #4f46e5)', boxShadow: '0 6px 20px rgba(99,102,241,0.4)' }}
+              >
+                <Play className="w-4 h-4 fill-current" /> ابدأ الاختبار
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── مودال كلمة مرور اختبار+ المراجعة ── */}
+      {showReviewPasswordModal && (
+        <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center"
+          onClick={(e) => e.target === e.currentTarget && setShowReviewPasswordModal(false)}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowReviewPasswordModal(false)} />
+          <div className="relative w-full sm:max-w-sm bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-2xl animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-300 overflow-hidden">
+            <div className="h-1.5 w-full bg-gradient-to-l from-emerald-400 via-teal-500 to-emerald-600" />
+            <div className="p-6 space-y-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/40 dark:to-teal-900/40 flex items-center justify-center"><BookOpen className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /></div>
+                  <div><h3 className="font-black text-slate-800 dark:text-slate-100 text-base">اختبار+ المراجعة</h3><p className="text-[11px] text-slate-400 font-semibold">أدخل كلمة المرور للمتابعة</p></div>
+                </div>
+                <button onClick={() => setShowReviewPasswordModal(false)} className="w-9 h-9 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors"><X className="w-4 h-4 text-slate-500" /></button>
+              </div>
+              <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl p-3.5 border border-emerald-100 dark:border-emerald-800/40">
+                <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 text-right leading-relaxed" dir="rtl">في هذا الوضع ستظهر لك <span className="font-black">التلميحات والشرح المفصل</span> بعد كل إجابة — صحيحة كانت أم خاطئة.</p>
+              </div>
               <div className="space-y-2">
                 <label className="text-xs font-black text-slate-500 uppercase tracking-wider">كلمة المرور</label>
                 <input
@@ -1126,66 +949,30 @@ const ExamStart = () => {
                   )}
                   dir="ltr"
                 />
-                {reviewPasswordError && (
-                  <p className="text-xs font-black text-red-500 text-center animate-in fade-in duration-200">
-                    ❌ {reviewPasswordErrorMsg || 'كلمة المرور غير صحيحة'}
-                  </p>
-                )}
+                {reviewPasswordError && (<p className="text-xs font-black text-red-500 text-center animate-in fade-in duration-200">❌ {reviewPasswordErrorMsg || 'كلمة المرور غير صحيحة'}</p>)}
               </div>
-
-              {/* زر التأكيد */}
               <button
                 onClick={handleConfirmReviewPassword}
                 disabled={reviewPasswordLoading || !reviewPassword.trim()}
                 className="w-full h-13 rounded-2xl font-black text-sm text-white transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
                 style={{ background: 'linear-gradient(135deg, #065f46, #059669)', boxShadow: '0 6px 20px rgba(5,150,105,0.4)' }}
               >
-                {reviewPasswordLoading
-                  ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  : <><ShieldCheck className="w-4 h-4" /> دخول وضع المراجعة</>
-                }
+                {reviewPasswordLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><ShieldCheck className="w-4 h-4" /> دخول وضع المراجعة</>}
               </button>
-
-              {/* ── رابط التواصل ── */}
               <div className="relative">
-                {/* نبضة خلفية */}
                 <div className="absolute inset-0 rounded-2xl bg-sky-400/20 animate-ping" style={{ animationDuration: '2s' }} />
-                <a
-                  href="https://t.me/MuenAlnaser"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group relative flex items-center gap-3 w-full py-3 px-4 rounded-2xl border-2 border-sky-200 dark:border-sky-700 bg-gradient-to-l from-sky-50 to-white dark:from-sky-950/40 dark:to-slate-900 hover:border-sky-400 hover:from-sky-100 hover:to-sky-50 dark:hover:from-sky-900/60 transition-all duration-200 active:scale-[0.98] shadow-sm shadow-sky-100 dark:shadow-sky-900/20"
-                >
-                  {/* أيقونة تيليجرام مع نبض */}
+                <a href="https://t.me/MuenAlnaser" target="_blank" rel="noopener noreferrer"
+                  className="group relative flex items-center gap-3 w-full py-3 px-4 rounded-2xl border-2 border-sky-200 dark:border-sky-700 bg-gradient-to-l from-sky-50 to-white dark:from-sky-950/40 dark:to-slate-900 hover:border-sky-400 hover:from-sky-100 hover:to-sky-50 dark:hover:from-sky-900/60 transition-all duration-200 active:scale-[0.98] shadow-sm shadow-sky-100 dark:shadow-sky-900/20">
                   <div className="relative shrink-0">
                     <div className="absolute inset-0 rounded-xl bg-sky-400/40 animate-ping" style={{ animationDuration: '2s' }} />
-                    <div className="relative w-9 h-9 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200"
-                      style={{ background: 'linear-gradient(135deg, #0088cc, #00aaff)', boxShadow: '0 4px 12px rgba(0,136,204,0.4)' }}>
-                      <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
-                      </svg>
+                    <div className="relative w-9 h-9 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200" style={{ background: 'linear-gradient(135deg, #0088cc, #00aaff)', boxShadow: '0 4px 12px rgba(0,136,204,0.4)' }}>
+                      <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
                     </div>
                   </div>
-
-                  {/* النص */}
-                  <div className="text-right flex-1">
-                    <p className="text-xs font-black text-sky-600 dark:text-sky-400">
-                      للحصول على كلمة المرور
-                    </p>
-                    <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
-                      تواصل مع الإدارة عبر تيليجرام
-                    </p>
-                  </div>
-
-                  {/* "اضغط للتواصل" badge */}
+                  <div className="text-right flex-1"><p className="text-xs font-black text-sky-600 dark:text-sky-400">للحصول على كلمة المرور</p><p className="text-[11px] font-bold text-slate-400 dark:text-slate-500">تواصل مع الإدارة عبر تيليجرام</p></div>
                   <div className="flex flex-col items-center gap-1 shrink-0">
-                    <div className="px-2 py-0.5 rounded-lg text-[9px] font-black text-white"
-                      style={{ background: 'linear-gradient(135deg, #0088cc, #00aaff)' }}>
-                      اضغط
-                    </div>
-                    <svg className="w-3 h-3 text-sky-400 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                    </svg>
+                    <div className="px-2 py-0.5 rounded-lg text-[9px] font-black text-white" style={{ background: 'linear-gradient(135deg, #0088cc, #00aaff)' }}>اضغط</div>
+                    <svg className="w-3 h-3 text-sky-400 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
                   </div>
                 </a>
               </div>
@@ -1194,7 +981,6 @@ const ExamStart = () => {
         </div>
       )}
 
-      {/* حوار استئناف الاختبار */}
       <AlertDialog open={showResumeDialog} onOpenChange={setShowResumeDialog}>
         <AlertDialogContent className="rounded-[2.5rem] p-8 text-right" dir="rtl">
           <AlertDialogHeader>
@@ -1213,13 +999,189 @@ const ExamStart = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ── مودال عرض ملخص المادة ── */}
       {showSummaryModal && subject?.summary_url && (
-        <SummaryModal
-          url={subject.summary_url}
-          subjectName={subject.name}
-          onClose={() => setShowSummaryModal(false)}
-        />
+        <SummaryModal url={subject.summary_url} subjectName={subject.name} onClose={() => setShowSummaryModal(false)} />
+      )}
+
+      {/* ── مودال التخرج الاحتفالي 2026 ── */}
+      {showGradModal && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4" dir="rtl">
+          <style>{`
+            @keyframes gradConfetti {
+              0%   { transform: translateY(-20px) rotate(0deg);   opacity: 1; }
+              100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+            }
+            @keyframes gradPulseRing {
+              0%   { transform: scale(1);   opacity: 0.8; }
+              100% { transform: scale(2.2); opacity: 0; }
+            }
+            @keyframes gradShine {
+              0%   { left: -100%; }
+              100% { left: 200%; }
+            }
+            @keyframes gradFloat {
+              0%, 100% { transform: translateY(0px) rotate(-2deg); }
+              50%       { transform: translateY(-10px) rotate(2deg); }
+            }
+            @keyframes gradGlow {
+              0%, 100% { box-shadow: 0 0 30px rgba(251,191,36,0.4), 0 0 60px rgba(99,102,241,0.3); }
+              50%       { box-shadow: 0 0 60px rgba(251,191,36,0.8), 0 0 100px rgba(99,102,241,0.6); }
+            }
+            @keyframes gradTextGlow {
+              0%, 100% { text-shadow: 0 0 20px rgba(251,191,36,0.5); }
+              50%       { text-shadow: 0 0 40px rgba(251,191,36,1), 0 0 80px rgba(251,191,36,0.5); }
+            }
+            @keyframes gradBorderRotate {
+              0%   { background-position: 0% 50%; }
+              50%  { background-position: 100% 50%; }
+              100% { background-position: 0% 50%; }
+            }
+            .grad-confetti-piece {
+              position: absolute;
+              top: -10px;
+              animation: gradConfetti linear infinite;
+              border-radius: 2px;
+            }
+            .grad-pulse-ring {
+              position: absolute;
+              inset: 0;
+              border-radius: 9999px;
+              border: 2px solid rgba(251,191,36,0.6);
+              animation: gradPulseRing 1.8s ease-out infinite;
+            }
+            .grad-icon-float { animation: gradFloat 3s ease-in-out infinite; }
+            .grad-card-glow  { animation: gradGlow 2.5s ease-in-out infinite; }
+            .grad-text-glow  { animation: gradTextGlow 2s ease-in-out infinite; }
+            .grad-shine::after {
+              content: '';
+              position: absolute;
+              top: 0; bottom: 0;
+              width: 60%;
+              background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+              animation: gradShine 3s ease-in-out infinite;
+            }
+          `}</style>
+
+          {/* Confetti — ثابت بـ useMemo-style array */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            {[
+              { l:'8%',  d:'0s',   dur:'3.2s', w:8,  h:8,  c:'#fbbf24', r:'0deg'   },
+              { l:'15%', d:'0.3s', dur:'2.8s', w:6,  h:12, c:'#818cf8', r:'45deg'  },
+              { l:'23%', d:'0.8s', dur:'3.5s', w:10, h:6,  c:'#34d399', r:'20deg'  },
+              { l:'31%', d:'0.1s', dur:'2.6s', w:7,  h:7,  c:'#f87171', r:'60deg'  },
+              { l:'40%', d:'0.5s', dur:'3.8s', w:9,  h:5,  c:'#fbbf24', r:'10deg'  },
+              { l:'48%', d:'1.1s', dur:'2.9s', w:6,  h:10, c:'#a78bfa', r:'80deg'  },
+              { l:'57%', d:'0.4s', dur:'3.3s', w:8,  h:8,  c:'#60a5fa', r:'35deg'  },
+              { l:'65%', d:'0.9s', dur:'2.7s', w:5,  h:11, c:'#fbbf24', r:'55deg'  },
+              { l:'73%', d:'0.2s', dur:'3.6s', w:10, h:6,  c:'#f472b6', r:'15deg'  },
+              { l:'81%', d:'0.7s', dur:'3.1s', w:7,  h:7,  c:'#818cf8', r:'70deg'  },
+              { l:'88%', d:'1.3s', dur:'2.5s', w:9,  h:5,  c:'#34d399', r:'40deg'  },
+              { l:'5%',  d:'1.5s', dur:'3.4s', w:6,  h:9,  c:'#fbbf24', r:'25deg'  },
+              { l:'93%', d:'0.6s', dur:'2.8s', w:8,  h:6,  c:'#f87171', r:'65deg'  },
+              { l:'50%', d:'1.8s', dur:'3.0s', w:7,  h:7,  c:'#a78bfa', r:'50deg'  },
+            ].map((p, i) => (
+              <div key={i} className="grad-confetti-piece"
+                style={{ left: p.l, animationDelay: p.d, animationDuration: p.dur, width: p.w, height: p.h, background: p.c, transform: `rotate(${p.r})` }} />
+            ))}
+          </div>
+
+          {/* Overlay */}
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-lg animate-in fade-in duration-400" />
+
+          {/* البطاقة الرئيسية */}
+          <div className="grad-card-glow grad-shine relative w-full max-w-[360px] rounded-[2.5rem] overflow-hidden animate-in zoom-in-90 slide-in-from-bottom-8 duration-600"
+            style={{ background: 'linear-gradient(160deg, #060d1f 0%, #0d1b3e 50%, #07101a 100%)', border: '1.5px solid rgba(251,191,36,0.3)' }}>
+
+            {/* شريط علوي متحرك */}
+            <div className="h-1 w-full" style={{ background: 'linear-gradient(90deg, #7c3aed, #4f46e5, #60a5fa, #fbbf24, #f59e0b, #fbbf24, #60a5fa, #4f46e5, #7c3aed)', backgroundSize: '200%', animation: 'gradBorderRotate 3s linear infinite' }} />
+
+            <div className="p-7 space-y-5 text-center">
+
+              {/* أيقونة التخرج العائمة */}
+              <div className="flex justify-center">
+                <div className="relative grad-icon-float">
+                  {/* حلقات نابضة */}
+                  <div className="grad-pulse-ring" style={{ animationDelay: '0s' }} />
+                  <div className="grad-pulse-ring" style={{ animationDelay: '0.6s' }} />
+                  <div className="grad-pulse-ring" style={{ animationDelay: '1.2s' }} />
+                  {/* توهج خلفي */}
+                  <div className="absolute inset-0 rounded-full blur-3xl opacity-70"
+                    style={{ background: 'radial-gradient(circle, rgba(251,191,36,0.6), rgba(99,102,241,0.4), transparent)', transform: 'scale(2)' }} />
+                  {/* الأيقونة */}
+                  <div className="relative w-24 h-24 rounded-[2rem] flex items-center justify-center text-5xl"
+                    style={{ background: 'linear-gradient(135deg, #1d4ed8 0%, #4f46e5 50%, #7c3aed 100%)', boxShadow: '0 0 0 1px rgba(251,191,36,0.4) inset, 0 20px 60px rgba(0,0,0,0.5)' }}>
+                    🎓
+                  </div>
+                </div>
+              </div>
+
+              {/* شارة */}
+              <div className="flex justify-center">
+                <div className="relative overflow-hidden inline-flex items-center gap-2 px-5 py-2 rounded-full text-[11px] font-black tracking-[0.15em]"
+                  style={{ background: 'linear-gradient(90deg, #92400e, #b45309, #d97706, #fbbf24, #d97706, #b45309, #92400e)', backgroundSize: '200%', animation: 'gradBorderRotate 2s linear infinite', color: '#fff', boxShadow: '0 4px 20px rgba(251,191,36,0.5)' }}>
+                  ⭐ &nbsp;آخر اختبار في مسيرتك الأكاديمية&nbsp; ⭐
+                </div>
+              </div>
+
+              {/* العنوان الرئيسي */}
+              <div className="space-y-1">
+                <h2 className="grad-text-glow text-[28px] font-black leading-tight"
+                  style={{ background: 'linear-gradient(90deg, #fde68a, #fbbf24, #f59e0b, #fbbf24, #fde68a)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundSize: '200%', animation: 'gradBorderRotate 3s linear infinite' }}>
+                  مبروك على آخر اختبار!
+                </h2>
+                <p className="text-[13px] font-bold" style={{ color: 'rgba(196,181,253,0.9)' }}>
+                  أنت على بُعد خطوة واحدة من حلمك 🏆
+                </p>
+              </div>
+
+              {/* النص التحفيزي — glassmorphism card */}
+              <div className="rounded-2xl p-4 text-right space-y-3"
+                style={{ background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)' }}>
+                <p className="text-[13px] leading-relaxed" style={{ color: 'rgba(226,232,240,0.9)' }}>
+                  💡 كل السهر والمذاكرة والجهد كان من أجل <span className="font-black text-white">هذه اللحظة بالذات.</span>
+                </p>
+                <div className="w-full h-px" style={{ background: 'rgba(251,191,36,0.15)' }} />
+                <p className="text-[13px] leading-relaxed" style={{ color: 'rgba(226,232,240,0.9)' }}>
+                  ⚖️ دخلت كلية الشريعة والقانون وستخرج منها حاملاً لقباً يُفخر به —
+                  <span className="font-black mr-1" style={{ color: '#fbbf24' }}>حقوقي.</span>
+                </p>
+                <div className="w-full h-px" style={{ background: 'rgba(251,191,36,0.15)' }} />
+                <p className="text-[13px] leading-relaxed" style={{ color: 'rgba(226,232,240,0.9)' }}>
+                  💪 ثق بنفسك، أجب بهدوء — أنت <span className="font-black text-white">مستعد.</span>
+                </p>
+              </div>
+
+              {/* زر البدء */}
+              <button
+                onClick={handleCloseGradModal}
+                className="relative w-full h-14 rounded-2xl font-black text-base text-white overflow-hidden transition-all duration-300 hover:-translate-y-1 active:scale-[0.97] group"
+                style={{ background: 'linear-gradient(135deg, #1d4ed8, #4f46e5, #7c3aed)', boxShadow: '0 8px 32px rgba(99,102,241,0.6), 0 0 0 1px rgba(255,255,255,0.1) inset' }}
+              >
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                  style={{ background: 'linear-gradient(135deg, #2563eb, #7c3aed)' }} />
+                <div className="absolute inset-0 -skew-x-12 translate-x-[-150%] group-hover:translate-x-[250%] transition-transform duration-700"
+                  style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)', width: '50%' }} />
+                <span className="relative z-10 flex items-center justify-center gap-2">
+                  🚀 أنا مستعد — لنبدأ الآن
+                </span>
+              </button>
+
+              {/* توقيع */}
+              <div className="space-y-1">
+                <p className="text-[11px] font-bold" style={{ color: 'rgba(251,191,36,0.6)' }}>
+                  مع تحيات &nbsp;<span className="font-black" style={{ color: '#fbbf24' }}>أ. معين الناصر</span>
+                </p>
+                <p className="text-[10px] font-bold tracking-wider" style={{ color: 'rgba(251,191,36,0.35)' }}>
+                  ✦ &nbsp; منصة الناصر القانونية — معك حتى التخرج &nbsp; ✦
+                </p>
+              </div>
+
+            </div>
+
+            {/* شريط سفلي */}
+            <div className="h-1 w-full" style={{ background: 'linear-gradient(90deg, #7c3aed, #4f46e5, #60a5fa, #fbbf24, #f59e0b, #fbbf24, #60a5fa, #4f46e5, #7c3aed)', backgroundSize: '200%', animation: 'gradBorderRotate 3s linear infinite' }} />
+          </div>
+        </div>
       )}
     </MainLayout>
   );
