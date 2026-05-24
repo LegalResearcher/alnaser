@@ -16,13 +16,7 @@ const LEVELS = [
   { value: '3', label: 'المستوى الثالث',  rank: 'بمرتبة التميّز القانوني',  rankEn: 'tamayoz' },
 ];
 
-// المستوى الرابع = دفعة فقط
-const BATCHES = [
-  { value: '1', label: 'الدفعة الأولى'  },
-  { value: '2', label: 'الدفعة الثانية' },
-  { value: '3', label: 'الدفعة الثالثة' },
-  { value: '4', label: 'الدفعة الرابعة' },
-];
+
 
 const RANK_STYLES: Record<string, { color: string; colorDark: string; colorLight: string; glow: string; stars: number }> = {
   jadara:  { color: '#1d4ed8', colorDark: '#1e3a8a', colorLight: '#dbeafe', glow: 'rgba(29,78,216,0.3)',   stars: 3 },
@@ -380,13 +374,12 @@ export default function HonorCertificate() {
     setLoading(true);
     setTimeout(() => {
       const canvas = document.createElement('canvas');
-      const selectedBatch = BATCHES.find(b => b.value === form.batch);
       drawCertificate(canvas, {
         name: form.name.trim(),
         governorate: form.governorate,
         // المستوى الرابع: levelLabel فارغ — الدفعة فقط
         levelLabel: isFourth ? '' : (selectedLevel?.label ?? ''),
-        batchLabel: selectedBatch?.label ?? '',
+        batchLabel: `الدفعة ${form.batch}`,
         rank: rankText,
         rankStyle,
         verifyCode,
@@ -504,30 +497,19 @@ export default function HonorCertificate() {
               {errors.level && <p className="text-red-400 text-xs mt-1.5">{errors.level}</p>}
             </div>
 
-            {/* الدفعة — تظهر دائماً */}
+            {/* الدفعة — إدخال حر */}
             <div className="mb-7">
-              <label className="flex items-center gap-2 text-sm font-bold text-stone-700 mb-3">
-                <GraduationCap className="w-4 h-4" /> الدفعة <span className="text-red-400">*</span>
+              <label className="flex items-center gap-2 text-sm font-bold text-stone-700 mb-2">
+                <GraduationCap className="w-4 h-4" /> رقم الدفعة <span className="text-red-400">*</span>
               </label>
-              <div className="grid grid-cols-2 gap-2.5">
-                {BATCHES.map(b => {
-                  const isSelected = form.batch === b.value;
-                  return (
-                    <button
-                      key={b.value}
-                      type="button"
-                      onClick={() => setForm(f => ({ ...f, batch: b.value }))}
-                      className="px-3 py-3 rounded-xl border-2 text-sm font-semibold transition-all text-right"
-                      style={isSelected ? {
-                        borderColor: rankStyle.color, backgroundColor: rankStyle.colorLight,
-                        color: rankStyle.colorDark, boxShadow: `0 0 0 3px ${rankStyle.color}22`,
-                      } : { borderColor: '#e7e5e4', backgroundColor: '#fafaf9', color: '#57534e' }}
-                    >
-                      {b.label}
-                    </button>
-                  );
-                })}
-              </div>
+              <input
+                type="number"
+                min="1"
+                placeholder="مثال: 20 أو 52"
+                value={form.batch}
+                onChange={e => setForm(f => ({ ...f, batch: e.target.value }))}
+                className="w-full px-4 py-3 rounded-xl border border-stone-200 bg-stone-50 text-stone-800 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition text-base"
+              />
               {errors.batch && <p className="text-red-400 text-xs mt-1.5">{errors.batch}</p>}
             </div>
 
