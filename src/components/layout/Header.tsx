@@ -12,14 +12,15 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import logoImage from '@/assets/logo.jpg';
 
 const navLinks = [
-  { href: '/',           label: 'الرئيسية' },
-  { href: '/levels',     label: 'المستويات' },
-  { href: '/features',   label: 'المزايا' },
-  { href: '/diagnostic', label: 'التشخيص' },
-  { href: '/progress',   label: 'تقدمي' },
-  { href: '/about',      label: 'عن المنصة' },
-  { href: '/#faq',       label: 'الأسئلة الشائعة' },
-  { href: '/suggest',   label: '💡 أضف سؤالاً' },
+  { href: '/',                   label: 'الرئيسية' },
+  { href: '/levels',             label: 'المستويات' },
+  { href: '/features',           label: 'المزايا' },
+  { href: '/diagnostic',         label: 'التشخيص' },
+  { href: '/progress',           label: 'تقدمي' },
+  { href: '/honor-certificate',  label: '🏅 لوحة الشرف' },
+  { href: '/about',              label: 'عن المنصة' },
+  { href: '/#faq',               label: 'الأسئلة الشائعة' },
+  { href: '/suggest',            label: '💡 أضف سؤالاً' },
   { href: 'https://t.me/MuenAlnaser', label: 'تواصل معنا', external: true },
 ];
 
