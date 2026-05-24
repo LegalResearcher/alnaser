@@ -13,7 +13,7 @@ const LEVELS = [
   { value: '1', label: 'المستوى الأول',        rank: 'بمرتبة الجدارة المعرفية', rankEn: 'jadara'  },
   { value: '2', label: 'المستوى الثاني',       rank: 'بمرتبة الجدارة المعرفية', rankEn: 'jadara'  },
   { value: '3', label: 'المستوى الثالث',       rank: 'بمرتبة التميّز القانوني', rankEn: 'tamayoz' },
-  { value: '4', label: 'المستوى الرابع — خريج', rank: 'بمرتبة الشرف الرفيع',    rankEn: 'sharaf'  },
+  { value: '4', label: 'خريج تخصص الشريعة والقانون — المستوى الرابع', rank: 'بمرتبة الشرف الرفيع',    rankEn: 'sharaf'  },
 ];
 
 const RANK_STYLES: Record<string, { color: string; colorLight: string; glow: string }> = {
@@ -136,7 +136,7 @@ function drawCertificate(
 
   ctx.font = '15px "Traditional Arabic", serif';
   ctx.fillStyle = '#78716c';
-  ctx.fillText('للتعليم القانوني  —  alnaseer.org', cx, 280);
+  ctx.fillText('منصة الناصر القانونية  —  alnaseer.org', cx, 280);
 
   // ── خط فاصل
   const gradLine = ctx.createLinearGradient(cx - 120, 0, cx + 120, 0);
@@ -176,7 +176,7 @@ function drawCertificate(
   ctx.font = '20px "Traditional Arabic", serif';
   ctx.fillStyle = '#44403c';
   ctx.textAlign = 'center';
-  ctx.fillText('تتقدم إدارة منصة الناصر للتعليم القانوني بجزيل الشكر وفائق الامتنان للزميل الفاضل:', cx, 475);
+  ctx.fillText('تتقدم إدارة منصة الناصر القانونية بجزيل الشكر وفائق الامتنان للزميل الفاضل:', cx, 475);
 
   // ── اسم الطالب
   ctx.save();
@@ -202,7 +202,7 @@ function drawCertificate(
   ctx.font = '22px "Traditional Arabic", serif';
   ctx.fillStyle = '#57534e';
   ctx.textAlign = 'center';
-  ctx.fillText(`${levelLabel}  —  ${governorate}`, cx, 610);
+  ctx.fillText(`${levelLabel}`, cx, 610);
 
   // ── النص الرئيسي (سطرين)
   ctx.font = '19px "Traditional Arabic", serif';
@@ -238,13 +238,16 @@ function drawCertificate(
   ctx.font = 'bold 18px "Traditional Arabic", serif';
   ctx.fillStyle = '#1c1917';
   ctx.fillText(exportDate, col1, 906);
+  ctx.font = '14px "Traditional Arabic", serif';
+  ctx.fillStyle = '#78716c';
+  ctx.fillText(governorate, col1, 928);
 
   ctx.font = 'bold 20px "Traditional Arabic", serif';
   ctx.fillStyle = rankStyle.color;
   ctx.fillText('أ / معين الناصر', col2, 906);
   ctx.font = '14px "Traditional Arabic", serif';
   ctx.fillStyle = '#78716c';
-  ctx.fillText('منصة الناصر للتعليم القانوني', col2, 928);
+  ctx.fillText('منصة الناصر القانونية', col2, 928);
 
   ctx.font = 'bold 15px monospace';
   ctx.fillStyle = '#1c1917';
@@ -361,7 +364,7 @@ export default function HonorCertificate() {
               <Award className="w-10 h-10 text-white" />
             </div>
             <h1 className="text-3xl font-bold text-stone-800">لوحة شرف</h1>
-            <p className="text-stone-500 mt-1">منصة الناصر للتعليم القانوني</p>
+            <p className="text-stone-500 mt-1">منصة الناصر القانونية</p>
           </div>
 
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-amber-100 p-8">
