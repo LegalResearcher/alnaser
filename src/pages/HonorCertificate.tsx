@@ -397,7 +397,11 @@ function drawCertificate(
   ctx.restore();
 
   // ── 10. شريط المرتبة المطوّر
-  const rankY = 408;
+  // نجوم المرتبة — فوق الشريط
+  const rankY = 416;
+  drawStars(ctx, cx, rankY - 10, rankStyle.stars, '#fbbf24', 10);
+
+  // شريط المرتبة — النص وحده داخله
   ctx.save();
   ctx.shadowColor = rankStyle.glow;
   ctx.shadowBlur = 20;
@@ -406,17 +410,14 @@ function drawCertificate(
   rankGrad.addColorStop(0.5, rankStyle.color);
   rankGrad.addColorStop(1,   rankStyle.colorDark);
   ctx.fillStyle = rankGrad;
-  roundRect(ctx, cx - 210, rankY, 420, 50, 25);
+  roundRect(ctx, cx - 210, rankY, 420, 46, 23);
   ctx.fill();
   ctx.restore();
-
-  // نجوم المرتبة
-  drawStars(ctx, cx, rankY + 20, rankStyle.stars, '#fbbf24', 10);
 
   ctx.font = '700 20px Cairo, serif';
   ctx.fillStyle = '#fff';
   ctx.textAlign = 'center';
-  ctx.fillText(rank, cx, rankY + 39);
+  ctx.fillText(rank, cx, rankY + 31);
 
   // ── 11. نص التقديم
   ctx.font = '400 18px Cairo, serif';
