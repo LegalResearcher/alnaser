@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Award, Download, CheckCircle, User, MapPin, GraduationCap, Loader2 } from 'lucide-react';
+import { Award, Send, CheckCircle, User, MapPin, GraduationCap, Loader2, Phone } from 'lucide-react';
 
 // ─── ثوابت ───────────────────────────────────────────────────────────────────
 
@@ -577,7 +577,7 @@ function drawCertificate(
 // ─── الصفحة الرئيسية ─────────────────────────────────────────────────────────
 
 export default function HonorCertificate() {
-  const [form, setForm]       = useState({ name: '', governorate: '', level: '', batch: '' });
+  const [form, setForm]       = useState({ name: '', governorate: '', level: '', batch: '', phone: '' });
   const [errors, setErrors]   = useState<Record<string, string>>({});
   const [step, setStep]       = useState<'form' | 'preview' | 'done'>('form');
   const [loading, setLoading] = useState(false);
@@ -600,6 +600,7 @@ export default function HonorCertificate() {
     if (!form.governorate) e.governorate = 'المحافظة مطلوبة';
     if (!form.level)       e.level = 'المستوى مطلوب';
     if (!form.batch.trim()) e.batch = 'رقم الدفعة مطلوب';
+    if (!form.phone.trim()) e.phone = 'رقم الهاتف مطلوب';
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -626,11 +627,20 @@ export default function HonorCertificate() {
     }, fontReady ? 80 : 600);
   }
 
-  function handleDownload() {
-    const link = document.createElement('a');
-    link.download = `وثيقة-شرف-${form.name.trim()}-${verifyCode}.png`;
-    link.href = previewUrl;
-    link.click();
+  function handleSendRequest() {
+    const levelText = form.level === '4'
+      ? `الدفعة ${form.batch}`
+      : `${selectedLevel?.label || ''} — الدفعة ${form.batch}`;
+    const msg = encodeURIComponent(
+      `🏅 طلب لوحة شرف\n` +
+      `━━━━━━━━━━━━━━━\n` +
+      `👤 الاسم: ${form.name.trim()}\n` +
+      `📍 المحافظة: ${form.governorate}\n` +
+      `🎓 المستوى: ${levelText}\n` +
+      `📱 رقم الهاتف: ${form.phone.trim()}\n` +
+      `🔑 رقم التحقق: ${verifyCode}`
+    );
+    window.open(\`https://t.me/MuenAlnaser?text=\${msg}\`, '_blank');
     setStep('done');
   }
 
@@ -735,6 +745,22 @@ export default function HonorCertificate() {
               {errors.batch && <p className="text-red-400 text-xs mt-1.5">{errors.batch}</p>}
             </div>
 
+            {/* رقم الهاتف */}
+            <div className="mb-7">
+              <label className="flex items-center gap-2 text-sm font-bold text-stone-700 mb-2">
+                <Phone className="w-4 h-4" /> رقم الهاتف <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="tel"
+                placeholder="مثال: 7XXXXXXXX"
+                value={form.phone}
+                onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                className="w-full px-4 py-3 rounded-xl border border-stone-200 bg-stone-50 text-stone-800 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition text-base"
+                dir="ltr"
+              />
+              {errors.phone && <p className="text-red-400 text-xs mt-1.5">{errors.phone}</p>}
+            </div>
+
             <button
               onClick={handlePreview}
               disabled={loading}
@@ -765,10 +791,10 @@ export default function HonorCertificate() {
           ← تعديل
         </button>
         <div className="flex-1 text-center text-stone-400 text-sm">
-          {step === 'done' ? '✅ تم التنزيل بنجاح!' : 'معاينة الوثيقة'}
+          {step === 'done' ? '✅ تم إرسال الطلب!' : 'معاينة الوثيقة'}
         </div>
         <button
-          onClick={step === 'done' ? undefined : handleDownload}
+          onClick={step === 'done' ? undefined : handleSendRequest}
           className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm text-white shadow-lg transition active:scale-95"
           style={step === 'done'
             ? { background: '#16a34a', cursor: 'default' }
@@ -776,8 +802,8 @@ export default function HonorCertificate() {
           }
         >
           {step === 'done'
-            ? <><CheckCircle className="w-4 h-4" /> تم التنزيل</>
-            : <><Download className="w-4 h-4" /> تنزيل بدقة عالية</>
+            ? <><CheckCircle className="w-4 h-4" /> تم الإرسال</>
+            : <><Send className="w-4 h-4" /> إرسال طلب</>
           }
         </button>
       </div>
@@ -793,8 +819,9 @@ export default function HonorCertificate() {
 
       {step === 'done' && (
         <div className="bg-emerald-950/50 border border-emerald-700/30 rounded-xl px-6 py-4 text-emerald-300 text-center text-sm max-w-lg">
-          🎉 تم حفظ الوثيقة بدقة عالية على جهازك.<br />
-          رقم التحقق: <span className="font-mono font-bold tracking-wider">{verifyCode}</span>
+          🎉 تم إرسال طلبك بنجاح!<br /><br />
+          <span className="text-yellow-300 font-semibold">يرجى التأكد من كتابة رقم جوالك في الرسالة،</span><br />
+          وسيتم مراجعتها من قبل الإدارة وإرسال الوثيقة لكم في أقرب وقت.
         </div>
       )}
     </div>
