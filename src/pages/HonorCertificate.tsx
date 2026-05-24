@@ -11,10 +11,17 @@ import { Award, Download, CheckCircle, User, MapPin, GraduationCap, Loader2 } fr
 // ─── ثوابت ───────────────────────────────────────────────────────────────────
 
 const LEVELS = [
-  { value: '1', label: 'المستوى الأول',                                    rank: 'بمرتبة الجدارة المعرفية', rankEn: 'jadara'  },
-  { value: '2', label: 'المستوى الثاني',                                   rank: 'بمرتبة الجدارة المعرفية', rankEn: 'jadara'  },
-  { value: '3', label: 'المستوى الثالث',                                   rank: 'بمرتبة التميّز القانوني', rankEn: 'tamayoz' },
-  { value: '4', label: 'خريج الشريعة والقانون — المستوى الرابع',     rank: 'بمرتبة الشرف الرفيع',    rankEn: 'sharaf'  },
+  { value: '1', label: 'المستوى الأول',   rank: 'بمرتبة الجدارة المعرفية', rankEn: 'jadara'  },
+  { value: '2', label: 'المستوى الثاني',  rank: 'بمرتبة الجدارة المعرفية', rankEn: 'jadara'  },
+  { value: '3', label: 'المستوى الثالث',  rank: 'بمرتبة التميّز القانوني',  rankEn: 'tamayoz' },
+];
+
+// المستوى الرابع = دفعة فقط
+const BATCHES = [
+  { value: '1', label: 'الدفعة الأولى'  },
+  { value: '2', label: 'الدفعة الثانية' },
+  { value: '3', label: 'الدفعة الثالثة' },
+  { value: '4', label: 'الدفعة الرابعة' },
 ];
 
 const RANK_STYLES: Record<string, { color: string; colorDark: string; colorLight: string; glow: string; stars: number }> = {
@@ -34,11 +41,10 @@ function generateVerifyCode(): string {
   return `NSR-${year}-${rand}`;
 }
 
-// ─── تحميل خط Cairo من Google Fonts ─────────────────────────────────────────
+// ─── تحميل خط Cairo ───────────────────────────────────────────────────────────
 
 async function loadCairoFont(): Promise<void> {
   try {
-    // تحميل الخط إذا لم يكن محملاً بالفعل
     if (!document.querySelector('#cairo-font-link')) {
       const link = document.createElement('link');
       link.id = 'cairo-font-link';
@@ -46,12 +52,11 @@ async function loadCairoFont(): Promise<void> {
       link.href = 'https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap';
       document.head.appendChild(link);
     }
-    // انتظار تحميل الخط عبر FontFace API
     await document.fonts.load('900 40px Cairo');
     await document.fonts.load('700 24px Cairo');
     await document.fonts.load('400 18px Cairo');
   } catch {
-    // تجاهل خطأ التحميل — سيستخدم الخط الاحتياطي
+    // تجاهل خطأ التحميل
   }
 }
 
@@ -89,7 +94,6 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: num
   return currentY;
 }
 
-// رسم ميزان العدالة بـ Canvas Path (بديل Emoji)
 function drawScales(ctx: CanvasRenderingContext2D, cx: number, cy: number, size: number, color: string) {
   ctx.save();
   ctx.strokeStyle = color;
@@ -97,78 +101,25 @@ function drawScales(ctx: CanvasRenderingContext2D, cx: number, cy: number, size:
   ctx.lineWidth = size * 0.045;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-
   const s = size;
-  // العمود المركزي
-  ctx.beginPath();
-  ctx.moveTo(cx, cy - s * 0.45);
-  ctx.lineTo(cx, cy + s * 0.45);
-  ctx.stroke();
-
-  // القاعدة
-  ctx.beginPath();
-  ctx.moveTo(cx - s * 0.35, cy + s * 0.45);
-  ctx.lineTo(cx + s * 0.35, cy + s * 0.45);
-  ctx.stroke();
-
-  // الذراع الأفقي
-  ctx.beginPath();
-  ctx.moveTo(cx - s * 0.42, cy - s * 0.18);
-  ctx.lineTo(cx + s * 0.42, cy - s * 0.18);
-  ctx.stroke();
-
-  // نقطة التوازن
-  ctx.beginPath();
-  ctx.arc(cx, cy - s * 0.18, s * 0.045, 0, Math.PI * 2);
-  ctx.fill();
-
-  // الكفتان (نصف دائرة)
-  // يسار
-  ctx.beginPath();
-  ctx.moveTo(cx - s * 0.68, cy + s * 0.04);
-  ctx.lineTo(cx - s * 0.16, cy + s * 0.04);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(cx - s * 0.42, cy + s * 0.04, s * 0.26, 0, Math.PI);
-  ctx.stroke();
-
-  // يمين
-  ctx.beginPath();
-  ctx.moveTo(cx + s * 0.16, cy + s * 0.04);
-  ctx.lineTo(cx + s * 0.68, cy + s * 0.04);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(cx + s * 0.42, cy + s * 0.04, s * 0.26, 0, Math.PI);
-  ctx.stroke();
-
-  // خيوط التعليق
+  ctx.beginPath(); ctx.moveTo(cx, cy - s * 0.45); ctx.lineTo(cx, cy + s * 0.45); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx - s * 0.35, cy + s * 0.45); ctx.lineTo(cx + s * 0.35, cy + s * 0.45); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx - s * 0.42, cy - s * 0.18); ctx.lineTo(cx + s * 0.42, cy - s * 0.18); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy - s * 0.18, s * 0.045, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx - s * 0.68, cy + s * 0.04); ctx.lineTo(cx - s * 0.16, cy + s * 0.04); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx - s * 0.42, cy + s * 0.04, s * 0.26, 0, Math.PI); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + s * 0.16, cy + s * 0.04); ctx.lineTo(cx + s * 0.68, cy + s * 0.04); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx + s * 0.42, cy + s * 0.04, s * 0.26, 0, Math.PI); ctx.stroke();
   ctx.lineWidth = size * 0.03;
-  // يسار
-  ctx.beginPath();
-  ctx.moveTo(cx - s * 0.42, cy - s * 0.18);
-  ctx.lineTo(cx - s * 0.68, cy + s * 0.04);
-  ctx.moveTo(cx - s * 0.42, cy - s * 0.18);
-  ctx.lineTo(cx - s * 0.16, cy + s * 0.04);
-  ctx.stroke();
-  // يمين
-  ctx.beginPath();
-  ctx.moveTo(cx + s * 0.42, cy - s * 0.18);
-  ctx.lineTo(cx + s * 0.16, cy + s * 0.04);
-  ctx.moveTo(cx + s * 0.42, cy - s * 0.18);
-  ctx.lineTo(cx + s * 0.68, cy + s * 0.04);
-  ctx.stroke();
-
+  ctx.beginPath(); ctx.moveTo(cx - s * 0.42, cy - s * 0.18); ctx.lineTo(cx - s * 0.68, cy + s * 0.04); ctx.moveTo(cx - s * 0.42, cy - s * 0.18); ctx.lineTo(cx - s * 0.16, cy + s * 0.04); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + s * 0.42, cy - s * 0.18); ctx.lineTo(cx + s * 0.16, cy + s * 0.04); ctx.moveTo(cx + s * 0.42, cy - s * 0.18); ctx.lineTo(cx + s * 0.68, cy + s * 0.04); ctx.stroke();
   ctx.restore();
 }
 
-// رسم نجوم المرتبة
 function drawStars(ctx: CanvasRenderingContext2D, cx: number, cy: number, count: number, color: string, size = 14) {
   const total = count * (size * 2.8);
   let startX = cx - total / 2 + size;
-  for (let i = 0; i < count; i++) {
-    drawStar(ctx, startX, cy, size, color);
-    startX += size * 2.8;
-  }
+  for (let i = 0; i < count; i++) { drawStar(ctx, startX, cy, size, color); startX += size * 2.8; }
 }
 
 function drawStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, color: string) {
@@ -182,9 +133,7 @@ function drawStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: numb
     else ctx.lineTo(cx + r * Math.cos(outerAngle), cy + r * Math.sin(outerAngle));
     ctx.lineTo(cx + (r * 0.42) * Math.cos(innerAngle), cy + (r * 0.42) * Math.sin(innerAngle));
   }
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
+  ctx.closePath(); ctx.fill(); ctx.restore();
 }
 
 // ─── رسم الوثيقة ─────────────────────────────────────────────────────────────
@@ -194,14 +143,16 @@ function drawCertificate(
   data: {
     name: string;
     governorate: string;
+    // للمستويات 1-3: levelLabel + batchLabel
+    // للمستوى الرابع: batchLabel فقط (levelLabel فارغ)
     levelLabel: string;
+    batchLabel: string;
     rank: string;
     rankStyle: typeof RANK_STYLES['jadara'];
     verifyCode: string;
     exportDate: string;
   }
 ) {
-  // دقة عالية 2x
   const SCALE = 2;
   const W = 900, H = 1270;
   canvas.width  = W * SCALE;
@@ -212,393 +163,214 @@ function drawCertificate(
   const ctx = canvas.getContext('2d')!;
   ctx.scale(SCALE, SCALE);
 
-  const { name, governorate, levelLabel, rank, rankStyle, verifyCode, exportDate } = data;
+  const { name, governorate, levelLabel, batchLabel, rank, rankStyle, verifyCode, exportDate } = data;
   const cx = W / 2;
 
-  // ── 1. خلفية كريمية راقية
+  // ── خلفية
   const bg = ctx.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0,    '#fdfaf3');
-  bg.addColorStop(0.15, '#fef9ed');
-  bg.addColorStop(0.5,  '#fefbf0');
-  bg.addColorStop(0.85, '#fef9ed');
-  bg.addColorStop(1,    '#fdfaf3');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, W, H);
+  bg.addColorStop(0, '#fdfaf3'); bg.addColorStop(0.15, '#fef9ed');
+  bg.addColorStop(0.5, '#fefbf0'); bg.addColorStop(0.85, '#fef9ed'); bg.addColorStop(1, '#fdfaf3');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
 
-  // ── 2. زخرفة إسلامية هندسية خفيفة في الخلفية
-  ctx.save();
-  ctx.globalAlpha = 0.028;
-  ctx.strokeStyle = rankStyle.color;
-  ctx.lineWidth = 0.8;
+  // ── زخرفة خلفية
+  ctx.save(); ctx.globalAlpha = 0.028; ctx.strokeStyle = rankStyle.color; ctx.lineWidth = 0.8;
   const step = 80;
-  for (let x = 0; x < W; x += step) {
-    for (let y = 0; y < H; y += step) {
-      // نمط نجمة ثمانية خفيفة
+  for (let x = 0; x < W; x += step) for (let y = 0; y < H; y += step) {
+    ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.stroke();
+    if (x + step / 2 < W && y + step / 2 < H) {
       ctx.beginPath();
-      ctx.arc(x, y, 6, 0, Math.PI * 2);
+      ctx.moveTo(x + step/2 - 8, y + step/2); ctx.lineTo(x + step/2 + 8, y + step/2);
+      ctx.moveTo(x + step/2, y + step/2 - 8); ctx.lineTo(x + step/2, y + step/2 + 8);
       ctx.stroke();
-      if (x + step / 2 < W && y + step / 2 < H) {
-        ctx.beginPath();
-        ctx.moveTo(x + step / 2 - 8, y + step / 2);
-        ctx.lineTo(x + step / 2 + 8, y + step / 2);
-        ctx.moveTo(x + step / 2, y + step / 2 - 8);
-        ctx.lineTo(x + step / 2, y + step / 2 + 8);
-        ctx.stroke();
-      }
     }
   }
   ctx.restore();
 
-  // ── 3. توهج مركزي خفيف
+  // ── توهج مركزي
   const centerGlow = ctx.createRadialGradient(cx, H * 0.42, 0, cx, H * 0.42, 420);
-  centerGlow.addColorStop(0, rankStyle.color + '08');
-  centerGlow.addColorStop(1, 'transparent');
-  ctx.fillStyle = centerGlow;
-  ctx.fillRect(0, 0, W, H);
+  centerGlow.addColorStop(0, rankStyle.color + '08'); centerGlow.addColorStop(1, 'transparent');
+  ctx.fillStyle = centerGlow; ctx.fillRect(0, 0, W, H);
 
-  // ── 4. الإطار الخارجي المزدوج
-  // ظل للإطار
-  ctx.save();
-  ctx.shadowColor = rankStyle.color + '40';
-  ctx.shadowBlur = 18;
-  ctx.strokeStyle = rankStyle.color;
-  ctx.lineWidth = 5;
-  roundRect(ctx, 18, 18, W - 36, H - 36, 4);
-  ctx.stroke();
-  ctx.restore();
+  // ── الإطار الخارجي
+  ctx.save(); ctx.shadowColor = rankStyle.color + '40'; ctx.shadowBlur = 18;
+  ctx.strokeStyle = rankStyle.color; ctx.lineWidth = 5;
+  roundRect(ctx, 18, 18, W - 36, H - 36, 4); ctx.stroke(); ctx.restore();
+  ctx.save(); ctx.strokeStyle = rankStyle.color; ctx.lineWidth = 1.2; ctx.globalAlpha = 0.35;
+  roundRect(ctx, 30, 30, W - 60, H - 60, 3); ctx.stroke(); ctx.restore();
 
-  // إطار داخلي ذهبي رفيع
-  ctx.save();
-  ctx.strokeStyle = rankStyle.color;
-  ctx.lineWidth = 1.2;
-  ctx.globalAlpha = 0.35;
-  roundRect(ctx, 30, 30, W - 60, H - 60, 3);
-  ctx.stroke();
-  ctx.restore();
-
-  // ── 5. زوايا زخرفية مطورة (L + diamond)
+  // ── زوايا زخرفية
   const corners: [number, number, number, number][] = [
-    [24, 24,  1,  1],
-    [W - 24, 24, -1,  1],
-    [24, H - 24,  1, -1],
-    [W - 24, H - 24, -1, -1],
+    [24, 24, 1, 1], [W-24, 24, -1, 1], [24, H-24, 1, -1], [W-24, H-24, -1, -1],
   ];
   corners.forEach(([px, py, dx, dy]) => {
-    ctx.save();
-    ctx.strokeStyle = rankStyle.color;
-    ctx.lineWidth = 2.5;
-    ctx.lineCap = 'round';
-    // L
-    ctx.beginPath();
-    ctx.moveTo(px, py + dy * 44);
-    ctx.lineTo(px, py);
-    ctx.lineTo(px + dx * 44, py);
-    ctx.stroke();
-    // نقطة صغيرة في الزاوية
+    ctx.save(); ctx.strokeStyle = rankStyle.color; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(px, py + dy*44); ctx.lineTo(px, py); ctx.lineTo(px + dx*44, py); ctx.stroke();
     ctx.fillStyle = rankStyle.color;
-    ctx.beginPath();
-    ctx.arc(px + dx * 52, py, 3.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(px, py + dy * 52, 3.5, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(px + dx*52, py, 3.5, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(px, py + dy*52, 3.5, 0, Math.PI*2); ctx.fill();
     ctx.restore();
   });
 
-  // ── 6. شريط علوي داكن راقٍ
+  // ── شريط علوي
   const topBar = ctx.createLinearGradient(0, 48, 0, 100);
-  topBar.addColorStop(0, rankStyle.colorDark + 'ee');
-  topBar.addColorStop(1, rankStyle.color + 'cc');
-  ctx.save();
-  ctx.fillStyle = topBar;
-  ctx.globalAlpha = 0.92;
-  roundRect(ctx, 36, 36, W - 72, 64, 3);
-  ctx.fill();
-  ctx.restore();
-
-  // بسملة داخل الشريط
-  ctx.font = '900 22px Cairo, serif';
-  ctx.fillStyle = '#fff';
-  ctx.textAlign = 'center';
+  topBar.addColorStop(0, rankStyle.colorDark + 'ee'); topBar.addColorStop(1, rankStyle.color + 'cc');
+  ctx.save(); ctx.fillStyle = topBar; ctx.globalAlpha = 0.92;
+  roundRect(ctx, 36, 36, W-72, 64, 3); ctx.fill(); ctx.restore();
+  ctx.font = '900 22px Cairo, serif'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
   ctx.fillText('بسم الله الرحمن الرحيم', cx, 78);
 
-  // ── 7. دائرة الشعار
+  // ── دائرة الشعار
   const logoY = 172;
-  ctx.save();
-  ctx.shadowColor = rankStyle.glow;
-  ctx.shadowBlur = 32;
-  // حلقة خارجية
-  ctx.strokeStyle = rankStyle.color + '55';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(cx, logoY, 72, 0, Math.PI * 2);
-  ctx.stroke();
-  // تدرج داخلي
-  const logoGrad = ctx.createRadialGradient(cx - 12, logoY - 12, 0, cx, logoY, 62);
-  logoGrad.addColorStop(0, rankStyle.color + 'ee');
-  logoGrad.addColorStop(0.6, rankStyle.color);
-  logoGrad.addColorStop(1, rankStyle.colorDark);
-  ctx.fillStyle = logoGrad;
-  ctx.beginPath();
-  ctx.arc(cx, logoY, 62, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-
-  // ميزان العدالة (Canvas Path — لا Emoji)
+  ctx.save(); ctx.shadowColor = rankStyle.glow; ctx.shadowBlur = 32;
+  ctx.strokeStyle = rankStyle.color + '55'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(cx, logoY, 72, 0, Math.PI*2); ctx.stroke();
+  const logoGrad = ctx.createRadialGradient(cx-12, logoY-12, 0, cx, logoY, 62);
+  logoGrad.addColorStop(0, rankStyle.color + 'ee'); logoGrad.addColorStop(0.6, rankStyle.color); logoGrad.addColorStop(1, rankStyle.colorDark);
+  ctx.fillStyle = logoGrad; ctx.beginPath(); ctx.arc(cx, logoY, 62, 0, Math.PI*2); ctx.fill(); ctx.restore();
   drawScales(ctx, cx, logoY, 78, '#ffffff');
 
-  // ── 8. اسم المنصة
-  ctx.font = '900 30px Cairo, serif';
-  ctx.fillStyle = rankStyle.colorDark;
-  ctx.textAlign = 'center';
+  // ── اسم المنصة
+  ctx.font = '900 30px Cairo, serif'; ctx.fillStyle = rankStyle.colorDark; ctx.textAlign = 'center';
   ctx.fillText('منصة الناصر', cx, 268);
-
-  ctx.font = '400 13px Cairo, serif';
-  ctx.fillStyle = '#a8a29e';
-  ctx.letterSpacing = '0.15em';
+  ctx.font = '400 13px Cairo, serif'; ctx.fillStyle = '#a8a29e';
   ctx.fillText('منصة الناصر القانونية  —  alnaseer.org', cx, 290);
-  ctx.letterSpacing = '0';
 
-  // فاصل زخرفي
   const drawDivider = (y: number, opacity = 1, width = 160) => {
-    ctx.save();
-    ctx.globalAlpha = opacity;
-    const g = ctx.createLinearGradient(cx - width, 0, cx + width, 0);
-    g.addColorStop(0,   'transparent');
-    g.addColorStop(0.3, rankStyle.color + '66');
-    g.addColorStop(0.5, rankStyle.color);
-    g.addColorStop(0.7, rankStyle.color + '66');
-    g.addColorStop(1,   'transparent');
-    ctx.strokeStyle = g;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(cx - width, y);
-    ctx.lineTo(cx + width, y);
-    ctx.stroke();
-    // نقطة مركزية
-    ctx.fillStyle = rankStyle.color;
-    ctx.beginPath();
-    ctx.arc(cx, y, 3, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.save(); ctx.globalAlpha = opacity;
+    const g = ctx.createLinearGradient(cx-width, 0, cx+width, 0);
+    g.addColorStop(0,'transparent'); g.addColorStop(0.3, rankStyle.color+'66');
+    g.addColorStop(0.5, rankStyle.color); g.addColorStop(0.7, rankStyle.color+'66'); g.addColorStop(1,'transparent');
+    ctx.strokeStyle = g; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(cx-width, y); ctx.lineTo(cx+width, y); ctx.stroke();
+    ctx.fillStyle = rankStyle.color; ctx.beginPath(); ctx.arc(cx, y, 3, 0, Math.PI*2); ctx.fill();
     ctx.restore();
   };
   drawDivider(308, 0.8, 140);
 
-  // ── 9. عنوان "لوحة شرف"
-  ctx.save();
-  ctx.font = '900 58px Cairo, serif';
-  // ظل نصي
-  ctx.shadowColor = rankStyle.color + '35';
-  ctx.shadowBlur = 16;
-  ctx.shadowOffsetY = 3;
-  ctx.fillStyle = '#1c1917';
-  ctx.textAlign = 'center';
-  ctx.fillText('لوحة شرف', cx, 390);
-  ctx.restore();
+  // ── عنوان "لوحة شرف"
+  ctx.save(); ctx.font = '900 58px Cairo, serif';
+  ctx.shadowColor = rankStyle.color+'35'; ctx.shadowBlur = 16; ctx.shadowOffsetY = 3;
+  ctx.fillStyle = '#1c1917'; ctx.textAlign = 'center';
+  ctx.fillText('لوحة شرف', cx, 390); ctx.restore();
 
-  // ── 10. شريط المرتبة المطوّر
-  // نجوم المرتبة — فوق الشريط
+  // ── شريط المرتبة
   const rankY = 416;
-  drawStars(ctx, cx, rankY - 10, rankStyle.stars, '#fbbf24', 10);
+  drawStars(ctx, cx, rankY-10, rankStyle.stars, '#fbbf24', 10);
+  ctx.save(); ctx.shadowColor = rankStyle.glow; ctx.shadowBlur = 20;
+  const rankGrad = ctx.createLinearGradient(cx-210, 0, cx+210, 0);
+  rankGrad.addColorStop(0, rankStyle.colorDark); rankGrad.addColorStop(0.5, rankStyle.color); rankGrad.addColorStop(1, rankStyle.colorDark);
+  ctx.fillStyle = rankGrad; roundRect(ctx, cx-210, rankY, 420, 46, 23); ctx.fill(); ctx.restore();
+  ctx.font = '700 20px Cairo, serif'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+  ctx.fillText(rank, cx, rankY+31);
 
-  // شريط المرتبة — النص وحده داخله
-  ctx.save();
-  ctx.shadowColor = rankStyle.glow;
-  ctx.shadowBlur = 20;
-  const rankGrad = ctx.createLinearGradient(cx - 210, 0, cx + 210, 0);
-  rankGrad.addColorStop(0,   rankStyle.colorDark);
-  rankGrad.addColorStop(0.5, rankStyle.color);
-  rankGrad.addColorStop(1,   rankStyle.colorDark);
-  ctx.fillStyle = rankGrad;
-  roundRect(ctx, cx - 210, rankY, 420, 46, 23);
-  ctx.fill();
-  ctx.restore();
-
-  ctx.font = '700 20px Cairo, serif';
-  ctx.fillStyle = '#fff';
-  ctx.textAlign = 'center';
-  ctx.fillText(rank, cx, rankY + 31);
-
-  // ── 11. نص التقديم
-  ctx.font = '400 18px Cairo, serif';
-  ctx.fillStyle = '#78716c';
-  ctx.textAlign = 'center';
+  // ── نص التقديم
+  ctx.font = '400 18px Cairo, serif'; ctx.fillStyle = '#78716c'; ctx.textAlign = 'center';
   ctx.fillText('تتقدم إدارة منصة الناصر القانونية بجزيل الشكر وفائق الامتنان للزميل الفاضل:', cx, 496);
 
-  // ── 12. اسم الطالب — القلب البصري
-  ctx.save();
-  ctx.shadowColor = rankStyle.glow;
-  ctx.shadowBlur = 28;
-  ctx.font = '900 58px Cairo, serif';
-  ctx.fillStyle = rankStyle.color;
-  ctx.textAlign = 'center';
-  ctx.fillText(name, cx, 578);
-  ctx.restore();
+  // ── اسم الطالب
+  ctx.save(); ctx.shadowColor = rankStyle.glow; ctx.shadowBlur = 28;
+  ctx.font = '900 58px Cairo, serif'; ctx.fillStyle = rankStyle.color; ctx.textAlign = 'center';
+  ctx.fillText(name, cx, 578); ctx.restore();
+  ctx.save(); ctx.globalAlpha = 0.3;
+  const underline = ctx.createLinearGradient(cx-300, 0, cx+300, 0);
+  underline.addColorStop(0,'transparent'); underline.addColorStop(0.3, rankStyle.color);
+  underline.addColorStop(0.7, rankStyle.color); underline.addColorStop(1,'transparent');
+  ctx.strokeStyle = underline; ctx.lineWidth = 1.5; ctx.setLineDash([10,7]);
+  ctx.beginPath(); ctx.moveTo(cx-300, 594); ctx.lineTo(cx+300, 594); ctx.stroke();
+  ctx.setLineDash([]); ctx.restore();
 
-  // خط تحت الاسم متدرج
-  ctx.save();
-  ctx.globalAlpha = 0.3;
-  const underline = ctx.createLinearGradient(cx - 300, 0, cx + 300, 0);
-  underline.addColorStop(0,   'transparent');
-  underline.addColorStop(0.3, rankStyle.color);
-  underline.addColorStop(0.7, rankStyle.color);
-  underline.addColorStop(1,   'transparent');
-  ctx.strokeStyle = underline;
-  ctx.lineWidth = 1.5;
-  ctx.setLineDash([10, 7]);
-  ctx.beginPath();
-  ctx.moveTo(cx - 300, 594);
-  ctx.lineTo(cx + 300, 594);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.restore();
+  // ── المستوى و/أو الدفعة
+  ctx.font = '600 20px Cairo, serif'; ctx.fillStyle = '#57534e'; ctx.textAlign = 'center';
+  if (levelLabel) {
+    // المستويات 1-3: يظهر المستوى والدفعة
+    ctx.fillText(`${levelLabel}  —  ${batchLabel}`, cx, 634);
+  } else {
+    // المستوى الرابع: يظهر الدفعة فقط
+    ctx.fillText(batchLabel, cx, 634);
+  }
 
-  // ── 13. التخصص والمستوى
-  ctx.font = '600 20px Cairo, serif';
-  ctx.fillStyle = '#57534e';
-  ctx.textAlign = 'center';
-  ctx.fillText(levelLabel, cx, 634);
-
-  // ── 14. فاصل
+  // ── فاصل
   drawDivider(656, 0.5, 220);
 
-  // ── 15. النص التقديري
-  ctx.font = '400 18px Cairo, serif';
-  ctx.fillStyle = '#44403c';
-  ctx.textAlign = 'center';
+  // ── النص التقديري
+  ctx.font = '400 18px Cairo, serif'; ctx.fillStyle = '#44403c'; ctx.textAlign = 'center';
   const line1End = wrapText(ctx,
     'نُقدّر عالياً إسهاماته المتواصلة ومثابرته المتميزة خلال مسيرته التعليمية في المنصة، وإتمامه للرحلة المعرفية بشغف وتفوق، مما أثرى مجتمعنا القانوني الرقمي.',
     cx, 688, 760, 34);
-  wrapText(ctx,
-    'لذا، كان لزاماً علينا أن نتقدم له بجزيل الشكر والتقدير،',
-    cx, line1End + 52, 760, 34);
-  wrapText(ctx,
-    'متمنين له مستقبلاً مهنياً زاهراً في ميدان العدالة والقانون.',
-    cx, line1End + 86, 760, 34);
+  wrapText(ctx, 'لذا، كان لزاماً علينا أن نتقدم له بجزيل الشكر والتقدير،', cx, line1End+52, 760, 34);
+  wrapText(ctx, 'متمنين له مستقبلاً مهنياً زاهراً في ميدان العدالة والقانون.', cx, line1End+86, 760, 34);
 
-  // ── 16. فاصل قبل التوقيع
+  // ── فاصل قبل التوقيع
   drawDivider(878, 0.6, 240);
 
-  // ── 17. التاريخ / التوقيع / رقم التحقق
-  const col1 = W * 0.18, col2 = W * 0.5, col3 = W * 0.82;
-
-  // عناوين الأعمدة
-  ctx.font = '400 13px Cairo, serif';
-  ctx.fillStyle = '#a8a29e';
-  ctx.textAlign = 'center';
+  // ── التاريخ / التوقيع / رقم التحقق
+  const col1 = W*0.18, col2 = W*0.5, col3 = W*0.82;
+  ctx.font = '400 13px Cairo, serif'; ctx.fillStyle = '#a8a29e'; ctx.textAlign = 'center';
   ctx.fillText('التاريخ والمكان', col1, 904);
   ctx.fillText('مُصدَر من', col2, 904);
   ctx.fillText('رقم التحقق', col3, 904);
-
-  // خط فاصل خفيف بين العناوين والقيم
-  ctx.save();
-  ctx.strokeStyle = '#e7e5e4';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(44, 912);
-  ctx.lineTo(W - 44, 912);
-  ctx.stroke();
-  ctx.restore();
-
-  // قيم العمود الأول: التاريخ + المدينة
-  ctx.font = '700 17px Cairo, serif';
-  ctx.fillStyle = '#1c1917';
-  ctx.textAlign = 'center';
+  ctx.save(); ctx.strokeStyle = '#e7e5e4'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(44, 912); ctx.lineTo(W-44, 912); ctx.stroke(); ctx.restore();
+  ctx.font = '700 17px Cairo, serif'; ctx.fillStyle = '#1c1917'; ctx.textAlign = 'center';
   ctx.fillText(exportDate, col1, 936);
-  ctx.font = '400 14px Cairo, serif';
-  ctx.fillStyle = '#78716c';
+  ctx.font = '400 14px Cairo, serif'; ctx.fillStyle = '#78716c';
   ctx.fillText(governorate, col1, 956);
-
-  // توقيع العمود الثاني
-  ctx.save();
-  ctx.font = '700 22px Cairo, serif';
-  ctx.fillStyle = rankStyle.color;
-  ctx.shadowColor = rankStyle.glow;
-  ctx.shadowBlur = 8;
-  ctx.textAlign = 'center';
-  ctx.fillText('أ / معين الناصر', col2, 936);
-  ctx.restore();
-  ctx.font = '400 13px Cairo, serif';
-  ctx.fillStyle = '#a8a29e';
+  ctx.save(); ctx.font = '700 22px Cairo, serif'; ctx.fillStyle = rankStyle.color;
+  ctx.shadowColor = rankStyle.glow; ctx.shadowBlur = 8; ctx.textAlign = 'center';
+  ctx.fillText('أ / معين الناصر', col2, 936); ctx.restore();
+  ctx.font = '400 13px Cairo, serif'; ctx.fillStyle = '#a8a29e';
   ctx.fillText('منصة الناصر القانونية', col2, 956);
-
-  // رقم التحقق
-  ctx.font = 'bold 14px monospace';
-  ctx.fillStyle = '#1c1917';
+  ctx.font = 'bold 14px monospace'; ctx.fillStyle = '#1c1917';
   ctx.fillText(verifyCode, col3, 936);
-  // QR placeholder — دائرة صغيرة مع نقطة
-  ctx.save();
-  ctx.strokeStyle = rankStyle.color + '60';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(col3 - 20, 943, 40, 40);
-  ctx.font = '400 10px Cairo, serif';
-  ctx.fillStyle = '#a8a29e';
-  ctx.fillText('تحقق', col3, 968);
-  ctx.restore();
+  ctx.save(); ctx.strokeStyle = rankStyle.color+'60'; ctx.lineWidth = 1;
+  ctx.strokeRect(col3-20, 943, 40, 40);
+  ctx.font = '400 10px Cairo, serif'; ctx.fillStyle = '#a8a29e';
+  ctx.fillText('تحقق', col3, 968); ctx.restore();
 
-  // ── 18. ختم رسمي في الأسفل
+  // ── ختم رسمي
   const sealY = 1150;
-  ctx.save();
-  // الدائرة الخارجية
-  ctx.strokeStyle = rankStyle.color;
-  ctx.lineWidth = 2.5;
-  ctx.globalAlpha = 0.7;
-  ctx.beginPath();
-  ctx.arc(cx, sealY, 54, 0, Math.PI * 2);
-  ctx.stroke();
-  // الدائرة الداخلية
-  ctx.lineWidth = 1;
-  ctx.globalAlpha = 0.4;
-  ctx.beginPath();
-  ctx.arc(cx, sealY, 46, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.restore();
-
-  // ميزان مصغر داخل الختم
-  ctx.save();
-  ctx.globalAlpha = 0.65;
-  drawScales(ctx, cx, sealY - 4, 52, rankStyle.color);
-  ctx.restore();
-
-  // نص "منصة الناصر" على قوس داخل الختم
-  ctx.save();
-  ctx.font = '600 11px Cairo, serif';
-  ctx.fillStyle = rankStyle.color;
-  ctx.globalAlpha = 0.8;
-  ctx.textAlign = 'center';
-  ctx.fillText('منصة الناصر القانونية', cx, sealY + 42);
-  ctx.restore();
-
-  // ── 19. نجمة ذهبية على جانبي الختم
-  drawStar(ctx, cx - 78, sealY, 8, rankStyle.color + 'aa');
-  drawStar(ctx, cx + 78, sealY, 8, rankStyle.color + 'aa');
+  ctx.save(); ctx.strokeStyle = rankStyle.color; ctx.lineWidth = 2.5; ctx.globalAlpha = 0.7;
+  ctx.beginPath(); ctx.arc(cx, sealY, 54, 0, Math.PI*2); ctx.stroke();
+  ctx.lineWidth = 1; ctx.globalAlpha = 0.4;
+  ctx.beginPath(); ctx.arc(cx, sealY, 46, 0, Math.PI*2); ctx.stroke(); ctx.restore();
+  ctx.save(); ctx.globalAlpha = 0.65; drawScales(ctx, cx, sealY-4, 52, rankStyle.color); ctx.restore();
+  ctx.save(); ctx.font = '600 11px Cairo, serif'; ctx.fillStyle = rankStyle.color;
+  ctx.globalAlpha = 0.8; ctx.textAlign = 'center';
+  ctx.fillText('منصة الناصر القانونية', cx, sealY+42); ctx.restore();
+  drawStar(ctx, cx-78, sealY, 8, rankStyle.color+'aa');
+  drawStar(ctx, cx+78, sealY, 8, rankStyle.color+'aa');
 }
 
 // ─── الصفحة الرئيسية ─────────────────────────────────────────────────────────
 
 export default function HonorCertificate() {
-  const [form, setForm]       = useState({ name: '', governorate: '', level: '' });
+  const [form, setForm]       = useState({ name: '', governorate: '', level: '', batch: '' });
   const [errors, setErrors]   = useState<Record<string, string>>({});
   const [step, setStep]       = useState<'form' | 'preview' | 'done'>('form');
   const [loading, setLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
   const [verifyCode] = useState(generateVerifyCode);
-  const [fontReady, setFontReady] = useState(false);
+  const [fontReady, setFontReady]   = useState(false);
+
+  // المستوى الرابع = دفعة فقط (level === '4')
+  const isFourth = form.level === '4';
 
   const selectedLevel = LEVELS.find(l => l.value === form.level);
-  const rankStyle     = selectedLevel ? RANK_STYLES[selectedLevel.rankEn] : RANK_STYLES['jadara'];
-  const exportDate    = new Date().toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric' });
+  // ترتيب المرتبة: المستويات 1-3 حسب اختيارهم، المستوى الرابع = sharaf دائماً
+  const rankEn    = isFourth ? 'sharaf' : (selectedLevel?.rankEn ?? 'jadara');
+  const rankStyle = RANK_STYLES[rankEn];
+  const rankText  = isFourth ? 'بمرتبة الشرف الرفيع' : (selectedLevel?.rank ?? 'بمرتبة الجدارة المعرفية');
 
-  // تحميل الخط عند فتح الصفحة
-  useEffect(() => {
-    loadCairoFont().then(() => setFontReady(true));
-  }, []);
+  const exportDate = new Date().toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  useEffect(() => { loadCairoFont().then(() => setFontReady(true)); }, []);
 
   function validate() {
     const e: Record<string, string> = {};
-    if (!form.name.trim()) e.name = 'الاسم مطلوب';
-    if (!form.governorate) e.governorate = 'المحافظة مطلوبة';
-    if (!form.level)       e.level = 'المستوى مطلوب';
+    if (!form.name.trim())   e.name = 'الاسم مطلوب';
+    if (!form.governorate)   e.governorate = 'المحافظة مطلوبة';
+    if (!form.level)         e.level = 'المستوى مطلوب';
+    if (!form.batch)         e.batch = 'الدفعة مطلوبة';
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -608,11 +380,14 @@ export default function HonorCertificate() {
     setLoading(true);
     setTimeout(() => {
       const canvas = document.createElement('canvas');
+      const selectedBatch = BATCHES.find(b => b.value === form.batch);
       drawCertificate(canvas, {
         name: form.name.trim(),
         governorate: form.governorate,
-        levelLabel: selectedLevel?.label || '',
-        rank: selectedLevel?.rank || '',
+        // المستوى الرابع: levelLabel فارغ — الدفعة فقط
+        levelLabel: isFourth ? '' : (selectedLevel?.label ?? ''),
+        batchLabel: selectedBatch?.label ?? '',
+        rank: rankText,
         rankStyle,
         verifyCode,
         exportDate,
@@ -638,7 +413,6 @@ export default function HonorCertificate() {
       <div dir="rtl" className="min-h-screen bg-gradient-to-br from-amber-50 via-stone-50 to-yellow-50 flex items-center justify-center p-4">
         <div className="w-full max-w-lg">
 
-          {/* رأس الصفحة */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-full shadow-xl mb-4"
               style={{ background: `linear-gradient(135deg, ${rankStyle.colorDark}, ${rankStyle.color})` }}>
@@ -681,12 +455,13 @@ export default function HonorCertificate() {
               {errors.governorate && <p className="text-red-400 text-xs mt-1.5">{errors.governorate}</p>}
             </div>
 
-            {/* المستوى */}
-            <div className="mb-7">
+            {/* المستوى — الأول والثاني والثالث والرابع */}
+            <div className="mb-5">
               <label className="flex items-center gap-2 text-sm font-bold text-stone-700 mb-3">
                 <GraduationCap className="w-4 h-4" /> المستوى الدراسي <span className="text-red-400">*</span>
               </label>
               <div className="grid grid-cols-2 gap-2.5">
+                {/* المستويات 1-3 */}
                 {LEVELS.map(l => {
                   const rs = RANK_STYLES[l.rankEn];
                   const isSelected = form.level === l.value;
@@ -697,23 +472,63 @@ export default function HonorCertificate() {
                       onClick={() => setForm(f => ({ ...f, level: l.value }))}
                       className="px-3 py-3 rounded-xl border-2 text-sm font-semibold transition-all text-right"
                       style={isSelected ? {
-                        borderColor: rs.color,
-                        backgroundColor: rs.colorLight,
-                        color: rs.colorDark,
-                        boxShadow: `0 0 0 3px ${rs.color}22`,
-                      } : {
-                        borderColor: '#e7e5e4',
-                        backgroundColor: '#fafaf9',
-                        color: '#57534e',
-                      }}
+                        borderColor: rs.color, backgroundColor: rs.colorLight,
+                        color: rs.colorDark, boxShadow: `0 0 0 3px ${rs.color}22`,
+                      } : { borderColor: '#e7e5e4', backgroundColor: '#fafaf9', color: '#57534e' }}
                     >
                       {l.label}
                       <div className="text-xs font-normal mt-1 opacity-60 truncate">{l.rank}</div>
                     </button>
                   );
                 })}
+                {/* المستوى الرابع */}
+                {(() => {
+                  const rs = RANK_STYLES['sharaf'];
+                  const isSelected = form.level === '4';
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, level: '4' }))}
+                      className="px-3 py-3 rounded-xl border-2 text-sm font-semibold transition-all text-right"
+                      style={isSelected ? {
+                        borderColor: rs.color, backgroundColor: rs.colorLight,
+                        color: rs.colorDark, boxShadow: `0 0 0 3px ${rs.color}22`,
+                      } : { borderColor: '#e7e5e4', backgroundColor: '#fafaf9', color: '#57534e' }}
+                    >
+                      المستوى الرابع
+                      <div className="text-xs font-normal mt-1 opacity-60 truncate">بمرتبة الشرف الرفيع</div>
+                    </button>
+                  );
+                })()}
               </div>
               {errors.level && <p className="text-red-400 text-xs mt-1.5">{errors.level}</p>}
+            </div>
+
+            {/* الدفعة — تظهر دائماً */}
+            <div className="mb-7">
+              <label className="flex items-center gap-2 text-sm font-bold text-stone-700 mb-3">
+                <GraduationCap className="w-4 h-4" /> الدفعة <span className="text-red-400">*</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2.5">
+                {BATCHES.map(b => {
+                  const isSelected = form.batch === b.value;
+                  return (
+                    <button
+                      key={b.value}
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, batch: b.value }))}
+                      className="px-3 py-3 rounded-xl border-2 text-sm font-semibold transition-all text-right"
+                      style={isSelected ? {
+                        borderColor: rankStyle.color, backgroundColor: rankStyle.colorLight,
+                        color: rankStyle.colorDark, boxShadow: `0 0 0 3px ${rankStyle.color}22`,
+                      } : { borderColor: '#e7e5e4', backgroundColor: '#fafaf9', color: '#57534e' }}
+                    >
+                      {b.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {errors.batch && <p className="text-red-400 text-xs mt-1.5">{errors.batch}</p>}
             </div>
 
             <button
@@ -737,12 +552,9 @@ export default function HonorCertificate() {
 
   return (
     <div dir="rtl" className="min-h-screen bg-stone-950 flex flex-col items-center p-4 gap-5">
-
       <div className="flex items-center gap-3 w-full max-w-3xl pt-4">
-        <button
-          onClick={() => setStep('form')}
-          className="px-5 py-2.5 rounded-xl bg-stone-800 text-stone-200 text-sm hover:bg-stone-700 transition border border-stone-700"
-        >
+        <button onClick={() => setStep('form')}
+          className="px-5 py-2.5 rounded-xl bg-stone-800 text-stone-200 text-sm hover:bg-stone-700 transition border border-stone-700">
           ← تعديل
         </button>
         <div className="flex-1 text-center text-stone-400 text-sm">
@@ -764,12 +576,9 @@ export default function HonorCertificate() {
       </div>
 
       {previewUrl && (
-        <img
-          src={previewUrl}
-          alt="وثيقة الشرف"
+        <img src={previewUrl} alt="وثيقة الشرف"
           className="rounded-xl shadow-2xl max-w-full ring-1 ring-white/10"
-          style={{ maxWidth: '780px', width: '100%' }}
-        />
+          style={{ maxWidth: '780px', width: '100%' }} />
       )}
 
       {step === 'done' && (
