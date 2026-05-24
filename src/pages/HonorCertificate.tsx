@@ -809,12 +809,34 @@ export default function HonorCertificate() {
       </div>
 
       {previewUrl && (
-        <img
-          src={previewUrl}
-          alt="وثيقة الشرف"
-          className="rounded-xl shadow-2xl max-w-full ring-1 ring-white/10"
-          style={{ maxWidth: '780px', width: '100%' }}
-        />
+        <div className="relative rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10" style={{ maxWidth: '780px', width: '100%' }}>
+          <img
+            src={previewUrl}
+            alt="وثيقة الشرف"
+            className="w-full"
+          />
+          {/* طبقة التشويش — تغطي كل شيء ما عدا الاسم */}
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              top: '42%',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backdropFilter: 'blur(7px)',
+              WebkitBackdropFilter: 'blur(7px)',
+              maskImage: 'linear-gradient(to bottom, transparent 0%, black 18%)',
+              WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 18%)',
+              background: 'linear-gradient(to bottom, transparent 0%, rgba(10,10,10,0.15) 30%, rgba(10,10,10,0.4) 100%)',
+            }}
+          />
+          {/* نص تنبيه */}
+          <div className="absolute bottom-6 left-0 right-0 flex justify-center pointer-events-none">
+            <span className="bg-black/60 text-white/80 text-xs font-bold px-4 py-2 rounded-full backdrop-blur-sm border border-white/10">
+              🔒 أرسل طلبك للحصول على الوثيقة كاملة
+            </span>
+          </div>
+        </div>
       )}
 
       {step === 'done' && (
