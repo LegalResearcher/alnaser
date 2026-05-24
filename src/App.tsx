@@ -32,7 +32,8 @@ const ChallengePage    = lazy(() => import("./pages/ChallengePage"));
 const FeaturesPage     = lazy(() => import("./pages/Features"));
 const SuggestQuestion  = lazy(() => import("./pages/SuggestQuestion"));
 const SharedQuestion   = lazy(() => import("./pages/SharedQuestion"));
-const HonorCertificate = lazy(() => import("./pages/HonorCertificate")); // ← وثيقة الشرف
+const HonorCertificate    = lazy(() => import("./pages/HonorCertificate"));    // ← وثيقة الشرف (الجديدة)
+const HonorCertificateOld = lazy(() => import("./pages/HonorCertificateOld")); // ← وثيقة الشرف (القديمة)
 
 // صفحات الإدارة — Lazy Loading
 const AdminLogin            = lazy(() => import("./pages/admin/AdminLogin"));
@@ -103,7 +104,8 @@ const App = () => (
                     <Route path="/challenge/:sessionId" element={<ChallengePage />} />
                     <Route path="/features"            element={<FeaturesPage />} />
                     <Route path="/suggest"             element={<SuggestQuestion />} />
-                    <Route path="/honor-certificate"   element={<HonorCertificate />} /> {/* ← وثيقة الشرف */}
+                    <Route path="/honor-certificate"   element={<HonorCertificate />} />
+                    <Route path="/honor-v1"            element={<HonorCertificateOld />} />
 
                     {/* ── غرف المنافسة الجماعية ── */}
                     <Route path="/battle/create"  element={<BattleCreate />} />
