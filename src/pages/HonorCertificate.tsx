@@ -14,7 +14,7 @@ const LEVELS = [
   { value: '1', label: 'المستوى الأول',                                    rank: 'بمرتبة الجدارة المعرفية', rankEn: 'jadara'  },
   { value: '2', label: 'المستوى الثاني',                                   rank: 'بمرتبة الجدارة المعرفية', rankEn: 'jadara'  },
   { value: '3', label: 'المستوى الثالث',                                   rank: 'بمرتبة التميّز القانوني', rankEn: 'tamayoz' },
-  { value: '4', label: 'خريج تخصص الشريعة والقانون — المستوى الرابع',     rank: 'بمرتبة الشرف الرفيع',    rankEn: 'sharaf'  },
+  { value: '4', label: 'خريج الشريعة والقانون — المستوى الرابع',     rank: 'بمرتبة الشرف الرفيع',    rankEn: 'sharaf'  },
 ];
 
 const RANK_STYLES: Record<string, { color: string; colorDark: string; colorLight: string; glow: string; stars: number }> = {
@@ -467,17 +467,14 @@ function drawCertificate(
   ctx.fillStyle = '#44403c';
   ctx.textAlign = 'center';
   const line1End = wrapText(ctx,
-    'نُقدّر عالياً إسهاماته المتواصلة ومثابرته المتميزة خلال مسيرته التعليمية في المنصة،',
+    'نُقدّر عالياً إسهاماته المتواصلة ومثابرته المتميزة خلال مسيرته التعليمية في المنصة، وإتمامه للرحلة المعرفية بشغف وتفوق، مما أثرى مجتمعنا القانوني الرقمي.',
     cx, 688, 760, 34);
   wrapText(ctx,
-    'واجتيازه متطلبات هذا المستوى بشغفٍ وتفوق، مما أثرى مجتمعنا القانوني الرقمي.',
-    cx, line1End + 34, 760, 34);
-  wrapText(ctx,
     'لذا، كان لزاماً علينا أن نتقدم له بجزيل الشكر والتقدير،',
-    cx, line1End + 106, 760, 34);
+    cx, line1End + 52, 760, 34);
   wrapText(ctx,
     'متمنين له مستقبلاً مهنياً زاهراً في ميدان العدالة والقانون.',
-    cx, line1End + 140, 760, 34);
+    cx, line1End + 86, 760, 34);
 
   // ── 16. فاصل قبل التوقيع
   drawDivider(878, 0.6, 240);
