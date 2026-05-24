@@ -640,7 +640,7 @@ export default function HonorCertificate() {
       `📱 رقم الهاتف: ${form.phone.trim()}\n` +
       `🔑 رقم التحقق: ${verifyCode}`
     );
-    window.open(\`https://t.me/MuenAlnaser?text=\${msg}\`, '_blank');
+    window.open(`https://t.me/MuenAlnaser?text=${msg}`, '_blank');
     setStep('done');
   }
 
