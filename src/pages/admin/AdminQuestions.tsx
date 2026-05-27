@@ -812,6 +812,46 @@ const AdminQuestions = () => {
                 size="sm"
                 onClick={() => {
                   if (!filteredQuestions.length) return;
+                  const _subjectNameJson = subjects.find(s => s.id === selectedSubject)?.name || 'بنك الأسئلة';
+
+                  // ========== كل السنوات + نموذج محدد → ملف منفصل لكل سنة ==========
+                  if (!selectedYear && !isTrialSelected) {
+                    // جمع السنوات الموجودة فعلاً في البيانات
+                    const yearsInData = Array.from(new Set(filteredQuestions.map(q => q.exam_year).filter(Boolean))).sort() as number[];
+                    if (yearsInData.length === 0) {
+                      // لا توجد أسئلة مرتبطة بسنوات — تصدير ملف واحد
+                    } else {
+                      const _formNameJson = EXAM_FORMS.find(f => f.id === selectedExamForm)?.name || '';
+                      yearsInData.forEach(year => {
+                        const yearQuestions = filteredQuestions.filter(q => q.exam_year === year);
+                        if (!yearQuestions.length) return;
+                        const exportData = yearQuestions.map(q => ({
+                          question_text: q.question_text,
+                          option_a: q.option_a,
+                          option_b: q.option_b,
+                          option_c: q.option_c,
+                          option_d: q.option_d,
+                          correct_option: q.correct_option,
+                          hint: (q as any).hint || '',
+                          explanation: (q as any).explanation || '',
+                          exam_year: q.exam_year || '',
+                          exam_form: (q as any).exam_form || 'General',
+                        }));
+                        const filename = [_subjectNameJson, year.toString(), _formNameJson].filter(Boolean).join(' - ');
+                        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `${filename}.json`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      });
+                      toast({ title: `✅ تم تصدير ${yearsInData.length} ملف JSON`, description: `ملف منفصل لكل سنة: ${yearsInData.join('، ')}` });
+                      return;
+                    }
+                  }
+
+                  // ========== الحالة العادية: سنة محددة أو نماذج تجريبية → ملف واحد ==========
                   const exportData = filteredQuestions.map(q => ({
                     question_text: q.question_text,
                     option_a: q.option_a,
@@ -824,7 +864,6 @@ const AdminQuestions = () => {
                     exam_year: q.exam_year || '',
                     exam_form: (q as any).exam_form || 'General',
                   }));
-                  const _subjectNameJson = subjects.find(s => s.id === selectedSubject)?.name || 'بنك الأسئلة';
                   const _yearJson = selectedYear ? `${selectedYear}` : 'كل السنوات';
                   const _formNameJson = isTrialSelected
                     ? (allTrialForms.find(f => f.id === selectedTrialModel)?.name || 'أسئلة تجريبية')
@@ -850,9 +889,11 @@ const AdminQuestions = () => {
                 size="sm"
                 onClick={() => {
                   if (!filteredQuestions.length) return;
-                  const qs = filteredQuestions;
+
                   const subjectName = subjects.find(s => s.id === selectedSubject)?.name || 'بنك الأسئلة';
-                  const year = selectedYear || 'كل السنوات';
+
+                  // دالة مساعدة لبناء HTML لمجموعة أسئلة
+                  const buildHtml = (qs: Question[], yearLabel: string) => {
                   const total = qs.length;
 
                   const questionsJson = JSON.stringify(qs.map(q => ({
@@ -984,7 +1025,7 @@ const AdminQuestions = () => {
     <h1>بنك أسئلة – ${subjectName}</h1>
     <div class="page-meta">
       <div class="meta-chip">📚 ${subjectName}</div>
-      <div class="meta-chip">📅 ${year}</div>
+      <div class="meta-chip">📅 ${yearLabel}</div>
       <div class="meta-chip" id="meta-count">📋 ${total} سؤال</div>
       <div class="meta-chip">👤 إعداد: أ.معين الناصر – الدفعة 50</div>
     </div>
@@ -1098,14 +1139,43 @@ render();
 </body>
 </html>`;
 
+                  return html;
+                  }; // نهاية buildHtml
+
+                  const _formNameHtml = isTrialSelected
+                    ? (allTrialForms.find(f => f.id === selectedTrialModel)?.name || 'أسئلة تجريبية')
+                    : (EXAM_FORMS.find(f => f.id === selectedExamForm)?.name || '');
+
+                  // ========== كل السنوات + نموذج محدد → ملف منفصل لكل سنة ==========
+                  if (!selectedYear && !isTrialSelected) {
+                    const yearsInData = Array.from(new Set(filteredQuestions.map(q => q.exam_year).filter(Boolean))).sort() as number[];
+                    if (yearsInData.length > 0) {
+                      yearsInData.forEach(year => {
+                        const yearQuestions = filteredQuestions.filter(q => q.exam_year === year);
+                        if (!yearQuestions.length) return;
+                        const html = buildHtml(yearQuestions as Question[], year.toString());
+                        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        const filename = [subjectName, year.toString(), _formNameHtml].filter(Boolean).join(' - ');
+                        a.download = `${filename}.html`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      });
+                      toast({ title: `✅ تم تصدير ${yearsInData.length} ملف HTML`, description: `ملف منفصل لكل سنة: ${yearsInData.join('، ')}` });
+                      return;
+                    }
+                  }
+
+                  // ========== الحالة العادية: سنة محددة أو نماذج تجريبية → ملف واحد ==========
+                  const yearLabel = selectedYear || 'كل السنوات';
+                  const html = buildHtml(filteredQuestions as Question[], yearLabel);
                   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement('a');
                   a.href = url;
-                  const _formNameHtml = isTrialSelected
-                    ? (allTrialForms.find(f => f.id === selectedTrialModel)?.name || 'أسئلة تجريبية')
-                    : (EXAM_FORMS.find(f => f.id === selectedExamForm)?.name || '');
-                  const _htmlFilename = [subjectName, year, _formNameHtml].filter(Boolean).join(' - ');
+                  const _htmlFilename = [subjectName, yearLabel, _formNameHtml].filter(Boolean).join(' - ');
                   a.download = `${_htmlFilename}.html`;
                   a.click();
                   URL.revokeObjectURL(url);
