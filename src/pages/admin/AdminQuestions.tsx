@@ -814,14 +814,64 @@ const AdminQuestions = () => {
                   if (!filteredQuestions.length) return;
                   const _subjectNameJson = subjects.find(s => s.id === selectedSubject)?.name || 'بنك الأسئلة';
 
-                  // ========== كل السنوات + نموذج محدد → ملف منفصل لكل سنة ==========
-                  if (!selectedYear && !isTrialSelected) {
+                  // ========== نماذج تجريبية → ملف واحد كما كان ==========
+                  if (isTrialSelected) {
+                    const exportData = filteredQuestions.map(q => ({
+                      question_text: q.question_text,
+                      option_a: q.option_a,
+                      option_b: q.option_b,
+                      option_c: q.option_c,
+                      option_d: q.option_d,
+                      correct_option: q.correct_option,
+                      hint: (q as any).hint || '',
+                      explanation: (q as any).explanation || '',
+                      exam_year: q.exam_year || '',
+                      exam_form: (q as any).exam_form || 'General',
+                    }));
+                    const _trialFormName = allTrialForms.find(f => f.id === selectedTrialModel)?.name || 'أسئلة تجريبية';
+                    const _trialFilename = [_subjectNameJson, _trialFormName].filter(Boolean).join(' - ');
+                    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${_trialFilename}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    return;
+                  }
+
+                  // ========== أسئلة عادية (بسنوات): دائماً قسّم حسب (سنة + نموذج) ==========
+                  {
                     // جمع السنوات الموجودة فعلاً في البيانات
-                    const yearsInData = Array.from(new Set(filteredQuestions.map(q => q.exam_year).filter(Boolean))).sort((a, b) => (a as number) - (b as number)) as number[];
+                    const yearsInData = Array.from(
+                      new Set(filteredQuestions.map(q => q.exam_year).filter(Boolean))
+                    ).sort((a, b) => (a as number) - (b as number)) as number[];
+
                     if (yearsInData.length === 0) {
-                      // لا توجد أسئلة مرتبطة بسنوات — تصدير ملف واحد
+                      // لا توجد أسئلة مرتبطة بسنوات — تصدير ملف واحد بدون تقسيم
+                      const exportData = filteredQuestions.map(q => ({
+                        question_text: q.question_text,
+                        option_a: q.option_a,
+                        option_b: q.option_b,
+                        option_c: q.option_c,
+                        option_d: q.option_d,
+                        correct_option: q.correct_option,
+                        hint: (q as any).hint || '',
+                        explanation: (q as any).explanation || '',
+                        exam_year: q.exam_year || '',
+                        exam_form: (q as any).exam_form || 'General',
+                      }));
+                      const _formNameJson = EXAM_FORMS.find(f => f.id === selectedExamForm)?.name || '';
+                      const _jsonFilename = [_subjectNameJson, _formNameJson].filter(Boolean).join(' - ');
+                      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `${_jsonFilename}.json`;
+                      a.click();
+                      URL.revokeObjectURL(url);
                     } else {
-                      // بناء مجموعات التصدير
+                      // بناء مجموعات التصدير: دائماً ملف لكل (سنة + نموذج)
                       const groups: { year: number; formName: string; questions: typeof filteredQuestions }[] = [];
 
                       if (selectedExamForm) {
@@ -871,32 +921,6 @@ const AdminQuestions = () => {
                       return;
                     }
                   }
-
-                  // ========== الحالة العادية: سنة محددة أو نماذج تجريبية → ملف واحد ==========
-                  const exportData = filteredQuestions.map(q => ({
-                    question_text: q.question_text,
-                    option_a: q.option_a,
-                    option_b: q.option_b,
-                    option_c: q.option_c,
-                    option_d: q.option_d,
-                    correct_option: q.correct_option,
-                    hint: (q as any).hint || '',
-                    explanation: (q as any).explanation || '',
-                    exam_year: q.exam_year || '',
-                    exam_form: (q as any).exam_form || 'General',
-                  }));
-                  const _yearJson = selectedYear ? `${selectedYear}` : 'كل السنوات';
-                  const _formNameJson = isTrialSelected
-                    ? (allTrialForms.find(f => f.id === selectedTrialModel)?.name || 'أسئلة تجريبية')
-                    : (EXAM_FORMS.find(f => f.id === selectedExamForm)?.name || '');
-                  const _jsonFilename = [_subjectNameJson, _yearJson, _formNameJson].filter(Boolean).join(' - ');
-                  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `${_jsonFilename}.json`;
-                  a.click();
-                  URL.revokeObjectURL(url);
                 }}
                 disabled={!selectedSubject || !filteredQuestions.length}
                 className="gap-2 border-emerald-200 bg-emerald-50 text-emerald-700 font-bold shadow-sm hover:bg-emerald-100"
