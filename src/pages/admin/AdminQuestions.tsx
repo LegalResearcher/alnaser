@@ -821,11 +821,31 @@ const AdminQuestions = () => {
                     if (yearsInData.length === 0) {
                       // لا توجد أسئلة مرتبطة بسنوات — تصدير ملف واحد
                     } else {
-                      const _formNameJson = EXAM_FORMS.find(f => f.id === selectedExamForm)?.name || '';
-                      yearsInData.forEach(year => {
-                        const yearQuestions = filteredQuestions.filter(q => q.exam_year === year);
-                        if (!yearQuestions.length) return;
-                        const exportData = yearQuestions.map(q => ({
+                      // بناء مجموعات التصدير
+                      const groups: { year: number; formName: string; questions: typeof filteredQuestions }[] = [];
+
+                      if (selectedExamForm) {
+                        // نموذج محدد → ملف واحد لكل سنة
+                        const _formNameJson = EXAM_FORMS.find(f => f.id === selectedExamForm)?.name || selectedExamForm;
+                        yearsInData.forEach(year => {
+                          const yearQuestions = filteredQuestions.filter(q => q.exam_year === year);
+                          if (yearQuestions.length) groups.push({ year, formName: _formNameJson, questions: yearQuestions });
+                        });
+                      } else {
+                        // كل النماذج → ملف لكل (سنة + نموذج)
+                        yearsInData.forEach(year => {
+                          const yearQuestions = filteredQuestions.filter(q => q.exam_year === year);
+                          const formsInYear = Array.from(new Set(yearQuestions.map(q => (q as any).exam_form).filter(Boolean)));
+                          formsInYear.forEach(formId => {
+                            const formQuestions = yearQuestions.filter(q => (q as any).exam_form === formId);
+                            const formName = EXAM_FORMS.find(f => f.id === formId)?.name || formId;
+                            if (formQuestions.length) groups.push({ year, formName, questions: formQuestions });
+                          });
+                        });
+                      }
+
+                      groups.forEach(({ year, formName, questions: grpQuestions }) => {
+                        const exportData = grpQuestions.map(q => ({
                           question_text: q.question_text,
                           option_a: q.option_a,
                           option_b: q.option_b,
@@ -837,7 +857,7 @@ const AdminQuestions = () => {
                           exam_year: q.exam_year || '',
                           exam_form: (q as any).exam_form || 'General',
                         }));
-                        const filename = [_subjectNameJson, year.toString(), _formNameJson].filter(Boolean).join(' - ');
+                        const filename = [_subjectNameJson, year.toString(), formName].filter(Boolean).join(' - ');
                         const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
@@ -846,7 +866,8 @@ const AdminQuestions = () => {
                         a.click();
                         URL.revokeObjectURL(url);
                       });
-                      toast({ title: `✅ تم تصدير ${yearsInData.length} ملف JSON`, description: `ملف منفصل لكل سنة: ${yearsInData.join('، ')}` });
+
+                      toast({ title: `✅ تم تصدير ${groups.length} ملف JSON`, description: `ملف منفصل لكل سنة ونموذج: ${yearsInData.join('، ')}` });
                       return;
                     }
                   }
