@@ -27,6 +27,24 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+// تقسيم النص إلى أسطر عند كل نقطة نهاية جملة
+const formatTextBySentence = (text: string) => {
+  if (!text) return null;
+  // تقسيم عند نقطة تتبعها مسافة أو نهاية النص، مع الإبقاء على النقطة
+  const sentences = text
+    .split(/(?<=[.؟!])\s+/)
+    .map(s => s.trim())
+    .filter(Boolean);
+  if (sentences.length <= 1) return <span>{text}</span>;
+  return (
+    <>
+      {sentences.map((sentence, i) => (
+        <span key={i} className="block">{sentence}</span>
+      ))}
+    </>
+  );
+};
+
 interface SavedProgress {
   questionIds: string[];
   answers: Record<string, string>;
@@ -1026,7 +1044,7 @@ const ExamPage = () => {
                                 <div className="animate-in fade-in slide-in-from-top-1 duration-300">
                                   <div className="h-px bg-amber-200/60 dark:bg-amber-700/30 mb-3" />
                                   <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 leading-relaxed text-right" dir="rtl">
-                                    {currentQuestion.hint}
+                                    {formatTextBySentence(currentQuestion.hint)}
                                   </p>
                                 </div>
                               )}
@@ -1518,7 +1536,7 @@ const ExamPage = () => {
                   dir="rtl"
                   style={{ fontFamily: "'Tajawal', 'Cairo', 'Noto Naskh Arabic', sans-serif", lineHeight: '2' }}
                 >
-                  {currentQuestion.explanation}
+                  {formatTextBySentence(currentQuestion.explanation)}
                 </p>
               </div>
             </div>
