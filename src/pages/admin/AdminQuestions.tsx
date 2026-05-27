@@ -817,7 +817,7 @@ const AdminQuestions = () => {
                   // ========== كل السنوات + نموذج محدد → ملف منفصل لكل سنة ==========
                   if (!selectedYear && !isTrialSelected) {
                     // جمع السنوات الموجودة فعلاً في البيانات
-                    const yearsInData = Array.from(new Set(filteredQuestions.map(q => q.exam_year).filter(Boolean))).sort() as number[];
+                    const yearsInData = Array.from(new Set(filteredQuestions.map(q => q.exam_year).filter(Boolean))).sort((a, b) => (a as number) - (b as number)) as number[];
                     if (yearsInData.length === 0) {
                       // لا توجد أسئلة مرتبطة بسنوات — تصدير ملف واحد
                     } else {
@@ -1148,7 +1148,7 @@ render();
 
                   // ========== كل السنوات + نموذج محدد → ملف منفصل لكل سنة ==========
                   if (!selectedYear && !isTrialSelected) {
-                    const yearsInData = Array.from(new Set(filteredQuestions.map(q => q.exam_year).filter(Boolean))).sort() as number[];
+                    const yearsInData = Array.from(new Set(filteredQuestions.map(q => q.exam_year).filter(Boolean))).sort((a, b) => (a as number) - (b as number)) as number[];
                     if (yearsInData.length > 0) {
                       yearsInData.forEach(year => {
                         const yearQuestions = filteredQuestions.filter(q => q.exam_year === year);
