@@ -141,6 +141,10 @@ const parseSanaaLegalContent = (text: string) => {
         .replace(/^[\(]?[١٢٣٤1-4][\)]\s*[+\-]?\s*/, '')
         .replace(/\s*[+\-]\s*$/, '')
         .replace(/\s*(TCPDF|tcpdf|www\.tcpdf\.org|Powered by TCPDF)[^$]*/gi, '')
+        // حذف النقطة والفاصلة والرموز الزائدة في نهاية الخيار
+        .replace(/[.\،,،؛;]+\s*$/, '')
+        // حذف تنوين منفصل في البداية أو النهاية (ً ٍ ٌ)
+        .replace(/^[\u064B-\u0652\s]+|[\u064B-\u0652\s]+$/g, '')
         .trim();
 
       if (t.includes('العبارة صحيحة')) cleanVal = 'العبارة صحيحة';
