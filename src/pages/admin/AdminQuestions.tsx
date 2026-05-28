@@ -339,6 +339,7 @@ const AdminQuestions = () => {
           x: item.transform[4],
           top: pageH - item.transform[5],
           width: item.width || 0,
+          h: item.height || Math.abs(item.transform[3]) || 0,
           highlighted: whiteText,
         });
       }
