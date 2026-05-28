@@ -126,6 +126,13 @@ const parseSanaaLegalContent = (text: string) => {
   return results;
 };
 
+// تطبيع أشكال العرض العربية إلى Unicode القياسي
+const normalizeArabicPresentationForms = (text: string): string => {
+  return text.replace(/[\uFB50-\uFDFF\uFE70-\uFEFF]/g, (ch) => {
+    try { return ch.normalize('NFKC'); } catch { return ch; }
+  });
+};
+
 // تنظيف نص الخيار القادم من PDF (يُزيل الأرقام والرموز الزائدة)
 const cleanPDFOptionText = (text: string): string =>
   text
@@ -308,51 +315,61 @@ const AdminQuestions = () => {
     return allLines.join("\n");
   };
 
-  // ========== معالجة PDF ذو العمودين مع كشف الإجابة الصحيحة من المستطيل الأخضر ==========
+  // ========== معالجة PDF ذو العمودين (يدعم التظليل الأزرق + الأخضر + النقطة قبل الرقم) ==========
   const parsePDFTwoColumnQuestions = async (file: File): Promise<any[]> => {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const allQuestions: any[] = [];
-    const SKIP_RE = /Page \d+ of|ةداملا مسا|جذومنلا صاخلا|ةحيحصلا ةباجلاا|رتخا ةباجلإا|نوناقلاو ةعيرشلا|ةعماج ءاعنص|يللآا لورتنكلا|رابتخا ةدام|تاءارجإب ةقباطم/;
+
+    // تعابير تجاهل رؤوس الصفحات والتذييلات
+    const SKIP_RE = /Page \d+ of|ةداملا مسا|جذومنلا صاخلا|ةحيحصلا ةباجلاا|رتخا ةباجلإا|نوناقلاو ةعيرشلا|ةعماج ءاعنص|يللآا لورتنكلا|رابتخا ةدام|تاءارجإب ةقباطم|ةحيحصلا ةباجلاا|PAT\.|اسم المادة|النموذج الخاص|الزمن|التاريخ|ورقة الاسئلة/;
 
     const cleanOpt = (t: string) =>
-      t.replace(/[.،,]+\s*$/, '').replace(/^[.،,]+\s*/, '').replace(/[\u200B-\u200F\u202A-\u202E\uFEFF]/g, '').trim();
+      t.replace(/[.،,\s]+$/, '').replace(/^[.،,\s]+/, '').replace(/[\u200B-\u200F\u202A-\u202E\uFEFF]/g, '').trim();
 
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
       const page = await pdf.getPage(pageNum);
       const textContent = await page.getTextContent();
       if (textContent.items.length === 0) continue;
 
-      // ── استخراج الكلمات مع إحداثياتها ──
-      interface WI { text: string; x: number; y: number; }
+      // ── استخراج الكلمات مع إحداثياتها وخصائص اللون ──
+      interface WI { text: string; x: number; y: number; r: number; g: number; b: number; }
       const words: WI[] = [];
       for (const item of textContent.items as any[]) {
         const s = (item.str || '').trim();
         if (!s) continue;
-        words.push({ text: normalizeArabicPresentationForms(s), x: item.transform[4], y: item.transform[5] });
+        // استخراج لون النص إذا كان متاحاً
+        let r = 0, g = 0, b = 0;
+        if (item.color && Array.isArray(item.color)) {
+          r = Math.round((item.color[0] ?? 0) * 255);
+          g = Math.round((item.color[1] ?? 0) * 255);
+          b = Math.round((item.color[2] ?? 0) * 255);
+        }
+        words.push({ text: normalizeArabicPresentationForms(s), x: item.transform[4], y: item.transform[5], r, g, b });
       }
 
-      // ── استخراج المستطيلات الخضراء (الإجابة الصحيحة) ──
-      // ── استخراج المستطيلات الخضراء عبر رسم الصفحة على Canvas ومسح البكسلات ──
-      interface GreenRect { top: number; bottom: number; x0: number; x1: number; }
-      const greenRects: GreenRect[] = [];
+      // ── كشف مناطق التظليل (أزرق أو أخضر) عبر Canvas ──
+      interface HighlightRect { top: number; bottom: number; x0: number; x1: number; }
+      const highlightRects: HighlightRect[] = [];
       try {
-        const SCALE = 1.5; // دقة أعلى = كشف أدق
+        const SCALE = 2.0;
         const viewport = page.getViewport({ scale: SCALE });
         const canvas = document.createElement('canvas');
         canvas.width  = Math.round(viewport.width);
         canvas.height = Math.round(viewport.height);
         const ctx = canvas.getContext('2d')!;
         await page.render({ canvasContext: ctx, viewport }).promise;
-
         const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-        // نبحث عن أعمدة/صفوف بها بكسلات خضراء واضحة (R<80, G>150, B<80)
-        // ثم نجمّع الـ runs المتجاورة في مستطيلات
-        const isGreen = (r: number, g: number, b: number) =>
-          r < 80 && g > 150 && b < 80;
+        // كشف التظليل: أزرق (B > R+40 و B > G+20 و B > 100) أو أخضر (G > R+40 و G > B+40 و G > 100)
+        const isHighlight = (r: number, g: number, b: number, a: number) => {
+          if (a < 30) return false;
+          const isBlue  = b > r + 30 && b > g + 20 && b > 100 && r < 200 && g < 200;
+          const isGreen = g > r + 30 && g > b + 30 && g > 100 && r < 200 && b < 200;
+          const isCyan  = g > 120 && b > 120 && r < 150 && Math.abs(g - b) < 60;
+          return isBlue || isGreen || isCyan;
+        };
 
-        // نمسح صفاً صفاً لاستخراج نطاقات X الخضراء لكل Y
         type Run = { x0: number; x1: number };
         const rowRuns: Map<number, Run[]> = new Map();
 
@@ -361,37 +378,34 @@ const AdminQuestions = () => {
           const runs: Run[] = [];
           for (let x = 0; x < width; x++) {
             const idx = (y * width + x) * 4;
-            if (isGreen(data[idx], data[idx+1], data[idx+2])) {
+            if (isHighlight(data[idx], data[idx+1], data[idx+2], data[idx+3])) {
               if (runStart === -1) runStart = x;
             } else {
               if (runStart !== -1) {
-                if (x - runStart >= 4) runs.push({ x0: runStart, x1: x - 1 });
+                if (x - runStart >= 8) runs.push({ x0: runStart, x1: x - 1 });
                 runStart = -1;
               }
             }
           }
-          if (runStart !== -1 && width - runStart >= 4)
-            runs.push({ x0: runStart, x1: width - 1 });
+          if (runStart !== -1 && width - runStart >= 8) runs.push({ x0: runStart, x1: width - 1 });
           if (runs.length) rowRuns.set(y, runs);
         }
 
-        // دمج الصفوف المتجاورة التي تحمل نفس نطاق X (تقريباً) في مستطيل واحد
         const used = new Set<number>();
-        for (const [y, runs] of Array.from(rowRuns.entries()).sort((a,b)=>a[0]-b[0])) {
+        for (const [y, runs] of Array.from(rowRuns.entries()).sort((a, b) => a[0] - b[0])) {
           if (used.has(y)) continue;
           for (const run of runs) {
             let yEnd = y;
-            for (let ny = y + 1; ny < y + 60; ny++) {
+            for (let ny = y + 1; ny < y + 80; ny++) {
               const nr = rowRuns.get(ny);
               if (!nr) break;
-              const overlap = nr.some(r => r.x0 <= run.x1 + 5 && r.x1 >= run.x0 - 5);
+              const overlap = nr.some(r => r.x0 <= run.x1 + 8 && r.x1 >= run.x0 - 8);
               if (!overlap) break;
               used.add(ny);
               yEnd = ny;
             }
-            const rectH = yEnd - y + 1;
-            if (rectH >= 3) {
-              greenRects.push({
+            if (yEnd - y >= 2) {
+              highlightRects.push({
                 top:    y    / SCALE,
                 bottom: yEnd / SCALE,
                 x0:     run.x0 / SCALE,
@@ -407,7 +421,6 @@ const AdminQuestions = () => {
       const pageH = page.getViewport({ scale: 1 }).height;
       const byY = new Map<number, WI[]>();
       for (const w of words) {
-        // تحويل y من PDF coords إلى screen coords
         const sy = Math.round((pageH - w.y) / 3) * 3;
         if (!byY.has(sy)) byY.set(sy, []);
         byY.get(sy)!.push({ ...w, y: sy });
@@ -418,7 +431,11 @@ const AdminQuestions = () => {
       const midX = pageW * 0.45;
 
       // ── بناء items مرتبة حسب Y ──
-      interface Item { y: number; col: 'R'|'L'; text: string; correctHere: number|null; type: string; qNum?: number; qText?: string; optNum?: number; optText?: string; }
+      interface Item {
+        y: number; col: 'R'|'L'; text: string;
+        isHighlighted: boolean;
+        type: string; qNum?: number; qText?: string; optNum?: number; optText?: string;
+      }
       const items: Item[] = [];
 
       for (const sy of Array.from(byY.keys()).sort((a, b) => a - b)) {
@@ -428,30 +445,55 @@ const AdminQuestions = () => {
 
         for (const [col, colWords] of [['R', right], ['L', left]] as ['R'|'L', WI[]][]) {
           if (!colWords.length) continue;
-          let text = colWords.map(w => w.text).join(' ').replace(/[\u200B-\u200F\u202A-\u202E\uFEFF]/g, '').trim();
+          let text = colWords.map(w => w.text).join(' ')
+            .replace(/[\u200B-\u200F\u202A-\u202E\uFEFF]/g, '').trim();
           if (!text || SKIP_RE.test(text)) continue;
 
-          // هل هذا السطر يقع داخل مستطيل أخضر؟
-          let correctHere: number|null = null;
-          for (const r of greenRects) {
-            if (sy >= r.top - 10 && sy <= r.bottom + 10) {
-              const xMin = Math.min(...colWords.map(w => w.x));
-              const xMax = Math.max(...colWords.map(w => w.x));
-              if (xMax >= r.x0 - 10 && xMin <= r.x1 + 10) {
-                // استخراج الرقم من النص
-                const nm = text.match(/([1-4])/);
-                if (nm) correctHere = parseInt(nm[1]);
+          // هل هذا السطر مُظلَّل (تظليل أزرق/أخضر)؟
+          let isHighlighted = false;
+
+          // طريقة 1: لون النص نفسه (أبيض على خلفية ملوّنة)
+          const avgR = colWords.reduce((s, w) => s + w.r, 0) / colWords.length;
+          const avgG = colWords.reduce((s, w) => s + w.g, 0) / colWords.length;
+          const avgB = colWords.reduce((s, w) => s + w.b, 0) / colWords.length;
+          if (avgR > 200 && avgG > 200 && avgB > 200) {
+            // نص أبيض = محتمل جداً أنه على خلفية ملوّنة
+            isHighlighted = true;
+          }
+
+          // طريقة 2: موضع السطر داخل مستطيل تظليل
+          if (!isHighlighted) {
+            const xMin = Math.min(...colWords.map(w => w.x));
+            const xMax = Math.max(...colWords.map(w => w.x));
+            for (const r of highlightRects) {
+              if (sy >= r.top - 12 && sy <= r.bottom + 12 && xMax >= r.x0 - 12 && xMin <= r.x1 + 12) {
+                isHighlighted = true;
+                break;
               }
             }
           }
 
-          const item: Item = { y: sy, col, text, correctHere, type: 'CONT' };
-          const qm = text.match(/^(\d+)\s*-\s*(.*)/);
-          const om = text.match(/^\.([1-4])\s*(.*)/) || text.match(/^([1-4])\.\s*(.*)/);
+          const item: Item = { y: sy, col, text, isHighlighted, type: 'CONT' };
+
+          // كشف السؤال: يبدأ بـ رقم -
+          // مثال: "1 - نص السؤال" أو "40 - نص السؤال"
+          const qm = text.match(/^(\d{1,2})\s*[-–]\s+(.*)/);
+
+          // كشف الخيار: يبدأ بـ .1 أو 1. أو 1) أو مجرد الرقم
+          // مثال الملف: ".1 نص الخيار" أو ".2 نص الخيار"
+          const om =
+            text.match(/^\.([1-4])\s+(.+)/)       ||  // .1 نص  ← صيغة الملف المرفق
+            text.match(/^([1-4])[\.،\)]\s+(.+)/)  ||  // 1. أو 1) نص
+            text.match(/^([1-4])\s{2,}(.+)/);         // 1   نص (مسافتان+)
+
           if (qm) {
-            item.type = 'Q'; item.qNum = parseInt(qm[1]); item.qText = qm[2].trim();
+            item.type = 'Q';
+            item.qNum = parseInt(qm[1]);
+            item.qText = qm[2].trim();
           } else if (om) {
-            item.type = 'OPT'; item.optNum = parseInt(om[1] || om[3]); item.optText = (om[2] || om[4] || '').trim();
+            item.type = 'OPT';
+            item.optNum = parseInt(om[1]);
+            item.optText = (om[2] || '').trim();
           }
           items.push(item);
         }
@@ -460,43 +502,51 @@ const AdminQuestions = () => {
       // ── تحليل الأسئلة ──
       let curQ: string|null = null;
       const opts: Record<number, string> = {};
-      let correctNum: number|null = null;
+      const optHighlight: Record<number, boolean> = {};
       let lastType: any = null;
 
       const saveQ = () => {
         if (curQ && Object.keys(opts).length >= 2) {
-          const L: Record<number,string> = {1:'A',2:'B',3:'C',4:'D'};
+          const L: Record<number, string> = { 1: 'A', 2: 'B', 3: 'C', 4: 'D' };
+          // تحديد الإجابة الصحيحة: الخيار المُظلَّل أولاً، وإلا الخيار 1
+          let correctNum = 1;
+          for (const n of [1, 2, 3, 4]) {
+            if (optHighlight[n]) { correctNum = n; break; }
+          }
           allQuestions.push({
-            id: Math.random().toString(36).substr(2,9),
+            id: Math.random().toString(36).substr(2, 9),
             question_text: curQ.trim(),
-            option_a: cleanOpt(opts[1]||''),
-            option_b: cleanOpt(opts[2]||''),
-            option_c: cleanOpt(opts[3]||''),
-            option_d: cleanOpt(opts[4]||''),
-            correct_option: L[correctNum||1]||'A',
-            hint: '', explanation: '', count: Object.keys(opts).length
+            option_a: cleanOpt(opts[1] || ''),
+            option_b: cleanOpt(opts[2] || ''),
+            option_c: cleanOpt(opts[3] || ''),
+            option_d: cleanOpt(opts[4] || ''),
+            correct_option: L[correctNum] || 'A',
+            hint: '', explanation: '', count: Object.keys(opts).length,
           });
         }
-        curQ = null; Object.keys(opts).forEach(k => delete opts[+k]); correctNum = null; lastType = null;
+        curQ = null;
+        Object.keys(opts).forEach(k => delete opts[+k]);
+        Object.keys(optHighlight).forEach(k => delete optHighlight[+k]);
+        lastType = null;
       };
 
       for (const item of items) {
         if (item.type === 'Q') {
           saveQ();
-          curQ = item.qText||'';
+          curQ = item.qText || '';
           lastType = 'Q';
         } else if (item.type === 'OPT' && curQ !== null) {
           const n = item.optNum!;
-          opts[n] = item.optText||'';
+          opts[n] = item.optText || '';
+          if (item.isHighlighted) optHighlight[n] = true;
           lastType = ['OPT', n];
-          if (item.correctHere) correctNum = n;
         } else if (item.type === 'CONT' && curQ !== null) {
           if (lastType === 'Q') {
             curQ += ' ' + item.text;
           } else if (Array.isArray(lastType) && lastType[0] === 'OPT') {
             const n = lastType[1];
-            opts[n] = ((opts[n]||'') + ' ' + item.text).trim();
-            if (item.correctHere) correctNum = n;
+            opts[n] = ((opts[n] || '') + ' ' + item.text).trim();
+            if (item.isHighlighted) optHighlight[n] = true;
           }
         }
       }
