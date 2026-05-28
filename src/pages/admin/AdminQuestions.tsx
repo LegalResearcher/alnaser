@@ -434,7 +434,7 @@ const AdminQuestions = () => {
       }
 
       // ── تحليل الأسئلة عبر الطبقة المشتركة ──
-      const pageW = words.length ? Math.max(...words.map(w => w.x + (w.width || 0))) : 600;
+      const pageW = page.getViewport({ scale: 1 }).width;
       const pageQuestions = parseQuestionsFromWords(words, {
         pageWidth: pageW,
         log: (...a: any[]) => console.log(`[v0] 2col p${pageNum}`, ...a),
