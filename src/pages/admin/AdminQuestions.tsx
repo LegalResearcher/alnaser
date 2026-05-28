@@ -342,20 +342,25 @@ const AdminQuestions = () => {
         const opList = await page.getOperatorList();
         const ops = opList.fnArray;
         const args = opList.argsArray;
-        // نبحث عن تسلسل: setFillRGBColor(0,1,0) ثم rectangle ثم fill
+        const OPS = pdfjsLib.OPS;
+        const viewport = page.getViewport({ scale: 1 });
+
         for (let i = 0; i < ops.length - 3; i++) {
-          // OPS.setFillRGBColor = 33, OPS.rectangle = 91, OPS.fill = 22
-          if (ops[i] === 33) {
+          // setFillRGBColor
+          if (ops[i] === OPS.setFillRGBColor) {
             const c = args[i];
             if (c && Math.abs(c[0]) < 0.05 && Math.abs(c[1] - 1) < 0.05 && Math.abs(c[2]) < 0.05) {
               // البحث عن rectangle في الـ ops التالية
-              for (let j = i + 1; j < Math.min(i + 5, ops.length); j++) {
-                if (ops[j] === 91 && args[j]) {
+              for (let j = i + 1; j < Math.min(i + 6, ops.length); j++) {
+                if (ops[j] === OPS.rectangle && args[j]) {
                   const [rx, ry, rw, rh] = args[j];
-                  // تحويل من PDF coords (y من أسفل) إلى screen coords (y من أعلى)
-                  const viewport = page.getViewport({ scale: 1 });
-                  const screenY = viewport.height - ry - rh;
-                  greenRects.push({ top: screenY, bottom: screenY + rh, x0: rx, x1: rx + rw });
+                  const screenY = viewport.height - ry - Math.abs(rh);
+                  greenRects.push({
+                    top: screenY,
+                    bottom: screenY + Math.abs(rh),
+                    x0: rx,
+                    x1: rx + Math.abs(rw)
+                  });
                   break;
                 }
               }
