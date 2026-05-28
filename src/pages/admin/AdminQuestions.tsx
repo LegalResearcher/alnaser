@@ -33,6 +33,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 
 import * as pdfjsLib from 'pdfjs-dist';
 import Tesseract from 'tesseract.js';
+import { parseQuestionsFromWords, normalizeArabicPresentationForms, type ParserWord } from '@/lib/pdf-question-parser';
 
 // رابط الـ Worker (ثابت)
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -124,13 +125,6 @@ const parseSanaaLegalContent = (text: string) => {
 
   if (current && current.count >= 2) results.push(current);
   return results;
-};
-
-// تطبيع أشكال العرض العربية إلى Unicode القياسي
-const normalizeArabicPresentationForms = (text: string): string => {
-  return text.replace(/[\uFB50-\uFDFF\uFE70-\uFEFF]/g, (ch) => {
-    try { return ch.normalize('NFKC'); } catch { return ch; }
-  });
 };
 
 // تنظيف نص الخيار القادم من PDF (يُزيل الأرقام والرموز الزائدة)
@@ -315,37 +309,38 @@ const AdminQuestions = () => {
     return allLines.join("\n");
   };
 
-  // ========== معالجة PDF ذو العمودين (يدعم التظليل الأزرق + الأخضر + النقطة قبل الرقم) ==========
+  // ========== معالجة PDF ذو العمودين (يدعم التظليل + الخيارات المنفصلة + الكشف التلقائي للعمود) ==========
   const parsePDFTwoColumnQuestions = async (file: File): Promise<any[]> => {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const allQuestions: any[] = [];
-
-    // تعابير تجاهل رؤوس الصفحات والتذييلات
-    const SKIP_RE = /Page \d+ of|ةداملا مسا|جذومنلا صاخلا|ةحيحصلا ةباجلاا|رتخا ةباجلإا|نوناقلاو ةعيرشلا|ةعماج ءاعنص|يللآا لورتنكلا|رابتخا ةدام|تاءارجإب ةقباطم|ةحيحصلا ةباجلاا|PAT\.|اسم المادة|النموذج الخاص|الزمن|التاريخ|ورقة الاسئلة/;
-
-    const cleanOpt = (t: string) =>
-      t.replace(/[.،,\s]+$/, '').replace(/^[.،,\s]+/, '').replace(/[\u200B-\u200F\u202A-\u202E\uFEFF]/g, '').trim();
 
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
       const page = await pdf.getPage(pageNum);
       const textContent = await page.getTextContent();
       if (textContent.items.length === 0) continue;
 
-      // ── استخراج الكلمات مع إحداثياتها وخصائص اللون ──
-      interface WI { text: string; x: number; y: number; r: number; g: number; b: number; }
-      const words: WI[] = [];
+      const pageH = page.getViewport({ scale: 1 }).height;
+
+      // ── استخراج الكلمات: نص + إحداثيات (top/x) + عرض + كشف اللون الأبيض ──
+      const words: ParserWord[] = [];
       for (const item of textContent.items as any[]) {
         const s = (item.str || '').trim();
         if (!s) continue;
-        // استخراج لون النص إذا كان متاحاً
         let r = 0, g = 0, b = 0;
         if (item.color && Array.isArray(item.color)) {
           r = Math.round((item.color[0] ?? 0) * 255);
           g = Math.round((item.color[1] ?? 0) * 255);
           b = Math.round((item.color[2] ?? 0) * 255);
         }
-        words.push({ text: normalizeArabicPresentationForms(s), x: item.transform[4], y: item.transform[5], r, g, b });
+        const whiteText = r > 200 && g > 200 && b > 200;
+        words.push({
+          text: normalizeArabicPresentationForms(s),
+          x: item.transform[4],
+          top: pageH - item.transform[5],
+          width: item.width || 0,
+          highlighted: whiteText,
+        });
       }
 
       // ── كشف مناطق التظليل (أزرق أو أخضر) عبر Canvas ──
@@ -361,16 +356,11 @@ const AdminQuestions = () => {
         await page.render({ canvasContext: ctx, viewport }).promise;
         const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-        // كشف التظليل: أزرق أو أخضر (بمعايير أكثر مرونة لاستيعاب PDF المطبوع والممسوح ضوئياً)
         const isHighlight = (r: number, g: number, b: number, a: number) => {
           if (a < 20) return false;
-          // أخضر ساطع: #00FF00 وما قاربه بعد الضغط أو الطباعة
           const isGreen = g > 100 && g > r * 1.4 && g > b * 1.4;
-          // أخضر فاتح / ليموني
           const isLightGreen = g > 150 && r < 220 && b < 180 && g > r + 20 && g > b + 20;
-          // أزرق
           const isBlue  = b > r + 25 && b > g + 15 && b > 90 && r < 210 && g < 210;
-          // سماوي (Cyan)
           const isCyan  = g > 110 && b > 110 && r < 160 && Math.abs(g - b) < 70;
           return isGreen || isLightGreen || isBlue || isCyan;
         };
@@ -422,142 +412,28 @@ const AdminQuestions = () => {
         }
       } catch (_) { /* ignore */ }
 
-      // ── تجميع الكلمات في أسطر ──
-      const pageH = page.getViewport({ scale: 1 }).height;
-      const byY = new Map<number, WI[]>();
+      // ── ربط حالة التظليل بكل كلمة حسب موقعها داخل المستطيلات الملوّنة ──
       for (const w of words) {
-        const sy = Math.round((pageH - w.y) / 3) * 3;
-        if (!byY.has(sy)) byY.set(sy, []);
-        byY.get(sy)!.push({ ...w, y: sy });
-      }
-
-      const allX = words.map(w => w.x);
-      const pageW = allX.length ? Math.max(...allX) : 600;
-      const midX = pageW * 0.45;
-
-      // ── بناء items مرتبة حسب Y ──
-      interface Item {
-        y: number; col: 'R'|'L'; text: string;
-        isHighlighted: boolean;
-        type: string; qNum?: number; qText?: string; optNum?: number; optText?: string;
-      }
-      const items: Item[] = [];
-
-      for (const sy of Array.from(byY.keys()).sort((a, b) => a - b)) {
-        const ws = byY.get(sy)!;
-        const right = ws.filter(w => w.x > midX).sort((a, b) => b.x - a.x);
-        const left  = ws.filter(w => w.x <= midX).sort((a, b) => b.x - a.x);
-
-        for (const [col, colWords] of [['R', right], ['L', left]] as ['R'|'L', WI[]][]) {
-          if (!colWords.length) continue;
-          let text = colWords.map(w => w.text).join(' ')
-            .replace(/[\u200B-\u200F\u202A-\u202E\uFEFF]/g, '').trim();
-          if (!text || SKIP_RE.test(text)) continue;
-
-          // هل هذا السطر مُظلَّل (تظليل أزرق/أخضر)؟
-          let isHighlighted = false;
-
-          // طريقة 1: لون النص نفسه (أبيض على خلفية ملوّنة)
-          const avgR = colWords.reduce((s, w) => s + w.r, 0) / colWords.length;
-          const avgG = colWords.reduce((s, w) => s + w.g, 0) / colWords.length;
-          const avgB = colWords.reduce((s, w) => s + w.b, 0) / colWords.length;
-          if (avgR > 200 && avgG > 200 && avgB > 200) {
-            // نص أبيض = محتمل جداً أنه على خلفية ملوّنة
-            isHighlighted = true;
-          }
-
-          // طريقة 2: موضع السطر داخل مستطيل تظليل
-          if (!isHighlighted) {
-            const xMin = Math.min(...colWords.map(w => w.x));
-            const xMax = Math.max(...colWords.map(w => w.x));
-            for (const r of highlightRects) {
-              if (sy >= r.top - 12 && sy <= r.bottom + 12 && xMax >= r.x0 - 12 && xMin <= r.x1 + 12) {
-                isHighlighted = true;
-                break;
-              }
-            }
-          }
-
-          const item: Item = { y: sy, col, text, isHighlighted, type: 'CONT' };
-
-          // كشف السؤال: يبدأ بـ رقم -
-          // مثال: "1 - نص السؤال" أو "40 - نص السؤال"
-          const qm = text.match(/^(\d{1,2})\s*[-–]\s+(.*)/);
-
-          // كشف الخيار: يبدأ بـ .1 أو 1. أو 1) أو مجرد الرقم
-          // مثال الملف: ".1 نص الخيار" أو ".2 نص الخيار"
-          const om =
-            text.match(/^\.([1-4])\s+(.+)/)       ||  // .1 نص  ← صيغة الملف المرفق
-            text.match(/^([1-4])[\.،\)]\s+(.+)/)  ||  // 1. أو 1) نص
-            text.match(/^([1-4])\s{2,}(.+)/);         // 1   نص (مسافتان+)
-
-          if (qm) {
-            item.type = 'Q';
-            item.qNum = parseInt(qm[1]);
-            item.qText = qm[2].trim();
-          } else if (om) {
-            item.type = 'OPT';
-            item.optNum = parseInt(om[1]);
-            item.optText = (om[2] || '').trim();
-          }
-          items.push(item);
-        }
-      }
-
-      // ── تحليل الأسئلة ──
-      let curQ: string|null = null;
-      const opts: Record<number, string> = {};
-      const optHighlight: Record<number, boolean> = {};
-      let lastType: any = null;
-
-      const saveQ = () => {
-        if (curQ && Object.keys(opts).length >= 2) {
-          const L: Record<number, string> = { 1: 'A', 2: 'B', 3: 'C', 4: 'D' };
-          // تحديد الإجابة الصحيحة: الخيار المُظلَّل أولاً، وإلا الخيار 1
-          let correctNum = 1;
-          for (const n of [1, 2, 3, 4]) {
-            if (optHighlight[n]) { correctNum = n; break; }
-          }
-          allQuestions.push({
-            id: Math.random().toString(36).substr(2, 9),
-            question_text: curQ.trim(),
-            option_a: cleanOpt(opts[1] || ''),
-            option_b: cleanOpt(opts[2] || ''),
-            option_c: cleanOpt(opts[3] || ''),
-            option_d: cleanOpt(opts[4] || ''),
-            correct_option: L[correctNum] || 'A',
-            hint: '', explanation: '', count: Object.keys(opts).length,
-          });
-        }
-        curQ = null;
-        Object.keys(opts).forEach(k => delete opts[+k]);
-        Object.keys(optHighlight).forEach(k => delete optHighlight[+k]);
-        lastType = null;
-      };
-
-      for (const item of items) {
-        if (item.type === 'Q') {
-          saveQ();
-          curQ = item.qText || '';
-          lastType = 'Q';
-        } else if (item.type === 'OPT' && curQ !== null) {
-          const n = item.optNum!;
-          opts[n] = item.optText || '';
-          if (item.isHighlighted) optHighlight[n] = true;
-          lastType = ['OPT', n];
-        } else if (item.type === 'CONT' && curQ !== null) {
-          if (lastType === 'Q') {
-            curQ += ' ' + item.text;
-          } else if (Array.isArray(lastType) && lastType[0] === 'OPT') {
-            const n = lastType[1];
-            opts[n] = ((opts[n] || '') + ' ' + item.text).trim();
-            if (item.isHighlighted) optHighlight[n] = true;
+        if (w.highlighted) continue;
+        const xMax = w.x + (w.width || 0);
+        for (const r of highlightRects) {
+          if (w.top >= r.top - 12 && w.top <= r.bottom + 12 && xMax >= r.x0 - 12 && w.x <= r.x1 + 12) {
+            w.highlighted = true;
+            break;
           }
         }
       }
-      saveQ();
+
+      // ── تحليل الأسئلة عبر الطبقة المشتركة ──
+      const pageW = words.length ? Math.max(...words.map(w => w.x + (w.width || 0))) : 600;
+      const pageQuestions = parseQuestionsFromWords(words, {
+        pageWidth: pageW,
+        log: (...a: any[]) => console.log(`[v0] 2col p${pageNum}`, ...a),
+      });
+      allQuestions.push(...pageQuestions);
     }
 
+    console.log('[v0] 2col total questions:', allQuestions.length);
     return allQuestions;
   };
 
