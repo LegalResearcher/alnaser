@@ -361,13 +361,18 @@ const AdminQuestions = () => {
         await page.render({ canvasContext: ctx, viewport }).promise;
         const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-        // كشف التظليل: أزرق (B > R+40 و B > G+20 و B > 100) أو أخضر (G > R+40 و G > B+40 و G > 100)
+        // كشف التظليل: أزرق أو أخضر (بمعايير أكثر مرونة لاستيعاب PDF المطبوع والممسوح ضوئياً)
         const isHighlight = (r: number, g: number, b: number, a: number) => {
-          if (a < 30) return false;
-          const isBlue  = b > r + 30 && b > g + 20 && b > 100 && r < 200 && g < 200;
-          const isGreen = g > r + 30 && g > b + 30 && g > 100 && r < 200 && b < 200;
-          const isCyan  = g > 120 && b > 120 && r < 150 && Math.abs(g - b) < 60;
-          return isBlue || isGreen || isCyan;
+          if (a < 20) return false;
+          // أخضر ساطع: #00FF00 وما قاربه بعد الضغط أو الطباعة
+          const isGreen = g > 100 && g > r * 1.4 && g > b * 1.4;
+          // أخضر فاتح / ليموني
+          const isLightGreen = g > 150 && r < 220 && b < 180 && g > r + 20 && g > b + 20;
+          // أزرق
+          const isBlue  = b > r + 25 && b > g + 15 && b > 90 && r < 210 && g < 210;
+          // سماوي (Cyan)
+          const isCyan  = g > 110 && b > 110 && r < 160 && Math.abs(g - b) < 70;
+          return isGreen || isLightGreen || isBlue || isCyan;
         };
 
         type Run = { x0: number; x1: number };
@@ -382,12 +387,12 @@ const AdminQuestions = () => {
               if (runStart === -1) runStart = x;
             } else {
               if (runStart !== -1) {
-                if (x - runStart >= 8) runs.push({ x0: runStart, x1: x - 1 });
+                if (x - runStart >= 4) runs.push({ x0: runStart, x1: x - 1 });
                 runStart = -1;
               }
             }
           }
-          if (runStart !== -1 && width - runStart >= 8) runs.push({ x0: runStart, x1: width - 1 });
+          if (runStart !== -1 && width - runStart >= 4) runs.push({ x0: runStart, x1: width - 1 });
           if (runs.length) rowRuns.set(y, runs);
         }
 
@@ -404,7 +409,7 @@ const AdminQuestions = () => {
               used.add(ny);
               yEnd = ny;
             }
-            if (yEnd - y >= 2) {
+            if (yEnd - y >= 1) {
               highlightRects.push({
                 top:    y    / SCALE,
                 bottom: yEnd / SCALE,
