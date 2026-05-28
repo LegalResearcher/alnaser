@@ -48,73 +48,9 @@ const EXAM_FORMS = [
   { id: 'Trial', name: 'أسئلة تجريبية' }
 ];
 
-// --- تحويل Arabic Presentation Forms إلى Unicode عادي ---
-// يعالج مشكلة PDF الذي يُخرج حروفاً مشكّلة (ﺍﻻﻧﻀﻤﺎﻡ) بدلاً من (الانضمام)
-const normalizeArabicPresentationForms = (text: string): string => {
-  // جدول التحويل: Presentation Forms A (FE70-FEFF) و B (FB50-FDFF) → Unicode أساسي
-  const map: Record<number, number> = {
-    // Presentation Forms-B (FB50–FDFF) — حروف منفردة ومركّبة
-    0xFB50:0x0671,0xFB51:0x0671,0xFB52:0x067B,0xFB53:0x067B,0xFB54:0x067B,0xFB55:0x067B,
-    0xFB56:0x067E,0xFB57:0x067E,0xFB58:0x067E,0xFB59:0x067E,0xFB5A:0x0680,0xFB5B:0x0680,
-    0xFB5C:0x0680,0xFB5D:0x0680,0xFB5E:0x067A,0xFB5F:0x067A,0xFB60:0x067A,0xFB61:0x067A,
-    0xFB62:0x067F,0xFB63:0x067F,0xFB64:0x067F,0xFB65:0x067F,0xFB66:0x0679,0xFB67:0x0679,
-    0xFB68:0x0679,0xFB69:0x0679,0xFB6A:0x06A4,0xFB6B:0x06A4,0xFB6C:0x06A4,0xFB6D:0x06A4,
-    0xFB6E:0x06A6,0xFB6F:0x06A6,0xFB70:0x06A6,0xFB71:0x06A6,0xFB72:0x0684,0xFB73:0x0684,
-    0xFB74:0x0684,0xFB75:0x0684,0xFB76:0x0683,0xFB77:0x0683,0xFB78:0x0683,0xFB79:0x0683,
-    0xFB7A:0x0686,0xFB7B:0x0686,0xFB7C:0x0686,0xFB7D:0x0686,0xFB7E:0x0687,0xFB7F:0x0687,
-    0xFB80:0x0687,0xFB81:0x0687,0xFB82:0x068D,0xFB83:0x068D,0xFB84:0x068C,0xFB85:0x068C,
-    0xFB86:0x068E,0xFB87:0x068E,0xFB88:0x0688,0xFB89:0x0688,0xFB8A:0x0698,0xFB8B:0x0698,
-    0xFB8C:0x0691,0xFB8D:0x0691,0xFB8E:0x06A9,0xFB8F:0x06A9,0xFB90:0x06A9,0xFB91:0x06A9,
-    0xFB92:0x06AF,0xFB93:0x06AF,0xFB94:0x06AF,0xFB95:0x06AF,0xFB96:0x06B3,0xFB97:0x06B3,
-    0xFB98:0x06B3,0xFB99:0x06B3,0xFB9A:0x06B1,0xFB9B:0x06B1,0xFB9C:0x06B1,0xFB9D:0x06B1,
-    0xFB9E:0x06BA,0xFB9F:0x06BA,0xFBA0:0x06BB,0xFBA1:0x06BB,0xFBA2:0x06BB,0xFBA3:0x06BB,
-    0xFBA4:0x06C0,0xFBA5:0x06C0,0xFBA6:0x06C1,0xFBA7:0x06C1,0xFBA8:0x06C1,0xFBA9:0x06C1,
-    0xFBAA:0x06BE,0xFBAB:0x06BE,0xFBAC:0x06BE,0xFBAD:0x06BE,0xFBAE:0x06D2,0xFBAF:0x06D2,
-    0xFBB0:0x06D3,0xFBB1:0x06D3,
-    // الحروف الأساسية (FE8D–FEFC)
-    0xFE8D:0x0627,0xFE8E:0x0627,0xFE8F:0x0628,0xFE90:0x0628,0xFE91:0x0628,0xFE92:0x0628,
-    0xFE93:0x0629,0xFE94:0x0629,0xFE95:0x062A,0xFE96:0x062A,0xFE97:0x062A,0xFE98:0x062A,
-    0xFE99:0x062B,0xFE9A:0x062B,0xFE9B:0x062B,0xFE9C:0x062B,0xFE9D:0x062C,0xFE9E:0x062C,
-    0xFE9F:0x062C,0xFEA0:0x062C,0xFEA1:0x062D,0xFEA2:0x062D,0xFEA3:0x062D,0xFEA4:0x062D,
-    0xFEA5:0x062E,0xFEA6:0x062E,0xFEA7:0x062E,0xFEA8:0x062E,0xFEA9:0x062F,0xFEAA:0x062F,
-    0xFEAB:0x0630,0xFEAC:0x0630,0xFEAD:0x0631,0xFEAE:0x0631,0xFEAF:0x0632,0xFEB0:0x0632,
-    0xFEB1:0x0633,0xFEB2:0x0633,0xFEB3:0x0633,0xFEB4:0x0633,0xFEB5:0x0634,0xFEB6:0x0634,
-    0xFEB7:0x0634,0xFEB8:0x0634,0xFEB9:0x0635,0xFEBA:0x0635,0xFEBB:0x0635,0xFEBC:0x0635,
-    0xFEBD:0x0636,0xFEBE:0x0636,0xFEBF:0x0636,0xFEC0:0x0636,0xFEC1:0x0637,0xFEC2:0x0637,
-    0xFEC3:0x0637,0xFEC4:0x0637,0xFEC5:0x0638,0xFEC6:0x0638,0xFEC7:0x0638,0xFEC8:0x0638,
-    0xFEC9:0x0639,0xFECA:0x0639,0xFECB:0x0639,0xFECC:0x0639,0xFECD:0x063A,0xFECE:0x063A,
-    0xFECF:0x063A,0xFED0:0x063A,0xFED1:0x0641,0xFED2:0x0641,0xFED3:0x0641,0xFED4:0x0641,
-    0xFED5:0x0642,0xFED6:0x0642,0xFED7:0x0642,0xFED8:0x0642,0xFED9:0x0643,0xFEDA:0x0643,
-    0xFEDB:0x0643,0xFEDC:0x0643,0xFEDD:0x0644,0xFEDE:0x0644,0xFEDF:0x0644,0xFEE0:0x0644,
-    0xFEE1:0x0645,0xFEE2:0x0645,0xFEE3:0x0645,0xFEE4:0x0645,0xFEE5:0x0646,0xFEE6:0x0646,
-    0xFEE7:0x0646,0xFEE8:0x0646,0xFEE9:0x0647,0xFEEA:0x0647,0xFEEB:0x0647,0xFEEC:0x0647,
-    0xFEED:0x0648,0xFEEE:0x0648,0xFEEF:0x0649,0xFEF0:0x0649,0xFEF1:0x064A,0xFEF2:0x064A,
-    0xFEF3:0x064A,0xFEF4:0x064A,
-    // لام-ألف: ستُعالج منفصلاً أدناه (تحويل حرف واحد → حرفين)
-    // همزة على الألف وأشكالها
-    0xFE80:0x0621,0xFE81:0x0622,0xFE82:0x0622,0xFE83:0x0623,0xFE84:0x0623,
-    0xFE85:0x0624,0xFE86:0x0624,0xFE87:0x0625,0xFE88:0x0625,0xFE89:0x0626,
-    0xFE8A:0x0626,0xFE8B:0x0626,0xFE8C:0x0626,
-  };
-  // لام-ألف المركّبة → حرفان (لام + نوع الألف)
-  // FEF5/6=لآ، FEF7/8=لأ، FEF9/A=لإ، FEFB/C=لا
-  const lamAlef: Record<number, string> = {
-    0xFEF5:'\u0644\u0622', 0xFEF6:'\u0644\u0622',
-    0xFEF7:'\u0644\u0623', 0xFEF8:'\u0644\u0623',
-    0xFEF9:'\u0644\u0625', 0xFEFA:'\u0644\u0625',
-    0xFEFB:'\u0644\u0627', 0xFEFC:'\u0644\u0627',
-  };
-  return Array.from(text).map(ch => {
-    const cp = ch.codePointAt(0)!;
-    if (lamAlef[cp]) return lamAlef[cp];
-    return map[cp] ? String.fromCodePoint(map[cp]) : ch;
-  }).join('');
-};
-
 // --- المحرك الذكي الشامل (يدعم العربية بالكامل + RTL) ---
 const parseSanaaLegalContent = (text: string) => {
-  const cleanText = normalizeArabicPresentationForms(text)
-    .replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/_/g, '');
+  const cleanText = text.replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/_/g, '');
   const lines = cleanText.split('\n');
   const results: any[] = [];
   let current: any = null;
@@ -141,10 +77,6 @@ const parseSanaaLegalContent = (text: string) => {
         .replace(/^[\(]?[١٢٣٤1-4][\)]\s*[+\-]?\s*/, '')
         .replace(/\s*[+\-]\s*$/, '')
         .replace(/\s*(TCPDF|tcpdf|www\.tcpdf\.org|Powered by TCPDF)[^$]*/gi, '')
-        // حذف النقطة والفاصلة والرموز الزائدة في نهاية الخيار
-        .replace(/[.\،,،؛;]+\s*$/, '')
-        // حذف تنوين منفصل في البداية أو النهاية (ً ٍ ٌ)
-        .replace(/^[\u064B-\u0652\s]+|[\u064B-\u0652\s]+$/g, '')
         .trim();
 
       if (t.includes('العبارة صحيحة')) cleanVal = 'العبارة صحيحة';
@@ -208,6 +140,7 @@ const AdminQuestions = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef2Col = useRef<HTMLInputElement>(null);
 
   const requireAdminOrEditor = () => {
     if (!user) {
@@ -264,6 +197,7 @@ const AdminQuestions = () => {
   const [isFileUploadOpen, setIsFileUploadOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const [isProcessingFile2Col, setIsProcessingFile2Col] = useState(false);
   const [previewQuestions, setPreviewQuestions] = useState<any[]>([]);
   const [previewSearch, setPreviewSearch] = useState('');
   const [importExamForm, setImportExamForm] = useState<string>('Model_1');
@@ -372,6 +306,195 @@ const AdminQuestions = () => {
     }
 
     return allLines.join("\n");
+  };
+
+  // ========== معالجة PDF ذو العمودين مع كشف الإجابة الصحيحة من المستطيل الأخضر ==========
+  const parsePDFTwoColumnQuestions = async (file: File): Promise<any[]> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const allQuestions: any[] = [];
+    const SKIP_RE = /Page \d+ of|ةداملا مسا|جذومنلا صاخلا|ةحيحصلا ةباجلاا|رتخا ةباجلإا|نوناقلاو ةعيرشلا|ةعماج ءاعنص|يللآا لورتنكلا|رابتخا ةدام|تاءارجإب ةقباطم/;
+
+    const cleanOpt = (t: string) =>
+      t.replace(/[.،,]+\s*$/, '').replace(/^[.،,]+\s*/, '').replace(/[\u200B-\u200F\u202A-\u202E\uFEFF]/g, '').trim();
+
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
+      if (textContent.items.length === 0) continue;
+
+      // ── استخراج الكلمات مع إحداثياتها ──
+      interface WI { text: string; x: number; y: number; }
+      const words: WI[] = [];
+      for (const item of textContent.items as any[]) {
+        const s = (item.str || '').trim();
+        if (!s) continue;
+        words.push({ text: normalizeArabicPresentationForms(s), x: item.transform[4], y: item.transform[5] });
+      }
+
+      // ── استخراج المستطيلات الخضراء (الإجابة الصحيحة) ──
+      // pdfjs لا يوفر رسومات مباشرة، لكن يمكن قراءة operators stream
+      // بديل: نبحث عن الكلمات التي لها لون مختلف عبر التحقق من operatorList
+      // الطريقة الأبسط: استخراج المستطيلات من page operators
+      interface GreenRect { top: number; bottom: number; x0: number; x1: number; }
+      const greenRects: GreenRect[] = [];
+      try {
+        const opList = await page.getOperatorList();
+        const ops = opList.fnArray;
+        const args = opList.argsArray;
+        // نبحث عن تسلسل: setFillRGBColor(0,1,0) ثم rectangle ثم fill
+        for (let i = 0; i < ops.length - 3; i++) {
+          // OPS.setFillRGBColor = 33, OPS.rectangle = 91, OPS.fill = 22
+          if (ops[i] === 33) {
+            const c = args[i];
+            if (c && Math.abs(c[0]) < 0.05 && Math.abs(c[1] - 1) < 0.05 && Math.abs(c[2]) < 0.05) {
+              // البحث عن rectangle في الـ ops التالية
+              for (let j = i + 1; j < Math.min(i + 5, ops.length); j++) {
+                if (ops[j] === 91 && args[j]) {
+                  const [rx, ry, rw, rh] = args[j];
+                  // تحويل من PDF coords (y من أسفل) إلى screen coords (y من أعلى)
+                  const viewport = page.getViewport({ scale: 1 });
+                  const screenY = viewport.height - ry - rh;
+                  greenRects.push({ top: screenY, bottom: screenY + rh, x0: rx, x1: rx + rw });
+                  break;
+                }
+              }
+            }
+          }
+        }
+      } catch (_) { /* ignore */ }
+
+      // ── تجميع الكلمات في أسطر ──
+      const pageH = page.getViewport({ scale: 1 }).height;
+      const byY = new Map<number, WI[]>();
+      for (const w of words) {
+        // تحويل y من PDF coords إلى screen coords
+        const sy = Math.round((pageH - w.y) / 3) * 3;
+        if (!byY.has(sy)) byY.set(sy, []);
+        byY.get(sy)!.push({ ...w, y: sy });
+      }
+
+      const allX = words.map(w => w.x);
+      const pageW = allX.length ? Math.max(...allX) : 600;
+      const midX = pageW * 0.45;
+
+      // ── بناء items مرتبة حسب Y ──
+      interface Item { y: number; col: 'R'|'L'; text: string; correctHere: number|null; type: string; qNum?: number; qText?: string; optNum?: number; optText?: string; }
+      const items: Item[] = [];
+
+      for (const sy of Array.from(byY.keys()).sort((a, b) => a - b)) {
+        const ws = byY.get(sy)!;
+        const right = ws.filter(w => w.x > midX).sort((a, b) => b.x - a.x);
+        const left  = ws.filter(w => w.x <= midX).sort((a, b) => b.x - a.x);
+
+        for (const [col, colWords] of [['R', right], ['L', left]] as ['R'|'L', WI[]][]) {
+          if (!colWords.length) continue;
+          let text = colWords.map(w => w.text).join(' ').replace(/[\u200B-\u200F\u202A-\u202E\uFEFF]/g, '').trim();
+          if (!text || SKIP_RE.test(text)) continue;
+
+          // هل هذا السطر يقع داخل مستطيل أخضر؟
+          let correctHere: number|null = null;
+          for (const r of greenRects) {
+            if (sy >= r.top - 10 && sy <= r.bottom + 10) {
+              const xMin = Math.min(...colWords.map(w => w.x));
+              const xMax = Math.max(...colWords.map(w => w.x));
+              if (xMax >= r.x0 - 10 && xMin <= r.x1 + 10) {
+                // استخراج الرقم من النص
+                const nm = text.match(/([1-4])/);
+                if (nm) correctHere = parseInt(nm[1]);
+              }
+            }
+          }
+
+          const item: Item = { y: sy, col, text, correctHere, type: 'CONT' };
+          const qm = text.match(/^(\d+)\s*-\s*(.*)/);
+          const om = text.match(/^\.([1-4])\s*(.*)/) || text.match(/^([1-4])\.\s*(.*)/);
+          if (qm) {
+            item.type = 'Q'; item.qNum = parseInt(qm[1]); item.qText = qm[2].trim();
+          } else if (om) {
+            item.type = 'OPT'; item.optNum = parseInt(om[1] || om[3]); item.optText = (om[2] || om[4] || '').trim();
+          }
+          items.push(item);
+        }
+      }
+
+      // ── تحليل الأسئلة ──
+      let curQ: string|null = null;
+      const opts: Record<number, string> = {};
+      let correctNum: number|null = null;
+      let lastType: any = null;
+
+      const saveQ = () => {
+        if (curQ && Object.keys(opts).length >= 2) {
+          const L: Record<number,string> = {1:'A',2:'B',3:'C',4:'D'};
+          allQuestions.push({
+            id: Math.random().toString(36).substr(2,9),
+            question_text: curQ.trim(),
+            option_a: cleanOpt(opts[1]||''),
+            option_b: cleanOpt(opts[2]||''),
+            option_c: cleanOpt(opts[3]||''),
+            option_d: cleanOpt(opts[4]||''),
+            correct_option: L[correctNum||1]||'A',
+            hint: '', explanation: '', count: Object.keys(opts).length
+          });
+        }
+        curQ = null; Object.keys(opts).forEach(k => delete opts[+k]); correctNum = null; lastType = null;
+      };
+
+      for (const item of items) {
+        if (item.type === 'Q') {
+          saveQ();
+          curQ = item.qText||'';
+          lastType = 'Q';
+        } else if (item.type === 'OPT' && curQ !== null) {
+          const n = item.optNum!;
+          opts[n] = item.optText||'';
+          lastType = ['OPT', n];
+          if (item.correctHere) correctNum = n;
+        } else if (item.type === 'CONT' && curQ !== null) {
+          if (lastType === 'Q') {
+            curQ += ' ' + item.text;
+          } else if (Array.isArray(lastType) && lastType[0] === 'OPT') {
+            const n = lastType[1];
+            opts[n] = ((opts[n]||'') + ' ' + item.text).trim();
+            if (item.correctHere) correctNum = n;
+          }
+        }
+      }
+      saveQ();
+    }
+
+    return allQuestions;
+  };
+
+  const handleFileChange2Col = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || file.type !== 'application/pdf') {
+      toast({ title: 'تنبيه', description: 'يرجى اختيار ملف PDF فقط.', variant: 'destructive' });
+      return;
+    }
+    setIsProcessingFile2Col(true);
+    try {
+      const extracted = await parsePDFTwoColumnQuestions(file);
+      if (extracted.length > 0) {
+        setPreviewQuestions(extracted);
+        setImportExamForm(
+          selectedExamForm === 'Trial'
+            ? (selectedTrialModel !== 'all' ? selectedTrialModel : 'Model_1')
+            : (selectedExamForm || 'General')
+        );
+        setIsFileUploadOpen(false);
+        setIsPreviewOpen(true);
+      } else {
+        toast({ title: 'تنبيه', description: 'لم يتم العثور على أسئلة. تأكد أن الملف بتخطيط عمودين مع مستطيل أخضر للإجابة الصحيحة.', variant: 'destructive' });
+      }
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'خطأ', description: 'حدثت مشكلة أثناء معالجة الملف.', variant: 'destructive' });
+    } finally {
+      setIsProcessingFile2Col(false);
+      if (fileInputRef2Col.current) fileInputRef2Col.current.value = '';
+    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -882,64 +1005,14 @@ const AdminQuestions = () => {
                   if (!filteredQuestions.length) return;
                   const _subjectNameJson = subjects.find(s => s.id === selectedSubject)?.name || 'بنك الأسئلة';
 
-                  // ========== نماذج تجريبية → ملف واحد كما كان ==========
-                  if (isTrialSelected) {
-                    const exportData = filteredQuestions.map(q => ({
-                      question_text: q.question_text,
-                      option_a: q.option_a,
-                      option_b: q.option_b,
-                      option_c: q.option_c,
-                      option_d: q.option_d,
-                      correct_option: q.correct_option,
-                      hint: (q as any).hint || '',
-                      explanation: (q as any).explanation || '',
-                      exam_year: q.exam_year || '',
-                      exam_form: (q as any).exam_form || 'General',
-                    }));
-                    const _trialFormName = allTrialForms.find(f => f.id === selectedTrialModel)?.name || 'أسئلة تجريبية';
-                    const _trialFilename = [_subjectNameJson, _trialFormName].filter(Boolean).join(' - ');
-                    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `${_trialFilename}.json`;
-                    a.click();
-                    URL.revokeObjectURL(url);
-                    return;
-                  }
-
-                  // ========== أسئلة عادية (بسنوات): دائماً قسّم حسب (سنة + نموذج) ==========
-                  {
+                  // ========== كل السنوات + نموذج محدد → ملف منفصل لكل سنة ==========
+                  if (!selectedYear && !isTrialSelected) {
                     // جمع السنوات الموجودة فعلاً في البيانات
-                    const yearsInData = Array.from(
-                      new Set(filteredQuestions.map(q => q.exam_year).filter(Boolean))
-                    ).sort((a, b) => (a as number) - (b as number)) as number[];
-
+                    const yearsInData = Array.from(new Set(filteredQuestions.map(q => q.exam_year).filter(Boolean))).sort((a, b) => (a as number) - (b as number)) as number[];
                     if (yearsInData.length === 0) {
-                      // لا توجد أسئلة مرتبطة بسنوات — تصدير ملف واحد بدون تقسيم
-                      const exportData = filteredQuestions.map(q => ({
-                        question_text: q.question_text,
-                        option_a: q.option_a,
-                        option_b: q.option_b,
-                        option_c: q.option_c,
-                        option_d: q.option_d,
-                        correct_option: q.correct_option,
-                        hint: (q as any).hint || '',
-                        explanation: (q as any).explanation || '',
-                        exam_year: q.exam_year || '',
-                        exam_form: (q as any).exam_form || 'General',
-                      }));
-                      const _formNameJson = EXAM_FORMS.find(f => f.id === selectedExamForm)?.name || '';
-                      const _jsonFilename = [_subjectNameJson, _formNameJson].filter(Boolean).join(' - ');
-                      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = `${_jsonFilename}.json`;
-                      a.click();
-                      URL.revokeObjectURL(url);
+                      // لا توجد أسئلة مرتبطة بسنوات — تصدير ملف واحد
                     } else {
-                      // بناء مجموعات التصدير: دائماً ملف لكل (سنة + نموذج)
+                      // بناء مجموعات التصدير
                       const groups: { year: number; formName: string; questions: typeof filteredQuestions }[] = [];
 
                       if (selectedExamForm) {
@@ -989,6 +1062,32 @@ const AdminQuestions = () => {
                       return;
                     }
                   }
+
+                  // ========== الحالة العادية: سنة محددة أو نماذج تجريبية → ملف واحد ==========
+                  const exportData = filteredQuestions.map(q => ({
+                    question_text: q.question_text,
+                    option_a: q.option_a,
+                    option_b: q.option_b,
+                    option_c: q.option_c,
+                    option_d: q.option_d,
+                    correct_option: q.correct_option,
+                    hint: (q as any).hint || '',
+                    explanation: (q as any).explanation || '',
+                    exam_year: q.exam_year || '',
+                    exam_form: (q as any).exam_form || 'General',
+                  }));
+                  const _yearJson = selectedYear ? `${selectedYear}` : 'كل السنوات';
+                  const _formNameJson = isTrialSelected
+                    ? (allTrialForms.find(f => f.id === selectedTrialModel)?.name || 'أسئلة تجريبية')
+                    : (EXAM_FORMS.find(f => f.id === selectedExamForm)?.name || '');
+                  const _jsonFilename = [_subjectNameJson, _yearJson, _formNameJson].filter(Boolean).join(' - ');
+                  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `${_jsonFilename}.json`;
+                  a.click();
+                  URL.revokeObjectURL(url);
                 }}
                 disabled={!selectedSubject || !filteredQuestions.length}
                 className="gap-2 border-emerald-200 bg-emerald-50 text-emerald-700 font-bold shadow-sm hover:bg-emerald-100"
@@ -1522,6 +1621,32 @@ render();
             {isProcessingFile
               ? <div className="flex flex-col items-center gap-4"><Loader2 className="w-12 h-12 text-primary animate-spin" /><p className="text-sm font-black text-slate-600">جاري المعالجة...</p></div>
               : <div className="flex flex-col items-center gap-4"><div className="p-5 bg-slate-100 rounded-2xl transition-all shadow-sm group-hover:bg-white"><FileText className="w-10 h-10 text-slate-400 group-hover:text-primary" /></div><p className="font-black text-slate-700 font-cairo">اضغط لاختيار ملف PDF أو JSON</p></div>
+            }
+          </div>
+
+          <div className="flex items-center gap-3 my-4">
+            <div className="flex-1 h-px bg-slate-200" />
+            <span className="text-xs text-slate-400 font-bold">أو</span>
+            <div className="flex-1 h-px bg-slate-200" />
+          </div>
+
+          {/* رفع PDF ذو العمودين — مثل أحكام الأسرة */}
+          <div
+            onClick={() => fileInputRef2Col.current?.click()}
+            className="border-2 border-dashed border-orange-200 rounded-3xl p-6 text-center hover:border-orange-400 hover:bg-orange-50/50 cursor-pointer group transition-all relative overflow-hidden"
+          >
+            <input type="file" ref={fileInputRef2Col} onChange={handleFileChange2Col} className="hidden" accept=".pdf" />
+            {isProcessingFile2Col
+              ? <div className="flex flex-col items-center gap-3"><Loader2 className="w-10 h-10 text-orange-500 animate-spin" /><p className="text-sm font-black text-slate-600">جاري معالجة العمودين...</p></div>
+              : <div className="flex flex-col items-center gap-3">
+                  <div className="p-4 bg-orange-50 rounded-2xl transition-all shadow-sm group-hover:bg-white">
+                    <FileText className="w-9 h-9 text-orange-400 group-hover:text-orange-600" />
+                  </div>
+                  <div>
+                    <p className="font-black text-slate-700 font-cairo text-sm">PDF بتخطيط العمودين</p>
+                    <p className="text-xs text-orange-500 font-bold mt-1">مثل: أحكام الأسرة — خيارين جنباً لجنب</p>
+                  </div>
+                </div>
             }
           </div>
         </DialogContent>
