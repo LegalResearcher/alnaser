@@ -333,39 +333,73 @@ const AdminQuestions = () => {
       }
 
       // ── استخراج المستطيلات الخضراء (الإجابة الصحيحة) ──
-      // pdfjs لا يوفر رسومات مباشرة، لكن يمكن قراءة operators stream
-      // بديل: نبحث عن الكلمات التي لها لون مختلف عبر التحقق من operatorList
-      // الطريقة الأبسط: استخراج المستطيلات من page operators
+      // ── استخراج المستطيلات الخضراء عبر رسم الصفحة على Canvas ومسح البكسلات ──
       interface GreenRect { top: number; bottom: number; x0: number; x1: number; }
       const greenRects: GreenRect[] = [];
       try {
-        const opList = await page.getOperatorList();
-        const ops = opList.fnArray;
-        const args = opList.argsArray;
-        const OPS = pdfjsLib.OPS;
-        const viewport = page.getViewport({ scale: 1 });
+        const SCALE = 1.5; // دقة أعلى = كشف أدق
+        const viewport = page.getViewport({ scale: SCALE });
+        const canvas = document.createElement('canvas');
+        canvas.width  = Math.round(viewport.width);
+        canvas.height = Math.round(viewport.height);
+        const ctx = canvas.getContext('2d')!;
+        await page.render({ canvasContext: ctx, viewport }).promise;
 
-        for (let i = 0; i < ops.length - 3; i++) {
-          // setFillRGBColor
-          if (ops[i] === OPS.setFillRGBColor) {
-            const c = args[i];
-            if (c && Math.abs(c[0]) < 0.05 && Math.abs(c[1] - 1) < 0.05 && Math.abs(c[2]) < 0.05) {
-              // البحث عن rectangle في الـ ops التالية
-              for (let j = i + 1; j < Math.min(i + 6, ops.length); j++) {
-                if (ops[j] === OPS.rectangle && args[j]) {
-                  const [rx, ry, rw, rh] = args[j];
-                  const screenY = viewport.height - ry - Math.abs(rh);
-                  greenRects.push({
-                    top: screenY,
-                    bottom: screenY + Math.abs(rh),
-                    x0: rx,
-                    x1: rx + Math.abs(rw)
-                  });
-                  break;
-                }
+        const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+        // نبحث عن أعمدة/صفوف بها بكسلات خضراء واضحة (R<80, G>150, B<80)
+        // ثم نجمّع الـ runs المتجاورة في مستطيلات
+        const isGreen = (r: number, g: number, b: number) =>
+          r < 80 && g > 150 && b < 80;
+
+        // نمسح صفاً صفاً لاستخراج نطاقات X الخضراء لكل Y
+        type Run = { x0: number; x1: number };
+        const rowRuns: Map<number, Run[]> = new Map();
+
+        for (let y = 0; y < height; y++) {
+          let runStart = -1;
+          const runs: Run[] = [];
+          for (let x = 0; x < width; x++) {
+            const idx = (y * width + x) * 4;
+            if (isGreen(data[idx], data[idx+1], data[idx+2])) {
+              if (runStart === -1) runStart = x;
+            } else {
+              if (runStart !== -1) {
+                if (x - runStart >= 4) runs.push({ x0: runStart, x1: x - 1 });
+                runStart = -1;
               }
             }
           }
+          if (runStart !== -1 && width - runStart >= 4)
+            runs.push({ x0: runStart, x1: width - 1 });
+          if (runs.length) rowRuns.set(y, runs);
+        }
+
+        // دمج الصفوف المتجاورة التي تحمل نفس نطاق X (تقريباً) في مستطيل واحد
+        const used = new Set<number>();
+        for (const [y, runs] of Array.from(rowRuns.entries()).sort((a,b)=>a[0]-b[0])) {
+          if (used.has(y)) continue;
+          for (const run of runs) {
+            let yEnd = y;
+            for (let ny = y + 1; ny < y + 60; ny++) {
+              const nr = rowRuns.get(ny);
+              if (!nr) break;
+              const overlap = nr.some(r => r.x0 <= run.x1 + 5 && r.x1 >= run.x0 - 5);
+              if (!overlap) break;
+              used.add(ny);
+              yEnd = ny;
+            }
+            const rectH = yEnd - y + 1;
+            if (rectH >= 3) {
+              greenRects.push({
+                top:    y    / SCALE,
+                bottom: yEnd / SCALE,
+                x0:     run.x0 / SCALE,
+                x1:     run.x1 / SCALE,
+              });
+            }
+          }
+          used.add(y);
         }
       } catch (_) { /* ignore */ }
 
