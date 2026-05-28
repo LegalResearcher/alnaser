@@ -325,8 +325,16 @@ const AdminQuestions = () => {
       // ── استخراج الكلمات: نص + إحداثيات (top/x) + عرض + كشف اللون الأبيض ──
       const words: ParserWord[] = [];
       for (const item of textContent.items as any[]) {
-        const s = (item.str || '').trim();
-        if (!s) continue;
+        const raw = item.str || '';
+        const s = raw.trim();
+        if (!s) {
+          // عنصر مسافة صريح من pdf.js: نحتفظ به كفاصل كلمات بدل إسقاطه (يمنع التصاق الكلمات)
+          if (raw.length > 0) {
+            words.push({ text: '', x: item.transform[4], top: pageH - item.transform[5], width: item.width || 0, space: true });
+          }
+          continue;
+        }
+        // استخراج لون النص إذا كان متاحاً (نص أبيض = غالباً على خلفية ملوّنة)
         let r = 0, g = 0, b = 0;
         if (item.color && Array.isArray(item.color)) {
           r = Math.round((item.color[0] ?? 0) * 255);
