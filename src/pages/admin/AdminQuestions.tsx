@@ -306,7 +306,7 @@ const AdminQuestions = () => {
       allLines.push(...merged);
     }
 
-    return allLines.join("\n");
+    return normalizeArabicPresentationForms(allLines.join("\n"));
   };
 
   // ========== معالجة PDF ذو العمودين (يدعم التظليل + الخيارات المنفصلة + الكشف التلقائي للعمود) ==========
@@ -314,101 +314,6 @@ const AdminQuestions = () => {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const allQuestions: any[] = [];
-
-    // ───────────────────────────────────────────────────────────────────────
-    // إعادة ترتيب واعية بالمحتوى للأعمدة (داخل هذه الدالة فقط).
-    // السبب الجذري: الطبقة المشتركة تُصدِر دائماً [العمود الأيمن ثم الأيسر].
-    // لكن أحياناً يحمل العمود الأيسر الخيار الأقل رقماً (.1)، وأحياناً يكون
-    // العمود الأيمن امتداد نص لا خياراً. هنا نقرّر ترتيب القراءة لكل صف حسب رقم
-    // علامة الخيار في كل عمود (الأصغر أولاً)، ونُبدّل إحداثيات العمودين أفقياً
-    // عند اللزوم بإزاحة ثابتة (تحفظ الفجوات الداخلية وبالتالي تباعد الكلمات).
-    // لا نلمس الطبقة المشتركة (splitRowAtGutter / detectColumns) إطلاقاً.
-    // ───────────────────────────────────────────────────────────────────────
-    const reorderColumnsByContent = (input: ParserWord[], pageW: number): ParserWord[] => {
-      if (!input.length) return input;
-
-      // 1) تجميع الكلمات في صفوف حسب top (نفس مفتاح الطبقة المشتركة: round(top/3)*3)
-      const byTop = new Map<number, ParserWord[]>();
-      for (const w of input) {
-        const key = Math.round(w.top / 3) * 3;
-        if (!byTop.has(key)) byTop.set(key, []);
-        byTop.get(key)!.push(w);
-      }
-      const rows = Array.from(byTop.values());
-
-      // 2) كشف وجود عمودين وخط الفصل gutterX (مطابق لمنطق detectColumns المشترك)
-      const GAP_MIN = pageW * 0.12, CENTER_LO = pageW * 0.2, CENTER_HI = pageW * 0.8;
-      const gutterMids: number[] = [];
-      let contentRows = 0;
-      for (const ws of rows) {
-        if (ws.length < 2) continue;
-        contentRows++;
-        const sorted = [...ws].sort((a, b) => a.x - b.x);
-        let maxGap = 0, gapMid = 0;
-        for (let i = 0; i < sorted.length - 1; i++) {
-          const end = sorted[i].x + (sorted[i].width || 0);
-          const gap = sorted[i + 1].x - end;
-          if (gap > maxGap) { maxGap = gap; gapMid = (end + sorted[i + 1].x) / 2; }
-        }
-        if (maxGap >= GAP_MIN && gapMid >= CENTER_LO && gapMid <= CENTER_HI) gutterMids.push(gapMid);
-      }
-      const twoColumn = gutterMids.length >= Math.max(3, contentRows * 0.2);
-      if (!twoColumn) return input; // صفحة عمود واحد → لا تدخّل
-
-      let gutterX = pageW * 0.5;
-      if (gutterMids.length) {
-        const s = [...gutterMids].sort((a, b) => a - b);
-        gutterX = Math.min(Math.max(s[Math.floor(s.length / 2)], pageW * 0.35), pageW * 0.55);
-      }
-
-      // استخراج رقم علامة الخيار من عمود (بترتيب القراءة RTL: الأكبر x أولاً)
-      const markerNum = (group: ParserWord[]): number => {
-        const toks = group.filter((w) => !w.space && w.text).sort((a, b) => b.x - a.x);
-        if (!toks.length) return Infinity;
-        const head = toks.slice(0, 3).map((t) => t.text).join(' ');
-        const m = head.match(/^\.?\s*([1-4])\s*[.)،]?/);
-        return m ? parseInt(m[1], 10) : Infinity;
-      };
-
-      const out: ParserWord[] = [];
-      for (const ws of rows) {
-        const right = ws.filter((w) => w.x > gutterX);
-        const left = ws.filter((w) => w.x <= gutterX);
-
-        // ليس صفّ عمودين فعلياً → اتركه كما هو
-        if (!right.length || !left.length) { out.push(...ws); continue; }
-
-        // هل ستقسمه الطبقة المشتركة؟ (فجوة واضحة ≥5% أو أول كلمة يسرى علامة خيار)
-        const leftMaxRight = Math.max(...left.map((w) => w.x + (w.width || 0)));
-        const rightMinLeft = Math.min(...right.map((w) => w.x));
-        const realGap = rightMinLeft - leftMaxRight;
-        const leftFirstWord = [...left].sort((a, b) => b.x - a.x)[0];
-        const willSplit =
-          realGap >= pageW * 0.05 ||
-          (leftFirstWord && /^\.[1-4]$|^[1-4][.،)]$/.test(leftFirstWord.text));
-        if (!willSplit) { out.push(...ws); continue; }
-
-        // القرار: العمود ذو رقم الخيار الأصغر يُقرأ أولاً.
-        // (بلا علامة = Infinity؛ تعادل/لا علامة على الجانبين → الأيمن أولاً = RTL الافتراضي)
-        const nR = markerNum(right);
-        const nL = markerNum(left);
-        const leftShouldLead = nL < nR;
-
-        if (!leftShouldLead) { out.push(...ws); continue; } // الافتراضي صحيح، بلا تبديل
-
-        // تبديل أفقي: ننقل الأيسر إلى نطاق اليمين والأيمن إلى نطاق اليسار،
-        // بفجوة مركزية ثابتة ≥12% كي يظل detectColumns/splitRowAtGutter يقسمان الصف.
-        const band = pageW * 0.14;
-        const lMin = Math.min(...left.map((w) => w.x));
-        const rMin = Math.min(...right.map((w) => w.x));
-        const rWidth = Math.max(...right.map((w) => w.x + (w.width || 0))) - rMin;
-        const shiftL = (gutterX + band / 2) - lMin;            // الأيسر → يمين الفاصل (يُقرأ أولاً)
-        const shiftR = (gutterX - band / 2 - rWidth) - rMin;   // الأيمن → يسار الفاصل (يُقرأ ثانياً)
-        for (const w of left)  out.push({ ...w, x: w.x + shiftL });
-        for (const w of right) out.push({ ...w, x: w.x + shiftR });
-      }
-      return out;
-    };
 
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
       const page = await pdf.getPage(pageNum);
@@ -528,10 +433,9 @@ const AdminQuestions = () => {
         }
       }
 
-      // ── تحليل الأسئلة عبر الطبقة المشتركة (بعد إعادة الترتيب الواعية بالمحتوى) ──
+      // ── تحليل الأسئلة عبر الطبقة المشتركة ──
       const pageW = page.getViewport({ scale: 1 }).width;
-      const orderedWords = reorderColumnsByContent(words, pageW);
-      const pageQuestions = parseQuestionsFromWords(orderedWords, {
+      const pageQuestions = parseQuestionsFromWords(words, {
         pageWidth: pageW,
         log: (...a: any[]) => console.log(`[v0] 2col p${pageNum}`, ...a),
       });
