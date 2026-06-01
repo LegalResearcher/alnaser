@@ -103,5 +103,18 @@ export interface ReviewPassword {
   created_at: string;
 }
 
+export interface PaymentRequest {
+  id: string;
+  student_name: string;
+  phone_number: string;
+  subject_id: string;
+  subject_name: string;
+  status: 'pending' | 'confirmed' | 'rejected';
+  review_password_id: string | null;
+  notes: string | null;
+  created_at: string;
+  confirmed_at: string | null;
+}
+
 export const EXAM_YEARS = [2020, 2021, 2022, 2023, 2024, 2025, 2026] as const;
 export type ExamYear = typeof EXAM_YEARS[number];
