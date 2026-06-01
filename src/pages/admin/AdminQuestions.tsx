@@ -135,6 +135,11 @@ const cleanPDFOptionText = (text: string): string =>
     .replace(/[\(（]\s*[\d١٢٣٤]\s*[)）]/g, '') // أرقام بين قوسين في الوسط
     .trim();
 
+const toArabicOrdinal = (n: number): string => {
+  const ordinals = ['الأول','الثاني','الثالث','الرابع','الخامس','السادس','السابع','الثامن','التاسع','العاشر','الحادي عشر','الثاني عشر','الثالث عشر','الرابع عشر','الخامس عشر'];
+  return `القسم ${ordinals[n - 1] ?? n}`;
+};
+
 const AdminQuestions = () => {
   const navigate = useNavigate();
   const { user, isAdmin, isEditor } = useAuth();
@@ -636,7 +641,7 @@ const AdminQuestions = () => {
           const { error } = await (supabase.from('subject_exam_forms' as any) as any).insert({
             subject_id: selectedSubject,
             form_id: formId,
-            form_name: `نموذج ${orderIndex}`,
+            form_name: toArabicOrdinal(orderIndex),
             order_index: orderIndex,
             hidden: true,
             created_by: user?.id,
@@ -738,7 +743,7 @@ const AdminQuestions = () => {
         });
         overridesByFormId.delete(formId);
       } else {
-        items.push({ id: formId, name: `نموذج ${i}`, order_index: i, isDefault: true, rowId: null, hidden: false });
+        items.push({ id: formId, name: toArabicOrdinal(i), order_index: i, isDefault: true, rowId: null, hidden: false });
       }
     }
 
