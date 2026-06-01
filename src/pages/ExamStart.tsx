@@ -554,21 +554,26 @@ const ExamStart = () => {
     if (!subStudentName.trim() || !subPhone.trim()) return;
     setSubLoading(true);
     try {
-      await (supabase as any).from('payment_requests').insert({
+      const { error: dbError } = await (supabase as any).from('payment_requests').insert({
         student_name: subStudentName.trim(),
         phone_number: subPhone.trim(),
         subject_id: subjectId,
         subject_name: subject?.name || '',
         status: 'pending',
       });
-      await supabase.functions.invoke('send-telegram', {
+      if (dbError) throw dbError;
+
+      const { error: tgError } = await supabase.functions.invoke('send-telegram', {
         body: {
           message: `🔔 <b>طلب اشتراك جديد</b>\n\n👤 الاسم: ${subStudentName.trim()}\n📱 الجوال: ${subPhone.trim()}\n📚 المادة: ${subject?.name || ''}\n💰 المبلغ: 1000 ريال\n\n✅ افتح لوحة الإدارة لتأكيد الطلب`,
         },
       });
+      if (tgError) console.error('Telegram invoke error:', tgError);
+
       setSubSuccess(true);
-    } catch {
-      toast({ title: 'خطأ', description: 'حدث خطأ، حاول مجدداً', variant: 'destructive' });
+    } catch (e: any) {
+      console.error('Subscription error:', e);
+      toast({ title: 'خطأ', description: e?.message || 'حدث خطأ، حاول مجدداً', variant: 'destructive' });
     } finally {
       setSubLoading(false);
     }
