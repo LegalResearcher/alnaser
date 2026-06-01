@@ -28,6 +28,7 @@ export interface Subject {
   password: string | null;
   author_name: string | null;
   summary_url: string | null;
+  show_subscription?: boolean;
   created_at: string;
   updated_at: string;
 }
