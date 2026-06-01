@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { Plus, Edit2, Trash2, BookOpen, Clock, Target, Settings, User, Lock, Upload, Loader2, FileText, CheckCircle2, XCircle, Copy } from 'lucide-react';
+import { Plus, Edit2, Trash2, BookOpen, Clock, Target, Settings, User, Lock, Upload, Loader2, FileText, CheckCircle2, XCircle, Copy, Eye, X as XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -54,6 +54,7 @@ import { SortableItem } from '@/components/admin/SortableItem';
 const PaymentRequestsSection = ({ subjectId }: { subjectId: string }) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [receiptModal, setReceiptModal] = useState<{ url: string; name: string } | null>(null);
 
   const { data: requests = [] } = useQuery({
     queryKey: ['payment_requests', subjectId],
@@ -125,6 +126,7 @@ const PaymentRequestsSection = ({ subjectId }: { subjectId: string }) => {
   const pending = requests.filter((r: any) => r.status === 'pending');
 
   return (
+    <>
     <div className="space-y-3 border-t pt-4">
       <h3 className="font-black text-sm flex items-center gap-2">
         💳 طلبات الاشتراك
@@ -152,6 +154,15 @@ const PaymentRequestsSection = ({ subjectId }: { subjectId: string }) => {
                     className="px-2.5 py-1 rounded-xl text-[10px] font-black bg-red-400 hover:bg-red-500 text-white transition-colors">
                     ✕ رفض
                   </button>
+                  {req.receipt_image_url && (
+                    <button
+                      onClick={() => setReceiptModal({ url: req.receipt_image_url, name: req.student_name })}
+                      className="px-2.5 py-1 rounded-xl text-[10px] font-black bg-blue-500 hover:bg-blue-600 text-white transition-colors flex items-center gap-1"
+                    >
+                      <Eye className="w-3 h-3" />
+                      عرض إيصال 📄
+                    </button>
+                  )}
                 </>)}
                 {req.status === 'confirmed' && <span className="text-green-600 font-black text-[10px]">✅ مؤكد</span>}
                 {req.status === 'rejected' && <span className="text-red-400 font-black text-[10px]">✕ مرفوض</span>}
@@ -166,6 +177,57 @@ const PaymentRequestsSection = ({ subjectId }: { subjectId: string }) => {
         ))}
       </div>
     </div>
+
+      {/* ── مودال عرض صورة الإيصال ── */}
+      {receiptModal && (
+        <div
+          className="fixed inset-0 z-[99999] flex items-center justify-center"
+          onClick={() => setReceiptModal(null)}
+        >
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div
+            className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-[92vw] max-w-sm overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700">
+              <div>
+                <p className="font-black text-sm text-slate-800 dark:text-slate-100">📄 إيصال الإيداع</p>
+                <p className="text-[11px] text-slate-400 font-semibold mt-0.5">{receiptModal.name}</p>
+              </div>
+              <button
+                onClick={() => setReceiptModal(null)}
+                className="w-9 h-9 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors"
+              >
+                <XIcon className="w-4 h-4 text-slate-500" />
+              </button>
+            </div>
+            <div className="p-4">
+              <img
+                src={receiptModal.url}
+                alt="إيصال الإيداع"
+                className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 object-contain max-h-[60vh]"
+              />
+            </div>
+            <div className="px-4 pb-4 flex gap-2">
+              <a
+                href={receiptModal.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 py-2.5 rounded-xl text-xs font-black text-center bg-blue-500 hover:bg-blue-600 text-white transition-colors"
+              >
+                فتح في تبويب جديد ↗
+              </a>
+              <button
+                onClick={() => setReceiptModal(null)}
+                className="flex-1 py-2.5 rounded-xl text-xs font-black bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
+              >
+                إغلاق
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
