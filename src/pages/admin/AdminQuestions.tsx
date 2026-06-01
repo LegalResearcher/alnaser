@@ -362,7 +362,7 @@ const AdminQuestions = () => {
         canvas.width  = Math.round(viewport.width);
         canvas.height = Math.round(viewport.height);
         const ctx = canvas.getContext('2d')!;
-        await page.render({ canvasContext: ctx, viewport }).promise;
+        await page.render({ canvasContext: ctx, canvas, viewport }).promise;
         const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
         const isHighlight = (r: number, g: number, b: number, a: number) => {

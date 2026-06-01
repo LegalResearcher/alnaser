@@ -28,6 +28,7 @@ export interface Subject {
   password: string | null;
   author_name: string | null;
   summary_url: string | null;
+  show_subscription?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -100,6 +101,19 @@ export interface ReviewPassword {
   is_active: boolean;
   duration_days: number;
   created_at: string;
+}
+
+export interface PaymentRequest {
+  id: string;
+  student_name: string;
+  phone_number: string;
+  subject_id: string;
+  subject_name: string;
+  status: 'pending' | 'confirmed' | 'rejected';
+  review_password_id: string | null;
+  notes: string | null;
+  created_at: string;
+  confirmed_at: string | null;
 }
 
 export const EXAM_YEARS = [2020, 2021, 2022, 2023, 2024, 2025, 2026] as const;
