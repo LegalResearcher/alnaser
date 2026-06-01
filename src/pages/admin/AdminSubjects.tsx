@@ -66,27 +66,51 @@ const PaymentRequestsSection = ({ subjectId }: { subjectId: string }) => {
 
   const confirmMut = useMutation({
     mutationFn: async (req: any) => {
-      // ١. جلب أول كلمة مرور جاهزة
-      const { data: pwData } = await (supabase as any)
-        .from('review_passwords').select('*')
-        .eq('subject_id', subjectId).eq('is_active', true)
-        .is('first_used_at', null).limit(1).single();
-      if (!pwData) throw new Error('لا توجد كلمة مرور متاحة — أضف كلمة مرور جديدة أولاً');
-      // ٢. تحديث الطلب
+      // ١. توليد كلمة مرور جديدة تلقائياً
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789abcdefghjkmnpqrstuvwxyz';
+      const seg = () => Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+      const newPwd = `${seg()}-${seg()}-${seg()}`;
+
+      // ٢. إنشاء كلمة المرور في جدول review_passwords
+      const { data: pwData, error: pwErr } = await (supabase as any)
+        .from('review_passwords')
+        .insert({
+          subject_id: subjectId,
+          password: newPwd,
+          label: req.student_name,
+          duration_days: 30,
+          is_active: true,
+        })
+        .select()
+        .single();
+      if (pwErr) throw pwErr;
+
+      // ٣. ربط الطلب بكلمة المرور
       await (supabase as any).from('payment_requests').update({
         status: 'confirmed',
         confirmed_at: new Date().toISOString(),
         review_password_id: pwData.id,
       }).eq('id', req.id);
-      // ٣. إرسال الإشعار عبر Edge Function (مضمون 99%)
+
+      // ٤. حفظ بيانات التواصل في localStorage
+      try {
+        const all = JSON.parse(localStorage.getItem('review_pwd_contacts') || '{}');
+        all[pwData.id] = `whatsapp:${req.phone_number}`;
+        localStorage.setItem('review_pwd_contacts', JSON.stringify(all));
+      } catch {}
+
+      // ٥. إشعار تيليجرام بكلمة المرور
       await supabase.functions.invoke('send-telegram', {
         body: {
-          message: `✅ <b>تأكيد طلب اشتراك</b>\n\n👤 ${req.student_name}\n📱 ${req.phone_number}\n📚 ${req.subject_name}\n🔑 كلمة المرور: <b>${pwData.password}</b>\n\nأرسل كلمة المرور للطالب على: ${req.phone_number}`,
+          message: `✅ <b>تأكيد طلب اشتراك</b>\n\n👤 ${req.student_name}\n📱 ${req.phone_number}\n📚 ${req.subject_name}\n🔑 كلمة المرور: <b>${newPwd}</b>\n⏳ المدة: 30 يوم\n\nأرسل كلمة المرور للطالب على: ${req.phone_number}`,
         },
       });
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['payment_requests', subjectId] }),
-    onError: (e: any) => toast({ title: 'خطأ في التأكيد', description: e?.message || 'تعذّر التأكيد، حاول مجدداً', variant: 'destructive' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payment_requests', subjectId] });
+      toast({ title: 'تم التأكيد وتوليد كلمة المرور', description: 'تحقق من تيليجرام' });
+    },
+    onError: (e: any) => toast({ title: 'خطأ في التأكيد', description: e?.message || 'تعذّر التأكيد', variant: 'destructive' }),
   });
 
   const rejectMut = useMutation({
@@ -255,7 +279,7 @@ const AdminSubjects = () => {
 
   const handleCloseDialog = () => {
     setIsDialogOpen(false); setEditingSubject(null);
-    setFormData({ name: '', description: '', default_time_minutes: 30, allow_time_modification: true, min_time_minutes: 10, max_time_minutes: 120, questions_per_exam: 20, passing_score: 60, password: '', author_name: '', summary_url: '' });
+    setFormData({ name: '', description: '', default_time_minutes: 30, allow_time_modification: true, min_time_minutes: 10, max_time_minutes: 120, questions_per_exam: 20, passing_score: 60, password: '', author_name: '', summary_url: '', show_subscription: false });
     setUploadSuccess(false); setUploadError('');
   };
 
