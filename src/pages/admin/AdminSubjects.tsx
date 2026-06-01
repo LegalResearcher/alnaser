@@ -53,6 +53,7 @@ import { SortableItem } from '@/components/admin/SortableItem';
 // ── مكوّن طلبات الاشتراك ──
 const PaymentRequestsSection = ({ subjectId }: { subjectId: string }) => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: requests = [] } = useQuery({
     queryKey: ['payment_requests', subjectId],
@@ -85,6 +86,7 @@ const PaymentRequestsSection = ({ subjectId }: { subjectId: string }) => {
       });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['payment_requests', subjectId] }),
+    onError: (e: any) => toast({ title: 'خطأ في التأكيد', description: e?.message || 'تعذّر التأكيد، حاول مجدداً', variant: 'destructive' }),
   });
 
   const rejectMut = useMutation({
