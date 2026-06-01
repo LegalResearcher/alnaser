@@ -163,6 +163,11 @@ const SummaryModal = ({ url, subjectName, onClose }: { url: string; subjectName:
   );
 };
 
+const toArabicOrdinal = (n: number): string => {
+  const ordinals = ['الأول','الثاني','الثالث','الرابع','الخامس','السادس','السابع','الثامن','التاسع','العاشر','الحادي عشر','الثاني عشر','الثالث عشر','الرابع عشر','الخامس عشر'];
+  return `القسم ${ordinals[n - 1] ?? n}`;
+};
+
 const ExamStart = () => {
   const { subjectId } = useParams<{ subjectId: string }>();
   const navigate = useNavigate();
@@ -226,13 +231,30 @@ const ExamStart = () => {
   );
 
   const isTrialSelected = selectedYear === 'trial';
-  const defaultTrialForms = useMemo(() => Array.from({ length: 15 }, (_, i) => ({ id: `Model_${i + 1}`, name: `نموذج ${i + 1}`, order_index: i + 1 })), []);
+
+  const defaultTrialForms = useMemo(() => Array.from({ length: 15 }, (_, i) => ({ id: `Model_${i + 1}`, name: toArabicOrdinal(i + 1), order_index: i + 1 })), []);
 
   const { data: customForms = [] } = useQuery({
     queryKey: ['subject-exam-forms', subjectId],
     queryFn: async () => {
       const { data } = await (supabase.from('subject_exam_forms' as any) as any).select('*').eq('subject_id', subjectId).order('order_index');
       return (data || []) as { form_id: string; form_name: string; order_index: number; hidden?: boolean }[];
+    },
+    enabled: isTrialSelected && !!subjectId,
+  });
+
+  const { data: formsWithCounts = {} } = useQuery({
+    queryKey: ['trial-forms-counts', subjectId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('questions')
+        .select('exam_form')
+        .eq('subject_id', subjectId!)
+        .eq('status', 'active')
+        .is('exam_year', null);
+      const counts: Record<string, number> = {};
+      (data || []).forEach((q: any) => { counts[q.exam_form] = (counts[q.exam_form] || 0) + 1; });
+      return counts;
     },
     enabled: isTrialSelected && !!subjectId,
   });
@@ -244,11 +266,11 @@ const ExamStart = () => {
       const ov = overrideMap.get(d.id);
       if (ov) { overrideMap.delete(d.id); return { id: d.id, name: ov.form_name, order_index: ov.order_index ?? d.order_index, hidden: !!ov.hidden }; }
       return { ...d, hidden: false };
-    }).filter(d => !d.hidden);
+    }).filter(d => !d.hidden && ((formsWithCounts as Record<string, number>)[d.id] ?? 0) > 0);
     const customs: { id: string; name: string; order_index: number }[] = [];
-    overrideMap.forEach(f => { if (!f.hidden) customs.push({ id: f.form_id, name: f.form_name, order_index: f.order_index }); });
+    overrideMap.forEach(f => { if (!f.hidden && ((formsWithCounts as Record<string, number>)[f.form_id] ?? 0) > 0) customs.push({ id: f.form_id, name: f.form_name, order_index: f.order_index }); });
     return [...defaults, ...customs].sort((a, b) => a.order_index - b.order_index).map(({ id, name }) => ({ id, name }));
-  }, [defaultTrialForms, customForms]);
+  }, [defaultTrialForms, customForms, formsWithCounts]);
 
   const activeExamForms = useMemo(() => EXAM_FORMS, []);
 
@@ -292,7 +314,7 @@ const ExamStart = () => {
         if (!q.exam_year) {
           const form = q.exam_form || '';
           // استخدم الاسم الحقيقي من قاعدة البيانات إن وجد، وإلا افتراضي
-          const realName = formNameMap[form] || form.replace('Model_', 'نموذج ');
+          const realName = formNameMap[form] || (form.startsWith('Model_') ? toArabicOrdinal(parseInt(form.replace('Model_', ''), 10)) : form);
           label = realName ? `أسئلة تجريبية — ${realName}` : 'أسئلة تجريبية';
         } else {
           const formMap: Record<string, string> = { General: 'نموذج العام', Parallel: 'نموذج الموازي', Mixed: 'نموذج مختلط' };
