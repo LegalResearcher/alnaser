@@ -5,6 +5,7 @@ import {
   Lock, BookOpen, Layers, Sparkles, ChevronLeft, Zap 
 } from 'lucide-react';
 import SubjectSettingsModal from '@/components/SubjectSettingsModal';
+import SubscribeButton from '@/components/SubscribeButton';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { Level, Subject } from '@/types/database';
@@ -352,6 +353,11 @@ const LevelSubjects = () => {
                         </div>
                       </div>
                     </Link>
+                    {subject.show_subscription && (
+                      <div className="px-6 md:px-7 pb-5">
+                        <SubscribeButton subjectId={subject.id} subjectName={subject.name} levelName={level?.name} />
+                      </div>
+                    )}
                   </div>
                 );
               })
