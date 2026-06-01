@@ -154,15 +154,14 @@ const PaymentRequestsSection = ({ subjectId }: { subjectId: string }) => {
                     className="px-2.5 py-1 rounded-xl text-[10px] font-black bg-red-400 hover:bg-red-500 text-white transition-colors">
                     ✕ رفض
                   </button>
-                  {req.receipt_image_url && (
-                    <button
-                      onClick={() => setReceiptModal({ url: req.receipt_image_url, name: req.student_name })}
-                      className="px-2.5 py-1 rounded-xl text-[10px] font-black bg-blue-500 hover:bg-blue-600 text-white transition-colors flex items-center gap-1"
-                    >
-                      <Eye className="w-3 h-3" />
-                      عرض إيصال 📄
-                    </button>
-                  )}
+                  <button
+                    onClick={() => req.receipt_image_url && setReceiptModal({ url: req.receipt_image_url, name: req.student_name })}
+                    disabled={!req.receipt_image_url}
+                    className="px-2.5 py-1 rounded-xl text-[10px] font-black bg-blue-500 hover:bg-blue-600 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                  >
+                    <Eye className="w-3 h-3" />
+                    إيصال 📄
+                  </button>
                 </>)}
                 {req.status === 'confirmed' && <span className="text-green-600 font-black text-[10px]">✅ مؤكد</span>}
                 {req.status === 'rejected' && <span className="text-red-400 font-black text-[10px]">✕ مرفوض</span>}
@@ -181,12 +180,12 @@ const PaymentRequestsSection = ({ subjectId }: { subjectId: string }) => {
       {/* ── مودال عرض صورة الإيصال ── */}
       {receiptModal && (
         <div
-          className="fixed inset-0 z-[99999] flex items-center justify-center"
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4"
           onClick={() => setReceiptModal(null)}
         >
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
           <div
-            className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-[92vw] max-w-sm overflow-hidden"
+            className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700">
