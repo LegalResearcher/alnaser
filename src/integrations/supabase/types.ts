@@ -606,6 +606,60 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_requests: {
+        Row: {
+          confirmed_at: string | null
+          created_at: string | null
+          id: string
+          notes: string | null
+          phone_number: string
+          review_password_id: string | null
+          status: string | null
+          student_name: string
+          subject_id: string | null
+          subject_name: string | null
+        }
+        Insert: {
+          confirmed_at?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          phone_number: string
+          review_password_id?: string | null
+          status?: string | null
+          student_name: string
+          subject_id?: string | null
+          subject_name?: string | null
+        }
+        Update: {
+          confirmed_at?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          phone_number?: string
+          review_password_id?: string | null
+          status?: string | null
+          student_name?: string
+          subject_id?: string | null
+          subject_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_requests_review_password_id_fkey"
+            columns: ["review_password_id"]
+            isOneToOne: false
+            referencedRelation: "review_passwords"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_requests_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_stats: {
         Row: {
           exams_by_subject: Json
@@ -1084,6 +1138,7 @@ export type Database = {
           passing_score: number
           password: string | null
           questions_per_exam: number
+          show_subscription: boolean | null
           summary_url: string | null
           updated_at: string
         }
@@ -1104,6 +1159,7 @@ export type Database = {
           passing_score?: number
           password?: string | null
           questions_per_exam?: number
+          show_subscription?: boolean | null
           summary_url?: string | null
           updated_at?: string
         }
@@ -1124,6 +1180,7 @@ export type Database = {
           passing_score?: number
           password?: string | null
           questions_per_exam?: number
+          show_subscription?: boolean | null
           summary_url?: string | null
           updated_at?: string
         }
