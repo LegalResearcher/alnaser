@@ -1090,6 +1090,9 @@ const ExamStart = () => {
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-black text-slate-500 uppercase tracking-wider">رمز التفعيل</label>
+                <input
+                  type="password"
+                  value={reviewPassword}
                   onChange={(e) => { setReviewPassword(e.target.value); setReviewPasswordError(false); }}
                   onKeyDown={(e) => e.key === 'Enter' && handleConfirmReviewPassword()}
                   placeholder="● ● ● ● ● ●"
