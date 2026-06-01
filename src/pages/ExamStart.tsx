@@ -196,6 +196,9 @@ const ExamStart = () => {
   const [subStudentName, setSubStudentName] = useState('');
   const [subPhone, setSubPhone] = useState('');
   const [subLoading, setSubLoading] = useState(false);
+  const [subSelectedWallet, setSubSelectedWallet] = useState<string | null>(null);
+  const [subReceiptFile, setSubReceiptFile] = useState<File | null>(null);
+  const [subReceiptPreview, setSubReceiptPreview] = useState<string | null>(null);
   const [subSuccess, setSubSuccess] = useState(false);
 
   // ── وضع الاختبار العادي بكلمة مرور ──
@@ -554,18 +557,32 @@ const ExamStart = () => {
     if (!subStudentName.trim() || !subPhone.trim()) return;
     setSubLoading(true);
     try {
+      // رفع صورة الإيصال إن وُجدت
+      let receiptUrl: string | null = null;
+      if (subReceiptFile) {
+        const ext = subReceiptFile.name.split('.').pop();
+        const fileName = `receipts/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error: upErr } = await supabase.storage.from('payment-receipts').upload(fileName, subReceiptFile);
+        if (!upErr) {
+          const { data: urlData } = supabase.storage.from('payment-receipts').getPublicUrl(fileName);
+          receiptUrl = urlData?.publicUrl ?? null;
+        }
+      }
+
       const { error: dbError } = await (supabase as any).from('payment_requests').insert({
         student_name: subStudentName.trim(),
         phone_number: subPhone.trim(),
         subject_id: subjectId,
         subject_name: subject?.name || '',
         status: 'pending',
+        ...(receiptUrl && { receipt_image_url: receiptUrl }),
+        ...(subSelectedWallet && { wallet_type: subSelectedWallet }),
       });
       if (dbError) throw dbError;
 
       const { error: tgError } = await supabase.functions.invoke('send-telegram', {
         body: {
-          message: `🔔 <b>طلب اشتراك جديد</b>\n\n👤 الاسم: ${subStudentName.trim()}\n📱 الجوال: ${subPhone.trim()}\n📚 المادة: ${subject?.name || ''}\n💰 المبلغ: 1000 ريال\n\n✅ افتح لوحة الإدارة لتأكيد الطلب`,
+          message: `🔔 <b>طلب اشتراك جديد</b>\n\n👤 الاسم: ${subStudentName.trim()}\n📱 الجوال: ${subPhone.trim()}\n📚 المادة: ${subject?.name || ''}\n💰 المبلغ: 1000 ريال${subSelectedWallet ? `\n💳 المحفظة: ${subSelectedWallet}` : ''}${receiptUrl ? `\n🖼 الإيصال: ${receiptUrl}` : ''}\n\n✅ افتح لوحة الإدارة لتأكيد الطلب`,
         },
       });
       if (tgError) console.error('Telegram invoke error:', tgError);
@@ -824,22 +841,7 @@ const ExamStart = () => {
                 </button>
               )}
 
-              {/* ── زر الاشتراك ── */}
-              {subject?.show_subscription && (
-                <button
-                  onClick={() => { setSubStudentName(''); setSubPhone(''); setSubSuccess(false); setShowSubscriptionModal(true); }}
-                  className="group relative w-full h-11 rounded-2xl overflow-hidden transition-all duration-200 active:scale-[0.98]"
-                  style={{ background: 'linear-gradient(135deg, #1e3a5f, #1d4ed8)', boxShadow: '0 4px 20px rgba(29,78,216,0.35)' }}
-                >
-                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                    style={{ background: 'linear-gradient(135deg, #1e40af, #2563eb)' }} />
-                  <div className="relative flex items-center justify-center gap-2 text-white">
-                    <span className="text-base">💳</span>
-                    <span className="text-xs font-black">اشترك لتفعيل المادة وكافة الميزات</span>
-                    <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded-lg">1000 ريال</span>
-                  </div>
-                </button>
-              )}
+              {/* ── زر الاشتراك (مخفي — الدخول عبر اختبار+المراجعة) ── */}
 
               {/* ── زر إنشاء غرفة تحدي جماعي ── */}
               <button
@@ -998,7 +1000,7 @@ const ExamStart = () => {
                 <div className="flex items-center gap-3">
                   <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 flex items-center justify-center text-xl">💳</div>
                   <div>
-                    <h3 className="font-black text-slate-800 dark:text-slate-100 text-base">باقة مادة: {subject?.name}</h3>
+                    <h3 className="font-black text-slate-800 dark:text-slate-100 text-base">طلب الاشتراك</h3>
                     <p className="text-[11px] text-slate-400 font-semibold">{subject?.name}</p>
                   </div>
                 </div>
@@ -1013,19 +1015,73 @@ const ExamStart = () => {
                   <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400 leading-relaxed text-right">
                     💡 يرجى تحويل المبلغ إلى الحساب الموضح، ثم رفع صورة الإيصال وتعبئة البيانات لتأكيد الاشتراك.
                   </p>
-                  <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400 mt-1.5 text-right">طرق الدفع المتاحة:</p>
-                  <div className="flex flex-wrap gap-1.5 justify-end mt-1">
+                </div>
+
+                {/* اختيار المحفظة */}
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-wider text-right block">اختر طريقة الدفع</label>
+                  <div className="grid grid-cols-3 gap-2">
                     {[
-                      { label: 'جيب',    account: '488281' },
-                      { label: 'فلوسك',  account: '800035159' },
-                      { label: 'ون كاش', account: '174459935' },
-                    ].map(m => (
-                      <span key={m.label} className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
-                        {m.label}: {m.account}
-                      </span>
+                      { id: 'jeeb',    label: 'جيب',     account: '488281' },
+                      { id: 'fawry',   label: 'فلوسك',   account: '800035159' },
+                      { id: 'onecash', label: 'ون كاش',  account: '174459935' },
+                    ].map(w => (
+                      <button
+                        key={w.id}
+                        type="button"
+                        onClick={() => setSubSelectedWallet(w.id === subSelectedWallet ? null : w.id)}
+                        className={`py-2.5 rounded-xl text-xs font-black border-2 transition-all ${
+                          subSelectedWallet === w.id
+                            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+                            : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-300'
+                        }`}
+                      >
+                        {w.label}
+                      </button>
                     ))}
                   </div>
+                  {subSelectedWallet && (() => {
+                    const wallets: Record<string, string> = { jeeb: '488281', fawry: '800035159', onecash: '174459935' };
+                    return (
+                      <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl p-3 flex items-center justify-between">
+                        <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">رقم الحساب</span>
+                        <span className="font-black text-base text-emerald-800 dark:text-emerald-300 tracking-wide" dir="ltr">
+                          {wallets[subSelectedWallet]}
+                        </span>
+                      </div>
+                    );
+                  })()}
+                  {subSelectedWallet && (
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="sub-receipt-upload"
+                        className="flex items-center justify-center gap-2 w-full py-3 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-all font-black text-sm text-slate-600 dark:text-slate-300"
+                      >
+                        📁 {subReceiptFile ? subReceiptFile.name : 'رفع صورة إيصال الإيداع'}
+                      </label>
+                      <input
+                        id="sub-receipt-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setSubReceiptFile(file);
+                          const reader = new FileReader();
+                          reader.onload = () => setSubReceiptPreview(reader.result as string);
+                          reader.readAsDataURL(file);
+                        }}
+                      />
+                      {subReceiptPreview && (
+                        <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
+                          <img src={subReceiptPreview} alt="الإيصال" className="w-full max-h-28 object-cover" />
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
+
                 <div className="space-y-1.5">
                   <label className="text-xs font-black text-slate-500 uppercase tracking-wider text-right block">الاسم الكامل</label>
                   <input type="text" value={subStudentName} onChange={(e) => setSubStudentName(e.target.value)}
@@ -1081,7 +1137,7 @@ const ExamStart = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/40 dark:to-teal-900/40 flex items-center justify-center"><BookOpen className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /></div>
-                  <div><h3 className="font-black text-slate-800 dark:text-slate-100 text-base">اختبار+ المراجعة</h3><p className="text-[11px] text-slate-400 font-semibold">أدخل رمز التفعيل للمتابعة</p></div>
+                  <div><h3 className="font-black text-slate-800 dark:text-slate-100 text-base">اختبار+ المراجعة</h3><p className="text-[11px] text-slate-400 font-semibold">أدخل كلمة المرور للمتابعة</p></div>
                 </div>
                 <button onClick={() => setShowReviewPasswordModal(false)} className="w-9 h-9 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors"><X className="w-4 h-4 text-slate-500" /></button>
               </div>
@@ -1089,7 +1145,7 @@ const ExamStart = () => {
                 <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 text-right leading-relaxed" dir="rtl">في هذا الوضع ستظهر لك <span className="font-black">التلميحات والشرح المفصل</span> بعد كل إجابة — صحيحة كانت أم خاطئة.</p>
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-black text-slate-500 uppercase tracking-wider">رمز التفعيل</label>
+                <label className="text-xs font-black text-slate-500 uppercase tracking-wider">كلمة المرور</label>
                 <input
                   type="password"
                   value={reviewPassword}
@@ -1105,7 +1161,7 @@ const ExamStart = () => {
                   )}
                   dir="ltr"
                 />
-                {reviewPasswordError && (<p className="text-xs font-black text-red-500 text-center animate-in fade-in duration-200">❌ {reviewPasswordErrorMsg || 'رمز التفعيل غير صحيح'}</p>)}
+                {reviewPasswordError && (<p className="text-xs font-black text-red-500 text-center animate-in fade-in duration-200">❌ {reviewPasswordErrorMsg || 'كلمة المرور غير صحيحة'}</p>)}
               </div>
               <button
                 onClick={handleConfirmReviewPassword}
@@ -1123,11 +1179,14 @@ const ExamStart = () => {
                     setSubStudentName('');
                     setSubPhone('');
                     setSubSuccess(false);
+                    setSubSelectedWallet(null);
+                    setSubReceiptFile(null);
+                    setSubReceiptPreview(null);
                     setShowSubscriptionModal(true);
                   }}
                   className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl border-2 border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-all active:scale-[0.98] text-sm font-black text-emerald-700 dark:text-emerald-400"
                 >
-                  <Sparkles className="w-4 h-4" />
+                  <span>✨</span>
                   ليس لديك رمز تفعيل؟ اشترك الآن من هنا
                 </button>
               )}
