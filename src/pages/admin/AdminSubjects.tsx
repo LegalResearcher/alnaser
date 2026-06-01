@@ -279,7 +279,7 @@ const AdminSubjects = () => {
 
   const handleCloseDialog = () => {
     setIsDialogOpen(false); setEditingSubject(null);
-    setFormData({ name: '', description: '', default_time_minutes: 30, allow_time_modification: true, min_time_minutes: 10, max_time_minutes: 120, questions_per_exam: 20, passing_score: 60, password: '', author_name: '', summary_url: '' });
+    setFormData({ name: '', description: '', default_time_minutes: 30, allow_time_modification: true, min_time_minutes: 10, max_time_minutes: 120, questions_per_exam: 20, passing_score: 60, password: '', author_name: '', summary_url: '', show_subscription: false });
     setUploadSuccess(false); setUploadError('');
   };
 
