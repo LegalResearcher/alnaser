@@ -191,6 +191,12 @@ const ExamStart = () => {
   const [reviewPasswordError, setReviewPasswordError] = useState(false);
   const [reviewPasswordErrorMsg, setReviewPasswordErrorMsg] = useState('');
   const [reviewPasswordLoading, setReviewPasswordLoading] = useState(false);
+  // ── نظام الاشتراك ──
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [subStudentName, setSubStudentName] = useState('');
+  const [subPhone, setSubPhone] = useState('');
+  const [subLoading, setSubLoading] = useState(false);
+  const [subSuccess, setSubSuccess] = useState(false);
 
   // ── وضع الاختبار العادي بكلمة مرور ──
   const [showExamPasswordModal, setShowExamPasswordModal] = useState(false);
@@ -543,6 +549,31 @@ const ExamStart = () => {
     finally { setReviewPasswordLoading(false); }
   };
 
+  // ── إرسال طلب الاشتراك عبر Edge Function ──
+  const handleSubscriptionRequest = async () => {
+    if (!subStudentName.trim() || !subPhone.trim()) return;
+    setSubLoading(true);
+    try {
+      await (supabase as any).from('payment_requests').insert({
+        student_name: subStudentName.trim(),
+        phone_number: subPhone.trim(),
+        subject_id: subjectId,
+        subject_name: subject?.name || '',
+        status: 'pending',
+      });
+      await supabase.functions.invoke('send-telegram', {
+        body: {
+          message: `🔔 <b>طلب اشتراك جديد</b>\n\n👤 الاسم: ${subStudentName.trim()}\n📱 الجوال: ${subPhone.trim()}\n📚 المادة: ${subject?.name || ''}\n💰 المبلغ: 1000 ريال\n\n✅ افتح لوحة الإدارة لتأكيد الطلب`,
+        },
+      });
+      setSubSuccess(true);
+    } catch {
+      toast({ title: 'خطأ', description: 'حدث خطأ، حاول مجدداً', variant: 'destructive' });
+    } finally {
+      setSubLoading(false);
+    }
+  };
+
   if (isLoading && !subject) return (<MainLayout><div className="container mx-auto px-6 py-24"><div className="h-[560px] max-w-lg mx-auto rounded-[2.5rem] bg-slate-100 dark:bg-muted animate-pulse" /></div></MainLayout>);
   if (!subject) return (<MainLayout><div className="container mx-auto px-6 py-24 text-center"><div className="w-20 h-20 bg-slate-100 dark:bg-muted rounded-full flex items-center justify-center mx-auto mb-6"><Info className="w-10 h-10 text-slate-400 dark:text-muted-foreground" /></div><p className="text-slate-500 dark:text-muted-foreground text-xl font-bold">عذراً، المادة المطلوبة غير متوفرة</p><Link to="/levels"><Button variant="outline" className="mt-6 rounded-2xl h-12 px-8">العودة للمستويات</Button></Link></div></MainLayout>);
 
@@ -788,6 +819,23 @@ const ExamStart = () => {
                 </button>
               )}
 
+              {/* ── زر الاشتراك ── */}
+              {subject?.show_subscription && (
+                <button
+                  onClick={() => { setSubStudentName(''); setSubPhone(''); setSubSuccess(false); setShowSubscriptionModal(true); }}
+                  className="group relative w-full h-11 rounded-2xl overflow-hidden transition-all duration-200 active:scale-[0.98]"
+                  style={{ background: 'linear-gradient(135deg, #1e3a5f, #1d4ed8)', boxShadow: '0 4px 20px rgba(29,78,216,0.35)' }}
+                >
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                    style={{ background: 'linear-gradient(135deg, #1e40af, #2563eb)' }} />
+                  <div className="relative flex items-center justify-center gap-2 text-white">
+                    <span className="text-base">💳</span>
+                    <span className="text-xs font-black">اشترك للحصول على كلمة المرور</span>
+                    <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded-lg">1000 ريال</span>
+                  </div>
+                </button>
+              )}
+
               {/* ── زر إنشاء غرفة تحدي جماعي ── */}
               <button
                 onClick={() => { const params = new URLSearchParams(); if (subject?.level_id) params.set('levelId', subject.level_id); if (subjectId) params.set('subjectId', subjectId); navigate(`/battle/create?${params.toString()}`); }}
@@ -927,6 +975,83 @@ const ExamStart = () => {
               >
                 <Play className="w-4 h-4 fill-current" /> ابدأ الاختبار
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── مودال الاشتراك ── */}
+      {showSubscriptionModal && (
+        <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center"
+          onClick={(e) => e.target === e.currentTarget && setShowSubscriptionModal(false)}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+            onClick={() => setShowSubscriptionModal(false)} />
+          <div className="relative w-full sm:max-w-sm bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-2xl animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-300 overflow-hidden">
+            <div className="h-1.5 w-full bg-gradient-to-l from-blue-500 via-indigo-500 to-blue-700" />
+            <div className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 flex items-center justify-center text-xl">💳</div>
+                  <div>
+                    <h3 className="font-black text-slate-800 dark:text-slate-100 text-base">طلب الاشتراك</h3>
+                    <p className="text-[11px] text-slate-400 font-semibold">{subject?.name}</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowSubscriptionModal(false)}
+                  className="w-9 h-9 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                  <X className="w-4 h-4 text-slate-500" />
+                </button>
+              </div>
+              {!subSuccess ? (<>
+                <div className="bg-blue-50 dark:bg-blue-950/30 rounded-2xl p-3.5 border border-blue-100 dark:border-blue-800/40">
+                  <p className="text-xs font-black text-blue-700 dark:text-blue-400 mb-2 text-right">💰 المبلغ: <span className="text-base">1000 ريال</span></p>
+                  <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400 mb-1.5 text-right">طرق الدفع المتاحة:</p>
+                  <div className="flex flex-wrap gap-1.5 justify-end">
+                    {['الكريمي', 'جيب', 'فلوسك', 'كاش ون', 'جوالي'].map(m => (
+                      <span key={m} className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">{m}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-wider text-right block">الاسم الكامل</label>
+                  <input type="text" value={subStudentName} onChange={(e) => setSubStudentName(e.target.value)}
+                    placeholder="أدخل اسمك الكامل"
+                    className="w-full h-12 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 text-right font-semibold text-sm focus:outline-none focus:border-blue-400 transition-all"
+                    dir="rtl" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-wider text-right block">رقم الجوال (واتساب / تيليجرام)</label>
+                  <input type="tel" value={subPhone} onChange={(e) => setSubPhone(e.target.value)}
+                    placeholder="07XXXXXXXX"
+                    className="w-full h-12 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 text-right font-semibold text-sm focus:outline-none focus:border-blue-400 transition-all"
+                    dir="ltr" />
+                </div>
+                <button onClick={handleSubscriptionRequest}
+                  disabled={subLoading || !subStudentName.trim() || !subPhone.trim()}
+                  className="w-full h-12 rounded-2xl font-black text-sm text-white transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                  style={{ background: 'linear-gradient(135deg, #1e3a5f, #1d4ed8)', boxShadow: '0 6px 20px rgba(29,78,216,0.4)' }}>
+                  {subLoading
+                    ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    : <><span>📩</span> إرسال طلب الاشتراك</>}
+                </button>
+              </>) : (
+                <div className="text-center space-y-4 py-4">
+                  <div className="text-5xl animate-in zoom-in duration-300">✅</div>
+                  <div>
+                    <p className="font-black text-slate-800 dark:text-slate-100 text-base mb-1">تم استلام طلبك!</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed" dir="rtl">
+                      أرسل إيصال الدفع على واتساب أو تيليجرام<br />
+                      <span className="font-black text-blue-600">@MuenAlnaser</span><br />
+                      سيصلك رمز الدخول خلال دقائق 🎉
+                    </p>
+                  </div>
+                  <button onClick={() => setShowSubscriptionModal(false)}
+                    className="w-full h-12 rounded-2xl font-black text-sm text-white"
+                    style={{ background: 'linear-gradient(135deg, #1e3a5f, #1d4ed8)' }}>
+                    حسناً، شكراً ✓
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
