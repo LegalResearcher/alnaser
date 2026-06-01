@@ -835,7 +835,7 @@ const ExamStart = () => {
                     style={{ background: 'linear-gradient(135deg, #1e40af, #2563eb)' }} />
                   <div className="relative flex items-center justify-center gap-2 text-white">
                     <span className="text-base">💳</span>
-                    <span className="text-xs font-black">اشترك للحصول على كلمة المرور</span>
+                    <span className="text-xs font-black">اشترك لتفعيل المادة وكافة الميزات</span>
                     <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded-lg">1000 ريال</span>
                   </div>
                 </button>
@@ -998,7 +998,7 @@ const ExamStart = () => {
                 <div className="flex items-center gap-3">
                   <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 flex items-center justify-center text-xl">💳</div>
                   <div>
-                    <h3 className="font-black text-slate-800 dark:text-slate-100 text-base">طلب الاشتراك</h3>
+                    <h3 className="font-black text-slate-800 dark:text-slate-100 text-base">باقة مادة: {subject?.name}</h3>
                     <p className="text-[11px] text-slate-400 font-semibold">{subject?.name}</p>
                   </div>
                 </div>
@@ -1009,11 +1009,20 @@ const ExamStart = () => {
               </div>
               {!subSuccess ? (<>
                 <div className="bg-blue-50 dark:bg-blue-950/30 rounded-2xl p-3.5 border border-blue-100 dark:border-blue-800/40">
-                  <p className="text-xs font-black text-blue-700 dark:text-blue-400 mb-2 text-right">💰 المبلغ: <span className="text-base">1000 ريال</span></p>
-                  <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400 mb-1.5 text-right">طرق الدفع المتاحة:</p>
-                  <div className="flex flex-wrap gap-1.5 justify-end">
-                    {['الكريمي', 'جيب', 'فلوسك', 'كاش ون', 'جوالي'].map(m => (
-                      <span key={m} className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">{m}</span>
+                  <p className="text-xs font-black text-blue-700 dark:text-blue-400 mb-2 text-right">💰 الرسوم: <span className="text-base">1000 ريال</span></p>
+                  <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400 leading-relaxed text-right">
+                    💡 يرجى تحويل المبلغ إلى الحساب الموضح، ثم رفع صورة الإيصال وتعبئة البيانات لتأكيد الاشتراك.
+                  </p>
+                  <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400 mt-1.5 text-right">طرق الدفع المتاحة:</p>
+                  <div className="flex flex-wrap gap-1.5 justify-end mt-1">
+                    {[
+                      { label: 'جيب',    account: '488281' },
+                      { label: 'فلوسك',  account: '800035159' },
+                      { label: 'ون كاش', account: '174459935' },
+                    ].map(m => (
+                      <span key={m.label} className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
+                        {m.label}: {m.account}
+                      </span>
                     ))}
                   </div>
                 </div>
@@ -1025,9 +1034,9 @@ const ExamStart = () => {
                     dir="rtl" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-black text-slate-500 uppercase tracking-wider text-right block">رقم الجوال (واتساب / تيليجرام)</label>
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-wider text-right block">رقم الجوال (واتساب)</label>
                   <input type="tel" value={subPhone} onChange={(e) => setSubPhone(e.target.value)}
-                    placeholder="07XXXXXXXX"
+                    placeholder="7XXXXXXXX"
                     className="w-full h-12 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 text-right font-semibold text-sm focus:outline-none focus:border-blue-400 transition-all"
                     dir="ltr" />
                 </div>
@@ -1045,15 +1054,14 @@ const ExamStart = () => {
                   <div>
                     <p className="font-black text-slate-800 dark:text-slate-100 text-base mb-1">تم استلام طلبك!</p>
                     <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed" dir="rtl">
-                      أرسل إيصال الدفع على واتساب أو تيليجرام<br />
-                      <span className="font-black text-blue-600">@MuenAlnaser</span><br />
-                      سيصلك رمز الدخول خلال دقائق 🎉
+                      سيتم التواصل معك على رقم الهاتف<br />
+                      لإرسال <span className="font-black text-blue-600">رمز التفعيل</span> خلال دقائق 🎉
                     </p>
                   </div>
                   <button onClick={() => setShowSubscriptionModal(false)}
                     className="w-full h-12 rounded-2xl font-black text-sm text-white"
                     style={{ background: 'linear-gradient(135deg, #1e3a5f, #1d4ed8)' }}>
-                    حسناً، شكراً ✓
+                    إغلاق
                   </button>
                 </div>
               )}
@@ -1073,7 +1081,7 @@ const ExamStart = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/40 dark:to-teal-900/40 flex items-center justify-center"><BookOpen className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /></div>
-                  <div><h3 className="font-black text-slate-800 dark:text-slate-100 text-base">اختبار+ المراجعة</h3><p className="text-[11px] text-slate-400 font-semibold">أدخل كلمة المرور للمتابعة</p></div>
+                  <div><h3 className="font-black text-slate-800 dark:text-slate-100 text-base">اختبار+ المراجعة</h3><p className="text-[11px] text-slate-400 font-semibold">أدخل رمز التفعيل للمتابعة</p></div>
                 </div>
                 <button onClick={() => setShowReviewPasswordModal(false)} className="w-9 h-9 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors"><X className="w-4 h-4 text-slate-500" /></button>
               </div>
@@ -1081,10 +1089,7 @@ const ExamStart = () => {
                 <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 text-right leading-relaxed" dir="rtl">في هذا الوضع ستظهر لك <span className="font-black">التلميحات والشرح المفصل</span> بعد كل إجابة — صحيحة كانت أم خاطئة.</p>
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-black text-slate-500 uppercase tracking-wider">كلمة المرور</label>
-                <input
-                  type="password"
-                  value={reviewPassword}
+                <label className="text-xs font-black text-slate-500 uppercase tracking-wider">رمز التفعيل</label>
                   onChange={(e) => { setReviewPassword(e.target.value); setReviewPasswordError(false); }}
                   onKeyDown={(e) => e.key === 'Enter' && handleConfirmReviewPassword()}
                   placeholder="● ● ● ● ● ●"
@@ -1097,7 +1102,7 @@ const ExamStart = () => {
                   )}
                   dir="ltr"
                 />
-                {reviewPasswordError && (<p className="text-xs font-black text-red-500 text-center animate-in fade-in duration-200">❌ {reviewPasswordErrorMsg || 'كلمة المرور غير صحيحة'}</p>)}
+                {reviewPasswordError && (<p className="text-xs font-black text-red-500 text-center animate-in fade-in duration-200">❌ {reviewPasswordErrorMsg || 'رمز التفعيل غير صحيح'}</p>)}
               </div>
               <button
                 onClick={handleConfirmReviewPassword}
@@ -1107,23 +1112,22 @@ const ExamStart = () => {
               >
                 {reviewPasswordLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><ShieldCheck className="w-4 h-4" /> دخول وضع المراجعة</>}
               </button>
-              <div className="relative">
-                <div className="absolute inset-0 rounded-2xl bg-sky-400/20 animate-ping" style={{ animationDuration: '2s' }} />
-                <a href="https://t.me/MuenAlnaser" target="_blank" rel="noopener noreferrer"
-                  className="group relative flex items-center gap-3 w-full py-3 px-4 rounded-2xl border-2 border-sky-200 dark:border-sky-700 bg-gradient-to-l from-sky-50 to-white dark:from-sky-950/40 dark:to-slate-900 hover:border-sky-400 hover:from-sky-100 hover:to-sky-50 dark:hover:from-sky-900/60 transition-all duration-200 active:scale-[0.98] shadow-sm shadow-sky-100 dark:shadow-sky-900/20">
-                  <div className="relative shrink-0">
-                    <div className="absolute inset-0 rounded-xl bg-sky-400/40 animate-ping" style={{ animationDuration: '2s' }} />
-                    <div className="relative w-9 h-9 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-200" style={{ background: 'linear-gradient(135deg, #0088cc, #00aaff)', boxShadow: '0 4px 12px rgba(0,136,204,0.4)' }}>
-                      <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-                    </div>
-                  </div>
-                  <div className="text-right flex-1"><p className="text-xs font-black text-sky-600 dark:text-sky-400">للحصول على كلمة المرور</p><p className="text-[11px] font-bold text-slate-400 dark:text-slate-500">تواصل مع الإدارة عبر تيليجرام</p></div>
-                  <div className="flex flex-col items-center gap-1 shrink-0">
-                    <div className="px-2 py-0.5 rounded-lg text-[9px] font-black text-white" style={{ background: 'linear-gradient(135deg, #0088cc, #00aaff)' }}>اضغط</div>
-                    <svg className="w-3 h-3 text-sky-400 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-                  </div>
-                </a>
-              </div>
+              {subject?.show_subscription && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowReviewPasswordModal(false);
+                    setSubStudentName('');
+                    setSubPhone('');
+                    setSubSuccess(false);
+                    setShowSubscriptionModal(true);
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl border-2 border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-all active:scale-[0.98] text-sm font-black text-emerald-700 dark:text-emerald-400"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  ليس لديك رمز تفعيل؟ اشترك الآن من هنا
+                </button>
+              )}
             </div>
           </div>
         </div>
