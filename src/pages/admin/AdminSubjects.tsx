@@ -50,6 +50,99 @@ import {
 } from '@dnd-kit/sortable';
 import { SortableItem } from '@/components/admin/SortableItem';
 
+// ── مكوّن طلبات الاشتراك ──
+const PaymentRequestsSection = ({ subjectId }: { subjectId: string }) => {
+  const queryClient = useQueryClient();
+
+  const { data: requests = [] } = useQuery({
+    queryKey: ['payment_requests', subjectId],
+    queryFn: async () => {
+      const { data } = await (supabase as any).from('payment_requests').select('*')
+        .eq('subject_id', subjectId).order('created_at', { ascending: false });
+      return data || [];
+    },
+  });
+
+  const confirmMut = useMutation({
+    mutationFn: async (req: any) => {
+      // ١. جلب أول كلمة مرور جاهزة
+      const { data: pwData } = await (supabase as any)
+        .from('review_passwords').select('*')
+        .eq('subject_id', subjectId).eq('is_active', true)
+        .is('first_used_at', null).limit(1).single();
+      if (!pwData) throw new Error('لا توجد كلمة مرور متاحة — أضف كلمة مرور جديدة أولاً');
+      // ٢. تحديث الطلب
+      await (supabase as any).from('payment_requests').update({
+        status: 'confirmed',
+        confirmed_at: new Date().toISOString(),
+        review_password_id: pwData.id,
+      }).eq('id', req.id);
+      // ٣. إرسال الإشعار عبر Edge Function (مضمون 99%)
+      await supabase.functions.invoke('send-telegram', {
+        body: {
+          message: `✅ <b>تأكيد طلب اشتراك</b>\n\n👤 ${req.student_name}\n📱 ${req.phone_number}\n📚 ${req.subject_name}\n🔑 كلمة المرور: <b>${pwData.password}</b>\n\nأرسل كلمة المرور للطالب على: ${req.phone_number}`,
+        },
+      });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['payment_requests', subjectId] }),
+  });
+
+  const rejectMut = useMutation({
+    mutationFn: async (id: string) => {
+      await (supabase as any).from('payment_requests').update({ status: 'rejected' }).eq('id', id);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['payment_requests', subjectId] }),
+  });
+
+  if (requests.length === 0) return null;
+
+  const pending = requests.filter((r: any) => r.status === 'pending');
+
+  return (
+    <div className="space-y-3 border-t pt-4">
+      <h3 className="font-black text-sm flex items-center gap-2">
+        💳 طلبات الاشتراك
+        {pending.length > 0 && (
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-orange-100 text-orange-600">
+            {pending.length} معلق
+          </span>
+        )}
+      </h3>
+      <div className="space-y-2 max-h-64 overflow-y-auto">
+        {requests.map((req: any) => (
+          <div key={req.id} className={`p-3 rounded-2xl border text-right text-xs ${
+            req.status === 'pending' ? 'border-orange-200 bg-orange-50 dark:bg-orange-950/20'
+            : req.status === 'confirmed' ? 'border-green-200 bg-green-50 dark:bg-green-950/20'
+            : 'border-red-100 bg-red-50/50 opacity-60'
+          }`}>
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex gap-1.5 items-center">
+                {req.status === 'pending' && (<>
+                  <button onClick={() => confirmMut.mutate(req)} disabled={confirmMut.isPending}
+                    className="px-2.5 py-1 rounded-xl text-[10px] font-black bg-green-500 hover:bg-green-600 text-white transition-colors">
+                    {confirmMut.isPending ? '...' : '✓ تأكيد'}
+                  </button>
+                  <button onClick={() => rejectMut.mutate(req.id)}
+                    className="px-2.5 py-1 rounded-xl text-[10px] font-black bg-red-400 hover:bg-red-500 text-white transition-colors">
+                    ✕ رفض
+                  </button>
+                </>)}
+                {req.status === 'confirmed' && <span className="text-green-600 font-black text-[10px]">✅ مؤكد</span>}
+                {req.status === 'rejected' && <span className="text-red-400 font-black text-[10px]">✕ مرفوض</span>}
+              </div>
+              <div>
+                <p className="font-black text-slate-700 dark:text-slate-200">{req.student_name}</p>
+                <p className="text-slate-400">{req.phone_number}</p>
+              </div>
+            </div>
+            <p className="text-slate-400 text-[10px]">{new Date(req.created_at).toLocaleString('ar')}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const AdminSubjects = () => {
   const { role } = useAuth();
   const { toast } = useToast();
@@ -66,7 +159,7 @@ const AdminSubjects = () => {
   const [formData, setFormData] = useState({
     name: '', description: '', default_time_minutes: 30, allow_time_modification: true,
     min_time_minutes: 10, max_time_minutes: 120, questions_per_exam: 20,
-    passing_score: 60, password: '', author_name: '', summary_url: '',
+    passing_score: 60, password: '', author_name: '', summary_url: '', show_subscription: false,
   });
 
   const sensors = useSensors(
@@ -113,6 +206,7 @@ const AdminSubjects = () => {
           min_time_minutes: data.min_time_minutes, max_time_minutes: data.max_time_minutes,
           questions_per_exam: data.questions_per_exam, passing_score: data.passing_score,
           password: data.password || null, author_name: data.author_name || null, summary_url: data.summary_url || null,
+          show_subscription: data.show_subscription ?? false,
         }).eq('id', editingSubject.id);
         if (error) throw error;
       } else {
@@ -124,6 +218,7 @@ const AdminSubjects = () => {
           questions_per_exam: data.questions_per_exam, passing_score: data.passing_score,
           password: data.password || null, author_name: data.author_name || null,
           summary_url: data.summary_url || null, order_index: maxOrder + 1,
+          show_subscription: data.show_subscription ?? false,
         });
         if (error) throw error;
       }
@@ -164,7 +259,7 @@ const AdminSubjects = () => {
 
   const handleEdit = (subject: Subject) => {
     setEditingSubject(subject);
-    setFormData({ name: subject.name, description: subject.description || '', default_time_minutes: subject.default_time_minutes, allow_time_modification: subject.allow_time_modification, min_time_minutes: subject.min_time_minutes || 10, max_time_minutes: subject.max_time_minutes || 120, questions_per_exam: subject.questions_per_exam, passing_score: subject.passing_score, password: subject.password || '', author_name: subject.author_name || '', summary_url: subject.summary_url || '' });
+    setFormData({ name: subject.name, description: subject.description || '', default_time_minutes: subject.default_time_minutes, allow_time_modification: subject.allow_time_modification, min_time_minutes: subject.min_time_minutes || 10, max_time_minutes: subject.max_time_minutes || 120, questions_per_exam: subject.questions_per_exam, passing_score: subject.passing_score, password: subject.password || '', author_name: subject.author_name || '', summary_url: subject.summary_url || '', show_subscription: subject.show_subscription ?? false });
     setIsDialogOpen(true);
   };
 
@@ -307,6 +402,19 @@ const AdminSubjects = () => {
               </div>
             </div>
 
+            {/* ── إظهار زر الاشتراك ── */}
+            <div className="flex items-center justify-between p-4 rounded-2xl border-2 border-blue-100 dark:border-blue-800/40 bg-blue-50/50 dark:bg-blue-950/20">
+              <div>
+                <p className="font-black text-sm text-slate-700 dark:text-slate-200">💳 إظهار زر الاشتراك للزوار</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">يظهر زر "اشترك للحصول على كلمة المرور — 1000 ريال"</p>
+              </div>
+              <button type="button"
+                onClick={() => setFormData(prev => ({ ...prev, show_subscription: !prev.show_subscription }))}
+                className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${formData.show_subscription ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600'}`}>
+                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${formData.show_subscription ? 'translate-x-6' : 'translate-x-0.5'}`} />
+              </button>
+            </div>
+
             <div className="space-y-4">
               <h3 className="font-bold text-sm text-muted-foreground">إعدادات الاختبار</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -349,6 +457,9 @@ const AdminSubjects = () => {
                 )}
               </div>
             </div>
+
+            {/* ── طلبات الاشتراك ── */}
+            {editingSubject && <PaymentRequestsSection subjectId={editingSubject.id} />}
 
             <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-4 border-t">
               <Button type="button" variant="outline" onClick={handleCloseDialog} className="w-full sm:w-auto">إلغاء</Button>
