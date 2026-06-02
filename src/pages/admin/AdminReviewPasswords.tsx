@@ -45,7 +45,7 @@ export default function AdminReviewPasswords() {
     if (!saved) return;
     const subjectName = subjectMap[p.subject_id] || 'المادة';
     const subjectUrl = `https://www.alnaseer.org/exam/${p.subject_id}`;
-    const msg = `اهلا وسهلا بك 👋\nتم تفعيل اشتراكك في منصة الناصر القانونية ✅\n\n📚 المادة: ${subjectName}\n🔑 كلمة المرور: ${p.password}\n⏳ المدة: ${p.duration_days || 30} يوم\n\n🔗 رابط ${subjectName}: ${subjectUrl}\n\nادخل عبر الرابط واضغط على "اختبار+ المراجعة" وأدخل كلمة المرور للبدء.\n\nبالتوفيق والنجاح..`;
+    const msg = `أهلاً وسهلاً بك 👋\nتم تفعيل اشتراكك في منصة الناصر القانونية بنجاح ✅\n\n📚 المادة: ${subjectName}\n🔑 رمز التفعيل: \`${p.password}\`\n⏳ المدة: ${p.duration_days || 30} يوماً\n\n🔗 رابط الدخول المباشر:\n${subjectUrl}\n\n💡 طريقة البدء:\nاضغط على الرابط أعلاه، ثم اختر "اختبار+ المراجعة" وأدخل رمز التفعيل الخاص بك للبدء فوراً.\n\nمع تمنياتنا لك بالتوفيق والنجاح المستمر.. ✨`;
 
     const isTelegram = saved.startsWith('telegram:');
     const contact = saved.replace(/^(whatsapp|telegram):/, '');
