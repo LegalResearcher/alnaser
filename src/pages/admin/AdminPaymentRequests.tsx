@@ -4,7 +4,7 @@ import { AdminLayout } from '@/components/admin/AdminLayout';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, X as XIcon, Search, CheckSquare, Square, Zap } from 'lucide-react';
+import { Eye, X as XIcon, Search, CheckSquare, Square, Zap, Trash2, Pencil, Plus } from 'lucide-react';
 
 const STATUS_LABELS: Record<string, { label: string; cls: string }> = {
   pending:   { label: 'معلق',   cls: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' },
@@ -12,45 +12,70 @@ const STATUS_LABELS: Record<string, { label: string; cls: string }> = {
   rejected:  { label: 'مرفوض', cls: 'bg-red-100    text-red-500    dark:bg-red-900/30    dark:text-red-400'    },
 };
 
-// ── دالة توليد كلمة المرور (محفوظة من الأصل) ──
+const WALLET_LABELS: Record<string, string> = {
+  jeeb: 'جيب', fawry: 'فلوسك', onecash: 'ون كاش',
+};
+
 const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789abcdefghjkmnpqrstuvwxyz';
 const seg = () => Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 const genPwd = () => `${seg()}-${seg()}-${seg()}`;
 
-// ── دالة تأكيد طلب واحد (محفوظة من الأصل) ──
 async function confirmSingle(req: any) {
   const newPwd = genPwd();
-
   const { data: pwData, error: pwErr } = await (supabase as any)
     .from('review_passwords')
-    .insert({
-      subject_id: req.subject_id,
-      password: newPwd,
-      label: req.student_name,
-      duration_days: 30,
-      is_active: true,
-    })
-    .select()
-    .single();
+    .insert({ subject_id: req.subject_id, password: newPwd, label: req.student_name, duration_days: 30, is_active: true })
+    .select().single();
   if (pwErr) throw pwErr;
-
   await (supabase as any).from('payment_requests').update({
-    status: 'confirmed',
-    confirmed_at: new Date().toISOString(),
-    review_password_id: pwData.id,
+    status: 'confirmed', confirmed_at: new Date().toISOString(), review_password_id: pwData.id,
   }).eq('id', req.id);
-
   try {
     const all = JSON.parse(localStorage.getItem('review_pwd_contacts') || '{}');
     all[pwData.id] = `whatsapp:${req.phone_number}`;
     localStorage.setItem('review_pwd_contacts', JSON.stringify(all));
   } catch {}
-
   await supabase.functions.invoke('send-telegram', {
-    body: {
-      message: `✅ <b>تأكيد طلب اشتراك</b>\n\n👤 ${req.student_name}\n📱 ${req.phone_number}\n📚 ${req.subject_name}\n🔑 كلمة المرور: <b>${newPwd}</b>\n⏳ المدة: 30 يوم\n\nأرسل كلمة المرور للطالب على: ${req.phone_number}`,
-    },
+    body: { message: `✅ <b>تأكيد طلب اشتراك</b>\n\n👤 ${req.student_name}\n📱 ${req.phone_number}\n📚 ${req.subject_name}\n🔑 كلمة المرور: <b>${newPwd}</b>\n⏳ المدة: 30 يوم\n\nأرسل كلمة المرور للطالب على: ${req.phone_number}` },
   });
+}
+
+// ── تجميع الطلبات حسب رقم الهاتف ──
+function groupByPhone(requests: any[]): { phone: string; student_name: string; wallet_type: string; items: any[]; latestDate: string }[] {
+  const map = new Map<string, any>();
+  for (const r of requests) {
+    const key = r.phone_number || r.id;
+    if (!map.has(key)) {
+      map.set(key, {
+        phone: r.phone_number,
+        student_name: r.student_name,
+        wallet_type: r.wallet_type,
+        items: [],
+        latestDate: r.created_at,
+      });
+    }
+    const group = map.get(key);
+    group.items.push(r);
+    if (new Date(r.created_at) > new Date(group.latestDate)) group.latestDate = r.created_at;
+  }
+  return Array.from(map.values());
+}
+
+// حساب الحالة الإجمالية للمجموعة
+function groupStatus(items: any[]): string {
+  if (items.every(i => i.status === 'confirmed')) return 'confirmed';
+  if (items.every(i => i.status === 'rejected')) return 'rejected';
+  if (items.some(i => i.status === 'pending')) return 'pending';
+  return 'mixed';
+}
+
+interface EditForm {
+  id: string;
+  student_name: string;
+  phone_number: string;
+  status: string;
+  wallet_type: string;
+  subject_ids: string[];
 }
 
 export default function AdminPaymentRequests() {
@@ -60,10 +85,13 @@ export default function AdminPaymentRequests() {
   const [search, setSearch]               = useState('');
   const [filterStatus, setFilterStatus]   = useState<'all' | 'pending' | 'confirmed' | 'rejected'>('all');
   const [receiptModal, setReceiptModal]   = useState<{ url: string; name: string } | null>(null);
-  const [selectedIds, setSelectedIds]     = useState<Set<string>>(new Set());
+  const [selectedPhones, setSelectedPhones] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading]     = useState(false);
+  const [editModal, setEditModal]         = useState<EditForm | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string[] | null>(null); // ids للحذف
+  const [bulkDeleteMode, setBulkDeleteMode] = useState(false);
 
-  // ── جلب كل الطلبات ──
+  // ── جلب الطلبات ──
   const { data: requests = [], isLoading } = useQuery({
     queryKey: ['payment_requests_all'],
     queryFn: async () => {
@@ -78,17 +106,26 @@ export default function AdminPaymentRequests() {
     },
   });
 
-  // ── تأكيد طلب واحد ──
+  // ── جلب المواد ──
+  const { data: allSubjects = [] } = useQuery({
+    queryKey: ['subjects_list'],
+    queryFn: async () => {
+      const { data } = await (supabase as any).from('subjects').select('id, name').order('name');
+      return data || [];
+    },
+  });
+
+  // ── تأكيد ──
   const confirmMut = useMutation({
     mutationFn: confirmSingle,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payment_requests_all'] });
       toast({ title: 'تم التأكيد وتوليد كلمة المرور', description: 'تحقق من تيليجرام' });
     },
-    onError: (e: any) => toast({ title: 'خطأ في التأكيد', description: e?.message || 'تعذّر التأكيد', variant: 'destructive' }),
+    onError: (e: any) => toast({ title: 'خطأ في التأكيد', description: e?.message, variant: 'destructive' }),
   });
 
-  // ── رفض طلب واحد ──
+  // ── رفض ──
   const rejectMut = useMutation({
     mutationFn: async (id: string) => {
       await (supabase as any).from('payment_requests').update({ status: 'rejected' }).eq('id', id);
@@ -96,58 +133,106 @@ export default function AdminPaymentRequests() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['payment_requests_all'] }),
   });
 
-  // ── تأكيد دفعي (Bulk) ──
-  const handleBulkConfirm = async () => {
-    if (selectedIds.size === 0) return;
-    setBulkLoading(true);
-    const toConfirm = requests.filter((r: any) => selectedIds.has(r.id) && r.status === 'pending');
-    let success = 0;
-    let failed = 0;
-    for (const req of toConfirm) {
-      try {
-        await confirmSingle(req);
-        success++;
-      } catch {
-        failed++;
+  // ── حذف ──
+  const deleteMut = useMutation({
+    mutationFn: async (ids: string[]) => {
+      await (supabase as any).from('payment_requests').delete().in('id', ids);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payment_requests_all'] });
+      setDeleteConfirm(null);
+      setSelectedPhones(new Set());
+      setBulkDeleteMode(false);
+      toast({ title: 'تم الحذف بنجاح' });
+    },
+    onError: (e: any) => toast({ title: 'خطأ في الحذف', description: e?.message, variant: 'destructive' }),
+  });
+
+  // ── تعديل ──
+  const editMut = useMutation({
+    mutationFn: async (form: EditForm) => {
+      const original = requests.find((r: any) => r.id === form.id);
+      await (supabase as any).from('payment_requests').update({
+        student_name: form.student_name,
+        phone_number: form.phone_number,
+        status: form.status,
+        wallet_type: form.wallet_type,
+        subject_id: form.subject_ids[0] || original?.subject_id,
+        subject_name: allSubjects.find((s: any) => s.id === form.subject_ids[0])?.name || original?.subject_name,
+      }).eq('id', form.id);
+      if (form.subject_ids.length > 1) {
+        const extras = form.subject_ids.slice(1).map((sid: string) => ({
+          student_name: form.student_name,
+          phone_number: form.phone_number,
+          status: form.status,
+          wallet_type: form.wallet_type,
+          subject_id: sid,
+          subject_name: allSubjects.find((s: any) => s.id === sid)?.name || '',
+          receipt_image_url: original?.receipt_image_url || null,
+        }));
+        await (supabase as any).from('payment_requests').insert(extras);
       }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payment_requests_all'] });
+      setEditModal(null);
+      toast({ title: 'تم التعديل بنجاح' });
+    },
+    onError: (e: any) => toast({ title: 'خطأ في التعديل', description: e?.message, variant: 'destructive' }),
+  });
+
+  // ── تأكيد دفعي ──
+  const handleBulkConfirm = async () => {
+    if (selectedPhones.size === 0) return;
+    setBulkLoading(true);
+    const toConfirm = requests.filter((r: any) => selectedPhones.has(r.phone_number) && r.status === 'pending');
+    let success = 0, failed = 0;
+    for (const req of toConfirm) {
+      try { await confirmSingle(req); success++; } catch { failed++; }
     }
     queryClient.invalidateQueries({ queryKey: ['payment_requests_all'] });
-    setSelectedIds(new Set());
+    setSelectedPhones(new Set());
     setBulkLoading(false);
-    toast({
-      title: `تم تأكيد ${success} طلب${failed > 0 ? ` (فشل ${failed})` : ''}`,
-      description: 'تحقق من تيليجرام للرموز',
-    });
+    toast({ title: `تم تأكيد ${success} طلب${failed > 0 ? ` (فشل ${failed})` : ''}` });
   };
 
-  // ── فلترة ──
+  // ── فلترة + تجميع ──
   const filtered = requests.filter((r: any) => {
     const matchSearch = !search.trim() ||
-      r.student_name?.includes(search) ||
-      r.phone_number?.includes(search) ||
-      r.subject_name?.includes(search);
+      r.student_name?.includes(search) || r.phone_number?.includes(search) || r.subject_name?.includes(search);
     const matchStatus = filterStatus === 'all' || r.status === filterStatus;
     return matchSearch && matchStatus;
   });
 
-  const pendingFiltered = filtered.filter((r: any) => r.status === 'pending');
-  const pendingCount    = requests.filter((r: any) => r.status === 'pending').length;
-  const allPendingSelected = pendingFiltered.length > 0 && pendingFiltered.every((r: any) => selectedIds.has(r.id));
+  const groups = groupByPhone(filtered);
+  const pendingCount = requests.filter((r: any) => r.status === 'pending').length;
+  const pendingGroups = groups.filter(g => g.items.some(i => i.status === 'pending'));
+  const allPendingSelected = pendingGroups.length > 0 && pendingGroups.every(g => selectedPhones.has(g.phone));
+  const allSelected = groups.length > 0 && groups.every(g => selectedPhones.has(g.phone));
 
-  const toggleSelect = (id: string) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+  const toggleSelect = (phone: string) => {
+    setSelectedPhones(prev => { const n = new Set(prev); n.has(phone) ? n.delete(phone) : n.add(phone); return n; });
   };
 
   const toggleSelectAll = () => {
-    if (allPendingSelected) {
-      setSelectedIds(new Set());
+    if (bulkDeleteMode) {
+      if (allSelected) setSelectedPhones(new Set());
+      else setSelectedPhones(new Set(groups.map(g => g.phone)));
     } else {
-      setSelectedIds(new Set(pendingFiltered.map((r: any) => r.id)));
+      if (allPendingSelected) setSelectedPhones(new Set());
+      else setSelectedPhones(new Set(pendingGroups.map(g => g.phone)));
     }
+  };
+
+  const openEdit = (req: any) => {
+    setEditModal({
+      id: req.id,
+      student_name: req.student_name || '',
+      phone_number: req.phone_number || '',
+      status: req.status || 'pending',
+      wallet_type: req.wallet_type || '',
+      subject_ids: req.subject_id ? [req.subject_id] : [],
+    });
   };
 
   return (
@@ -165,44 +250,65 @@ export default function AdminPaymentRequests() {
                 </span>
               )}
             </h1>
-            <p className="text-sm text-slate-400 mt-0.5">{requests.length} طلب إجمالاً</p>
+            <p className="text-sm text-slate-400 mt-0.5">{requests.length} طلب · {groups.length} طالب</p>
           </div>
-          <button
-            onClick={() => queryClient.invalidateQueries({ queryKey: ['payment_requests_all'] })}
-            className="px-3 py-2 rounded-xl text-xs font-black bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
-          >
-            🔄 تحديث
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setBulkDeleteMode(m => !m); setSelectedPhones(new Set()); }}
+              className={`px-3 py-2 rounded-xl text-xs font-black transition-colors flex items-center gap-1.5 ${
+                bulkDeleteMode ? 'bg-red-500 text-white' : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
+              }`}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              {bulkDeleteMode ? 'إلغاء' : 'حذف متعدد'}
+            </button>
+            <button
+              onClick={() => queryClient.invalidateQueries({ queryKey: ['payment_requests_all'] })}
+              className="px-3 py-2 rounded-xl text-xs font-black bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
+            >
+              🔄 تحديث
+            </button>
+          </div>
         </div>
 
-        {/* ── شريط Bulk Confirm ── */}
-        {selectedIds.size > 0 && (
-          <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border-2 border-emerald-300 dark:border-emerald-700">
-            <button
-              onClick={() => setSelectedIds(new Set())}
-              className="text-xs font-black text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-            >
+        {/* ── شريط Bulk ── */}
+        {selectedPhones.size > 0 && (
+          <div className={`flex items-center justify-between p-3 rounded-2xl border-2 ${
+            bulkDeleteMode ? 'bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-700' : 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-700'
+          }`}>
+            <button onClick={() => setSelectedPhones(new Set())} className="text-xs font-black text-slate-400 hover:text-slate-600 transition-colors">
               إلغاء التحديد
             </button>
             <div className="flex items-center gap-3">
-              <span className="text-sm font-black text-emerald-700 dark:text-emerald-400">
-                {selectedIds.size} طلب محدد
+              <span className={`text-sm font-black ${bulkDeleteMode ? 'text-red-700 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
+                {selectedPhones.size} طالب محدد
               </span>
-              <button
-                onClick={handleBulkConfirm}
-                disabled={bulkLoading}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black bg-emerald-500 hover:bg-emerald-600 text-white transition-colors disabled:opacity-60"
-              >
-                {bulkLoading
-                  ? <><div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> جاري التأكيد...</>
-                  : <><Zap className="w-3.5 h-3.5" /> تأكيد الكل دفعةً واحدة</>
-                }
-              </button>
+              {bulkDeleteMode ? (
+                <button
+                  onClick={() => {
+                    const ids = requests.filter((r: any) => selectedPhones.has(r.phone_number)).map((r: any) => r.id);
+                    setDeleteConfirm(ids);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black bg-red-500 hover:bg-red-600 text-white transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> حذف المحددين
+                </button>
+              ) : (
+                <button
+                  onClick={handleBulkConfirm}
+                  disabled={bulkLoading}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black bg-emerald-500 hover:bg-emerald-600 text-white transition-colors disabled:opacity-60"
+                >
+                  {bulkLoading
+                    ? <><div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> جاري التأكيد...</>
+                    : <><Zap className="w-3.5 h-3.5" /> تأكيد الكل دفعةً واحدة</>}
+                </button>
+              )}
             </div>
           </div>
         )}
 
-        {/* ── فلاتر + تحديد الكل ── */}
+        {/* ── فلاتر ── */}
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -215,15 +321,18 @@ export default function AdminPaymentRequests() {
             />
           </div>
           <div className="flex gap-1.5 flex-wrap">
-            {pendingFiltered.length > 0 && (
+            {(bulkDeleteMode ? groups.length > 0 : pendingGroups.length > 0) && (
               <button
                 onClick={toggleSelectAll}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors"
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black transition-colors ${
+                  bulkDeleteMode
+                    ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-200'
+                    : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200'
+                }`}
               >
-                {allPendingSelected
+                {(bulkDeleteMode ? allSelected : allPendingSelected)
                   ? <><CheckSquare className="w-3.5 h-3.5" /> إلغاء الكل</>
-                  : <><Square className="w-3.5 h-3.5" /> تحديد الكل المعلق</>
-                }
+                  : <><Square className="w-3.5 h-3.5" /> {bulkDeleteMode ? 'تحديد الكل' : 'تحديد الكل المعلق'}</>}
               </button>
             )}
             {(['all', 'pending', 'confirmed', 'rejected'] as const).map(s => (
@@ -231,9 +340,7 @@ export default function AdminPaymentRequests() {
                 key={s}
                 onClick={() => setFilterStatus(s)}
                 className={`px-3 py-2 rounded-xl text-xs font-black transition-colors ${
-                  filterStatus === s
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  filterStatus === s ? 'bg-blue-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                 }`}
               >
                 {s === 'all' ? 'الكل' : STATUS_LABELS[s].label}
@@ -242,90 +349,128 @@ export default function AdminPaymentRequests() {
           </div>
         </div>
 
-        {/* ── القائمة ── */}
+        {/* ── القائمة المجمّعة ── */}
         {isLoading ? (
           <div className="text-center py-16 text-slate-400 font-semibold">جاري التحميل...</div>
-        ) : filtered.length === 0 ? (
+        ) : groups.length === 0 ? (
           <div className="text-center py-16 text-slate-400 font-semibold">لا توجد طلبات</div>
         ) : (
           <div className="space-y-3">
-            {filtered.map((req: any) => {
-              const isSelected = selectedIds.has(req.id);
+            {groups.map(group => {
+              const isSelected = selectedPhones.has(group.phone);
+              const status = groupStatus(group.items);
+              const hasPending = group.items.some(i => i.status === 'pending');
+              const firstReceipt = group.items.find(i => i.receipt_image_url);
+
               return (
                 <div
-                  key={req.id}
-                  className={`p-4 rounded-2xl border text-right transition-all ${
+                  key={group.phone}
+                  className={`rounded-2xl border transition-all ${
                     isSelected
-                      ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-600 ring-2 ring-emerald-300 dark:ring-emerald-700'
-                      : req.status === 'pending'
+                      ? bulkDeleteMode
+                        ? 'border-red-400 bg-red-50 dark:bg-red-950/30 ring-2 ring-red-300'
+                        : 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 ring-2 ring-emerald-300'
+                      : status === 'pending'
                       ? 'border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-800/40'
-                      : req.status === 'confirmed'
+                      : status === 'confirmed'
                       ? 'border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-800/40'
-                      : 'border-red-100 bg-red-50/50 dark:bg-red-950/10 dark:border-red-900/30 opacity-70'
+                      : status === 'rejected'
+                      ? 'border-red-100 bg-red-50/50 dark:bg-red-950/10 dark:border-red-900/30 opacity-70'
+                      : 'border-slate-200 bg-white dark:bg-slate-800/50 dark:border-slate-700'
                   }`}
                 >
-                  {/* صف البيانات */}
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {/* Checkbox للمعلق فقط */}
-                      {req.status === 'pending' && (
+                  {/* ── رأس البطاقة: معلومات الطالب ── */}
+                  <div className="p-4 pb-2 flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      {(bulkDeleteMode || hasPending) && (
                         <button
-                          onClick={() => toggleSelect(req.id)}
-                          className="shrink-0 text-emerald-500 hover:text-emerald-600 transition-colors"
+                          onClick={() => toggleSelect(group.phone)}
+                          className={`shrink-0 transition-colors ${bulkDeleteMode ? 'text-red-500' : 'text-emerald-500'}`}
                         >
                           {isSelected
                             ? <CheckSquare className="w-5 h-5" />
-                            : <Square className="w-5 h-5 text-slate-300 dark:text-slate-600" />
-                          }
+                            : <Square className="w-5 h-5 text-slate-300 dark:text-slate-600" />}
                         </button>
                       )}
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${STATUS_LABELS[req.status]?.cls}`}>
-                        {STATUS_LABELS[req.status]?.label}
-                      </span>
-                      {req.wallet_type && (
+                      {group.wallet_type && (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
-                          {req.wallet_type === 'jeeb' ? 'جيب' : req.wallet_type === 'fawry' ? 'فلوسك' : req.wallet_type === 'onecash' ? 'ون كاش' : req.wallet_type}
+                          {WALLET_LABELS[group.wallet_type] || group.wallet_type}
                         </span>
                       )}
                     </div>
                     <div className="text-right">
-                      <p className="font-black text-sm text-slate-800 dark:text-slate-100">{req.student_name}</p>
-                      <p className="text-xs text-slate-400 font-semibold" dir="ltr">{req.phone_number}</p>
-                      <p className="text-[11px] text-blue-500 font-bold mt-0.5">{req.subject_name}</p>
+                      <p className="font-black text-sm text-slate-800 dark:text-slate-100">{group.student_name}</p>
+                      <p className="text-xs text-slate-400 font-semibold" dir="ltr">{group.phone}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{new Date(group.latestDate).toLocaleString('ar')}</p>
                     </div>
                   </div>
 
-                  {/* صف الأزرار */}
-                  <div className="flex items-center justify-between">
-                    <p className="text-[10px] text-slate-400">
-                      {new Date(req.created_at).toLocaleString('ar')}
-                    </p>
-                    {req.status === 'pending' && (
-                      <div className="flex gap-1.5">
-                        <button
-                          onClick={() => confirmMut.mutate(req)}
-                          disabled={confirmMut.isPending || bulkLoading}
-                          className="px-3 py-1.5 rounded-xl text-[11px] font-black bg-green-500 hover:bg-green-600 text-white transition-colors disabled:opacity-60"
-                        >
-                          {confirmMut.isPending ? '...' : '✓ تأكيد'}
-                        </button>
-                        <button
-                          onClick={() => rejectMut.mutate(req.id)}
-                          disabled={bulkLoading}
-                          className="px-3 py-1.5 rounded-xl text-[11px] font-black bg-red-400 hover:bg-red-500 text-white transition-colors disabled:opacity-60"
-                        >
-                          ✕ رفض
-                        </button>
-                        <button
-                          onClick={() => req.receipt_image_url && setReceiptModal({ url: req.receipt_image_url, name: req.student_name })}
-                          disabled={!req.receipt_image_url}
-                          className="px-3 py-1.5 rounded-xl text-[11px] font-black bg-blue-500 hover:bg-blue-600 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
-                        >
-                          <Eye className="w-3 h-3" />
-                          إيصال 📄
-                        </button>
+                  {/* ── المواد: كل مادة صف مستقل ── */}
+                  <div className="px-4 pb-2 space-y-2">
+                    {group.items.map((req: any) => (
+                      <div
+                        key={req.id}
+                        className="flex items-center justify-between gap-2 py-2 px-3 rounded-xl bg-white/60 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/50"
+                      >
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${STATUS_LABELS[req.status]?.cls}`}>
+                            {STATUS_LABELS[req.status]?.label}
+                          </span>
+                          {req.status === 'pending' && (
+                            <button
+                              onClick={() => confirmMut.mutate(req)}
+                              disabled={confirmMut.isPending || bulkLoading}
+                              className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-green-500 hover:bg-green-600 text-white transition-colors disabled:opacity-60"
+                            >
+                              ✓ تأكيد
+                            </button>
+                          )}
+                          {req.status === 'pending' && (
+                            <button
+                              onClick={() => rejectMut.mutate(req.id)}
+                              disabled={bulkLoading}
+                              className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-slate-400 hover:bg-slate-500 text-white transition-colors disabled:opacity-60"
+                            >
+                              ✕ رفض
+                            </button>
+                          )}
+                          <button
+                            onClick={() => openEdit(req)}
+                            className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-amber-400 hover:bg-amber-500 text-white transition-colors flex items-center gap-1"
+                          >
+                            <Pencil className="w-2.5 h-2.5" /> تعديل
+                          </button>
+                          <button
+                            onClick={() => setDeleteConfirm([req.id])}
+                            className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-red-500 hover:bg-red-600 text-white transition-colors flex items-center gap-1"
+                          >
+                            <Trash2 className="w-2.5 h-2.5" /> حذف
+                          </button>
+                        </div>
+                        <p className="text-xs font-bold text-blue-600 dark:text-blue-400 text-right shrink-0">{req.subject_name}</p>
                       </div>
+                    ))}
+                  </div>
+
+                  {/* ── أزرار المجموعة ── */}
+                  <div className="px-4 pb-4 pt-1 flex gap-2 flex-wrap justify-end">
+                    {firstReceipt && (
+                      <button
+                        onClick={() => setReceiptModal({ url: firstReceipt.receipt_image_url, name: group.student_name })}
+                        className="px-3 py-1.5 rounded-xl text-[11px] font-black bg-blue-500 hover:bg-blue-600 text-white transition-colors flex items-center gap-1"
+                      >
+                        <Eye className="w-3 h-3" /> إيصال
+                      </button>
                     )}
+                    <button
+                      onClick={() => {
+                        const ids = group.items.map((i: any) => i.id);
+                        setDeleteConfirm(ids);
+                      }}
+                      className="px-3 py-1.5 rounded-xl text-[11px] font-black bg-red-500 hover:bg-red-600 text-white transition-colors flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3 h-3" /> حذف الكل
+                    </button>
                   </div>
                 </div>
               );
@@ -334,49 +479,173 @@ export default function AdminPaymentRequests() {
         )}
       </div>
 
-      {/* ── Modal الإيصال عبر Portal ── */}
-      {receiptModal && createPortal(
-        <div
-          className="fixed inset-0 z-[99999] flex items-center justify-center p-4"
-          onClick={() => setReceiptModal(null)}
-        >
+      {/* ── Modal تأكيد الحذف ── */}
+      {deleteConfirm && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4" onClick={() => setDeleteConfirm(null)}>
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-          <div
-            className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden"
-            onClick={e => e.stopPropagation()}
-          >
+          <div className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-xs p-6 text-center" onClick={e => e.stopPropagation()}>
+            <div className="w-14 h-14 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-7 h-7 text-red-500" />
+            </div>
+            <p className="font-black text-slate-800 dark:text-slate-100 mb-1">تأكيد الحذف</p>
+            <p className="text-sm text-slate-400 mb-5">
+              {deleteConfirm.length > 1 ? `سيتم حذف ${deleteConfirm.length} طلبات. لا يمكن التراجع.` : 'هل أنت متأكد من حذف هذا الطلب؟'}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => deleteMut.mutate(deleteConfirm)}
+                disabled={deleteMut.isPending}
+                className="flex-1 py-2.5 rounded-xl text-sm font-black bg-red-500 hover:bg-red-600 text-white transition-colors disabled:opacity-60"
+              >
+                {deleteMut.isPending ? 'جاري الحذف...' : 'نعم، احذف'}
+              </button>
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-black bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 transition-colors"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ── Modal التعديل ── */}
+      {editModal && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4" onClick={() => setEditModal(null)}>
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()} dir="rtl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700">
+              <p className="font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <Pencil className="w-4 h-4 text-amber-500" /> تعديل الطلب
+              </p>
+              <button onClick={() => setEditModal(null)} className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                <XIcon className="w-4 h-4 text-slate-500" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+              <div>
+                <label className="text-xs font-black text-slate-500 mb-1 block">اسم الطالب</label>
+                <input
+                  value={editModal.student_name}
+                  onChange={e => setEditModal(m => m && ({ ...m, student_name: e.target.value }))}
+                  className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold focus:outline-none focus:border-blue-400"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-black text-slate-500 mb-1 block">رقم الهاتف</label>
+                <input
+                  value={editModal.phone_number}
+                  onChange={e => setEditModal(m => m && ({ ...m, phone_number: e.target.value }))}
+                  dir="ltr"
+                  className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-semibold focus:outline-none focus:border-blue-400"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-black text-slate-500 mb-1 block">الحالة</label>
+                <div className="flex gap-2">
+                  {(['pending', 'confirmed', 'rejected'] as const).map(s => (
+                    <button
+                      key={s}
+                      onClick={() => setEditModal(m => m && ({ ...m, status: s }))}
+                      className={`flex-1 py-2 rounded-xl text-xs font-black transition-colors ${editModal.status === s ? 'bg-blue-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}
+                    >
+                      {STATUS_LABELS[s].label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-black text-slate-500 mb-1 block">طريقة الدفع</label>
+                <div className="flex gap-2 flex-wrap">
+                  {[{ k: 'jeeb', l: 'جيب' }, { k: 'fawry', l: 'فلوسك' }, { k: 'onecash', l: 'ون كاش' }].map(({ k, l }) => (
+                    <button
+                      key={k}
+                      onClick={() => setEditModal(m => m && ({ ...m, wallet_type: m.wallet_type === k ? '' : k }))}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-colors ${editModal.wallet_type === k ? 'bg-blue-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}
+                    >
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-black text-slate-500 mb-2 block flex items-center gap-1">
+                  <Plus className="w-3.5 h-3.5" /> المواد (يمكن اختيار أكثر من مادة)
+                </label>
+                <div className="space-y-1 max-h-44 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-xl p-2">
+                  {allSubjects.map((s: any) => {
+                    const checked = editModal.subject_ids.includes(s.id);
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => setEditModal(m => {
+                          if (!m) return m;
+                          const ids = m.subject_ids.includes(s.id)
+                            ? m.subject_ids.filter(id => id !== s.id)
+                            : [...m.subject_ids, s.id];
+                          return { ...m, subject_ids: ids };
+                        })}
+                        className={`w-full text-right px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2 ${
+                          checked ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600' : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400'
+                        }`}
+                      >
+                        {checked ? <CheckSquare className="w-4 h-4 shrink-0" /> : <Square className="w-4 h-4 shrink-0 text-slate-300" />}
+                        {s.name}
+                      </button>
+                    );
+                  })}
+                </div>
+                {editModal.subject_ids.length > 1 && (
+                  <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 font-semibold">
+                    ⚠️ سيتم إنشاء {editModal.subject_ids.length - 1} طلب إضافي وتجميعها تلقائياً مع هذا الطالب
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="px-5 pb-5 flex gap-3">
+              <button
+                onClick={() => editMut.mutate(editModal)}
+                disabled={editMut.isPending || editModal.subject_ids.length === 0}
+                className="flex-1 py-2.5 rounded-xl text-sm font-black bg-amber-500 hover:bg-amber-600 text-white transition-colors disabled:opacity-60"
+              >
+                {editMut.isPending ? 'جاري الحفظ...' : 'حفظ التعديلات'}
+              </button>
+              <button
+                onClick={() => setEditModal(null)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-black bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 transition-colors"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ── Modal الإيصال ── */}
+      {receiptModal && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4" onClick={() => setReceiptModal(null)}>
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700">
               <div>
                 <p className="font-black text-sm text-slate-800 dark:text-slate-100">📄 إيصال الإيداع</p>
                 <p className="text-[11px] text-slate-400 font-semibold mt-0.5">{receiptModal.name}</p>
               </div>
-              <button
-                onClick={() => setReceiptModal(null)}
-                className="w-9 h-9 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors"
-              >
+              <button onClick={() => setReceiptModal(null)} className="w-9 h-9 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                 <XIcon className="w-4 h-4 text-slate-500" />
               </button>
             </div>
             <div className="p-4">
-              <img
-                src={receiptModal.url}
-                alt="إيصال الإيداع"
-                className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 object-contain max-h-[60vh]"
-              />
+              <img src={receiptModal.url} alt="إيصال الإيداع" className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 object-contain max-h-[60vh]" />
             </div>
             <div className="px-4 pb-4 flex gap-2">
-              <a
-                href={receiptModal.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 py-2.5 rounded-xl text-xs font-black text-center bg-blue-500 hover:bg-blue-600 text-white transition-colors"
-              >
+              <a href={receiptModal.url} target="_blank" rel="noopener noreferrer" className="flex-1 py-2.5 rounded-xl text-xs font-black text-center bg-blue-500 hover:bg-blue-600 text-white transition-colors">
                 فتح في تبويب جديد ↗
               </a>
-              <button
-                onClick={() => setReceiptModal(null)}
-                className="flex-1 py-2.5 rounded-xl text-xs font-black bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
-              >
+              <button onClick={() => setReceiptModal(null)} className="flex-1 py-2.5 rounded-xl text-xs font-black bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 transition-colors">
                 إغلاق
               </button>
             </div>
