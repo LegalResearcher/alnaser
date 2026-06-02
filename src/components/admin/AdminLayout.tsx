@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Scale, LayoutDashboard, BookOpen, Users, Settings, 
   BarChart3, LogOut, Menu, X, Trash2, Layers, 
-  FolderOpen, ChevronLeft, ExternalLink, ShieldCheck, MessageSquare, Lightbulb, Swords, KeyRound 
+  FolderOpen, ChevronLeft, ExternalLink, ShieldCheck, MessageSquare, Lightbulb, Swords, KeyRound, CreditCard 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
@@ -25,6 +25,7 @@ const navItems = [
   { href: '/admin/suggestions', label: 'اقتراحات الأسئلة', icon: Lightbulb, adminOnly: true },
   { href: '/admin/battle-rooms', label: 'غرف التحدي', icon: Swords, adminOnly: true },
   { href: '/admin/review-passwords', label: 'كلمات مرور المراجعة', icon: KeyRound, adminOnly: true },
+  { href: '/admin/payment-requests', label: 'طلبات الاشتراك',      icon: CreditCard, adminOnly: true },
   { href: '/admin/settings', label: 'إعدادات المنصة', icon: Settings },
 ];
 
