@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Plus, Edit2, Trash2, BookOpen, Clock, Target, Settings, User, Lock, Upload, Loader2, FileText, CheckCircle2, XCircle, Copy, Eye, X as XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -155,7 +156,7 @@ const PaymentRequestsSection = ({ subjectId }: { subjectId: string }) => {
                     ✕ رفض
                   </button>
                   <button
-                    onClick={() => req.receipt_image_url && setReceiptModal({ url: req.receipt_image_url, name: req.student_name })}
+                    onClick={(e) => { e.stopPropagation(); req.receipt_image_url && setReceiptModal({ url: req.receipt_image_url, name: req.student_name }); }}
                     disabled={!req.receipt_image_url}
                     className="px-2.5 py-1 rounded-xl text-[10px] font-black bg-blue-500 hover:bg-blue-600 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
                   >
@@ -177,8 +178,8 @@ const PaymentRequestsSection = ({ subjectId }: { subjectId: string }) => {
       </div>
     </div>
 
-      {/* ── مودال عرض صورة الإيصال ── */}
-      {receiptModal && (
+      {/* ── مودال عرض صورة الإيصال عبر Portal ── */}
+      {receiptModal && createPortal(
         <div
           className="fixed inset-0 z-[99999] flex items-center justify-center p-4"
           onClick={() => setReceiptModal(null)}
@@ -224,7 +225,8 @@ const PaymentRequestsSection = ({ subjectId }: { subjectId: string }) => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
