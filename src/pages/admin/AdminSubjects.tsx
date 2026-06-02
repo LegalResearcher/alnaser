@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { Plus, Edit2, Trash2, BookOpen, Clock, Target, Settings, User, Lock, Upload, Loader2, FileText, CheckCircle2, XCircle, Copy, Eye, X as XIcon } from 'lucide-react';
+import { Plus, Edit2, Trash2, BookOpen, Clock, Target, Settings, User, Lock, Upload, Loader2, FileText, CheckCircle2, XCircle, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -52,186 +51,6 @@ import {
 import { SortableItem } from '@/components/admin/SortableItem';
 
 // ── مكوّن طلبات الاشتراك ──
-const PaymentRequestsSection = ({ subjectId }: { subjectId: string }) => {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const [receiptModal, setReceiptModal] = useState<{ url: string; name: string } | null>(null);
-
-  const { data: requests = [] } = useQuery({
-    queryKey: ['payment_requests', subjectId],
-    queryFn: async () => {
-      const { data } = await (supabase as any).from('payment_requests').select('*')
-        .eq('subject_id', subjectId).order('created_at', { ascending: false });
-      return data || [];
-    },
-  });
-
-  const confirmMut = useMutation({
-    mutationFn: async (req: any) => {
-      // ١. توليد كلمة مرور جديدة تلقائياً
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789abcdefghjkmnpqrstuvwxyz';
-      const seg = () => Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-      const newPwd = `${seg()}-${seg()}-${seg()}`;
-
-      // ٢. إنشاء كلمة المرور في جدول review_passwords
-      const { data: pwData, error: pwErr } = await (supabase as any)
-        .from('review_passwords')
-        .insert({
-          subject_id: subjectId,
-          password: newPwd,
-          label: req.student_name,
-          duration_days: 30,
-          is_active: true,
-        })
-        .select()
-        .single();
-      if (pwErr) throw pwErr;
-
-      // ٣. ربط الطلب بكلمة المرور
-      await (supabase as any).from('payment_requests').update({
-        status: 'confirmed',
-        confirmed_at: new Date().toISOString(),
-        review_password_id: pwData.id,
-      }).eq('id', req.id);
-
-      // ٤. حفظ بيانات التواصل في localStorage
-      try {
-        const all = JSON.parse(localStorage.getItem('review_pwd_contacts') || '{}');
-        all[pwData.id] = `whatsapp:${req.phone_number}`;
-        localStorage.setItem('review_pwd_contacts', JSON.stringify(all));
-      } catch {}
-
-      // ٥. إشعار تيليجرام بكلمة المرور
-      await supabase.functions.invoke('send-telegram', {
-        body: {
-          message: `✅ <b>تأكيد طلب اشتراك</b>\n\n👤 ${req.student_name}\n📱 ${req.phone_number}\n📚 ${req.subject_name}\n🔑 كلمة المرور: <b>${newPwd}</b>\n⏳ المدة: 30 يوم\n\nأرسل كلمة المرور للطالب على: ${req.phone_number}`,
-        },
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['payment_requests', subjectId] });
-      toast({ title: 'تم التأكيد وتوليد كلمة المرور', description: 'تحقق من تيليجرام' });
-    },
-    onError: (e: any) => toast({ title: 'خطأ في التأكيد', description: e?.message || 'تعذّر التأكيد', variant: 'destructive' }),
-  });
-
-  const rejectMut = useMutation({
-    mutationFn: async (id: string) => {
-      await (supabase as any).from('payment_requests').update({ status: 'rejected' }).eq('id', id);
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['payment_requests', subjectId] }),
-  });
-
-  if (requests.length === 0) return null;
-
-  const pending = requests.filter((r: any) => r.status === 'pending');
-
-  return (
-    <>
-    <div className="space-y-3 border-t pt-4">
-      <h3 className="font-black text-sm flex items-center gap-2">
-        💳 طلبات الاشتراك
-        {pending.length > 0 && (
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-orange-100 text-orange-600">
-            {pending.length} معلق
-          </span>
-        )}
-      </h3>
-      <div className="space-y-2 max-h-64 overflow-y-auto">
-        {requests.map((req: any) => (
-          <div key={req.id} className={`p-3 rounded-2xl border text-right text-xs ${
-            req.status === 'pending' ? 'border-orange-200 bg-orange-50 dark:bg-orange-950/20'
-            : req.status === 'confirmed' ? 'border-green-200 bg-green-50 dark:bg-green-950/20'
-            : 'border-red-100 bg-red-50/50 opacity-60'
-          }`}>
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex gap-1.5 items-center">
-                {req.status === 'pending' && (<>
-                  <button onClick={() => confirmMut.mutate(req)} disabled={confirmMut.isPending}
-                    className="px-2.5 py-1 rounded-xl text-[10px] font-black bg-green-500 hover:bg-green-600 text-white transition-colors">
-                    {confirmMut.isPending ? '...' : '✓ تأكيد'}
-                  </button>
-                  <button onClick={() => rejectMut.mutate(req.id)}
-                    className="px-2.5 py-1 rounded-xl text-[10px] font-black bg-red-400 hover:bg-red-500 text-white transition-colors">
-                    ✕ رفض
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); req.receipt_image_url && setReceiptModal({ url: req.receipt_image_url, name: req.student_name }); }}
-                    disabled={!req.receipt_image_url}
-                    className="px-2.5 py-1 rounded-xl text-[10px] font-black bg-blue-500 hover:bg-blue-600 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
-                  >
-                    <Eye className="w-3 h-3" />
-                    إيصال 📄
-                  </button>
-                </>)}
-                {req.status === 'confirmed' && <span className="text-green-600 font-black text-[10px]">✅ مؤكد</span>}
-                {req.status === 'rejected' && <span className="text-red-400 font-black text-[10px]">✕ مرفوض</span>}
-              </div>
-              <div>
-                <p className="font-black text-slate-700 dark:text-slate-200">{req.student_name}</p>
-                <p className="text-slate-400">{req.phone_number}</p>
-              </div>
-            </div>
-            <p className="text-slate-400 text-[10px]">{new Date(req.created_at).toLocaleString('ar')}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-
-      {/* ── مودال عرض صورة الإيصال عبر Portal ── */}
-      {receiptModal && createPortal(
-        <div
-          className="fixed inset-0 z-[99999] flex items-center justify-center p-4"
-          onClick={() => setReceiptModal(null)}
-        >
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-          <div
-            className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700">
-              <div>
-                <p className="font-black text-sm text-slate-800 dark:text-slate-100">📄 إيصال الإيداع</p>
-                <p className="text-[11px] text-slate-400 font-semibold mt-0.5">{receiptModal.name}</p>
-              </div>
-              <button
-                onClick={() => setReceiptModal(null)}
-                className="w-9 h-9 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors"
-              >
-                <XIcon className="w-4 h-4 text-slate-500" />
-              </button>
-            </div>
-            <div className="p-4">
-              <img
-                src={receiptModal.url}
-                alt="إيصال الإيداع"
-                className="w-full rounded-2xl border border-slate-200 dark:border-slate-700 object-contain max-h-[60vh]"
-              />
-            </div>
-            <div className="px-4 pb-4 flex gap-2">
-              <a
-                href={receiptModal.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 py-2.5 rounded-xl text-xs font-black text-center bg-blue-500 hover:bg-blue-600 text-white transition-colors"
-              >
-                فتح في تبويب جديد ↗
-              </a>
-              <button
-                onClick={() => setReceiptModal(null)}
-                className="flex-1 py-2.5 rounded-xl text-xs font-black bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
-              >
-                إغلاق
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-    </>
-  );
-};
-
 const AdminSubjects = () => {
   const { role } = useAuth();
   const { toast } = useToast();
@@ -547,8 +366,16 @@ const AdminSubjects = () => {
               </div>
             </div>
 
-            {/* ── طلبات الاشتراك ── */}
-            {editingSubject && <PaymentRequestsSection subjectId={editingSubject.id} />}
+            {/* ── طلبات الاشتراك — صفحة مستقلة ── */}
+            {editingSubject && (
+              <a
+                href="/admin/payment-requests"
+                className="flex items-center justify-between w-full p-3 rounded-2xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors text-right"
+              >
+                <span className="text-xs text-blue-500 dark:text-blue-400">↗ عرض الكل</span>
+                <span className="text-sm font-black text-blue-700 dark:text-blue-300">💳 إدارة طلبات الاشتراك</span>
+              </a>
+            )}
 
             <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-4 border-t">
               <Button type="button" variant="outline" onClick={handleCloseDialog} className="w-full sm:w-auto">إلغاء</Button>
