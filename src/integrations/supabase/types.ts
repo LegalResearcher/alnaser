@@ -613,11 +613,13 @@ export type Database = {
           id: string
           notes: string | null
           phone_number: string
+          receipt_image_url: string | null
           review_password_id: string | null
           status: string | null
           student_name: string
           subject_id: string | null
           subject_name: string | null
+          wallet_type: string | null
         }
         Insert: {
           confirmed_at?: string | null
@@ -625,11 +627,13 @@ export type Database = {
           id?: string
           notes?: string | null
           phone_number: string
+          receipt_image_url?: string | null
           review_password_id?: string | null
           status?: string | null
           student_name: string
           subject_id?: string | null
           subject_name?: string | null
+          wallet_type?: string | null
         }
         Update: {
           confirmed_at?: string | null
@@ -637,11 +641,13 @@ export type Database = {
           id?: string
           notes?: string | null
           phone_number?: string
+          receipt_image_url?: string | null
           review_password_id?: string | null
           status?: string | null
           student_name?: string
           subject_id?: string | null
           subject_name?: string | null
+          wallet_type?: string | null
         }
         Relationships: [
           {
