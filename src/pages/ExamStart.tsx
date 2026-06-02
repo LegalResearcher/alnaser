@@ -1171,7 +1171,25 @@ const ExamStart = () => {
               >
                 {reviewPasswordLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><ShieldCheck className="w-4 h-4" /> دخول وضع المراجعة</>}
               </button>
-              {/* ── زر الاشتراك (مخفي — الدخول عبر اختبار+المراجعة فقط) ── */}
+              {subject?.show_subscription && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowReviewPasswordModal(false);
+                    setSubStudentName('');
+                    setSubPhone('');
+                    setSubSuccess(false);
+                    setSubSelectedWallet(null);
+                    setSubReceiptFile(null);
+                    setSubReceiptPreview(null);
+                    setShowSubscriptionModal(true);
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl border-2 border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-all active:scale-[0.98] text-sm font-black text-emerald-700 dark:text-emerald-400"
+                >
+                  <span>✨</span>
+                  ليس لديك رمز تفعيل؟ اشترك الآن من هنا
+                </button>
+              )}
             </div>
           </div>
         </div>
