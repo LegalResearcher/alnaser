@@ -76,6 +76,7 @@ interface EditForm {
   status: string;
   wallet_type: string;
   subject_ids: string[];
+  level_id: string | null;
 }
 
 export default function AdminPaymentRequests() {
@@ -106,11 +107,11 @@ export default function AdminPaymentRequests() {
     },
   });
 
-  // ── جلب المواد ──
+  // ── جلب المواد مع level_id ──
   const { data: allSubjects = [] } = useQuery({
     queryKey: ['subjects_list'],
     queryFn: async () => {
-      const { data } = await (supabase as any).from('subjects').select('id, name').order('name');
+      const { data } = await (supabase as any).from('subjects').select('id, name, level_id').order('name');
       return data || [];
     },
   });
@@ -232,6 +233,7 @@ export default function AdminPaymentRequests() {
       status: req.status || 'pending',
       wallet_type: req.wallet_type || '',
       subject_ids: req.subject_id ? [req.subject_id] : [],
+      level_id: allSubjects.find((s: any) => s.id === req.subject_id)?.level_id || null,
     });
   };
 
@@ -575,7 +577,7 @@ export default function AdminPaymentRequests() {
                   <Plus className="w-3.5 h-3.5" /> المواد (يمكن اختيار أكثر من مادة)
                 </label>
                 <div className="space-y-1 max-h-44 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-xl p-2">
-                  {allSubjects.map((s: any) => {
+                  {allSubjects.filter((s: any) => !editModal.level_id || s.level_id === editModal.level_id).map((s: any) => {
                     const checked = editModal.subject_ids.includes(s.id);
                     return (
                       <button
