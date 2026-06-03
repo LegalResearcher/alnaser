@@ -50,6 +50,7 @@ const AdminSuggestions      = lazy(() => import("./pages/admin/AdminSuggestions"
 const AdminBattleRooms      = lazy(() => import("./pages/admin/AdminBattleRooms"));
 const AdminReviewPasswords  = lazy(() => import("./pages/admin/AdminReviewPasswords"));
 const AdminPaymentRequests  = lazy(() => import("./pages/admin/AdminPaymentRequests"));
+const AdminHonorRequests     = lazy(() => import("./pages/admin/AdminHonorRequests"));
 
 // صفحات المنافسة الجماعية
 const BattleCreate = lazy(() => import("./pages/BattleCreate"));
