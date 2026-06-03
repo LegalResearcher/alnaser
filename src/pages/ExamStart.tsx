@@ -38,6 +38,7 @@ import { useCachedQuery } from '@/hooks/useCachedQuery';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { ExamStartSEO } from '@/components/seo/SEOHead';
+import { useSubscriptionMessage } from '@/hooks/useSubscriptionMessage';
 
 const EXAM_FORMS = [
   { id: 'General',  name: 'نموذج العام' },
@@ -172,6 +173,7 @@ const ExamStart = () => {
   const { subjectId } = useParams<{ subjectId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const subMsg = useSubscriptionMessage();
 
   const [studentName,      setStudentName]      = useState(() => localStorage.getItem('alnaseer_student_name') || '');
   const [password,         setPassword]         = useState('');
@@ -1011,9 +1013,9 @@ const ExamStart = () => {
               </div>
               {!subSuccess ? (<>
                 <div className="bg-blue-50 dark:bg-blue-950/30 rounded-2xl p-3.5 border border-blue-100 dark:border-blue-800/40">
-                  <p className="text-xs font-black text-blue-700 dark:text-blue-400 mb-2 text-right">💰 الرسوم: <span className="text-base">1000 ريال</span></p>
+                  <p className="text-xs font-black text-blue-700 dark:text-blue-400 mb-2 text-right">💰 الرسوم: <span className="text-base">{subMsg.fee}</span></p>
                   <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400 leading-relaxed text-right">
-                    💡 يرجى تحويل المبلغ إلى الحساب الموضح، ثم رفع صورة الإيصال وتعبئة البيانات لتأكيد الاشتراك.
+                    💡 {subMsg.note}
                   </p>
                 </div>
 
