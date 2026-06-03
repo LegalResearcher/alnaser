@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Award, Send, CheckCircle, User, MapPin, GraduationCap, Loader2, Phone } from 'lucide-react';
 
 // ─── ثوابت ───────────────────────────────────────────────────────────────────
@@ -627,21 +628,50 @@ export default function HonorCertificate() {
     }, fontReady ? 80 : 600);
   }
 
-  function handleSendRequest() {
-    const levelText = form.level === '4'
-      ? `الدفعة ${form.batch}`
-      : `${selectedLevel?.label || ''} — الدفعة ${form.batch}`;
-    const msg = encodeURIComponent(
-      `🏅 طلب لوحة شرف\n` +
-      `━━━━━━━━━━━━━━━\n` +
-      `👤 الاسم: ${form.name.trim()}\n` +
-      `📍 المحافظة: ${form.governorate}\n` +
-      `🎓 المستوى: ${levelText}\n` +
-      `📱 رقم الهاتف: ${form.phone.trim()}\n` +
-      `🔑 رقم التحقق: ${verifyCode}`
-    );
-    window.open(`https://t.me/MuenAlnaser?text=${msg}`, '_blank');
-    setStep('done');
+  async function handleSendRequest() {
+    setLoading(true);
+    try {
+      const levelText = form.level === '4'
+        ? `الدفعة ${form.batch}`
+        : `${selectedLevel?.label || ''} — الدفعة ${form.batch}`;
+
+      const levelLabel = form.level === '4'
+        ? `خريج الشريعة والقانون — الدفعة ${form.batch}`
+        : `خريج الشريعة والقانون — ${selectedLevel?.label || ''} — الدفعة ${form.batch}`;
+
+      // حفظ في Supabase
+      await (supabase as any).from('honor_certificates').insert({
+        student_name: form.name.trim(),
+        phone: form.phone.trim(),
+        governorate: form.governorate,
+        level: form.level,
+        level_label: levelLabel,
+        rank: selectedLevel?.rank || '',
+        verify_code: verifyCode,
+        status: 'pending',
+      });
+
+      // إرسال تيليجرام
+      await supabase.functions.invoke('send-telegram', {
+        body: {
+          message:
+            `🏅 <b>طلب شهادة شرف جديد</b>\n` +
+            `━━━━━━━━━━━━━━━\n` +
+            `👤 الاسم: ${form.name.trim()}\n` +
+            `📍 المحافظة: ${form.governorate}\n` +
+            `🎓 المستوى: ${levelText}\n` +
+            `📱 رقم الهاتف: ${form.phone.trim()}\n` +
+            `🔑 رمز التحقق: ${verifyCode}\n\n` +
+            `⏳ في انتظار موافقة الإدارة`,
+        },
+      });
+
+      setStep('done');
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   // ─── نموذج الإدخال ──────────────────────────────────────────────────────
