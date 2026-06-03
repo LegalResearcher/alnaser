@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { Settings, User, Lock, Save, MessageSquare } from 'lucide-react';
+import { Settings, User, Lock, Save, MessageSquare, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,6 +9,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { AdminSEO } from '@/components/seo/SEOHead';
+import { ALL_EXAM_YEARS } from '@/types/database';
 
 const AdminSettings = () => {
   const { user } = useAuth();
@@ -20,7 +21,25 @@ const AdminSettings = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // ── رسالة الاشتراك ──
+  // ── سنوات النماذج ──
+  const [enabledYears, setEnabledYears] = useState<number[]>([...ALL_EXAM_YEARS]);
+  const [yearsLoading, setYearsLoading] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await (supabase as any)
+        .from('platform_settings')
+        .select('value')
+        .eq('key', 'enabled_exam_years')
+        .maybeSingle();
+      if (data?.value) {
+        try {
+          const parsed = JSON.parse(data.value);
+          if (Array.isArray(parsed)) setEnabledYears(parsed);
+        } catch {}
+      }
+    })();
+  }, []);
   const [subFee, setSubFee] = useState('1000 ريال');
   const [subNote, setSubNote] = useState('يرجى تحويل المبلغ إلى الحساب الموضح، ثم رفع صورة الإيصال وتعبئة البيانات لتأكيد الاشتراك.');
   const [subMsgLoading, setSubMsgLoading] = useState(false);
@@ -51,6 +70,23 @@ const AdminSettings = () => {
     queryClient.invalidateQueries({ queryKey: ['subscription_message'] });
     setSubMsgLoading(false);
     toast({ title: 'تم الحفظ', description: 'تم تحديث رسالة الاشتراك بنجاح' });
+  };
+
+  const toggleYear = (year: number) => {
+    setEnabledYears(prev =>
+      prev.includes(year) ? prev.filter(y => y !== year) : [...prev, year].sort()
+    );
+  };
+
+  const saveEnabledYears = async () => {
+    setYearsLoading(true);
+    const value = JSON.stringify(enabledYears);
+    await (supabase as any)
+      .from('platform_settings')
+      .upsert({ key: 'enabled_exam_years', value }, { onConflict: 'key' });
+    queryClient.invalidateQueries({ queryKey: ['enabled_exam_years'] });
+    setYearsLoading(false);
+    toast({ title: 'تم الحفظ', description: 'تم تحديث سنوات النماذج بنجاح' });
   };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
@@ -219,6 +255,51 @@ const AdminSettings = () => {
               <Save className="w-4 h-4" />
               {subMsgLoading ? 'جاري الحفظ...' : 'حفظ الرسالة'}
             </Button>
+          </div>
+        </div>
+
+        {/* ── سنوات النماذج ── */}
+        <div className="bg-card rounded-xl border p-4 sm:p-6" dir="rtl">
+          <h2 className="font-bold mb-1 flex items-center gap-2 text-sm sm:text-base">
+            <CalendarDays className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+            سنوات النماذج المتاحة للطلاب
+          </h2>
+          <p className="text-xs text-muted-foreground mb-4">
+            حدد السنوات التي تظهر للطالب عند اختيار نموذج سنة الاختبار. السنوات غير المحددة لن تظهر.
+          </p>
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-4">
+            {[...ALL_EXAM_YEARS].map((year) => {
+              const active = enabledYears.includes(year);
+              return (
+                <button
+                  key={year}
+                  onClick={() => toggleYear(year)}
+                  className={`relative flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 px-2 font-bold text-sm transition-all duration-200 select-none ${
+                    active
+                      ? 'border-primary bg-primary/10 text-primary shadow-sm'
+                      : 'border-border bg-muted/40 text-muted-foreground hover:border-primary/40'
+                  }`}
+                >
+                  <span className="text-base font-black">{year}</span>
+                  <span className={`text-[10px] font-bold ${active ? 'text-primary' : 'text-muted-foreground'}`}>
+                    {active ? '✓ مفعّل' : 'مخفي'}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button
+              onClick={saveEnabledYears}
+              disabled={yearsLoading}
+              className="gradient-primary text-primary-foreground border-0 gap-2"
+            >
+              <Save className="w-4 h-4" />
+              {yearsLoading ? 'جاري الحفظ...' : 'حفظ السنوات'}
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              {enabledYears.length} من {ALL_EXAM_YEARS.length} سنوات مفعّلة
+            </span>
           </div>
         </div>
 
