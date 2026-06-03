@@ -50,7 +50,7 @@ const AdminSuggestions      = lazy(() => import("./pages/admin/AdminSuggestions"
 const AdminBattleRooms      = lazy(() => import("./pages/admin/AdminBattleRooms"));
 const AdminReviewPasswords  = lazy(() => import("./pages/admin/AdminReviewPasswords"));
 const AdminPaymentRequests  = lazy(() => import("./pages/admin/AdminPaymentRequests"));
-const AdminHonorRequests     = lazy(() => import("./pages/admin/AdminHonorRequests"));
+const AdminHonorRequests    = lazy(() => import("./pages/admin/AdminHonorRequests"));
 
 // صفحات المنافسة الجماعية
 const BattleCreate = lazy(() => import("./pages/BattleCreate"));
@@ -100,7 +100,7 @@ const App = () => (
                     <Route path="/exam/:subjectId/start"  element={<ExamPage />} />
                     <Route path="/exam/:subjectId/result" element={<ExamResult />} />
                     <Route path="/about" element={<About />} />
-          <Route path="/privacy"        element={<Privacy />} /> {/* ← جديد */}
+                    <Route path="/privacy"        element={<Privacy />} />
                     <Route path="/progress"       element={<StudentProgress />} />
                     <Route path="/diagnostic"     element={<DiagnosticTest />} />
                     <Route path="/challenge/:sessionId" element={<ChallengePage />} />
@@ -126,8 +126,9 @@ const App = () => (
                     <Route path="/admin/reports"           element={<AdminReports />} />
                     <Route path="/admin/suggestions"       element={<AdminSuggestions />} />
                     <Route path="/admin/battle-rooms"      element={<AdminBattleRooms />} />
-                    <Route path="/admin/review-passwords"   element={<AdminReviewPasswords />} />
-                    <Route path="/admin/payment-requests"   element={<AdminPaymentRequests />} />
+                    <Route path="/admin/review-passwords"  element={<AdminReviewPasswords />} />
+                    <Route path="/admin/payment-requests"  element={<AdminPaymentRequests />} />
+                    <Route path="/admin/honor-requests"    element={<AdminHonorRequests />} />
                     <Route path="/admin/settings"          element={<AdminSettings />} />
 
                     {/* ── 404 ── */}
