@@ -32,7 +32,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
-import { Subject, EXAM_YEARS } from '@/types/database';
+import { Subject, ALL_EXAM_YEARS } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 import { useCachedQuery } from '@/hooks/useCachedQuery';
 import { useQuery } from '@tanstack/react-query';
@@ -186,6 +186,27 @@ const ExamStart = () => {
   const [showResumeDialog, setShowResumeDialog] = useState(false);
   const [showNewQsNotif,   setShowNewQsNotif]   = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
+
+  // ── السنوات المفعّلة من لوحة الإدارة ──
+  const { data: enabledYearsData } = useQuery({
+    queryKey: ['enabled_exam_years'],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from('platform_settings')
+        .select('value')
+        .eq('key', 'enabled_exam_years')
+        .maybeSingle();
+      if (data?.value) {
+        try {
+          const parsed = JSON.parse(data.value);
+          if (Array.isArray(parsed)) return parsed as number[];
+        } catch {}
+      }
+      return [...ALL_EXAM_YEARS] as number[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const enabledExamYears = enabledYearsData ?? [...ALL_EXAM_YEARS];
 
   // ── وضع المراجعة ──
   const [showReviewPasswordModal, setShowReviewPasswordModal] = useState(false);
@@ -728,7 +749,7 @@ const ExamStart = () => {
                   <SelectTrigger className="h-14 rounded-[1rem] bg-slate-50 dark:bg-muted border-slate-200 dark:border-border font-bold px-5 focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"><SelectValue placeholder="اختر السنة" /></SelectTrigger>
                   <SelectContent className="z-[9999] bg-white dark:bg-card border-slate-200 dark:border-border rounded-2xl shadow-2xl max-h-[280px]">
                     <SelectItem value="trial" className="h-11 rounded-xl font-bold cursor-pointer text-violet-600">🧪 أسئلة تجريبية</SelectItem>
-                    {EXAM_YEARS.map((year) => (<SelectItem key={year} value={year.toString()} className="h-11 rounded-xl font-bold cursor-pointer">دورة عام {year}</SelectItem>))}
+                    {enabledExamYears.map((year) => (<SelectItem key={year} value={year.toString()} className="h-11 rounded-xl font-bold cursor-pointer">دورة عام {year}</SelectItem>))}
                   </SelectContent>
                 </Select>
               </div>
