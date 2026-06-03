@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useSubscriptionMessage } from '@/hooks/useSubscriptionMessage';
 
 interface Props {
   subjectId: string;
@@ -74,7 +75,7 @@ export default function SubscribeButton({ subjectId, subjectName, levelName }: P
         }}
       >
         <Sparkles className="w-3.5 h-3.5" />
-        اشترك — 1000 ريال
+        اشترك — {subMsg.fee}
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -98,7 +99,7 @@ export default function SubscribeButton({ subjectId, subjectName, levelName }: P
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-800 rounded-xl p-3 text-xs text-emerald-700 dark:text-emerald-300 leading-relaxed">
-                💰 <b>الرسوم: 1000 ريال</b> — أدخل بياناتك وسيتم التواصل معك لاستكمال الدفع وإرسال كلمة المرور.
+                💰 <b>الرسوم: {subMsg.fee}</b> — {subMsg.note}
               </div>
 
               <div className="space-y-2">
