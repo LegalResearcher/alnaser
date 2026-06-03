@@ -5,12 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
+import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { AdminSEO } from '@/components/seo/SEOHead';
 
 const AdminSettings = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   
   const [currentPassword, setCurrentPassword] = useState('');
@@ -46,6 +48,7 @@ const AdminSettings = () => {
     await (supabase as any)
       .from('platform_settings')
       .upsert({ key: 'subscription_message', value }, { onConflict: 'key' });
+    queryClient.invalidateQueries({ queryKey: ['subscription_message'] });
     setSubMsgLoading(false);
     toast({ title: 'تم الحفظ', description: 'تم تحديث رسالة الاشتراك بنجاح' });
   };
