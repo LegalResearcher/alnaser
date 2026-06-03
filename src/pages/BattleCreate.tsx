@@ -20,6 +20,7 @@ import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+import { ALL_EXAM_YEARS } from '@/types/database';
 
 const generateCode = () => Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -40,8 +41,6 @@ const EXAM_FORMS = [
   { id: 'Parallel', name: 'نموذج الموازي' },
   { id: 'Mixed',    name: 'نموذج مختلط' },
 ];
-
-const EXAM_YEARS = [2020, 2021, 2022, 2023, 2024, 2025, 2026] as const;
 
 const BattleCreate = () => {
   const navigate = useNavigate();
@@ -156,8 +155,26 @@ const BattleCreate = () => {
     }
   }, [availableCount]);
 
-  // سنوات الاختبارات - ثابتة
-  const examYears = [...EXAM_YEARS].reverse();
+  // سنوات الاختبارات - من لوحة الإدارة
+  const { data: enabledYearsData } = useQuery({
+    queryKey: ['enabled_exam_years'],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from('platform_settings')
+        .select('value')
+        .eq('key', 'enabled_exam_years')
+        .maybeSingle();
+      if (data?.value) {
+        try {
+          const parsed = JSON.parse(data.value);
+          if (Array.isArray(parsed)) return [...parsed].reverse() as number[];
+        } catch {}
+      }
+      return [...ALL_EXAM_YEARS].reverse() as number[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const examYears = enabledYearsData ?? [...ALL_EXAM_YEARS].reverse();
 
   const handleCreate = async () => {
     if (!creatorName.trim()) { toast({ title: 'أدخل اسمك', variant: 'destructive' }); return; }
