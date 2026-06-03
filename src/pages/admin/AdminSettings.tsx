@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { Settings, User, Lock, Save } from 'lucide-react';
+import { Settings, User, Lock, Save, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,6 +17,38 @@ const AdminSettings = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // ── رسالة الاشتراك ──
+  const [subFee, setSubFee] = useState('1000 ريال');
+  const [subNote, setSubNote] = useState('يرجى تحويل المبلغ إلى الحساب الموضح، ثم رفع صورة الإيصال وتعبئة البيانات لتأكيد الاشتراك.');
+  const [subMsgLoading, setSubMsgLoading] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await (supabase as any)
+        .from('platform_settings')
+        .select('value')
+        .eq('key', 'subscription_message')
+        .maybeSingle();
+      if (data?.value) {
+        try {
+          const parsed = JSON.parse(data.value);
+          if (parsed.fee)  setSubFee(parsed.fee);
+          if (parsed.note) setSubNote(parsed.note);
+        } catch {}
+      }
+    })();
+  }, []);
+
+  const saveSubscriptionMessage = async () => {
+    setSubMsgLoading(true);
+    const value = JSON.stringify({ fee: subFee, note: subNote });
+    await (supabase as any)
+      .from('platform_settings')
+      .upsert({ key: 'subscription_message', value }, { onConflict: 'key' });
+    setSubMsgLoading(false);
+    toast({ title: 'تم الحفظ', description: 'تم تحديث رسالة الاشتراك بنجاح' });
+  };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,6 +173,52 @@ const AdminSettings = () => {
             </Button>
           </form>
         </div>
+
+        {/* ── رسالة الاشتراك ── */}
+        <div className="bg-card rounded-xl border p-4 sm:p-6" dir="rtl">
+          <h2 className="font-bold mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
+            <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+            رسالة الاشتراك
+          </h2>
+          <p className="text-xs text-muted-foreground mb-4">النص الذي يظهر في المستطيل الأزرق عند طلب الاشتراك</p>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-sm">الرسوم (السطر العلوي بالخط العريض)</Label>
+              <Input
+                value={subFee}
+                onChange={e => setSubFee(e.target.value)}
+                placeholder="مثال: 1000 ريال"
+                className="bg-background text-sm"
+                dir="rtl"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm">النص التوضيحي (السطر السفلي)</Label>
+              <textarea
+                value={subNote}
+                onChange={e => setSubNote(e.target.value)}
+                rows={3}
+                placeholder="مثال: يرجى تحويل المبلغ إلى الحساب الموضح..."
+                className="w-full px-3 py-2 rounded-xl border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30"
+                dir="rtl"
+              />
+            </div>
+            {/* معاينة */}
+            <div className="bg-blue-50 dark:bg-blue-950/30 rounded-2xl p-3.5 border border-blue-100 dark:border-blue-800/40">
+              <p className="text-xs font-black text-blue-700 dark:text-blue-400 mb-1.5">💰 الرسوم: <span className="text-base">{subFee}</span></p>
+              <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400 leading-relaxed">💡 {subNote}</p>
+            </div>
+            <Button
+              onClick={saveSubscriptionMessage}
+              disabled={subMsgLoading}
+              className="gradient-primary text-primary-foreground border-0 gap-2 w-full sm:w-auto"
+            >
+              <Save className="w-4 h-4" />
+              {subMsgLoading ? 'جاري الحفظ...' : 'حفظ الرسالة'}
+            </Button>
+          </div>
+        </div>
+
       </div>
     </AdminLayout>
   );
