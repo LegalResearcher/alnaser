@@ -5,7 +5,8 @@
  * دقة عالية 2x — رسم SVG Path للميزان — ختم رسمي
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Award, Send, CheckCircle, User, MapPin, GraduationCap, Loader2, Phone } from 'lucide-react';
 
@@ -578,6 +579,15 @@ function drawCertificate(
 // ─── الصفحة الرئيسية ─────────────────────────────────────────────────────────
 
 export default function HonorCertificate() {
+  const [searchParams] = useSearchParams();
+  const codeFromUrl = searchParams.get('code');
+
+  // ── وضع عرض الشهادة برابط مباشر ──
+  const [certData, setCertData]     = useState<any>(null);
+  const [certLoading, setCertLoading] = useState(!!codeFromUrl);
+  const [certUrl, setCertUrl]       = useState('');
+
+  // ── hooks النموذج — يجب أن تكون قبل أي return ──
   const [form, setForm]       = useState({ name: '', governorate: '', level: '', batch: '', phone: '' });
   const [errors, setErrors]   = useState<Record<string, string>>({});
   const [step, setStep]       = useState<'form' | 'preview' | 'done'>('form');
@@ -586,9 +596,113 @@ export default function HonorCertificate() {
   const [verifyCode] = useState(generateVerifyCode);
   const [fontReady, setFontReady] = useState(false);
 
+  useEffect(() => {
+    if (!codeFromUrl) return;
+    (async () => {
+      setCertLoading(true);
+      const { data } = await (supabase as any)
+        .from('honor_certificates')
+        .select('*')
+        .eq('verify_code', codeFromUrl)
+        .eq('status', 'confirmed')
+        .maybeSingle();
+      setCertData(data || null);
+      setCertLoading(false);
+    })();
+  }, [codeFromUrl]);
+
+  // رسم الشهادة عند جلب البيانات
+  useEffect(() => {
+    if (!certData) return;
+    loadCairoFont().then(() => {
+      const level = LEVELS.find(l => l.value === certData.level);
+      const rs = level ? RANK_STYLES[level.rankEn] : RANK_STYLES['jadara'];
+      const canvas = document.createElement('canvas');
+      drawCertificate(canvas, {
+        name: certData.student_name,
+        governorate: certData.governorate,
+        levelLabel: certData.level_label,
+        rank: certData.rank,
+        rankStyle: rs,
+        verifyCode: certData.verify_code,
+        exportDate: new Date(certData.exported_at).toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric' }),
+      });
+      setCertUrl(canvas.toDataURL('image/png', 1.0));
+    });
+  }, [certData]);
+
+  // ── عرض الشهادة برابط مباشر ──
+  if (codeFromUrl) {
+    if (certLoading) return (
+      <div className="min-h-screen flex items-center justify-center bg-stone-950">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-stone-400 font-semibold">جاري تحميل الشهادة...</p>
+        </div>
+      </div>
+    );
+    if (!certData) return (
+      <div className="min-h-screen flex items-center justify-center bg-stone-950 p-4" dir="rtl">
+        <div className="text-center">
+          <div className="text-6xl mb-4">🔒</div>
+          <h2 className="text-white font-black text-xl mb-2">الشهادة غير متاحة</h2>
+          <p className="text-stone-400 text-sm">رمز التحقق غير صحيح أو لم تتم الموافقة على الشهادة بعد.</p>
+        </div>
+      </div>
+    );
+    const level = LEVELS.find(l => l.value === certData.level);
+    const rs = level ? RANK_STYLES[level.rankEn] : RANK_STYLES['jadara'];
+    return (
+      <div dir="rtl" className="min-h-screen bg-stone-950 flex flex-col items-center p-4 gap-5 pb-10">
+        <div className="w-full max-w-3xl pt-6 text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full shadow-xl mb-3"
+            style={{ background: `linear-gradient(135deg, ${rs.colorDark}, ${rs.color})` }}>
+            <Award className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-2xl font-black text-white">شهادة الشرف</h1>
+          <p className="text-stone-400 text-sm mt-1">منصة الناصر القانونية</p>
+        </div>
+
+        {certUrl && (
+          <div className="relative rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10 w-full" style={{ maxWidth: '780px' }}>
+            <img src={certUrl} alt="شهادة الشرف" className="w-full" />
+          </div>
+        )}
+
+        {/* زر التنزيل الاحترافي */}
+        {certUrl && (
+          <a
+            href={certUrl}
+            download={`شهادة-شرف-${certData.student_name}.png`}
+            className="relative flex items-center justify-center gap-3 w-full max-w-sm py-4 px-8 rounded-2xl font-black text-lg text-white shadow-2xl transition-all duration-300 hover:-translate-y-1 active:scale-[0.97] overflow-hidden group"
+            style={{
+              background: `linear-gradient(135deg, ${rs.colorDark}, ${rs.color})`,
+              boxShadow: `0 8px 32px ${rs.glow}, 0 0 0 1px rgba(255,255,255,0.1) inset`,
+            }}
+          >
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+              style={{ background: `linear-gradient(135deg, ${rs.color}, ${rs.colorDark})` }} />
+            <div className="absolute inset-0 -skew-x-12 translate-x-[-150%] group-hover:translate-x-[250%] transition-transform duration-700"
+              style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)', width: '50%' }} />
+            <svg className="relative z-10 w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" />
+            </svg>
+            <span className="relative z-10">تنزيل الشهادة</span>
+          </a>
+        )}
+
+        <p className="text-stone-500 text-xs text-center">
+          رمز التحقق: {certData.verify_code}
+        </p>
+      </div>
+    );
+  }
+
   const selectedLevel = LEVELS.find(l => l.value === form.level);
   const rankStyle     = selectedLevel ? RANK_STYLES[selectedLevel.rankEn] : RANK_STYLES['jadara'];
   const exportDate    = new Date().toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  // ─── النموذج العادي ───────────────────────────────────────────────────────
 
   // تحميل الخط عند فتح الصفحة
   useEffect(() => {
