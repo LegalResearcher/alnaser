@@ -570,6 +570,48 @@ export type Database = {
           },
         ]
       }
+      honor_certificates: {
+        Row: {
+          created_at: string
+          exported_at: string
+          governorate: string
+          id: string
+          level: string
+          level_label: string
+          phone: string | null
+          rank: string
+          status: string
+          student_name: string
+          verify_code: string
+        }
+        Insert: {
+          created_at?: string
+          exported_at?: string
+          governorate: string
+          id?: string
+          level: string
+          level_label: string
+          phone?: string | null
+          rank: string
+          status?: string
+          student_name: string
+          verify_code: string
+        }
+        Update: {
+          created_at?: string
+          exported_at?: string
+          governorate?: string
+          id?: string
+          level?: string
+          level_label?: string
+          phone?: string | null
+          rank?: string
+          status?: string
+          student_name?: string
+          verify_code?: string
+        }
+        Relationships: []
+      }
       levels: {
         Row: {
           color: string | null

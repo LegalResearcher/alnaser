@@ -15,6 +15,7 @@ interface Props {
 
 export default function SubscribeButton({ subjectId, subjectName, levelName }: Props) {
   const { toast } = useToast();
+  const subMsg = useSubscriptionMessage();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
