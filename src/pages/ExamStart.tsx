@@ -187,29 +187,7 @@ const ExamStart = () => {
   const [showNewQsNotif,   setShowNewQsNotif]   = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
 
-  // ── السنوات المفعّلة بناءً على مستوى المادة ──
-  const levelId = subject?.level_id ?? null;
-  const { data: enabledYearsData } = useQuery({
-    queryKey: ['enabled_exam_years', levelId],
-    queryFn: async () => {
-      if (!levelId) return [...ALL_EXAM_YEARS] as number[];
-      const { data } = await (supabase as any)
-        .from('platform_settings')
-        .select('value')
-        .eq('key', `enabled_exam_years_${levelId}`)
-        .maybeSingle();
-      if (data?.value) {
-        try {
-          const parsed = JSON.parse(data.value);
-          if (Array.isArray(parsed)) return parsed as number[];
-        } catch {}
-      }
-      return [...ALL_EXAM_YEARS] as number[];
-    },
-    enabled: !!levelId,
-    staleTime: 5 * 60 * 1000,
-  });
-  const enabledExamYears = enabledYearsData ?? [...ALL_EXAM_YEARS];
+
 
   // ── وضع المراجعة ──
   const [showReviewPasswordModal, setShowReviewPasswordModal] = useState(false);
@@ -264,6 +242,30 @@ const ExamStart = () => {
     },
     { enabled: !!subjectId }
   );
+
+  // ── السنوات المفعّلة بناءً على مستوى المادة ──
+  const levelId = subject?.level_id ?? null;
+  const { data: enabledYearsData } = useQuery({
+    queryKey: ['enabled_exam_years', levelId],
+    queryFn: async () => {
+      if (!levelId) return [...ALL_EXAM_YEARS] as number[];
+      const { data } = await (supabase as any)
+        .from('platform_settings')
+        .select('value')
+        .eq('key', `enabled_exam_years_${levelId}`)
+        .maybeSingle();
+      if (data?.value) {
+        try {
+          const parsed = JSON.parse(data.value);
+          if (Array.isArray(parsed)) return parsed as number[];
+        } catch {}
+      }
+      return [...ALL_EXAM_YEARS] as number[];
+    },
+    enabled: !!levelId,
+    staleTime: 5 * 60 * 1000,
+  });
+  const enabledExamYears = enabledYearsData ?? [...ALL_EXAM_YEARS];
 
   const isTrialSelected = selectedYear === 'trial';
 
