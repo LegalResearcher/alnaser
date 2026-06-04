@@ -102,6 +102,36 @@ export default function AdminHonorRequests() {
     },
   });
 
+  // ── تعديل ──
+  const editMut = useMutation({
+    mutationFn: async (payload: any) => {
+      const { id, ...rest } = payload;
+      const { error } = await (supabase as any)
+        .from('honor_certificates')
+        .update(rest)
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['honor_requests'] });
+      setEditTarget(null);
+      toast({ title: 'تم الحفظ', description: 'تم تحديث بيانات الشهادة' });
+    },
+    onError: (e: any) => toast({ title: 'خطأ', description: e?.message, variant: 'destructive' }),
+  });
+
+  const openEdit = (req: any) => {
+    setEditTarget(req);
+    setEditForm({
+      student_name: req.student_name || '',
+      phone: req.phone || '',
+      governorate: req.governorate || '',
+      level_label: req.level_label || '',
+      rank: req.rank || '',
+      status: req.status || 'pending',
+    });
+  };
+
   const filtered = requests.filter((r: any) => {
     const matchSearch = !search.trim() ||
       r.student_name?.includes(search) || r.phone?.includes(search) ||
