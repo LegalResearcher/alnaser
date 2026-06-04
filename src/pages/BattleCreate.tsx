@@ -155,14 +155,15 @@ const BattleCreate = () => {
     }
   }, [availableCount]);
 
-  // سنوات الاختبارات - من لوحة الإدارة
+  // سنوات الاختبارات - من لوحة الإدارة بناءً على المستوى المختار
   const { data: enabledYearsData } = useQuery({
-    queryKey: ['enabled_exam_years'],
+    queryKey: ['enabled_exam_years', selectedLevel],
     queryFn: async () => {
+      if (!selectedLevel) return [...ALL_EXAM_YEARS].reverse() as number[];
       const { data } = await (supabase as any)
         .from('platform_settings')
         .select('value')
-        .eq('key', 'enabled_exam_years')
+        .eq('key', `enabled_exam_years_${selectedLevel}`)
         .maybeSingle();
       if (data?.value) {
         try {
