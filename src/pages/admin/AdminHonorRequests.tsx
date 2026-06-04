@@ -19,6 +19,8 @@ export default function AdminHonorRequests() {
   const [search, setSearch]             = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'confirmed' | 'rejected'>('all');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [editTarget, setEditTarget] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState<any>({});
 
   // ── جلب الطلبات ──
   const { data: requests = [], isLoading } = useQuery({
