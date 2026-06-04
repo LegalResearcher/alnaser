@@ -962,6 +962,18 @@ const AdminQuestions = () => {
 
   // ─── منطق البحث والاستبدال الجماعي ───
   const REPLACEABLE_FIELDS = ['question_text', 'option_a', 'option_b', 'option_c', 'option_d', 'hint', 'explanation'] as const;
+  const OPTION_FIELDS = ['option_a', 'option_b', 'option_c', 'option_d'] as const;
+  const TRUE_FALSE_VALUES = ['العبارة صحيحة', 'العبارة خاطئة'];
+
+  // هل السؤال من نوع صح/خطأ؟
+  const isTrueFalseQuestion = (q: any): boolean =>
+    OPTION_FIELDS.some(f => TRUE_FALSE_VALUES.includes((q[f] ?? '').trim()));
+
+  // هل يجوز تعديل هذا الحقل في هذا السؤال؟
+  const canEditField = (q: any, field: string): boolean => {
+    if (!(OPTION_FIELDS as readonly string[]).includes(field)) return true;
+    return isTrueFalseQuestion(q);
+  };
 
   // دالة مساعدة: هل النص يحتوي على العبارة؟ (جزئي أو كلمة كاملة)
   const brMatches = (val: string, term: string, wholeWord: boolean): boolean => {
@@ -986,7 +998,7 @@ const AdminQuestions = () => {
     setBrIsPreviewing(true);
     const results = questions
       .map(q => {
-        const matchedFields = REPLACEABLE_FIELDS.filter(f => brMatches((q as any)[f], brSearchTerm, brWholeWord));
+        const matchedFields = REPLACEABLE_FIELDS.filter(f => canEditField(q, f) && brMatches((q as any)[f], brSearchTerm, brWholeWord));
         return matchedFields.length ? { id: q.id, fields: matchedFields } : null;
       })
       .filter(Boolean) as { id: string; fields: string[] }[];
@@ -1005,6 +1017,7 @@ const AdminQuestions = () => {
       const updates = questionsToUpdate.map(q => {
         const patch: Record<string, string> = {};
         REPLACEABLE_FIELDS.forEach(f => {
+          if (!canEditField(q, f)) return;
           const val = (q as any)[f];
           if (brMatches(val, brSearchTerm, brWholeWord)) {
             patch[f] = brReplace(val, brSearchTerm, brReplaceTerm, brWholeWord);
