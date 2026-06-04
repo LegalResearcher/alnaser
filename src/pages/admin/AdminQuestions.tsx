@@ -953,16 +953,19 @@ const AdminQuestions = () => {
   const toggleSelectAll = () => selectedIds.length === filteredQuestions.length ? setSelectedIds([]) : setSelectedIds(filteredQuestions.map(q => q.id));
   const toggleSelectOne = (id: string) => selectedIds.includes(id) ? setSelectedIds(prev => prev.filter(x => x !== id)) : setSelectedIds(prev => [...prev, id]);
 
-  const filteredQuestions = useMemo(() =>
-    searchQuery.trim()
-      ? questions.filter(q =>
-          q.question_text?.includes(searchQuery.trim()) ||
-          q.option_a?.includes(searchQuery.trim()) ||
-          q.option_b?.includes(searchQuery.trim())
-        )
-      : questions,
-    [questions, searchQuery]
-  );
+  const filteredQuestions = useMemo(() => {
+    const s = searchQuery.trim();
+    if (!s) return questions;
+    return questions.filter(q =>
+      q.question_text?.includes(s) ||
+      q.option_a?.includes(s) ||
+      q.option_b?.includes(s) ||
+      q.option_c?.includes(s) ||
+      q.option_d?.includes(s) ||
+      q.hint?.includes(s) ||
+      (q as any).explanation?.includes(s)
+    );
+  }, [questions, searchQuery]);
 
   return (
     <AdminLayout>
