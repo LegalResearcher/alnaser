@@ -55,6 +55,7 @@ const AdminSettings = () => {
     })();
   }, [levels]);
   const [subFee, setSubFee] = useState('1000 ريال');
+  const [subFeeLabel, setSubFeeLabel] = useState('الرسوم');
   const [subNote, setSubNote] = useState('يرجى تحويل المبلغ إلى الحساب الموضح، ثم رفع صورة الإيصال وتعبئة البيانات لتأكيد الاشتراك.');
   const [subMsgLoading, setSubMsgLoading] = useState(false);
 
@@ -68,8 +69,9 @@ const AdminSettings = () => {
       if (data?.value) {
         try {
           const parsed = JSON.parse(data.value);
-          if (parsed.fee)  setSubFee(parsed.fee);
-          if (parsed.note) setSubNote(parsed.note);
+          if (parsed.fee)      setSubFee(parsed.fee);
+          if (parsed.feeLabel) setSubFeeLabel(parsed.feeLabel);
+          if (parsed.note)     setSubNote(parsed.note);
         } catch {}
       }
     })();
@@ -77,7 +79,7 @@ const AdminSettings = () => {
 
   const saveSubscriptionMessage = async () => {
     setSubMsgLoading(true);
-    const value = JSON.stringify({ fee: subFee, note: subNote });
+    const value = JSON.stringify({ fee: subFee, feeLabel: subFeeLabel, note: subNote });
     await (supabase as any)
       .from('platform_settings')
       .upsert({ key: 'subscription_message', value }, { onConflict: 'key' });
@@ -241,40 +243,137 @@ const AdminSettings = () => {
           </h2>
           <p className="text-xs text-muted-foreground mb-4">النص الذي يظهر في المستطيل الأزرق عند طلب الاشتراك</p>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-sm">الرسوم (السطر العلوي بالخط العريض)</Label>
-              <Input
-                value={subFee}
-                onChange={e => setSubFee(e.target.value)}
-                placeholder="مثال: 1000 ريال"
-                className="bg-background text-sm"
-                dir="rtl"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="text-sm">قيمة الرسوم</Label>
+                <Input
+                  value={subFee}
+                  onChange={e => setSubFee(e.target.value)}
+                  placeholder="مثال: 500 ريال"
+                  className="bg-background text-sm"
+                  dir="rtl"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">تسمية الرسوم</Label>
+                <Input
+                  value={subFeeLabel}
+                  onChange={e => setSubFeeLabel(e.target.value)}
+                  placeholder="مثال: الرسوم / التكلفة"
+                  className="bg-background text-sm"
+                  dir="rtl"
+                />
+              </div>
             </div>
             <div className="space-y-2">
-              <Label className="text-sm">النص التوضيحي (السطر السفلي)</Label>
+              <Label className="text-sm font-bold">مزايا الباقة</Label>
+              <p className="text-[11px] text-muted-foreground -mt-1">
+                اكتب كل ميزة في سطر منفصل — <kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">Enter</kbd> للسطر التالي
+              </p>
               <textarea
                 value={subNote}
                 onChange={e => setSubNote(e.target.value)}
-                rows={3}
-                placeholder="مثال: يرجى تحويل المبلغ إلى الحساب الموضح..."
-                className="w-full px-3 py-2 rounded-xl border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30"
+                rows={5}
+                placeholder={`مثال:\nفتح الشروحات التفصيلية والتلميحات بعد كل سؤال\nالأسئلة التجريبية وتوقعات مستخرجة لكامل المقرر\nتفعيل فوري بمجرد رفع الإيصال`}
+                className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 leading-relaxed"
                 dir="rtl"
               />
             </div>
-            {/* معاينة */}
-            <div className="bg-blue-50 dark:bg-blue-950/30 rounded-2xl p-3.5 border border-blue-100 dark:border-blue-800/40 space-y-2">
-              <p className="text-xs font-black text-blue-700 dark:text-blue-400">💰 الرسوم: <span className="text-base">{subFee}</span></p>
-              <div className="border-t border-blue-200 dark:border-blue-700 pt-2 space-y-1">
-                {subNote.split('\n').map((line, i) =>
-                  line.trim() ? (
-                    <p key={i} className="text-[11px] font-bold text-blue-600 dark:text-blue-400 leading-relaxed flex items-start gap-1">
-                      <span className="mt-0.5 shrink-0">•</span>
-                      <span>{line.trim()}</span>
-                    </p>
-                  ) : null
-                )}
+            {/* ── معاينة 2026 ── */}
+            <div className="rounded-2xl overflow-hidden border border-border/40 shadow-card">
+              {/* Header preview */}
+              <div
+                className="px-4 pt-4 pb-3 relative overflow-hidden"
+                style={{
+                  background: 'linear-gradient(135deg, hsl(217 91% 57%) 0%, hsl(199 89% 48%) 60%, hsl(160 84% 39%) 100%)',
+                }}
+              >
+                <div className="absolute -top-4 -left-4 w-16 h-16 rounded-full opacity-20"
+                  style={{ background: 'radial-gradient(circle, white, transparent)' }} />
+                <p className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-1">معاينة</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-white font-black text-sm">الباقة المتقدمة</p>
+                  <span className="text-yellow-300 text-base">👑</span>
+                </div>
+                <div
+                  className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-white font-black text-xs"
+                  style={{ background: 'rgba(255,255,255,0.2)' }}
+                >
+                  💳 {subFeeLabel}: {subFee}
+                </div>
               </div>
+
+              {/* Features + Alerts preview */}
+              {(() => {
+                const allPrev = subNote.split(/\n|(?<=\.)(?=\s*\S)/).map(l => l.trim()).filter(Boolean);
+                const features = allPrev.filter(l => !l.endsWith('**'));
+                const alerts   = allPrev.filter(l => l.endsWith('**')).map(l => l.slice(0, -2).trim());
+                return (
+                  <div className="p-3.5 bg-card space-y-2.5">
+                    {/* مزايا */}
+                    {features.length > 0 && (
+                      <>
+                        <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">
+                          ✦ مزايا الباقة المتقدمة
+                        </p>
+                        <div className="space-y-1.5">
+                          {features.map((line, i) => (
+                            <div key={i} className="flex items-start gap-2">
+                              <div
+                                className="mt-0.5 w-4 h-4 rounded-md flex items-center justify-center shrink-0 text-primary"
+                                style={{ background: 'hsl(var(--primary) / 0.1)' }}
+                              >
+                                <span className="text-[9px]">✓</span>
+                              </div>
+                              <span className="text-[11px] text-foreground/80 leading-snug font-medium">
+                                {line}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                    {/* تنبيهات */}
+                    {alerts.length > 0 && (
+                      <div className="rounded-xl overflow-hidden">
+                        <div
+                          className="flex items-center gap-1.5 px-3 py-1.5"
+                          style={{ background: 'linear-gradient(135deg, hsl(38 92% 50%), hsl(45 96% 58%))' }}
+                        >
+                          <span className="text-xs">⚠️</span>
+                          <span className="text-[9px] font-black text-amber-900 uppercase tracking-widest">تنبيه مهم</span>
+                        </div>
+                        <div
+                          className="px-3 py-2 space-y-1.5"
+                          style={{
+                            background: 'hsl(38 92% 50% / 0.06)',
+                            border: '1px solid hsl(38 92% 50% / 0.2)',
+                            borderTop: 'none',
+                            borderRadius: '0 0 0.75rem 0.75rem',
+                          }}
+                        >
+                          {alerts.map((line, i) => (
+                            <div key={i} className="flex items-start gap-2">
+                              <div
+                                className="mt-0.5 w-3.5 h-3.5 rounded flex items-center justify-center shrink-0 text-[9px] font-black"
+                                style={{ background: 'hsl(38 92% 50% / 0.15)', color: 'hsl(38 92% 38%)' }}
+                              >!</div>
+                              <span className="text-[11px] font-semibold leading-snug" style={{ color: 'hsl(38 60% 28%)' }}>
+                                {line}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {!subNote.trim() && (
+                      <p className="text-[11px] text-muted-foreground/50 italic">
+                        اكتب مزايا الباقة أعلاه — الجمل المنتهية بـ ** تظهر كتنبيه
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
             <Button
               onClick={saveSubscriptionMessage}
