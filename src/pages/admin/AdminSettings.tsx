@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { AdminSEO } from '@/components/seo/SEOHead';
@@ -21,25 +21,39 @@ const AdminSettings = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // ── سنوات النماذج ──
-  const [enabledYears, setEnabledYears] = useState<number[]>([...ALL_EXAM_YEARS]);
+  // ── جلب المستويات ──
+  const { data: levels = [] } = useQuery({
+    queryKey: ['levels'],
+    queryFn: async () => {
+      const { data } = await supabase.from('levels').select('id, name').order('order_index');
+      return data ?? [];
+    },
+  });
+
+  // ── سنوات النماذج لكل مستوى ──
+  // { [levelId]: number[] }
+  const [levelYears, setLevelYears] = useState<Record<string, number[]>>({});
   const [yearsLoading, setYearsLoading] = useState(false);
+  const [activeLevelTab, setActiveLevelTab] = useState<string>('');
 
   useEffect(() => {
+    if (!levels.length) return;
+    if (!activeLevelTab) setActiveLevelTab((levels[0] as any).id);
     (async () => {
+      const keys = levels.map((l: any) => `enabled_exam_years_${l.id}`);
       const { data } = await (supabase as any)
         .from('platform_settings')
-        .select('value')
-        .eq('key', 'enabled_exam_years')
-        .maybeSingle();
-      if (data?.value) {
-        try {
-          const parsed = JSON.parse(data.value);
-          if (Array.isArray(parsed)) setEnabledYears(parsed);
-        } catch {}
-      }
+        .select('key, value')
+        .in('key', keys);
+      const map: Record<string, number[]> = {};
+      levels.forEach((l: any) => {
+        const row = data?.find((r: any) => r.key === `enabled_exam_years_${l.id}`);
+        try { map[l.id] = row ? JSON.parse(row.value) : [...ALL_EXAM_YEARS]; }
+        catch { map[l.id] = [...ALL_EXAM_YEARS]; }
+      });
+      setLevelYears(map);
     })();
-  }, []);
+  }, [levels]);
   const [subFee, setSubFee] = useState('1000 ريال');
   const [subNote, setSubNote] = useState('يرجى تحويل المبلغ إلى الحساب الموضح، ثم رفع صورة الإيصال وتعبئة البيانات لتأكيد الاشتراك.');
   const [subMsgLoading, setSubMsgLoading] = useState(false);
@@ -72,21 +86,27 @@ const AdminSettings = () => {
     toast({ title: 'تم الحفظ', description: 'تم تحديث رسالة الاشتراك بنجاح' });
   };
 
-  const toggleYear = (year: number) => {
-    setEnabledYears(prev =>
-      prev.includes(year) ? prev.filter(y => y !== year) : [...prev, year].sort()
-    );
+  const toggleYear = (levelId: string, year: number) => {
+    setLevelYears(prev => {
+      const cur = prev[levelId] ?? [...ALL_EXAM_YEARS];
+      return {
+        ...prev,
+        [levelId]: cur.includes(year) ? cur.filter(y => y !== year) : [...cur, year].sort(),
+      };
+    });
   };
 
   const saveEnabledYears = async () => {
     setYearsLoading(true);
-    const value = JSON.stringify(enabledYears);
-    await (supabase as any)
-      .from('platform_settings')
-      .upsert({ key: 'enabled_exam_years', value }, { onConflict: 'key' });
-    queryClient.invalidateQueries({ queryKey: ['enabled_exam_years'] });
+    for (const level of levels as any[]) {
+      const years = levelYears[level.id] ?? [...ALL_EXAM_YEARS];
+      await (supabase as any)
+        .from('platform_settings')
+        .upsert({ key: `enabled_exam_years_${level.id}`, value: JSON.stringify(years) }, { onConflict: 'key' });
+      queryClient.invalidateQueries({ queryKey: ['enabled_exam_years', level.id] });
+    }
     setYearsLoading(false);
-    toast({ title: 'تم الحفظ', description: 'تم تحديث سنوات النماذج بنجاح' });
+    toast({ title: 'تم الحفظ', description: 'تم تحديث سنوات النماذج لجميع المستويات' });
   };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
@@ -258,49 +278,71 @@ const AdminSettings = () => {
           </div>
         </div>
 
-        {/* ── سنوات النماذج ── */}
+        {/* ── سنوات النماذج لكل مستوى ── */}
         <div className="bg-card rounded-xl border p-4 sm:p-6" dir="rtl">
           <h2 className="font-bold mb-1 flex items-center gap-2 text-sm sm:text-base">
             <CalendarDays className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
             سنوات النماذج المتاحة للطلاب
           </h2>
           <p className="text-xs text-muted-foreground mb-4">
-            حدد السنوات التي تظهر للطالب عند اختيار نموذج سنة الاختبار. السنوات غير المحددة لن تظهر.
+            حدد السنوات التي تظهر لكل مستوى عند اختيار نموذج سنة الاختبار. السنوات غير المحددة لن تظهر.
           </p>
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-4">
-            {[...ALL_EXAM_YEARS].map((year) => {
-              const active = enabledYears.includes(year);
-              return (
-                <button
-                  key={year}
-                  onClick={() => toggleYear(year)}
-                  className={`relative flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 px-2 font-bold text-sm transition-all duration-200 select-none ${
-                    active
-                      ? 'border-primary bg-primary/10 text-primary shadow-sm'
-                      : 'border-border bg-muted/40 text-muted-foreground hover:border-primary/40'
-                  }`}
-                >
-                  <span className="text-base font-black">{year}</span>
-                  <span className={`text-[10px] font-bold ${active ? 'text-primary' : 'text-muted-foreground'}`}>
-                    {active ? '✓ مفعّل' : 'مخفي'}
-                  </span>
-                </button>
-              );
-            })}
+
+          {/* تبويبات المستويات */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {(levels as any[]).map((level) => (
+              <button
+                key={level.id}
+                onClick={() => setActiveLevelTab(level.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+                  activeLevelTab === level.id
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-muted text-muted-foreground border-border hover:border-primary/40'
+                }`}
+              >
+                {level.name}
+              </button>
+            ))}
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <Button
-              onClick={saveEnabledYears}
-              disabled={yearsLoading}
-              className="gradient-primary text-primary-foreground border-0 gap-2"
-            >
-              <Save className="w-4 h-4" />
-              {yearsLoading ? 'جاري الحفظ...' : 'حفظ السنوات'}
-            </Button>
-            <span className="text-xs text-muted-foreground">
-              {enabledYears.length} من {ALL_EXAM_YEARS.length} سنوات مفعّلة
-            </span>
-          </div>
+
+          {/* شبكة السنوات للمستوى المختار */}
+          {activeLevelTab && (
+            <>
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-4">
+                {[...ALL_EXAM_YEARS].map((year) => {
+                  const active = (levelYears[activeLevelTab] ?? [...ALL_EXAM_YEARS]).includes(year);
+                  return (
+                    <button
+                      key={year}
+                      onClick={() => toggleYear(activeLevelTab, year)}
+                      className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 px-2 font-bold text-sm transition-all duration-200 select-none ${
+                        active
+                          ? 'border-primary bg-primary/10 text-primary shadow-sm'
+                          : 'border-border bg-muted/40 text-muted-foreground hover:border-primary/40'
+                      }`}
+                    >
+                      <span className="text-base font-black">{year}</span>
+                      <span className={`text-[10px] font-bold ${active ? 'text-primary' : 'text-muted-foreground'}`}>
+                        {active ? '✓ مفعّل' : 'مخفي'}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                {(levelYears[activeLevelTab] ?? ALL_EXAM_YEARS).length} من {ALL_EXAM_YEARS.length} سنوات مفعّلة لهذا المستوى
+              </p>
+            </>
+          )}
+
+          <Button
+            onClick={saveEnabledYears}
+            disabled={yearsLoading}
+            className="gradient-primary text-primary-foreground border-0 gap-2"
+          >
+            <Save className="w-4 h-4" />
+            {yearsLoading ? 'جاري الحفظ...' : 'حفظ السنوات لجميع المستويات'}
+          </Button>
         </div>
 
       </div>
