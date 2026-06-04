@@ -1038,12 +1038,50 @@ const ExamStart = () => {
                 </button>
               </div>
               {!subSuccess ? (<>
-                <div className="bg-blue-50 dark:bg-blue-950/30 rounded-2xl p-3.5 border border-blue-100 dark:border-blue-800/40">
-                  <p className="text-xs font-black text-blue-700 dark:text-blue-400 mb-2 text-right">💰 الرسوم: <span className="text-base">{subMsg.fee}</span></p>
-                  <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400 leading-relaxed text-right">
-                    💡 {subMsg.note}
-                  </p>
-                </div>
+                {(() => {
+                  const allLines = subMsg.note.split(/\n|(?<=\.)(?=\s*\S)/).map((l: string) => l.trim()).filter(Boolean);
+                  const featureLines = allLines.filter((l: string) => !l.endsWith('**'));
+                  const alertLines   = allLines.filter((l: string) => l.endsWith('**')).map((l: string) => l.slice(0, -2).trim());
+                  return (
+                    <div className="space-y-2">
+                      {/* الرسوم */}
+                      <p className="text-xs font-black text-blue-700 dark:text-blue-400 text-right">💰 الرسوم: <span className="text-base">{subMsg.fee}</span></p>
+
+                      {/* مزايا الباقة */}
+                      {featureLines.length > 0 && (
+                        <div className="bg-blue-50 dark:bg-blue-950/30 rounded-2xl p-3.5 border border-blue-100 dark:border-blue-800/40 space-y-1.5">
+                          {featureLines.map((line: string, i: number) => (
+                            <div key={i} className="flex items-start gap-2 text-right">
+                              <span className="mt-0.5 text-blue-500 text-xs shrink-0">✓</span>
+                              <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 leading-relaxed">{line}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* صندوق التنبيهات */}
+                      {alertLines.length > 0 && (
+                        <div className="rounded-2xl overflow-hidden">
+                          <div className="flex items-center gap-2 px-3.5 py-2"
+                            style={{ background: 'linear-gradient(135deg, hsl(38 92% 50%) 0%, hsl(45 96% 58%) 100%)' }}>
+                            <span className="text-sm">⚠️</span>
+                            <span className="text-[10px] font-black text-amber-900 uppercase tracking-widest">تنبيه مهم</span>
+                          </div>
+                          <div className="px-3.5 py-3 space-y-1.5"
+                            style={{ background: 'hsl(38 92% 50% / 0.06)', border: '1px solid hsl(38 92% 50% / 0.2)', borderTop: 'none', borderRadius: '0 0 1rem 1rem' }}>
+                            {alertLines.map((line: string, i: number) => (
+                              <div key={i} className="flex items-start gap-2">
+                                <div className="mt-0.5 w-4 h-4 rounded-md flex items-center justify-center shrink-0 text-[10px] font-black"
+                                  style={{ background: 'hsl(38 92% 50% / 0.15)', color: 'hsl(38 92% 38%)' }}>!</div>
+                                <span className="text-[11px] font-semibold leading-relaxed" style={{ color: 'hsl(38 60% 28%)' }}>{line}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* اختيار المحفظة */}
                 <div className="space-y-2">
