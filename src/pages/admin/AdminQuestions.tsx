@@ -230,6 +230,7 @@ const AdminQuestions = () => {
   const [brSearchTerm, setBrSearchTerm] = useState('');
   const [brReplaceTerm, setBrReplaceTerm] = useState('');
   const [brPreviewResults, setBrPreviewResults] = useState<{ id: string; fields: string[] }[]>([]);
+  const [brWholeWord, setBrWholeWord] = useState(false);
   const [brIsPreviewing, setBrIsPreviewing] = useState(false);
   const [brIsApplying, setBrIsApplying] = useState(false);
   const [brDone, setBrDone] = useState(false);
@@ -962,12 +963,30 @@ const AdminQuestions = () => {
   // ─── منطق البحث والاستبدال الجماعي ───
   const REPLACEABLE_FIELDS = ['question_text', 'option_a', 'option_b', 'option_c', 'option_d', 'hint', 'explanation'] as const;
 
+  // دالة مساعدة: هل النص يحتوي على العبارة؟ (جزئي أو كلمة كاملة)
+  const brMatches = (val: string, term: string, wholeWord: boolean): boolean => {
+    if (!val || !term) return false;
+    if (!wholeWord) return val.includes(term);
+    // كلمة كاملة: الحرف قبلها وبعدها ليس حرفاً عربياً أو لاتينياً
+    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(?<![\\u0600-\\u06FFa-zA-Z0-9])${escaped}(?![\\u0600-\\u06FFa-zA-Z0-9])`);
+    return regex.test(val);
+  };
+
+  // دالة مساعدة: استبدل كل تكرار (كلمة كاملة أو جزئي)
+  const brReplace = (val: string, term: string, replacement: string, wholeWord: boolean): string => {
+    if (!wholeWord) return val.split(term).join(replacement);
+    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(?<![\\u0600-\\u06FFa-zA-Z0-9])${escaped}(?![\\u0600-\\u06FFa-zA-Z0-9])`, 'g');
+    return val.replace(regex, replacement);
+  };
+
   const handleBrPreview = () => {
     if (!brSearchTerm.trim()) return;
     setBrIsPreviewing(true);
     const results = questions
       .map(q => {
-        const matchedFields = REPLACEABLE_FIELDS.filter(f => (q as any)[f]?.includes(brSearchTerm));
+        const matchedFields = REPLACEABLE_FIELDS.filter(f => brMatches((q as any)[f], brSearchTerm, brWholeWord));
         return matchedFields.length ? { id: q.id, fields: matchedFields } : null;
       })
       .filter(Boolean) as { id: string; fields: string[] }[];
@@ -987,8 +1006,8 @@ const AdminQuestions = () => {
         const patch: Record<string, string> = {};
         REPLACEABLE_FIELDS.forEach(f => {
           const val = (q as any)[f];
-          if (val?.includes(brSearchTerm)) {
-            patch[f] = val.split(brSearchTerm).join(brReplaceTerm);
+          if (brMatches(val, brSearchTerm, brWholeWord)) {
+            patch[f] = brReplace(val, brSearchTerm, brReplaceTerm, brWholeWord);
           }
         });
         return supabase.from('questions').update(patch).eq('id', q.id);
@@ -1011,6 +1030,7 @@ const AdminQuestions = () => {
     setBrSearchTerm('');
     setBrReplaceTerm('');
     setBrPreviewResults([]);
+    setBrWholeWord(false);
     setBrDone(false);
   };
 
@@ -2043,6 +2063,17 @@ render();
                   dir="rtl"
                 />
                 <Search className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+              </div>
+              {/* خيار الكلمة الكاملة */}
+              <div className="flex items-center gap-2 pt-1 justify-end">
+                <label htmlFor="brWholeWord" className="text-sm font-bold text-slate-600 cursor-pointer select-none">
+                  مطابقة الكلمة كاملةً فقط
+                </label>
+                <Checkbox
+                  id="brWholeWord"
+                  checked={brWholeWord}
+                  onCheckedChange={(v) => { setBrWholeWord(!!v); setBrPreviewResults([]); setBrDone(false); }}
+                />
               </div>
             </div>
 
