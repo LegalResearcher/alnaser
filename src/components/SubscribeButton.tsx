@@ -99,8 +99,20 @@ export default function SubscribeButton({ subjectId, subjectName, levelName }: P
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-800 rounded-xl p-3 text-xs text-emerald-700 dark:text-emerald-300 leading-relaxed">
-                💰 <b>الرسوم: {subMsg.fee}</b> — {subMsg.note}
+              <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-800 rounded-xl p-3 space-y-2">
+                <p className="text-xs font-black text-emerald-700 dark:text-emerald-300">
+                  💰 الرسوم: <span className="text-sm">{subMsg.fee}</span>
+                </p>
+                <div className="border-t border-emerald-200 dark:border-emerald-700 pt-2 space-y-1">
+                  {subMsg.note.split('\n').map((line: string, i: number) =>
+                    line.trim() ? (
+                      <p key={i} className="text-xs text-emerald-700 dark:text-emerald-300 leading-relaxed flex items-start gap-1">
+                        <span className="mt-0.5 shrink-0">•</span>
+                        <span>{line.trim()}</span>
+                      </p>
+                    ) : null
+                  )}
+                </div>
               </div>
 
               <div className="space-y-2">
