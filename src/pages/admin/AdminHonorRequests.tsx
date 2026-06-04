@@ -4,7 +4,7 @@ import { AdminLayout } from '@/components/admin/AdminLayout';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Trash2, CheckCircle, XCircle, Send, Award } from 'lucide-react';
+import { Search, Trash2, CheckCircle, XCircle, Send, Award, Pencil, X } from 'lucide-react';
 
 const STATUS_LABELS: Record<string, { label: string; cls: string }> = {
   pending:   { label: 'معلق',   cls: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' },
