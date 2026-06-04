@@ -258,6 +258,12 @@ export default function AdminHonorRequests() {
                       </button>
                     )}
                     <button
+                      onClick={() => openEdit(req)}
+                      className="px-3 py-1.5 rounded-xl text-[11px] font-black bg-amber-500 hover:bg-amber-600 text-white transition-colors flex items-center gap-1"
+                    >
+                      <Pencil className="w-3 h-3" /> تعديل
+                    </button>
+                    <button
                       onClick={() => setDeleteConfirm(req.id)}
                       className="px-3 py-1.5 rounded-xl text-[11px] font-black bg-red-500 hover:bg-red-600 text-white transition-colors flex items-center gap-1"
                     >
