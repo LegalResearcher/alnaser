@@ -306,6 +306,82 @@ export default function AdminHonorRequests() {
         </div>,
         document.body
       )}
+
+      {/* Modal تعديل */}
+      {editTarget && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4" onClick={() => setEditTarget(null)}>
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div
+            className="relative bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-sm p-6"
+            onClick={e => e.stopPropagation()}
+            dir="rtl"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <Pencil className="w-4 h-4 text-amber-500" /> تعديل الشهادة
+              </h2>
+              <button
+                onClick={() => setEditTarget(null)}
+                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {[
+                { key: 'student_name', label: 'اسم الطالب' },
+                { key: 'phone', label: 'الهاتف' },
+                { key: 'governorate', label: 'المحافظة' },
+                { key: 'level_label', label: 'المستوى' },
+                { key: 'rank', label: 'الرتبة' },
+              ].map(f => (
+                <div key={f.key}>
+                  <label className="text-[11px] font-black text-slate-500 dark:text-slate-400 mb-1 block">
+                    {f.label}
+                  </label>
+                  <input
+                    value={editForm[f.key] ?? ''}
+                    onChange={e => setEditForm({ ...editForm, [f.key]: e.target.value })}
+                    className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-semibold focus:outline-none focus:border-amber-400 transition-colors"
+                  />
+                </div>
+              ))}
+              <div>
+                <label className="text-[11px] font-black text-slate-500 dark:text-slate-400 mb-1 block">
+                  الحالة
+                </label>
+                <select
+                  value={editForm.status ?? 'pending'}
+                  onChange={e => setEditForm({ ...editForm, status: e.target.value })}
+                  className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-semibold focus:outline-none focus:border-amber-400 transition-colors"
+                >
+                  <option value="pending">معلق</option>
+                  <option value="confirmed">تمت الموافقة</option>
+                  <option value="rejected">مرفوض</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-5">
+              <button
+                onClick={() => editMut.mutate({ id: editTarget.id, ...editForm })}
+                disabled={editMut.isPending}
+                className="flex-1 py-2.5 rounded-xl text-sm font-black bg-amber-500 hover:bg-amber-600 text-white transition-colors disabled:opacity-60"
+              >
+                {editMut.isPending ? 'جاري الحفظ...' : 'حفظ التغييرات'}
+              </button>
+              <button
+                onClick={() => setEditTarget(null)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-black bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </AdminLayout>
   );
 }
