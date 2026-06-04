@@ -11,7 +11,7 @@ import { AdminLayout } from '@/components/admin/AdminLayout';
 import { 
   Plus, Search, Edit2, Trash2, BookOpen, CheckCircle2, FileUp, 
   Loader2, FileText, AlertCircle, Eye, Save, X, PencilLine, ScanLine,
-  ChevronUp, ChevronDown
+  ChevronUp, ChevronDown, Replace
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -224,6 +224,15 @@ const AdminQuestions = () => {
   const [editingFormId, setEditingFormId] = useState<string | null>(null);
   const [editingFormName, setEditingFormName] = useState('');
   const [confirmDeleteFormId, setConfirmDeleteFormId] = useState<string | null>(null);
+
+  // حالات البحث والاستبدال الجماعي
+  const [isBulkReplaceOpen, setIsBulkReplaceOpen] = useState(false);
+  const [brSearchTerm, setBrSearchTerm] = useState('');
+  const [brReplaceTerm, setBrReplaceTerm] = useState('');
+  const [brPreviewResults, setBrPreviewResults] = useState<{ id: string; fields: string[] }[]>([]);
+  const [brIsPreviewing, setBrIsPreviewing] = useState(false);
+  const [brIsApplying, setBrIsApplying] = useState(false);
+  const [brDone, setBrDone] = useState(false);
 
   const [formData, setFormData] = useState({
     question_text: '', option_a: '', option_b: '', option_c: '', option_d: '',
@@ -950,6 +959,61 @@ const AdminQuestions = () => {
     },
   });
 
+  // ─── منطق البحث والاستبدال الجماعي ───
+  const REPLACEABLE_FIELDS = ['question_text', 'option_a', 'option_b', 'option_c', 'option_d', 'hint', 'explanation'] as const;
+
+  const handleBrPreview = () => {
+    if (!brSearchTerm.trim()) return;
+    setBrIsPreviewing(true);
+    const results = questions
+      .map(q => {
+        const matchedFields = REPLACEABLE_FIELDS.filter(f => (q as any)[f]?.includes(brSearchTerm));
+        return matchedFields.length ? { id: q.id, fields: matchedFields } : null;
+      })
+      .filter(Boolean) as { id: string; fields: string[] }[];
+    setBrPreviewResults(results);
+    setBrIsPreviewing(false);
+    setBrDone(false);
+  };
+
+  const handleBrApply = async () => {
+    if (!brPreviewResults.length) return;
+    setBrIsApplying(true);
+    try {
+      const idsToUpdate = brPreviewResults.map(r => r.id);
+      const questionsToUpdate = questions.filter(q => idsToUpdate.includes(q.id));
+
+      const updates = questionsToUpdate.map(q => {
+        const patch: Record<string, string> = {};
+        REPLACEABLE_FIELDS.forEach(f => {
+          const val = (q as any)[f];
+          if (val?.includes(brSearchTerm)) {
+            patch[f] = val.split(brSearchTerm).join(brReplaceTerm);
+          }
+        });
+        return supabase.from('questions').update(patch).eq('id', q.id);
+      });
+
+      await Promise.all(updates.map(p => p));
+      queryClient.invalidateQueries({ queryKey: ['questions'] });
+      setBrDone(true);
+      setBrPreviewResults([]);
+      toast({ title: `✅ تم التحديث`, description: `تم معالجة ${idsToUpdate.length} سؤال بنجاح.` });
+    } catch (err: any) {
+      toast({ title: 'خطأ', description: err.message, variant: 'destructive' });
+    } finally {
+      setBrIsApplying(false);
+    }
+  };
+
+  const handleBrClose = () => {
+    setIsBulkReplaceOpen(false);
+    setBrSearchTerm('');
+    setBrReplaceTerm('');
+    setBrPreviewResults([]);
+    setBrDone(false);
+  };
+
   const toggleSelectAll = () => selectedIds.length === filteredQuestions.length ? setSelectedIds([]) : setSelectedIds(filteredQuestions.map(q => q.id));
   const toggleSelectOne = (id: string) => selectedIds.includes(id) ? setSelectedIds(prev => prev.filter(x => x !== id)) : setSelectedIds(prev => [...prev, id]);
 
@@ -1388,6 +1452,17 @@ render();
             {isAdmin && (
               <Button variant="outline" size="sm" onClick={() => setIsFileUploadOpen(true)} disabled={!selectedSubject} className="gap-2 border-primary/20 bg-primary/5 text-primary font-bold shadow-sm">
                 <ScanLine className="w-4 h-4" /> استيراد PDF/JSON/نص
+              </Button>
+            )}
+            {isAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { setBrDone(false); setBrPreviewResults([]); setBrSearchTerm(''); setBrReplaceTerm(''); setIsBulkReplaceOpen(true); }}
+                disabled={!selectedSubject || !questions.length}
+                className="gap-2 border-orange-200 bg-orange-50 text-orange-700 font-bold shadow-sm hover:bg-orange-100"
+              >
+                <Replace className="w-4 h-4" /> بحث واستبدال
               </Button>
             )}
             <Button size="sm" onClick={() => { setEditingQuestion(null); setFormData({question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', hint: '', explanation: '', exam_year: '', exam_form: 'General'}); setIsDialogOpen(true); }} disabled={!selectedSubject} className="gradient-primary text-white gap-2 shadow-lg">
@@ -1941,6 +2016,126 @@ render();
                 );
               })}
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Dialog البحث والاستبدال الجماعي ─── */}
+      <Dialog open={isBulkReplaceOpen} onOpenChange={(open) => { if (!open) handleBrClose(); }}>
+        <DialogContent className="bg-white rounded-3xl z-[10000] max-w-lg w-full font-cairo" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-right font-black text-lg flex items-center gap-2">
+              <Replace className="w-5 h-5 text-orange-500" />
+              بحث واستبدال جماعي
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-2">
+            {/* حقل البحث */}
+            <div className="space-y-1.5">
+              <Label className="text-sm font-black text-slate-700">العبارة المراد البحث عنها</Label>
+              <div className="relative">
+                <Input
+                  value={brSearchTerm}
+                  onChange={(e) => { setBrSearchTerm(e.target.value); setBrPreviewResults([]); setBrDone(false); }}
+                  placeholder="اكتب العبارة..."
+                  className="rounded-xl h-11 text-right pr-4 pl-10 border-orange-200 focus:border-orange-400"
+                  dir="rtl"
+                />
+                <Search className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+              </div>
+            </div>
+
+            {/* حقل الاستبدال */}
+            <div className="space-y-1.5">
+              <Label className="text-sm font-black text-slate-700">
+                الاستبدال بـ <span className="text-slate-400 font-normal">(اتركه فارغاً للحذف)</span>
+              </Label>
+              <Input
+                value={brReplaceTerm}
+                onChange={(e) => { setBrReplaceTerm(e.target.value); setBrPreviewResults([]); setBrDone(false); }}
+                placeholder="اتركه فارغاً للحذف..."
+                className="rounded-xl h-11 text-right"
+                dir="rtl"
+              />
+            </div>
+
+            {/* زر المعاينة */}
+            <Button
+              onClick={handleBrPreview}
+              disabled={!brSearchTerm.trim() || brIsPreviewing || !questions.length}
+              variant="outline"
+              className="w-full h-11 rounded-xl font-black border-orange-200 text-orange-700 hover:bg-orange-50 gap-2"
+            >
+              {brIsPreviewing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              معاينة النتائج
+            </Button>
+
+            {/* نتائج المعاينة */}
+            {brPreviewResults.length > 0 && (
+              <div className="rounded-2xl border border-orange-100 bg-orange-50 p-4 space-y-3">
+                <p className="text-sm font-black text-orange-800">
+                  تم العثور على العبارة في <span className="text-orange-600 text-base">{brPreviewResults.length}</span> سؤال
+                  {brReplaceTerm
+                    ? <> — سيتم استبدالها بـ "<span className="font-bold">{brReplaceTerm}</span>"</>
+                    : ' — سيتم حذفها نهائياً'
+                  }
+                </p>
+                <ScrollArea className="max-h-48">
+                  <div className="space-y-2">
+                    {brPreviewResults.slice(0, 20).map(r => {
+                      const q = questions.find(x => x.id === r.id);
+                      return (
+                        <div key={r.id} className="bg-white rounded-xl p-3 border border-orange-100 text-right">
+                          <p className="text-xs text-slate-600 font-bold line-clamp-2">{q?.question_text}</p>
+                          <p className="text-[11px] text-orange-500 font-black mt-1">
+                            الحقول المتأثرة: {r.fields.map(f => ({
+                              question_text: 'السؤال', option_a: 'أ', option_b: 'ب', option_c: 'ج', option_d: 'د', hint: 'التلميح', explanation: 'الشرح'
+                            }[f] || f)).join(' · ')}
+                          </p>
+                        </div>
+                      );
+                    })}
+                    {brPreviewResults.length > 20 && (
+                      <p className="text-xs text-center text-slate-400 font-bold py-1">... و {brPreviewResults.length - 20} سؤال آخر</p>
+                    )}
+                  </div>
+                </ScrollArea>
+
+                {/* زر التطبيق */}
+                <Button
+                  onClick={handleBrApply}
+                  disabled={brIsApplying}
+                  className="w-full h-11 rounded-xl font-black bg-orange-500 hover:bg-orange-600 text-white gap-2"
+                >
+                  {brIsApplying
+                    ? <><Loader2 className="w-4 h-4 animate-spin" /> جاري التطبيق...</>
+                    : <><CheckCircle2 className="w-4 h-4" /> تطبيق على {brPreviewResults.length} سؤال</>
+                  }
+                </Button>
+              </div>
+            )}
+
+            {/* لا نتائج */}
+            {brSearchTerm.trim() && brPreviewResults.length === 0 && !brIsPreviewing && !brDone && (
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-center">
+                <p className="text-sm text-slate-500 font-bold">لم يتم العثور على العبارة في أي سؤال محمّل</p>
+                <p className="text-xs text-slate-400 mt-1">تأكد من تحديد المادة والسنة أولاً</p>
+              </div>
+            )}
+
+            {/* رسالة النجاح */}
+            {brDone && (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-center">
+                <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-1" />
+                <p className="text-sm font-black text-emerald-700">تم تطبيق الاستبدال بنجاح ✅</p>
+              </div>
+            )}
+
+            {/* زر الإغلاق */}
+            <Button variant="ghost" onClick={handleBrClose} className="w-full rounded-xl font-bold text-slate-500">
+              إغلاق
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
