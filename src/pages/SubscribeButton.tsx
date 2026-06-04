@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Sparkles, Loader2, CheckCircle2, Upload } from 'lucide-react';
+import { Sparkles, Loader2, CheckCircle2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useSubscriptionMessage } from '@/hooks/useSubscriptionMessage';
 
 interface Props {
   subjectId: string;
@@ -12,33 +13,14 @@ interface Props {
   levelName?: string;
 }
 
-const WALLETS = [
-  { id: 'jeeb',    label: 'جيب',     account: '488281' },
-  { id: 'fawry',   label: 'فلوسك',   account: '800035159' },
-  { id: 'onecash', label: 'ون كاش',  account: '174459935' },
-];
-
 export default function SubscribeButton({ subjectId, subjectName, levelName }: Props) {
   const { toast } = useToast();
+  const subMsg = useSubscriptionMessage();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [selectedWallet, setSelectedWallet] = useState<string | null>(null);
-  const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
-
-  const selectedWalletData = WALLETS.find(w => w.id === selectedWallet);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setReceiptFile(file);
-    const reader = new FileReader();
-    reader.onload = () => setReceiptPreview(reader.result as string);
-    reader.readAsDataURL(file);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,33 +34,19 @@ export default function SubscribeButton({ subjectId, subjectName, levelName }: P
     }
     setLoading(true);
     try {
-      // رفع صورة الإيصال إن وُجدت
-      let receiptUrl: string | null = null;
-      if (receiptFile) {
-        const ext = receiptFile.name.split('.').pop();
-        const fileName = `receipts/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-        const { error: upErr } = await supabase.storage.from('payment-receipts').upload(fileName, receiptFile);
-        if (!upErr) {
-          const { data: urlData } = supabase.storage.from('payment-receipts').getPublicUrl(fileName);
-          receiptUrl = urlData?.publicUrl ?? null;
-        }
-      }
-
       const { error } = await (supabase as any).from('payment_requests').insert({
         student_name: name.trim(),
         phone_number: phone.trim(),
         subject_id: subjectId,
         subject_name: subjectName,
         status: 'pending',
-        ...(receiptUrl && { receipt_image_url: receiptUrl }),
-        ...(selectedWallet && { wallet_type: selectedWallet }),
       });
       if (error) throw error;
 
       // إشعار تيليجرام
       await supabase.functions.invoke('send-telegram', {
         body: {
-          message: `🔔 <b>طلب اشتراك جديد</b>\n\n👤 الاسم: ${name.trim()}\n📱 الهاتف: ${phone.trim()}\n📚 المادة: ${subjectName}${levelName ? `\n🎓 المستوى: ${levelName}` : ''}\n💰 المبلغ: 1000 ريال${selectedWalletData ? `\n💳 المحفظة: ${selectedWalletData.label} (${selectedWalletData.account})` : ''}${receiptUrl ? `\n🖼 الإيصال: ${receiptUrl}` : ''}\n\n⏳ في انتظار التأكيد من لوحة التحكم`,
+          message: `🔔 <b>طلب اشتراك جديد</b>\n\n👤 الاسم: ${name.trim()}\n📱 الهاتف: ${phone.trim()}\n📚 المادة: ${subjectName}${levelName ? `\n🎓 المستوى: ${levelName}` : ''}\n💰 المبلغ: 1000 ريال\n\n⏳ في انتظار التأكيد من لوحة التحكم`,
         },
       });
 
@@ -88,9 +56,6 @@ export default function SubscribeButton({ subjectId, subjectName, levelName }: P
         setDone(false);
         setName('');
         setPhone('');
-        setSelectedWallet(null);
-        setReceiptFile(null);
-        setReceiptPreview(null);
       }, 2500);
     } catch (err: any) {
       toast({ title: 'فشل إرسال الطلب', description: err?.message || 'حاول مجدداً', variant: 'destructive' });
@@ -111,14 +76,14 @@ export default function SubscribeButton({ subjectId, subjectName, levelName }: P
         }}
       >
         <Sparkles className="w-3.5 h-3.5" />
-        <span className="font-black">اشترك لتفعيل المادة وكافة الميزات | 1000 ريال</span>
+        اشترك — {subMsg.fee}
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="w-[95vw] max-w-md p-5 sm:p-6" dir="rtl">
           <DialogHeader>
             <DialogTitle className="text-right text-lg font-black flex items-center gap-2">
-              💳 باقة مادة: {subjectName}
+              💳 اشتراك في {subjectName}
             </DialogTitle>
           </DialogHeader>
 
@@ -129,70 +94,25 @@ export default function SubscribeButton({ subjectId, subjectName, levelName }: P
               </div>
               <h3 className="font-black text-base text-slate-800 dark:text-slate-100">تم إرسال طلبك بنجاح</h3>
               <p className="text-xs text-slate-500 leading-relaxed">
-                سيتم التواصل معك قريباً على رقم الهاتف لإرسال رمز التفعيل.
+                سيتم التواصل معك قريباً على رقم الهاتف لإرسال كلمة المرور.
               </p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* نص إرشادي */}
-              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-800 rounded-xl p-3 text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
-                💡 يرجى تحويل المبلغ إلى الحساب الموضح، ثم رفع صورة الإيصال وتعبئة البيانات لتأكيد الاشتراك.
-              </div>
-
-              {/* اختيار المحفظة */}
-              <div className="space-y-2">
-                <Label className="text-sm font-black">اختر طريقة الدفع</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  {WALLETS.map(w => (
-                    <button
-                      key={w.id}
-                      type="button"
-                      onClick={() => setSelectedWallet(w.id === selectedWallet ? null : w.id)}
-                      className={`py-2.5 rounded-xl text-xs font-black border-2 transition-all ${
-                        selectedWallet === w.id
-                          ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
-                          : 'border-slate-200 dark:border-slate-700 bg-background text-slate-600 dark:text-slate-300 hover:border-slate-300'
-                      }`}
-                    >
-                      {w.label}
-                    </button>
-                  ))}
+              <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-800 rounded-xl p-3 space-y-2">
+                <p className="text-xs font-black text-emerald-700 dark:text-emerald-300">
+                  💰 الرسوم: <span className="text-sm">{subMsg.fee}</span>
+                </p>
+                <div className="border-t border-emerald-200 dark:border-emerald-700 pt-2 space-y-1">
+                  {subMsg.note.split('\n').map((line: string, i: number) =>
+                    line.trim() ? (
+                      <p key={i} className="text-xs text-emerald-700 dark:text-emerald-300 leading-relaxed flex items-start gap-1">
+                        <span className="mt-0.5 shrink-0">•</span>
+                        <span>{line.trim()}</span>
+                      </p>
+                    ) : null
+                  )}
                 </div>
-
-                {/* رقم الحساب الديناميكي */}
-                {selectedWalletData && (
-                  <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl p-3 flex items-center justify-between">
-                    <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">رقم الحساب</span>
-                    <span className="font-black text-base text-emerald-800 dark:text-emerald-300 tracking-wide" dir="ltr">
-                      {selectedWalletData.account}
-                    </span>
-                  </div>
-                )}
-
-                {/* رفع صورة الإيصال */}
-                {selectedWallet && (
-                  <div className="space-y-1.5">
-                    <label
-                      htmlFor="receipt-upload"
-                      className="flex items-center justify-center gap-2 w-full py-3 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-all font-black text-sm text-slate-600 dark:text-slate-300"
-                    >
-                      <Upload className="w-4 h-4" />
-                      {receiptFile ? receiptFile.name : 'رفع صورة إيصال الإيداع 📁'}
-                    </label>
-                    <input
-                      id="receipt-upload"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleFileChange}
-                    />
-                    {receiptPreview && (
-                      <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
-                        <img src={receiptPreview} alt="الإيصال" className="w-full max-h-32 object-cover" />
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
 
               <div className="space-y-2">
@@ -212,11 +132,10 @@ export default function SubscribeButton({ subjectId, subjectName, levelName }: P
                 <Input
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="7XXXXXXXX"
+                  placeholder="مثال: 967777xxxxxx"
                   type="tel"
                   maxLength={20}
                   className="bg-background"
-                  dir="ltr"
                   required
                 />
               </div>
