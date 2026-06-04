@@ -263,9 +263,18 @@ const AdminSettings = () => {
               />
             </div>
             {/* معاينة */}
-            <div className="bg-blue-50 dark:bg-blue-950/30 rounded-2xl p-3.5 border border-blue-100 dark:border-blue-800/40">
-              <p className="text-xs font-black text-blue-700 dark:text-blue-400 mb-1.5">💰 الرسوم: <span className="text-base">{subFee}</span></p>
-              <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400 leading-relaxed">💡 {subNote}</p>
+            <div className="bg-blue-50 dark:bg-blue-950/30 rounded-2xl p-3.5 border border-blue-100 dark:border-blue-800/40 space-y-2">
+              <p className="text-xs font-black text-blue-700 dark:text-blue-400">💰 الرسوم: <span className="text-base">{subFee}</span></p>
+              <div className="border-t border-blue-200 dark:border-blue-700 pt-2 space-y-1">
+                {subNote.split('\n').map((line, i) =>
+                  line.trim() ? (
+                    <p key={i} className="text-[11px] font-bold text-blue-600 dark:text-blue-400 leading-relaxed flex items-start gap-1">
+                      <span className="mt-0.5 shrink-0">•</span>
+                      <span>{line.trim()}</span>
+                    </p>
+                  ) : null
+                )}
+              </div>
             </div>
             <Button
               onClick={saveSubscriptionMessage}
