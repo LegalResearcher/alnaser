@@ -528,6 +528,21 @@ const ExamStart = () => {
     if (!selectedYear) { toast({ title: 'تنبيه', description: 'يرجى اختيار نموذج سنة الاختبار', variant: 'destructive' }); return; }
     if (selectedYear === 'trial' && !selectedTrialForm) { toast({ title: 'تنبيه', description: 'يرجى اختيار النموذج التجريبي أولاً', variant: 'destructive' }); return; }
 
+    // ── فحص هل الاشتراك مطلوب لهذا المستوى ──
+    const levelId = subject?.level_id;
+    if (levelId) {
+      const { data: subReqRow } = await (supabase as any)
+        .from('platform_settings')
+        .select('value')
+        .eq('key', `subscription_required_${levelId}`)
+        .maybeSingle();
+      // إذا القيمة 'false' → الدخول مجاني، تجاوز فحص رمز التفعيل
+      if (subReqRow?.value === 'false') {
+        navigate(`/exam/${subjectId}/start`, { state: buildReviewState() });
+        return;
+      }
+    }
+
     const { data: activeList } = await (supabase as any).from('review_passwords').select('id').eq('subject_id', subjectId).eq('is_active', true).limit(1);
     if (!activeList || activeList.length === 0) { setShowSubscriptionModal(true); return; }
 
