@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { Settings, User, Lock, Save, MessageSquare, CalendarDays } from 'lucide-react';
+import { Settings, User, Lock, Save, MessageSquare, CalendarDays, ShieldCheck, ShieldOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -30,6 +30,10 @@ const AdminSettings = () => {
     },
   });
 
+  // ── تحكم الاشتراك المطلوب لكل مستوى ──
+  const [subRequired, setSubRequired] = useState<Record<string, boolean>>({});
+  const [subReqLoading, setSubReqLoading] = useState(false);
+
   // ── سنوات النماذج لكل مستوى ──
   // { [levelId]: number[] }
   const [levelYears, setLevelYears] = useState<Record<string, number[]>>({});
@@ -52,6 +56,25 @@ const AdminSettings = () => {
         catch { map[l.id] = [...ALL_EXAM_YEARS]; }
       });
       setLevelYears(map);
+    })();
+  }, [levels]);
+
+  // ── تحميل إعدادات الاشتراك المطلوب لكل مستوى ──
+  useEffect(() => {
+    if (!levels.length) return;
+    (async () => {
+      const keys = levels.map((l: any) => `subscription_required_${l.id}`);
+      const { data } = await (supabase as any)
+        .from('platform_settings')
+        .select('key, value')
+        .in('key', keys);
+      const map: Record<string, boolean> = {};
+      levels.forEach((l: any) => {
+        const row = data?.find((r: any) => r.key === `subscription_required_${l.id}`);
+        // الافتراضي: الاشتراك مطلوب (true)
+        map[l.id] = row ? row.value === 'true' : true;
+      });
+      setSubRequired(map);
     })();
   }, [levels]);
   const [subFee, setSubFee] = useState('1000 ريال');
@@ -96,6 +119,18 @@ const AdminSettings = () => {
         [levelId]: cur.includes(year) ? cur.filter(y => y !== year) : [...cur, year].sort(),
       };
     });
+  };
+
+  const saveSubRequired = async () => {
+    setSubReqLoading(true);
+    for (const level of levels as any[]) {
+      const required = subRequired[level.id] !== false; // default true
+      await (supabase as any)
+        .from('platform_settings')
+        .upsert({ key: `subscription_required_${level.id}`, value: String(required) }, { onConflict: 'key' });
+    }
+    setSubReqLoading(false);
+    toast({ title: 'تم الحفظ', description: 'تم تحديث إعدادات الاشتراك لجميع المستويات' });
   };
 
   const saveEnabledYears = async () => {
@@ -384,6 +419,53 @@ const AdminSettings = () => {
               {subMsgLoading ? 'جاري الحفظ...' : 'حفظ الرسالة'}
             </Button>
           </div>
+        </div>
+
+        {/* ── تحكم الاشتراك لكل مستوى ── */}
+        <div className="bg-card rounded-xl border p-4 sm:p-6" dir="rtl">
+          <h2 className="font-bold mb-1 flex items-center gap-2 text-sm sm:text-base">
+            <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+            تحكم الاشتراك لكل مستوى
+          </h2>
+          <p className="text-xs text-muted-foreground mb-4">
+            عند تفعيل الاشتراك يُطلب من الطالب رمز التفعيل للدخول. عند الإيقاف يدخل الطالب مجاناً بدون رمز.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            {(levels as any[]).map((level) => {
+              const required = subRequired[level.id] !== false;
+              return (
+                <button
+                  key={level.id}
+                  onClick={() => setSubRequired(prev => ({ ...prev, [level.id]: !required }))}
+                  className={`flex items-center justify-between gap-3 rounded-xl border-2 px-4 py-3 transition-all duration-200 text-right ${
+                    required
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-green-500 bg-green-500/10 text-green-600'
+                  }`}
+                >
+                  <div>
+                    <p className="font-bold text-sm">{level.name}</p>
+                    <p className={`text-[11px] mt-0.5 ${required ? 'text-primary/70' : 'text-green-500/80'}`}>
+                      {required ? 'الاشتراك مطلوب — رمز التفعيل إلزامي' : 'الدخول مجاني — بدون رمز تفعيل'}
+                    </p>
+                  </div>
+                  <div className={`w-10 h-6 rounded-full flex items-center transition-all duration-300 px-0.5 ${
+                    required ? 'bg-primary justify-end' : 'bg-green-500 justify-start'
+                  }`}>
+                    <div className="w-5 h-5 bg-white rounded-full shadow-sm" />
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <Button
+            onClick={saveSubRequired}
+            disabled={subReqLoading}
+            className="gradient-primary text-primary-foreground border-0 gap-2"
+          >
+            <Save className="w-4 h-4" />
+            {subReqLoading ? 'جاري الحفظ...' : 'حفظ إعدادات الاشتراك'}
+          </Button>
         </div>
 
         {/* ── سنوات النماذج لكل مستوى ── */}
