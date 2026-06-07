@@ -452,6 +452,7 @@ const ExamStart = () => {
     isTrial: selectedYear === 'trial', allQuestions: false,
     trialFormFilter: selectedYear === 'trial' ? selectedTrialForm : null,
     reviewMode: true,
+    hasValidPassword: true,
   });
 
   // ── بدء الاختبار العادي: مع دعم حفظ كلمة المرور + تقييد الجهاز ──
@@ -1036,9 +1037,9 @@ const ExamStart = () => {
           onClick={(e) => e.target === e.currentTarget && setShowSubscriptionModal(false)}>
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
             onClick={() => setShowSubscriptionModal(false)} />
-          <div className="relative w-full sm:max-w-sm bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-2xl animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-300 overflow-hidden">
-            <div className="h-1.5 w-full bg-gradient-to-l from-blue-500 via-indigo-500 to-blue-700" />
-            <div className="p-6 space-y-4">
+          <div className="relative w-full sm:max-w-sm bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl shadow-2xl animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-300 overflow-hidden max-h-[90dvh] flex flex-col">
+            <div className="h-1.5 w-full bg-gradient-to-l from-blue-500 via-indigo-500 to-blue-700 shrink-0" />
+            <div className="p-6 space-y-4 overflow-y-auto flex-1">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 flex items-center justify-center text-xl">💳</div>
@@ -1184,6 +1185,29 @@ const ExamStart = () => {
                   {subLoading
                     ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     : <><span>📩</span> إرسال طلب الاشتراك</>}
+                </button>
+
+                {/* ── زر التجربة المجانية ── */}
+                <div className="relative flex items-center gap-2 my-1">
+                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">أو</span>
+                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+                </div>
+                <button
+                  onClick={() => {
+                    setShowSubscriptionModal(false);
+                    navigate(`/exam/${subjectId}/start`, {
+                      state: {
+                        ...buildReviewState(),
+                        hasValidPassword: false,
+                      }
+                    });
+                  }}
+                  disabled={!studentName.trim() || !selectedYear || questionCount === 0}
+                  className="w-full h-11 rounded-2xl font-black text-sm transition-all active:scale-[0.98] disabled:opacity-40 flex items-center justify-center gap-2"
+                  style={{ background: 'linear-gradient(135deg, #f0f4ff, #e8ecff)', color: '#4f46e5', border: '1.5px solid rgba(99,102,241,0.25)' }}
+                >
+                  <span>🎯</span> يمكنك التجربة من هنا
                 </button>
               </>) : (
                 <div className="text-center space-y-4 py-4">
