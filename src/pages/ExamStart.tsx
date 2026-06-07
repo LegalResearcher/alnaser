@@ -452,7 +452,6 @@ const ExamStart = () => {
     isTrial: selectedYear === 'trial', allQuestions: false,
     trialFormFilter: selectedYear === 'trial' ? selectedTrialForm : null,
     reviewMode: true,
-    hasValidPassword: true,
   });
 
   // ── بدء الاختبار العادي: مع دعم حفظ كلمة المرور + تقييد الجهاز ──
@@ -1185,29 +1184,6 @@ const ExamStart = () => {
                   {subLoading
                     ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     : <><span>📩</span> إرسال طلب الاشتراك</>}
-                </button>
-
-                {/* ── زر التجربة المجانية ── */}
-                <div className="relative flex items-center gap-2 my-1">
-                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">أو</span>
-                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-                </div>
-                <button
-                  onClick={() => {
-                    setShowSubscriptionModal(false);
-                    navigate(`/exam/${subjectId}/start`, {
-                      state: {
-                        ...buildReviewState(),
-                        hasValidPassword: false,
-                      }
-                    });
-                  }}
-                  disabled={!studentName.trim() || !selectedYear || questionCount === 0}
-                  className="w-full h-11 rounded-2xl font-black text-sm transition-all active:scale-[0.98] disabled:opacity-40 flex items-center justify-center gap-2"
-                  style={{ background: 'linear-gradient(135deg, #f0f4ff, #e8ecff)', color: '#4f46e5', border: '1.5px solid rgba(99,102,241,0.25)' }}
-                >
-                  <span>🎯</span> يمكنك التجربة من هنا
                 </button>
               </>) : (
                 <div className="text-center space-y-4 py-4">
