@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Question } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { useCachedQuery } from '@/hooks/useCachedQuery';
+import SubscribeButton from '@/components/SubscribeButton';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -245,6 +246,9 @@ const CircularTimer = ({ timeLeft, totalTime, isWarning }: { timeLeft: number; t
   );
 };
 
+// ── عدد الأسئلة المجانية قبل القفل ──
+const FREE_QUESTIONS_LIMIT = 5;
+
 const ExamPage = () => {
   const { subjectId } = useParams<{ subjectId: string }>();
   const location = useLocation();
@@ -252,6 +256,8 @@ const ExamPage = () => {
   const state = location.state as ExamState;
   const totalTime = (state?.examTime || 30) * 60;
   const reviewMode = state?.reviewMode === true;
+  // هل المستخدم مشترك (reviewMode = مشترك مدفوع)
+  const isSubscribed = reviewMode;
 
   const [currentIndex, setCurrentIndex] = useState(
     state?.resumeProgress ? state.resumeProgress.currentIndex : 0
@@ -285,6 +291,7 @@ const ExamPage = () => {
   const [copied, setCopied] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [showExplanationModal, setShowExplanationModal] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
   const [animKey, setAnimKey] = useState(0);
   const [showScoreFloat, setShowScoreFloat] = useState(false);
 
@@ -293,7 +300,7 @@ const ExamPage = () => {
 
   // ── جلب الأسئلة (يجب أن يكون قبل أي useEffect يستخدم questions) ──
   const { data: questions = [], isLoading } = useQuery({
-    queryKey: ['exam-questions', subjectId, state?.examYear, state?.examForm, state?.questionsCount, state?.forcedQuestionIds?.join(','), !!state?.resumeProgress],
+    queryKey: ['exam-questions', subjectId, state?.examYear, state?.examForm, state?.questionsCount, state?.forcedQuestionIds?.join(','), !!state?.resumeProgress, isSubscribed],
     queryFn: async () => {
       // استئناف: استخدم ترتيب الأسئلة المحفوظ
       if (state?.resumeProgress?.questionIds?.length) {
@@ -322,7 +329,18 @@ const ExamPage = () => {
       }
       const { data, error } = await query;
       if (error) throw error;
-      return (data as Question[]).sort(() => Math.random() - 0.5);
+      const allQ = (data as Question[]).sort(() => Math.random() - 0.5);
+
+      // ── للمستخدم غير المشترك: اجلب أول 5 أسئلة بها hint و explanation ──
+      if (!isSubscribed) {
+        const richQ = allQ.filter(q => q.hint && q.hint.trim() && q.explanation && q.explanation.trim());
+        const freeQ = richQ.slice(0, FREE_QUESTIONS_LIMIT);
+        // أضف باقي الأسئلة كـ "مقفلة" (يُعرض منها placeholder فقط)
+        const lockedQ = allQ.filter(q => !freeQ.find(f => f.id === q.id));
+        return [...freeQ, ...lockedQ];
+      }
+
+      return allQ;
     },
     enabled: !!subjectId && (state?.examYear !== undefined || !!state?.isTrial || !!state?.allQuestions || !!state?.forcedQuestionIds?.length || !!state?.resumeProgress),
   });
@@ -723,6 +741,11 @@ const ExamPage = () => {
   };
 
   const goTo = (index: number) => {
+    // ── إذا غير مشترك وحاول تجاوز الحد المجاني ──
+    if (!isSubscribed && index >= FREE_QUESTIONS_LIMIT) {
+      setShowPaywall(true);
+      return;
+    }
     setSlideDir(index > currentIndex ? 'left' : 'right');
     setAnimKey(k => k + 1);
     setCurrentIndex(index);
@@ -878,6 +901,14 @@ const ExamPage = () => {
                         ? '📚 جميع الأسئلة'
                         : `اختبار عام ${state.examYear} ${state.examForm === 'Parallel' ? '· موازي' : state.examForm === 'General' ? '· عام' : ''}`}
                   </span>
+
+                  {/* بادج آخر سؤال مجاني */}
+                  {!isSubscribed && currentIndex === FREE_QUESTIONS_LIMIT - 1 && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black animate-pulse"
+                      style={{ background: 'linear-gradient(135deg, #fef3c7, #fde68a)', color: '#92400e', border: '1px solid #fbbf24' }}>
+                      ⚡ آخر سؤال مجاني
+                    </span>
+                  )}
 
                   {/* زر المشاركة مع قائمة منسدلة */}
                   <div className="mr-auto relative flex items-center gap-2">
@@ -1207,10 +1238,13 @@ const ExamPage = () => {
           <div className="flex gap-1.5 items-center">
             {questions.slice(dotStart, dotEnd).map((_, i) => {
               const ri = dotStart + i;
+              const isLocked = !isSubscribed && ri >= FREE_QUESTIONS_LIMIT;
               return (
                 <button key={ri} onClick={() => goTo(ri)}
                   className={cn("rounded-full transition-all duration-200",
-                    ri === currentIndex ? "w-6 h-3 bg-primary" : "w-3 h-3 bg-slate-300 dark:bg-slate-600 hover:bg-primary/50"
+                    ri === currentIndex ? "w-6 h-3 bg-primary" :
+                    isLocked ? "w-3 h-3 bg-amber-300 dark:bg-amber-600" :
+                    "w-3 h-3 bg-slate-300 dark:bg-slate-600 hover:bg-primary/50"
                   )} />
               );
             })}
@@ -1548,6 +1582,69 @@ const ExamPage = () => {
                 className="w-full h-12 rounded-2xl bg-gradient-to-l from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-black text-sm transition-all active:scale-[0.98] shadow-md shadow-violet-500/30"
               >
                 فهمت، شكراً ✓
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── شاشة القفل (Paywall) ── */}
+      {showPaywall && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4" dir="rtl">
+          {/* خلفية ضبابية */}
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-md animate-in fade-in duration-300" />
+
+          {/* البطاقة */}
+          <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 fade-in duration-300">
+
+            {/* شريط علوي متدرج */}
+            <div className="h-2 w-full" style={{ background: 'linear-gradient(90deg, #1d4ed8, #4f46e5, #7c3aed)' }} />
+
+            {/* المحتوى */}
+            <div className="px-7 py-8 text-center">
+
+              {/* أيقونة الإنجاز */}
+              <div className="w-20 h-20 rounded-[2rem] mx-auto mb-5 flex items-center justify-center text-4xl"
+                style={{ background: 'linear-gradient(135deg, #dbeafe, #ede9fe)', boxShadow: '0 8px 24px rgba(99,102,241,0.2)' }}>
+                🎯
+              </div>
+
+              {/* العنوان */}
+              <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 mb-3 leading-snug">
+                تجاوزت المرحلة التجريبية بنجاح.
+              </h2>
+
+              {/* الوصف */}
+              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 leading-relaxed mb-2">
+                الأسئلة القادمة تمثل الكتلة الأساسية في بنك الأسئلة؛ مبنية على تحليل الأنماط المتوقعة والاختبارية للمقرر.
+              </p>
+              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
+                الاستمرار يضمن لك مراجعة منظمة وشاملة لكل زوايا المقرر.
+              </p>
+
+              {/* إحصائية */}
+              <div className="flex items-center justify-center gap-2 mb-7 bg-indigo-50 dark:bg-indigo-950/40 rounded-2xl px-4 py-3">
+                <span className="text-2xl">📚</span>
+                <div className="text-right">
+                  <p className="text-xs text-indigo-400 font-black uppercase tracking-wider">متاح للمشتركين</p>
+                  <p className="text-sm font-black text-indigo-700 dark:text-indigo-300">
+                    {questions.length - FREE_QUESTIONS_LIMIT} سؤال اختباري إضافي
+                  </p>
+                </div>
+              </div>
+
+              {/* زر الاشتراك الحقيقي */}
+              <SubscribeButton
+                subjectId={subjectId ?? ''}
+                subjectName={state?.subjectName || subject?.name || ''}
+                levelName={state?.levelName}
+              />
+
+              {/* زر الرفض */}
+              <button
+                onClick={() => setShowPaywall(false)}
+                className="w-full h-11 rounded-2xl text-slate-400 dark:text-slate-500 font-bold text-sm hover:text-slate-600 transition-colors"
+              >
+                ربما لاحقاً
               </button>
             </div>
           </div>
