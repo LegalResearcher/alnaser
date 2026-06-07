@@ -16,7 +16,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { Question } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { useCachedQuery } from '@/hooks/useCachedQuery';
-import SubscribeButton from '@/components/SubscribeButton';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1639,12 +1638,17 @@ const ExamPage = () => {
                 </div>
               </div>
 
-              {/* زر الاشتراك الحقيقي */}
-              <SubscribeButton
-                subjectId={subjectId ?? ''}
-                subjectName={state?.subjectName || subject?.name || ''}
-                levelName={state?.levelName}
-              />
+              {/* زر الاشتراك - يعود لصفحة البداية */}
+              <button
+                onClick={() => {
+                  setShowPaywall(false);
+                  navigate(`/exam/${subjectId}`, { replace: true });
+                }}
+                className="w-full h-14 rounded-2xl text-white font-black text-base transition-all active:scale-[0.98] mb-3 flex items-center justify-center gap-2"
+                style={{ background: 'linear-gradient(135deg, #1d4ed8, #059669)', boxShadow: '0 8px 24px rgba(29,78,216,0.4)' }}
+              >
+                <span>✨</span> نعم، الانتقال للأسئلة الاختبارية
+              </button>
 
               {/* زر الرفض */}
               <button
