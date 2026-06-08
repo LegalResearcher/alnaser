@@ -4,7 +4,7 @@
  */
 
 import { MainLayout } from '@/components/layout/MainLayout';
-import { Scale, BookOpen, Target, Users, Award, Code2, MapPin, GraduationCap, Phone } from 'lucide-react';
+import { Scale, BookOpen, Target, Users, Award, Code2, MapPin, GraduationCap, Phone, Mail } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const About = () => {
@@ -111,8 +111,8 @@ const About = () => {
                 <span className="font-bold text-sm">الجمهورية اليمنية، صنعاء</span>
               </div>
               <div className="flex items-center gap-3 text-slate-600">
-                <Phone className="w-5 h-5 text-primary shrink-0" />
-                <a href="tel:+96777276209" className="font-bold text-sm hover:text-primary transition-colors" dir="ltr">+967 77 276 209</a>
+                <Mail className="w-5 h-5 text-primary shrink-0" />
+                <a href="mailto:info@alnaseer.org" className="font-bold text-sm hover:text-primary transition-colors">info@alnaseer.org</a>
               </div>
             </div>
           </div>
