@@ -76,7 +76,7 @@ export const HomeSEO = () => (
       sameAs: ['https://twitter.com/AlnasserTech', 'https://www.facebook.com/AlnasserTech'],
       contactPoint: {
         '@type': 'ContactPoint',
-        email: 'info@alnasser-tech.com',
+        email: 'info@alnaseer.org',
         contactType: 'customer support',
         availableLanguage: 'Arabic',
       },
