@@ -14,16 +14,43 @@ export function ContactSection() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    toast({
-      title: 'تم إرسال رسالتك بنجاح',
-      description: 'سنتواصل معك في أقرب وقت ممكن عبر بريدك الإلكتروني',
-    });
-    
-    (e.target as HTMLFormElement).reset();
-    setIsSubmitting(false);
+
+    const form = e.target as HTMLFormElement;
+    const data = {
+      name: (form.elements.namedItem('name') as HTMLInputElement).value,
+      email: (form.elements.namedItem('email') as HTMLInputElement).value,
+      subject: (form.elements.namedItem('subject') as HTMLInputElement).value,
+      message: (form.elements.namedItem('message') as HTMLTextAreaElement).value,
+    };
+
+    try {
+      const res = await fetch(
+        'https://tozmmphymxiamvdxfmjv.supabase.co/functions/v1/send-contact',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        }
+      );
+
+      if (res.ok) {
+        toast({
+          title: 'تم إرسال رسالتك بنجاح ✅',
+          description: 'سنتواصل معك في أقرب وقت ممكن عبر بريدك الإلكتروني',
+        });
+        form.reset();
+      } else {
+        throw new Error('failed');
+      }
+    } catch {
+      toast({
+        title: 'حدث خطأ أثناء الإرسال',
+        description: 'يرجى المحاولة مرة أخرى أو التواصل معنا مباشرة',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -101,6 +128,7 @@ export function ContactSection() {
                     <Label htmlFor="name" className="text-sm font-bold text-slate-700 mr-1">الاسم الكامل</Label>
                     <Input
                       id="name"
+                      name="name"
                       placeholder="أدخل اسمك"
                       required
                       className="h-14 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-4 focus:ring-primary/5 transition-all"
@@ -110,6 +138,7 @@ export function ContactSection() {
                     <Label htmlFor="email" className="text-sm font-bold text-slate-700 mr-1">البريد الإلكتروني</Label>
                     <Input
                       id="email"
+                      name="email"
                       type="email"
                       placeholder="example@email.com"
                       required
@@ -123,6 +152,7 @@ export function ContactSection() {
                   <Label htmlFor="subject" className="text-sm font-bold text-slate-700 mr-1">عنوان الرسالة</Label>
                   <Input
                     id="subject"
+                    name="subject"
                     placeholder="ما الذي تود مناقشته؟"
                     required
                     className="h-14 rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-4 focus:ring-primary/5 transition-all"
@@ -133,6 +163,7 @@ export function ContactSection() {
                   <Label htmlFor="message" className="text-sm font-bold text-slate-700 mr-1">تفاصيل الرسالة</Label>
                   <Textarea
                     id="message"
+                    name="message"
                     placeholder="اكتب رسالتك هنا بكل وضوح..."
                     required
                     rows={4}
