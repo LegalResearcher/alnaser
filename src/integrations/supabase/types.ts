@@ -511,6 +511,97 @@ export type Database = {
           },
         ]
       }
+      drive_files: {
+        Row: {
+          created_at: string
+          download_url: string | null
+          drive_id: string
+          embed_url: string | null
+          folder_id: string
+          id: number
+          mime_type: string | null
+          name: string
+          order_index: number
+          updated_at: string
+          view_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          download_url?: string | null
+          drive_id: string
+          embed_url?: string | null
+          folder_id: string
+          id?: number
+          mime_type?: string | null
+          name: string
+          order_index?: number
+          updated_at?: string
+          view_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          download_url?: string | null
+          drive_id?: string
+          embed_url?: string | null
+          folder_id?: string
+          id?: number
+          mime_type?: string | null
+          name?: string
+          order_index?: number
+          updated_at?: string
+          view_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drive_files_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "drive_folders"
+            referencedColumns: ["drive_id"]
+          },
+        ]
+      }
+      drive_folders: {
+        Row: {
+          created_at: string
+          depth: number
+          drive_id: string
+          id: number
+          name: string
+          order_index: number
+          parent_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          depth?: number
+          drive_id: string
+          id?: number
+          name: string
+          order_index?: number
+          parent_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          depth?: number
+          drive_id?: string
+          id?: number
+          name?: string
+          order_index?: number
+          parent_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drive_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "drive_folders"
+            referencedColumns: ["drive_id"]
+          },
+        ]
+      }
       exam_results: {
         Row: {
           answers: Json | null
