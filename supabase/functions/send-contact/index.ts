@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "منصة الناصر القانونية <info@alnaseer.org>",
+        from: "منصة الناصر القانونية <onboarding@resend.dev>",
         to: ["moieen2000@gmail.com"],
         reply_to: email,
         subject: `رسالة جديدة: ${subject}`,
