@@ -68,7 +68,6 @@ Deno.serve(async (req) => {
     const result = await res.json();
 
     if (!res.ok) {
-      console.error("Resend error:", result);
       return new Response(JSON.stringify({ error: "فشل الإرسال", detail: result }), {
         status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -78,7 +77,6 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    console.error("Error:", e);
     return new Response(JSON.stringify({ error: String(e) }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -86,5 +84,5 @@ Deno.serve(async (req) => {
 });
 
 function escapeHtml(s: string) {
-  return String(s).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]!));
+  return String(s).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]!));
 }
