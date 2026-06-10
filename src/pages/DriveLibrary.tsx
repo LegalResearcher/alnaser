@@ -530,8 +530,13 @@ function LibrarySubscriptionModal({ fileName, onClose }: {
 
   const handleSend = async () => {
     if (!studentName.trim() || !phone.trim()) return;
+    if (phone.trim().length < 7) {
+      toast({ title: 'رقم الهاتف غير صحيح', variant: 'destructive' });
+      return;
+    }
     setLoading(true);
     try {
+      // 1. رفع الإيصال إن وُجد
       let receiptUrl: string | null = null;
       if (receiptFile) {
         const ext = receiptFile.name.split('.').pop();
@@ -543,15 +548,31 @@ function LibrarySubscriptionModal({ fileName, onClose }: {
         }
       }
 
-      // إرسال إشعار Telegram
+      // 2. جلب library_subject_id من الإعدادات
+      const libSubjectId = await getLibrarySubjectId();
+
+      // 3. إدراج الطلب في payment_requests (نفس منطق SubscribeButton)
+      const { error: dbErr } = await (supabase as any).from('payment_requests').insert({
+        student_name: studentName.trim(),
+        phone_number: phone.trim(),
+        subject_id: libSubjectId || null,
+        subject_name: `المكتبة — ${fileName}`,
+        status: 'pending',
+        wallet_type: wallet || null,
+        receipt_image_url: receiptUrl || null,
+      });
+      if (dbErr) throw dbErr;
+
+      // 4. إرسال إشعار Telegram
       await supabase.functions.invoke('send-telegram', {
         body: {
-          message: `🔔 <b>طلب اشتراك جديد (المكتبة)</b>\n\n👤 ${studentName.trim()}\n📱 ${phone.trim()}\n📄 الملف: ${fileName}${wallet ? `\n💳 المحفظة: ${wallet}` : ''}${receiptUrl ? `\n🖼 الإيصال: ${receiptUrl}` : ''}\n\n✅ افتح لوحة الإدارة لتأكيد الطلب`,
+          message: `🔔 <b>طلب اشتراك جديد (المكتبة)</b>\n\n👤 ${studentName.trim()}\n📱 ${phone.trim()}\n📄 الملف: ${fileName}${wallet ? `\n💳 المحفظة: ${wallet}` : ''}${receiptUrl ? `\n🖼 الإيصال: ${receiptUrl}` : ''}\n💰 المبلغ: ${subMsg.fee}\n\n⏳ في انتظار التأكيد من لوحة التحكم`,
         },
       });
+
       setSuccess(true);
     } catch (e: any) {
-      toast({ title: 'خطأ', description: e?.message || 'حدث خطأ، حاول مجدداً', variant: 'destructive' });
+      toast({ title: 'فشل إرسال الطلب', description: e?.message || 'حاول مجدداً', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
