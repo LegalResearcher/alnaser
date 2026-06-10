@@ -352,15 +352,15 @@ function PdfViewer({ file, isPremiumUnlocked, onClose, onRequestAccess }: {
           {isPreviewOnly && <PremiumLabel />}
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {file.view_url && (
-            <a href={file.view_url} target="_blank" rel="noopener noreferrer"
+          {openExternalUrl && (
+            <a href={openExternalUrl} target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-muted text-foreground hover:bg-muted/80 transition-colors border border-border">
               <ExternalLink className="w-3.5 h-3.5" /><span className="hidden sm:inline">فتح خارجياً</span>
             </a>
           )}
           {/* زر التحميل — مخفي للمحتوى المدفوع غير المفتوح */}
-          {file.download_url && !isPreviewOnly && (
-            <a href={file.download_url} target="_blank" rel="noopener noreferrer"
+          {downloadUrl && !isPreviewOnly && (
+            <a href={downloadUrl} target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-primary">
               <Download className="w-3.5 h-3.5" /><span>تحميل</span>
             </a>
