@@ -82,6 +82,12 @@ const AdminSettings = () => {
   const [subNote, setSubNote] = useState('يرجى تحويل المبلغ إلى الحساب الموضح، ثم رفع صورة الإيصال وتعبئة البيانات لتأكيد الاشتراك.');
   const [subMsgLoading, setSubMsgLoading] = useState(false);
 
+  // رسالة اشتراك المكتبة
+  const [libFee, setLibFee] = useState('500 ريال');
+  const [libFeeLabel, setLibFeeLabel] = useState('الرسوم');
+  const [libNote, setLibNote] = useState('يرجى تحويل المبلغ إلى الحساب الموضح، ثم رفع صورة الإيصال وتعبئة البيانات لتأكيد الاشتراك.');
+  const [libMsgLoading, setLibMsgLoading] = useState(false);
+
   useEffect(() => {
     (async () => {
       const { data } = await (supabase as any)
@@ -100,6 +106,24 @@ const AdminSettings = () => {
     })();
   }, []);
 
+  useEffect(() => {
+    (async () => {
+      const { data } = await (supabase as any)
+        .from('platform_settings')
+        .select('value')
+        .eq('key', 'library_subscription_message')
+        .maybeSingle();
+      if (data?.value) {
+        try {
+          const parsed = JSON.parse(data.value);
+          if (parsed.fee)      setLibFee(parsed.fee);
+          if (parsed.feeLabel) setLibFeeLabel(parsed.feeLabel);
+          if (parsed.note)     setLibNote(parsed.note);
+        } catch {}
+      }
+    })();
+  }, []);
+
   const saveSubscriptionMessage = async () => {
     setSubMsgLoading(true);
     const value = JSON.stringify({ fee: subFee, feeLabel: subFeeLabel, note: subNote });
@@ -109,6 +133,17 @@ const AdminSettings = () => {
     queryClient.invalidateQueries({ queryKey: ['subscription_message'] });
     setSubMsgLoading(false);
     toast({ title: 'تم الحفظ', description: 'تم تحديث رسالة الاشتراك بنجاح' });
+  };
+
+  const saveLibrarySubscriptionMessage = async () => {
+    setLibMsgLoading(true);
+    const value = JSON.stringify({ fee: libFee, feeLabel: libFeeLabel, note: libNote });
+    await (supabase as any)
+      .from('platform_settings')
+      .upsert({ key: 'library_subscription_message', value }, { onConflict: 'key' });
+    queryClient.invalidateQueries({ queryKey: ['library_subscription_message'] });
+    setLibMsgLoading(false);
+    toast({ title: 'تم الحفظ', description: 'تم تحديث رسالة اشتراك المكتبة بنجاح' });
   };
 
   const toggleYear = (levelId: string, year: number) => {
@@ -417,6 +452,61 @@ const AdminSettings = () => {
             >
               <Save className="w-4 h-4" />
               {subMsgLoading ? 'جاري الحفظ...' : 'حفظ الرسالة'}
+            </Button>
+          </div>
+        </div>
+
+        {/* ── رسالة اشتراك المكتبة ── */}
+        <div className="bg-card rounded-xl border p-4 sm:p-6" dir="rtl">
+          <h2 className="font-bold mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
+            <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />
+            رسالة اشتراك المكتبة
+          </h2>
+          <p className="text-xs text-muted-foreground mb-4">النص الذي يظهر عند طلب الاشتراك في المكتبة (مستقل عن رسالة الاشتراك في الاختبارات)</p>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="text-sm">قيمة الرسوم</Label>
+                <Input
+                  value={libFee}
+                  onChange={e => setLibFee(e.target.value)}
+                  placeholder="مثال: 500 ريال"
+                  className="bg-background text-sm"
+                  dir="rtl"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">تسمية الرسوم</Label>
+                <Input
+                  value={libFeeLabel}
+                  onChange={e => setLibFeeLabel(e.target.value)}
+                  placeholder="مثال: الرسوم / التكلفة"
+                  className="bg-background text-sm"
+                  dir="rtl"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-bold">مزايا باقة المكتبة</Label>
+              <p className="text-[11px] text-muted-foreground -mt-1">
+                اكتب كل ميزة في سطر منفصل — <kbd className="px-1 py-0.5 rounded bg-muted text-[10px]">Enter</kbd> للسطر التالي
+              </p>
+              <textarea
+                value={libNote}
+                onChange={e => setLibNote(e.target.value)}
+                rows={5}
+                placeholder={`مثال:\nالوصول الكامل لجميع الملفات والوثائق القانونية\nتحميل الملفات بدون قيود\nتفعيل فوري بمجرد رفع الإيصال`}
+                className="w-full px-3 py-2.5 rounded-xl border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 leading-relaxed"
+                dir="rtl"
+              />
+            </div>
+            <Button
+              onClick={saveLibrarySubscriptionMessage}
+              disabled={libMsgLoading}
+              className="gradient-primary text-primary-foreground border-0 gap-2 w-full sm:w-auto"
+            >
+              <Save className="w-4 h-4" />
+              {libMsgLoading ? 'جاري الحفظ...' : 'حفظ رسالة المكتبة'}
             </Button>
           </div>
         </div>
