@@ -13,6 +13,7 @@ export interface DriveFolder {
   parent_id: string | null;
   depth: number;
   order_index: number;
+  is_premium: boolean;
 }
 
 export interface DriveFile {
@@ -25,6 +26,7 @@ export interface DriveFile {
   embed_url: string | null;
   download_url: string | null;
   order_index: number;
+  is_premium: boolean;
 }
 
 /** جلب كل المجلدات مرة واحدة — يُخزَّن في cache */
