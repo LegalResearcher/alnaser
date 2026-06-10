@@ -519,6 +519,7 @@ export type Database = {
           embed_url: string | null
           folder_id: string
           id: number
+          is_premium: boolean
           mime_type: string | null
           name: string
           order_index: number
@@ -532,6 +533,7 @@ export type Database = {
           embed_url?: string | null
           folder_id: string
           id?: number
+          is_premium?: boolean
           mime_type?: string | null
           name: string
           order_index?: number
@@ -545,6 +547,7 @@ export type Database = {
           embed_url?: string | null
           folder_id?: string
           id?: number
+          is_premium?: boolean
           mime_type?: string | null
           name?: string
           order_index?: number
@@ -567,6 +570,7 @@ export type Database = {
           depth: number
           drive_id: string
           id: number
+          is_premium: boolean
           name: string
           order_index: number
           parent_id: string | null
@@ -577,6 +581,7 @@ export type Database = {
           depth?: number
           drive_id: string
           id?: number
+          is_premium?: boolean
           name: string
           order_index?: number
           parent_id?: string | null
@@ -587,6 +592,7 @@ export type Database = {
           depth?: number
           drive_id?: string
           id?: number
+          is_premium?: boolean
           name?: string
           order_index?: number
           parent_id?: string | null
