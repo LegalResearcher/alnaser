@@ -294,8 +294,36 @@ function PdfViewer({ file, isPremiumUnlocked, onClose, onRequestAccess }: {
   onClose: () => void; onRequestAccess: () => void;
 }) {
   const [loading, setLoading] = useState(true);
-  const embedSrc = file.embed_url || file.view_url || '';
-  const cleanName = file.name.replace(/\.pdf$/i, '');
+
+  // ─────────────────────────────────────────────────────────────
+  // بناء رابط معاينة موثوق من drive_id مباشرة
+  // المشكلة: embed_url المخزَّن يستخدم docs.google.com/viewer
+  // والذي يفشل عندما يعتبر Google Drive الملف ZIP. نعتمد بدلاً
+  // من ذلك على معاينة Drive الأصلية /file/d/{id}/preview التي
+  // تعمل مع PDF وأنواع أخرى بصرف النظر عن mime_type المخزَّن.
+  // ─────────────────────────────────────────────────────────────
+  const extractDriveId = (...urls: (string | null | undefined)[]): string | null => {
+    for (const u of urls) {
+      if (!u) continue;
+      const m = u.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || u.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (m) return m[1];
+    }
+    return null;
+  };
+  const driveId =
+    (file as any).drive_id ||
+    extractDriveId(file.view_url, file.embed_url, file.download_url);
+  const embedSrc = driveId
+    ? `https://drive.google.com/file/d/${driveId}/preview`
+    : (file.view_url || file.embed_url || '');
+  const openExternalUrl = driveId
+    ? `https://drive.google.com/file/d/${driveId}/view`
+    : file.view_url || '';
+  const downloadUrl = driveId
+    ? `https://drive.google.com/uc?export=download&id=${driveId}`
+    : file.download_url || '';
+
+  const cleanName = file.name.replace(/\.(pdf|zip)$/i, '');
   // الملف مقيّد إذا كان مدفوعاً والمستخدم ليس مشتركاً
   const isPreviewOnly = !!file.is_premium && !isPremiumUnlocked;
 
