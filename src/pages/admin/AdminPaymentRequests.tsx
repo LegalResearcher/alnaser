@@ -104,18 +104,32 @@ export default function AdminPaymentRequests() {
       if (data?.password) pwd = data.password;
     }
 
-    const subjectUrl = `https://www.alnaseer.org/exam/${req.subject_id}`;
-    const msg =
-      `أهلاً وسهلاً بك 👋\n` +
-      `تم تفعيل اشتراكك في منصة الناصر القانونية بنجاح ✅\n\n` +
-      `📚 المادة: ${req.subject_name}\n` +
-      `🔑 رمز التفعيل: \`${pwd}\`\n` +
-      `⏳ المدة: 30 يوماً\n\n` +
-      `🔗 رابط الدخول المباشر:\n` +
-      `${subjectUrl}\n\n` +
-      `💡 طريقة البدء:\n` +
-      `اضغط على الرابط أعلاه، ثم اختر "اختبار+ المراجعة" وأدخل رمز التفعيل الخاص بك للبدء فوراً.\n\n` +
-      `مع تمنياتنا لك بالتوفيق والنجاح المستمر.. ✨`;
+    const isLibrary = (req.subject_name || '').includes('المكتبة');
+    const subjectUrl = isLibrary
+      ? `https://www.alnaseer.org/library`
+      : `https://www.alnaseer.org/exam/${req.subject_id}`;
+
+    const msg = isLibrary
+      ? `أهلاً وسهلاً بك 👋\n` +
+        `تم تفعيل اشتراكك في منصة الناصر القانونية بنجاح ✅\n\n` +
+        `📚 المادة: ${req.subject_name}\n` +
+        `🔑 رمز التفعيل: \`${pwd}\`\n` +
+        `⏳ المدة: 30 يوماً\n\n` +
+        `🔗 رابط الدخول المباشر:\n` +
+        `${subjectUrl}\n\n` +
+        `💡 طريقة البدء:\n` +
+        `اضغط على الرابط أعلاه، ثم أدخل رمز التفعيل الخاص بك للوصول إلى المكتبة الكاملة فوراً.\n\n` +
+        `مع تمنياتنا لك بالتوفيق والنجاح المستمر.. ✨`
+      : `أهلاً وسهلاً بك 👋\n` +
+        `تم تفعيل اشتراكك في منصة الناصر القانونية بنجاح ✅\n\n` +
+        `📚 المادة: ${req.subject_name}\n` +
+        `🔑 رمز التفعيل: \`${pwd}\`\n` +
+        `⏳ المدة: 30 يوماً\n\n` +
+        `🔗 رابط الدخول المباشر:\n` +
+        `${subjectUrl}\n\n` +
+        `💡 طريقة البدء:\n` +
+        `اضغط على الرابط أعلاه، ثم اختر "اختبار+ المراجعة" وأدخل رمز التفعيل الخاص بك للبدء فوراً.\n\n` +
+        `مع تمنياتنا لك بالتوفيق والنجاح المستمر.. ✨`;
 
     const phone = (req.phone_number || '').replace(/\D/g, '');
     const intlPhone = phone.startsWith('0') ? '967' + phone.slice(1) : phone;
