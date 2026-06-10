@@ -22,7 +22,7 @@ import {
   DriveFile,
 } from '@/hooks/useDriveLibrary';
 import { supabase } from '@/integrations/supabase/client';
-import { useSubscriptionMessage } from '@/hooks/useSubscriptionMessage';
+import { useLibrarySubscriptionMessage } from '@/hooks/useLibrarySubscriptionMessage';
 import { cn } from '@/lib/utils';
 import {
   Folder, FolderOpen, FileText, Scale, BookMarked, FileSignature,
@@ -518,7 +518,7 @@ function LibraryPasswordModal({ onSuccess, onSubscribe, onClose }: {
 function LibrarySubscriptionModal({ fileName, onClose }: {
   fileName: string; onClose: () => void;
 }) {
-  const subMsg = useSubscriptionMessage();
+  const subMsg = useLibrarySubscriptionMessage();
   const { toast } = useToast();
   const [studentName, setStudentName]     = useState('');
   const [phone, setPhone]                 = useState('');
