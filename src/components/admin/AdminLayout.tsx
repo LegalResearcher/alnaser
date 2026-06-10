@@ -4,7 +4,7 @@ import {
   Scale, LayoutDashboard, BookOpen, Users, Settings, 
   BarChart3, LogOut, Menu, X, Trash2, Layers, 
   FolderOpen, ChevronLeft, ExternalLink, ShieldCheck, MessageSquare, Lightbulb, Swords, KeyRound, CreditCard 
-, Award } from 'lucide-react';
+, Award, Library } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
@@ -26,6 +26,7 @@ const navItems = [
   { href: '/admin/battle-rooms', label: 'غرف التحدي', icon: Swords, adminOnly: true },
   { href: '/admin/review-passwords', label: 'كلمات مرور المراجعة', icon: KeyRound, adminOnly: true },
   { href: '/admin/payment-requests', label: 'طلبات الاشتراك',      icon: CreditCard, adminOnly: true },
+  { href: '/admin/library',          label: 'إدارة المكتبة',         icon: Library,    adminOnly: true },
   { href: '/admin/honor-requests',   label: 'طلبات شهادات الشرف',  icon: Award,      adminOnly: true },
   { href: '/admin/settings', label: 'إعدادات المنصة', icon: Settings },
 ];
