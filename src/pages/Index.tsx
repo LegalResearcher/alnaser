@@ -2,6 +2,7 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { HomeSEO } from '@/components/seo/SEOHead';
 import { HeroSection } from '@/components/home/HeroSection';
 import { StatsSection } from '@/components/home/StatsSection';
+import { LibraryBanner } from '@/components/home/LibraryBanner';
 import { LevelsPreview } from '@/components/home/LevelsPreview';
 import { FAQSection } from '@/components/home/FAQSection';
 import { ContactSection } from '@/components/home/ContactSection';
@@ -26,6 +27,7 @@ const Index = () => {
         <div className="relative z-20 -mt-10 md:-mt-16">
           <StatsSection />
         </div>
+        <LibraryBanner />
         <div className="py-10" />
         <section className="relative group">
           <div className="absolute top-1/2 left-0 w-64 h-64 bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
