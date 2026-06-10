@@ -11,6 +11,7 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
+import { clearAppCache } from '@/hooks/useCachedQuery';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -781,6 +782,7 @@ export default function AdminLibrary() {
       const { error } = await (supabase as any).from(table).delete().eq('id', deleteConfirm.id);
       if (error) throw error;
       toast({ title: '🗑 تم الحذف', description: `تم حذف "${deleteConfirm.name}" بنجاح` });
+      clearAppCache();
       if (deleteConfirm.type === 'folder') invalidateFolders(); else invalidateFiles();
       setDeleteConfirm(null);
     } catch (e: any) {
