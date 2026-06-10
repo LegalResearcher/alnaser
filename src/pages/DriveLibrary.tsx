@@ -294,7 +294,28 @@ function PdfViewer({ file, isPremiumUnlocked, onClose, onRequestAccess }: {
   onClose: () => void; onRequestAccess: () => void;
 }) {
   const [loading, setLoading] = useState(true);
-  const embedSrc = file.embed_url || file.view_url || '';
+
+  // Chrome على Android لا يدعم عرض PDF داخل iframe
+  // نستخدم Google Docs Viewer كـ fallback للموبايل
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  const getFileIdFromUrl = (url: string): string | null => {
+    const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    return match ? match[1] : null;
+  };
+
+  const rawUrl = file.view_url || file.embed_url || '';
+  const fileId = getFileIdFromUrl(rawUrl);
+
+  const embedSrc = (() => {
+    if (!rawUrl) return '';
+    if (isMobile && fileId) {
+      // Google Docs Viewer — يعمل على موبايل Chrome
+      const directUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
+      return `https://docs.google.com/viewer?url=${encodeURIComponent(directUrl)}&embedded=true`;
+    }
+    return file.embed_url || file.view_url || '';
+  })();
   const cleanName = file.name.replace(/\.pdf$/i, '');
   // الملف مقيّد إذا كان مدفوعاً والمستخدم ليس مشتركاً
   const isPreviewOnly = !!file.is_premium && !isPremiumUnlocked;
