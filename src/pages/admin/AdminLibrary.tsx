@@ -612,7 +612,24 @@ export default function AdminLibrary() {
   // ── library_subject_id: subject_id الخاص بكلمات مرور المكتبة ──
   const [librarySubjectId, setLibrarySubjectId] = useState('');
   const [librarySubjectSaving, setLibrarySubjectSaving] = useState(false);
+  const [subjectSearch, setSubjectSearch]               = useState('');
+  const [subjectDropdownOpen, setSubjectDropdownOpen]   = useState(false);
 
+  // جلب ملفات المكتبة للقائمة المنسدلة
+  const { data: allSubjects = [] } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ['library-files-for-dropdown'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('drive_files').select('drive_id, name').order('name');
+      if (error) throw error;
+      return (data ?? []).map((f: { drive_id: string; name: string }) => ({
+        id: f.drive_id,
+        name: f.name.replace(/\.pdf$/i, ''),
+      }));
+    },
+  });
+
+  // جلب الإعداد الحالي
   useQuery({
     queryKey: ['library_subject_id'],
     queryFn: async () => {
@@ -623,12 +640,28 @@ export default function AdminLibrary() {
     },
   });
 
+  // اسم المادة المرتبطة حالياً
+  const resolvedLinkedName = useMemo(
+    () => allSubjects.find(s => s.id === librarySubjectId)?.name ?? null,
+    [librarySubjectId, allSubjects]
+  );
+
+  // المواد المفلترة بالبحث
+  const filteredSubjects = useMemo(() => {
+    const q = subjectSearch.trim().toLowerCase();
+    if (!q) return allSubjects;
+    return allSubjects.filter(s => s.name.toLowerCase().includes(q));
+  }, [subjectSearch, allSubjects]);
+
   const saveLibrarySubjectId = async () => {
     setLibrarySubjectSaving(true);
     await (supabase as any).from('platform_settings')
       .upsert({ key: 'library_subject_id', value: librarySubjectId.trim() }, { onConflict: 'key' });
     setLibrarySubjectSaving(false);
-    toast({ title: '✅ تم الحفظ', description: 'تم تحديث إعداد المكتبة' });
+    toast({
+      title: '✅ تم الحفظ',
+      description: resolvedLinkedName ? `تم الربط بملف "${resolvedLinkedName}"` : 'تم حفظ الإعداد (بدون ربط بملف محدد)',
+    });
   };
 
   // ── جلب البيانات ──
@@ -919,28 +952,105 @@ export default function AdminLibrary() {
             </div>
             <div>
               <h2 className="font-black text-slate-800 dark:text-slate-100 text-sm">إعداد الاشتراك للمكتبة</h2>
-              <p className="text-[11px] text-slate-500">أدخل ID المادة التي تُربط بها كلمات مرور المكتبة</p>
+              <p className="text-[11px] text-slate-500">اختر ملف المكتبة الذي تُربط به كلمات المرور</p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={librarySubjectId}
-              onChange={(e) => setLibrarySubjectId(e.target.value)}
-              placeholder="مثال: uuid-المادة من جدول subjects"
-              dir="ltr"
-              className="flex-1 h-11 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 text-sm font-mono focus:outline-none focus:border-amber-400 transition-all"
-            />
+
+          {/* القائمة المنسدلة مع البحث */}
+          <div className="relative mb-3">
+            <button
+              type="button"
+              onClick={() => setSubjectDropdownOpen(v => !v)}
+              className="w-full h-11 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 text-sm font-semibold text-right flex items-center justify-between gap-2 focus:outline-none focus:border-amber-400 transition-all"
+            >
+              <span className={resolvedLinkedName ? 'text-foreground' : 'text-muted-foreground'}>
+                {resolvedLinkedName ?? 'اختر مادة…'}
+              </span>
+              <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform', subjectDropdownOpen && 'rotate-180')} />
+            </button>
+
+            {subjectDropdownOpen && (
+              <div className="absolute top-12 right-0 left-0 z-50 bg-white dark:bg-slate-900 border-2 border-amber-200 dark:border-amber-800/50 rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                {/* حقل البحث داخل القائمة */}
+                <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+                  <input
+                    autoFocus
+                    type="text"
+                    value={subjectSearch}
+                    onChange={(e) => setSubjectSearch(e.target.value)}
+                    placeholder="ابحث باسم المادة…"
+                    dir="rtl"
+                    className="w-full h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 text-sm focus:outline-none focus:border-amber-400 transition-all text-right"
+                  />
+                </div>
+
+                <div className="max-h-52 overflow-y-auto">
+                  {/* خيار "بدون ربط" */}
+                  <button
+                    type="button"
+                    onClick={() => { setLibrarySubjectId(''); setSubjectDropdownOpen(false); setSubjectSearch(''); }}
+                    className={cn(
+                      'w-full px-4 py-2.5 text-sm text-right flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors',
+                      !librarySubjectId && 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 font-black'
+                    )}
+                  >
+                    <span className="w-4 h-4 shrink-0">{!librarySubjectId && <Check className="w-4 h-4" />}</span>
+                    <span className="text-muted-foreground italic">بدون ربط بملف محدد (يقبل أي كلمة مرور نشطة)</span>
+                  </button>
+
+                  {filteredSubjects.length === 0 ? (
+                    <p className="px-4 py-3 text-xs text-muted-foreground text-center">لا توجد نتائج</p>
+                  ) : (
+                    filteredSubjects.map(subject => (
+                      <button
+                        key={subject.id}
+                        type="button"
+                        onClick={() => { setLibrarySubjectId(subject.id); setSubjectDropdownOpen(false); setSubjectSearch(''); }}
+                        className={cn(
+                          'w-full px-4 py-2.5 text-sm text-right flex items-center gap-2 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors',
+                          librarySubjectId === subject.id && 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 font-black'
+                        )}
+                      >
+                        <span className="w-4 h-4 shrink-0">
+                          {librarySubjectId === subject.id && <Check className="w-4 h-4 text-amber-600" />}
+                        </span>
+                        {subject.name}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* مؤشر الحالة + زر الحفظ */}
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-11 rounded-2xl border-2 flex items-center px-3 gap-2 overflow-hidden border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+              {resolvedLinkedName ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
+                  <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 truncate">
+                    مرتبط بملف: {resolvedLinkedName}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0" />
+                  <span className="text-xs text-muted-foreground">غير مرتبط بمادة محددة</span>
+                </>
+              )}
+            </div>
             <button
               onClick={saveLibrarySubjectId}
               disabled={librarySubjectSaving}
-              className="px-5 h-11 rounded-2xl font-black text-sm text-white flex items-center gap-2 disabled:opacity-50 transition-all"
+              className="px-5 h-11 rounded-2xl font-black text-sm text-white flex items-center gap-2 disabled:opacity-50 transition-all shrink-0"
               style={{ background: 'linear-gradient(135deg, #92400e, #d97706)' }}
             >
               {librarySubjectSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               حفظ
             </button>
           </div>
+
           <p className="text-[10px] text-slate-400 mt-2 pr-1">
             اتركه فارغاً ليقبل أي كلمة مرور نشطة في المنصة · أو اربطه بمادة محددة للتحكم الدقيق
           </p>
