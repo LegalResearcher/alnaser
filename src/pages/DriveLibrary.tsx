@@ -918,14 +918,36 @@ export default function DriveLibrary() {
     return map;
   }, [foldersX]);
 
+  // ── التحقق من أن المجلد أو أي أب له ليس مدفوعاً (حماية البحث) ──
+  const hasPremiumAncestor = useMemo(() => {
+    const cache: Record<string, boolean> = {};
+    const check = (folderId: string | null | undefined, depth = 0): boolean => {
+      if (!folderId || depth > 15) return false;
+      if (folderId in cache) return cache[folderId];
+      const folder = foldersX.find(f => f.drive_id === folderId);
+      if (!folder) return false;
+      const result = !!folder.is_premium || check(folder.parent_id, depth + 1);
+      cache[folderId] = result;
+      return result;
+    };
+    const map: Record<string, boolean> = {};
+    foldersX.forEach(f => { map[f.drive_id] = check(f.parent_id); });
+    return map;
+  }, [foldersX]);
+
   const searchResults = useMemo<SearchResult[]>(() => {
     const q = searchQuery.trim();
     if (!q || q.length < 2) return [];
     const lower = q.toLowerCase();
     return foldersX
-      .filter(f => f.name.toLowerCase().includes(lower))
+      .filter(f => {
+        if (!f.name.toLowerCase().includes(lower)) return false;
+        // إخفاء المجلدات المدفوعة وأبناء المجلدات المدفوعة إذا لم يكن المستخدم مشتركاً
+        if (!isPremiumUnlocked && (f.is_premium || hasPremiumAncestor[f.drive_id])) return false;
+        return true;
+      })
       .map(f => ({ type: 'folder' as const, item: f, path: folderPathMap[f.drive_id] || '' }));
-  }, [searchQuery, foldersX, folderPathMap]);
+  }, [searchQuery, foldersX, folderPathMap, isPremiumUnlocked, hasPremiumAncestor]);
 
   const isSearching = searchQuery.trim().length >= 2;
 
