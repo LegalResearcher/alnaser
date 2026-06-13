@@ -22,7 +22,7 @@ import {
   Pencil, Trash2, ChevronDown, ChevronLeft, Crown,
   Lock, Unlock, ArrowUp, ArrowDown, X, Check, Loader2,
   Library, Save, Link as LinkIcon, Plus, GripVertical,
-  Eye, Download,
+  Eye, Download, DownloadOff,
   Users, CheckSquare, Square,
 } from 'lucide-react';
 
@@ -53,6 +53,7 @@ interface DriveFile {
   is_premium: boolean;
   view_count: number;
   download_count: number;
+  download_locked: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -353,13 +354,15 @@ function FileModal({
 // ─────────────────────────────────────────────────────────────
 function FileRow({
   file, isFirst, isLast,
-  onEdit, onDelete, onTogglePremium, onMoveUp, onMoveDown,
+  onEdit, onDelete, onTogglePremium, onToggleDownloadLocked, onMoveUp, onMoveDown,
   selected, onToggleSelect,
   onDragStart, onDragOver, onDrop,
 }: {
   file: DriveFile; isFirst: boolean; isLast: boolean;
   onEdit: () => void; onDelete: () => void;
-  onTogglePremium: () => void; onMoveUp: () => void; onMoveDown: () => void;
+  onTogglePremium: () => void;
+  onToggleDownloadLocked: () => void;
+  onMoveUp: () => void; onMoveDown: () => void;
   selected: boolean; onToggleSelect: () => void;
   onDragStart: (e: React.DragEvent) => void;
   onDragOver: (e: React.DragEvent) => void;
@@ -417,12 +420,23 @@ function FileRow({
           className="w-6 h-6 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center disabled:opacity-30 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors">
           <ArrowDown className="w-3 h-3" />
         </button>
-        <button onClick={onTogglePremium} title={file.is_premium ? 'تحويل لمجاني' : 'تحويل لمدفوع'}
+        <button onClick={onTogglePremium} title={file.is_premium ? 'تحويل لمجاني' : 'تحويل لمدفوع كلياً'}
           className={cn('w-6 h-6 rounded-lg flex items-center justify-center transition-colors',
             file.is_premium
               ? 'bg-amber-100 text-amber-600 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400'
               : 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600')}>
           {file.is_premium ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+        </button>
+        {/* زر قفل التحميل فقط — قراءة مجانية + تحميل مدفوع */}
+        <button
+          onClick={onToggleDownloadLocked}
+          disabled={file.is_premium}
+          title={file.is_premium ? 'المدفوع كلياً يشمل التحميل' : file.download_locked ? 'إلغاء قفل التحميل' : 'قفل التحميل فقط (قراءة مجانية)'}
+          className={cn('w-6 h-6 rounded-lg flex items-center justify-center transition-colors',
+            file.download_locked && !file.is_premium
+              ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400'
+              : 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-30')}>
+          <DownloadOff className="w-3 h-3" />
         </button>
         <button onClick={onEdit} title="تعديل"
           className="w-6 h-6 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors">
@@ -444,7 +458,7 @@ function FolderNode({
   folder, allFolders, depth, isFirst, isLast,
   onAddSubFolder, onEditFolder, onDeleteFolder, onToggleFolderPremium,
   onMoveFolderUp, onMoveFolderDown,
-  onAddFile, onEditFile, onDeleteFile, onToggleFilePremium,
+  onAddFile, onEditFile, onDeleteFile, onToggleFilePremium, onToggleFileDownloadLocked,
   onMoveFileUp, onMoveFileDown,
   selectedFiles, onToggleFileSelect,
   onDragStartFile, onDropFile,
@@ -464,6 +478,7 @@ function FolderNode({
   onEditFile: (file: DriveFile, fname: string) => void;
   onDeleteFile: (file: DriveFile) => void;
   onToggleFilePremium: (file: DriveFile) => void;
+  onToggleFileDownloadLocked: (file: DriveFile) => void;
   onMoveFileUp: (file: DriveFile, fid: string) => void;
   onMoveFileDown: (file: DriveFile, fid: string) => void;
   selectedFiles: Set<number>;
@@ -591,6 +606,7 @@ function FolderNode({
               onMoveFolderUp={onMoveFolderUp} onMoveFolderDown={onMoveFolderDown}
               onAddFile={onAddFile} onEditFile={onEditFile}
               onDeleteFile={onDeleteFile} onToggleFilePremium={onToggleFilePremium}
+              onToggleFileDownloadLocked={onToggleFileDownloadLocked}
               onMoveFileUp={onMoveFileUp} onMoveFileDown={onMoveFileDown}
               selectedFiles={selectedFiles} onToggleFileSelect={onToggleFileSelect}
               onDragStartFile={onDragStartFile} onDropFile={onDropFile}
@@ -623,6 +639,7 @@ function FolderNode({
                     onEdit={() => onEditFile(file, folder.name)}
                     onDelete={() => onDeleteFile(file)}
                     onTogglePremium={() => onToggleFilePremium(file)}
+                    onToggleDownloadLocked={() => onToggleFileDownloadLocked(file)}
                     onMoveUp={() => onMoveFileUp(file, folder.drive_id)}
                     onMoveDown={() => onMoveFileDown(file, folder.drive_id)}
                     selected={selectedFiles.has(file.id)}
@@ -947,6 +964,21 @@ export default function AdminLibrary() {
     }
   };
 
+  const handleToggleFileDownloadLocked = async (file: DriveFile) => {
+    try {
+      const { error } = await (supabase as any).from('drive_files')
+        .update({ download_locked: !file.download_locked }).eq('id', file.id);
+      if (error) throw error;
+      invalidateFiles();
+      toast({
+        title: file.download_locked ? '🔓 التحميل متاح للجميع' : '📥 قُفل التحميل (قراءة مجانية)',
+        description: file.name.replace(/\.pdf$/i, ''),
+      });
+    } catch (e: any) {
+      toast({ title: '❌ خطأ', description: e.message, variant: 'destructive' });
+    }
+  };
+
   // ── ترتيب المجلدات ──
   const swapFolderOrder = async (a: DriveFolder, b: DriveFolder) => {
     try {
@@ -1183,6 +1215,7 @@ export default function AdminLibrary() {
                   onEditFile={(file, fname) => setFileModal({ mode: 'edit', folderId: file.folder_id, folderName: fname, initial: file })}
                   onDeleteFile={(f) => setDeleteConfirm({ type: 'file', id: f.id, name: f.name })}
                   onToggleFilePremium={handleToggleFilePremium}
+                  onToggleFileDownloadLocked={handleToggleFileDownloadLocked}
                   onMoveFileUp={handleMoveFileUp} onMoveFileDown={handleMoveFileDown}
                   selectedFiles={selectedFiles} onToggleFileSelect={toggleFileSelect}
                   onDragStartFile={handleDragStartFile} onDropFile={handleDropFile}
