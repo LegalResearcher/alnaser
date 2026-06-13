@@ -322,6 +322,8 @@ function PdfViewer({ file, isPremiumUnlocked, onClose, onRequestAccess, onDownlo
   const isPreviewOnly = !!file.is_premium && !isPremiumUnlocked;
   // قراءة مجانية + تحميل مدفوع فقط
   const isDownloadLocked = !!file.download_locked && !isPremiumUnlocked;
+  // تحميل مجاني مباشر بدون اشتراك
+  const isFreeDownload = !!file.free_download;
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -349,16 +351,24 @@ function PdfViewer({ file, isPremiumUnlocked, onClose, onRequestAccess, onDownlo
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {/* زر فتح خارجياً — مخفي دائماً */}
-          {/* تحميل مباشر — للمشتركين فقط */}
-          {file.download_url && isPremiumUnlocked && (
+          {/* تحميل مجاني مباشر — بدون اشتراك */}
+          {file.download_url && isFreeDownload && (
+            <a href={file.download_url} target="_blank" rel="noopener noreferrer"
+              onClick={onDownload}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm">
+              <Download className="w-3.5 h-3.5" /><span>تحميل</span>
+            </a>
+          )}
+          {/* تحميل مباشر — للمشتركين فقط (وليس مجاني) */}
+          {file.download_url && isPremiumUnlocked && !isFreeDownload && (
             <a href={file.download_url} target="_blank" rel="noopener noreferrer"
               onClick={onDownload}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-primary">
               <Download className="w-3.5 h-3.5" /><span>تحميل</span>
             </a>
           )}
-          {/* زر تحميل → رسالة اشتراك — لغير المشتركين دائماً */}
-          {file.download_url && !isPremiumUnlocked && (
+          {/* زر تحميل → رسالة اشتراك — لغير المشتركين وليس مجاني */}
+          {file.download_url && !isPremiumUnlocked && !isFreeDownload && (
             <button onClick={onRequestAccess}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-primary">
               <Download className="w-3.5 h-3.5" /><span>تحميل</span>
@@ -819,13 +829,26 @@ function FolderContent({ currentFolderId, allFolders, isPremiumUnlocked, onFolde
     return false;
   }, [allFolders, currentFolderId]);
 
+  // إرث free_download من المجلد الأب أيضاً
+  const folderIsFreeDownload = useMemo(() => {
+    let folderId: string | null = currentFolderId;
+    while (folderId) {
+      const folder = allFolders.find(f => f.drive_id === folderId);
+      if (!folder) break;
+      if (folder.free_download) return true;
+      folderId = folder.parent_id;
+    }
+    return false;
+  }, [allFolders, currentFolderId]);
+
   const filesX = useMemo(
     () => (files as DriveFileX[]).map(file => ({
       ...file,
       is_premium:      folderIsPremium ? true : file.is_premium,
       download_locked: folderIsPremium ? true : file.download_locked,
+      free_download:   folderIsFreeDownload ? true : file.free_download,
     })),
-    [files, folderIsPremium]
+    [files, folderIsPremium, folderIsFreeDownload]
   );
   const isEmpty = !filesLoading && subFolders.length === 0 && filesX.length === 0;
 
