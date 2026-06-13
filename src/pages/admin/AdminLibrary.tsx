@@ -14,7 +14,7 @@ import { useState, useMemo, useCallback, useRef } from 'react';
 import { clearAppCache } from '@/hooks/useCachedQuery';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import {
@@ -441,7 +441,7 @@ function FileRow({
 // مكوّن: عقدة المجلد (تكرارية) — مع DnD + فلتر + تحديد جماعي
 // ─────────────────────────────────────────────────────────────
 function FolderNode({
-  folder, allFolders, filesMap, depth, isFirst, isLast,
+  folder, allFolders, depth, isFirst, isLast,
   onAddSubFolder, onEditFolder, onDeleteFolder, onToggleFolderPremium,
   onMoveFolderUp, onMoveFolderDown,
   onAddFile, onEditFile, onDeleteFile, onToggleFilePremium,
@@ -452,7 +452,7 @@ function FolderNode({
   premiumFilter,
 }: {
   folder: DriveFolder; allFolders: DriveFolder[];
-  filesMap: Record<string, DriveFile[]>; depth: number;
+  depth: number;
   isFirst: boolean; isLast: boolean;
   onAddSubFolder: (pid: string, pname: string) => void;
   onEditFolder: (f: DriveFolder) => void;
@@ -482,7 +482,22 @@ function FolderNode({
     () => allFolders.filter(f => f.parent_id === folder.drive_id).sort((a, b) => a.order_index - b.order_index),
     [allFolders, folder.drive_id]
   );
-  const rawFiles = filesMap[folder.drive_id] ?? [];
+
+  // جلب الملفات عند الفتح فقط (lazy loading)
+  const { data: rawFiles = [], isLoading: filesLoading } = useQuery<DriveFile[]>({
+    queryKey: ['admin-folder-files', folder.drive_id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('drive_files')
+        .select('*')
+        .eq('folder_id', folder.drive_id)
+        .order('order_index');
+      if (error) throw error;
+      return data;
+    },
+    enabled: expanded,
+    staleTime: 1000 * 60 * 5,
+  });
 
   // تطبيق فلتر الحالة على الملفات
   const files = useMemo(() => {
@@ -491,7 +506,6 @@ function FolderNode({
     return rawFiles;
   }, [rawFiles, premiumFilter]);
 
-  const hasChildren = subFolders.length > 0 || rawFiles.length > 0;
   const indentPx = depth * 20;
 
   return (
@@ -516,9 +530,7 @@ function FolderNode({
         <GripVertical className="w-3.5 h-3.5 text-muted-foreground/30 shrink-0" />
         <button onClick={() => setExpanded(!expanded)}
           className="w-6 h-6 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
-          {hasChildren
-            ? (expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />)
-            : <span className="w-4 h-4" />}
+          {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
         </button>
         <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
           style={{ background: folder.is_premium ? 'rgba(245,158,11,0.12)' : 'rgba(var(--primary-rgb),0.1)' }}>
@@ -572,7 +584,7 @@ function FolderNode({
         <div className="mt-1 space-y-1" style={{ marginRight: `${indentPx + 20}px` }}>
           {subFolders.map((sf, idx) => (
             <FolderNode
-              key={sf.drive_id} folder={sf} allFolders={allFolders} filesMap={filesMap}
+              key={sf.drive_id} folder={sf} allFolders={allFolders}
               depth={0} isFirst={idx === 0} isLast={idx === subFolders.length - 1}
               onAddSubFolder={onAddSubFolder} onEditFolder={onEditFolder}
               onDeleteFolder={onDeleteFolder} onToggleFolderPremium={onToggleFolderPremium}
@@ -597,27 +609,34 @@ function FolderNode({
               fileDragOver && 'ring-2 ring-primary ring-dashed bg-primary/5 p-1'
             )}
           >
-            {files.map((file, idx) => (
-              <div key={file.drive_id} className="mb-1">
-                <FileRow
-                  file={file}
-                  isFirst={idx === 0} isLast={idx === files.length - 1}
-                  onEdit={() => onEditFile(file, folder.name)}
-                  onDelete={() => onDeleteFile(file)}
-                  onTogglePremium={() => onToggleFilePremium(file)}
-                  onMoveUp={() => onMoveFileUp(file, folder.drive_id)}
-                  onMoveDown={() => onMoveFileDown(file, folder.drive_id)}
-                  selected={selectedFiles.has(file.id)}
-                  onToggleSelect={() => onToggleFileSelect(file.id)}
-                  onDragStart={(e) => { e.stopPropagation(); onDragStartFile(file, folder.drive_id); }}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => { e.preventDefault(); onDropFile(folder.drive_id); }}
-                />
+            {filesLoading ? (
+              <div className="flex items-center gap-2 py-2 px-3">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">جاري التحميل...</span>
               </div>
-            ))}
+            ) : (
+              files.map((file, idx) => (
+                <div key={file.drive_id} className="mb-1">
+                  <FileRow
+                    file={file}
+                    isFirst={idx === 0} isLast={idx === files.length - 1}
+                    onEdit={() => onEditFile(file, folder.name)}
+                    onDelete={() => onDeleteFile(file)}
+                    onTogglePremium={() => onToggleFilePremium(file)}
+                    onMoveUp={() => onMoveFileUp(file, folder.drive_id)}
+                    onMoveDown={() => onMoveFileDown(file, folder.drive_id)}
+                    selected={selectedFiles.has(file.id)}
+                    onToggleSelect={() => onToggleFileSelect(file.id)}
+                    onDragStart={(e) => { e.stopPropagation(); onDragStartFile(file, folder.drive_id); }}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => { e.preventDefault(); onDropFile(folder.drive_id); }}
+                  />
+                </div>
+              ))
+            )}
           </div>
 
-          {subFolders.length === 0 && rawFiles.length === 0 && (
+          {!filesLoading && subFolders.length === 0 && rawFiles.length === 0 && (
             <div className="flex items-center gap-2 py-2 px-3 rounded-xl border border-dashed border-border">
               <span className="text-xs text-muted-foreground">مجلد فارغ —</span>
               <button onClick={() => onAddFile(folder.drive_id, folder.name)}
@@ -673,13 +692,19 @@ export default function AdminLibrary() {
     },
   });
 
-  const { data: allFiles = [], isLoading: filesLoading } = useQuery<DriveFile[]>({
-    queryKey: ['admin-drive-files'],
+  // ── إحصائيات الملفات (3 أعمدة فقط — خفيف جداً) ──
+  const { data: filesStats } = useQuery({
+    queryKey: ['admin-files-stats'],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from('drive_files').select('*').order('order_index');
-      if (error) throw error;
-      return data;
+      const { data } = await (supabase as any)
+        .from('drive_files')
+        .select('is_premium, view_count, download_count');
+      return {
+        total:     data?.length ?? 0,
+        premium:   data?.filter((f: any) => f.is_premium).length ?? 0,
+        views:     data?.reduce((s: number, f: any) => s + (f.view_count ?? 0), 0) ?? 0,
+        downloads: data?.reduce((s: number, f: any) => s + (f.download_count ?? 0), 0) ?? 0,
+      };
     },
   });
 
@@ -696,35 +721,10 @@ export default function AdminLibrary() {
     },
   });
 
-  // ── إحصائيات المشاهدات والتحميلات الكلية ──
-  const { data: totalViews = 0 } = useQuery<number>({
-    queryKey: ['library-total-views'],
-    queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from('drive_files')
-        .select('view_count');
-      return (data ?? []).reduce((sum: number, f: any) => sum + (f.view_count ?? 0), 0);
-    },
-  });
-
-  const { data: totalDownloads = 0 } = useQuery<number>({
-    queryKey: ['library-total-downloads'],
-    queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from('drive_files')
-        .select('download_count');
-      return (data ?? []).reduce((sum: number, f: any) => sum + (f.download_count ?? 0), 0);
-    },
-  });
-
-  const filesMap = useMemo(() => {
-    const map: Record<string, DriveFile[]> = {};
-    allFiles.forEach(f => {
-      if (!map[f.folder_id]) map[f.folder_id] = [];
-      map[f.folder_id].push(f);
-    });
-    return map;
-  }, [allFiles]);
+  // قراءة ملفات مجلد من الكاش (إن وُجدت) — يستخدمها handlers الترتيب/النقل/الحفظ
+  const getCachedFolderFiles = useCallback((folderId: string): DriveFile[] => {
+    return queryClient.getQueryData<DriveFile[]>(['admin-folder-files', folderId]) ?? [];
+  }, [queryClient]);
 
   const rootFolders = useMemo(
     () => allFolders.filter(f => !f.parent_id || f.depth === 0).sort((a, b) => a.order_index - b.order_index),
@@ -756,7 +756,8 @@ export default function AdminLibrary() {
       const { error } = await (supabase as any)
         .from('drive_files').update({ is_premium: toPremium }).in('id', ids);
       if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ['admin-drive-files'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-folder-files'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-files-stats'] });
       queryClient.invalidateQueries({ queryKey: ['drive-files'] });
       toast({ title: toPremium ? '🔒 تم التحويل للمدفوع' : '🔓 تم التحويل للمجاني', description: `${ids.length} ملف` });
       clearSelection();
@@ -781,19 +782,21 @@ export default function AdminLibrary() {
     dragFile.current = null;
     if (srcFolderId === targetFolderId) return;
     try {
-      const maxOrder = (filesMap[targetFolderId] ?? [])
+      const maxOrder = getCachedFolderFiles(targetFolderId)
         .reduce((max, f) => Math.max(max, f.order_index), -1) + 1;
       const { error } = await (supabase as any)
         .from('drive_files').update({ folder_id: targetFolderId, order_index: maxOrder }).eq('id', file.id);
       if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ['admin-drive-files'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-folder-files', srcFolderId] });
+      queryClient.invalidateQueries({ queryKey: ['admin-folder-files', targetFolderId] });
+      queryClient.invalidateQueries({ queryKey: ['admin-files-stats'] });
       queryClient.invalidateQueries({ queryKey: ['drive-files'] });
       const targetName = allFolders.find(f => f.drive_id === targetFolderId)?.name ?? targetFolderId;
       toast({ title: '📁 تم النقل', description: `"${file.name.replace(/\.pdf$/i, '')}" → ${targetName}` });
     } catch (e: any) {
       toast({ title: '❌ فشل النقل', description: e.message, variant: 'destructive' });
     }
-  }, [filesMap, allFolders]);
+  }, [getCachedFolderFiles, allFolders, queryClient, toast]);
 
   const handleDragStartFolder = useCallback((f: DriveFolder) => {
     dragFolder.current = f;
@@ -833,7 +836,9 @@ export default function AdminLibrary() {
     queryClient.invalidateQueries({ queryKey: ['drive-folders-all'] });
   };
   const invalidateFiles = () => {
-    queryClient.invalidateQueries({ queryKey: ['admin-drive-files'] });
+    // إبطال كل استعلامات ملفات المجلدات (مفتاحها يبدأ بـ admin-folder-files) + الإحصائيات
+    queryClient.invalidateQueries({ queryKey: ['admin-folder-files'] });
+    queryClient.invalidateQueries({ queryKey: ['admin-files-stats'] });
     queryClient.invalidateQueries({ queryKey: ['drive-files'] });
   };
 
@@ -872,7 +877,7 @@ export default function AdminLibrary() {
     if (!fileModal) return;
     try {
       if (fileModal.mode === 'add') {
-        const maxOrder = (filesMap[fileModal.folderId] ?? [])
+        const maxOrder = getCachedFolderFiles(fileModal.folderId)
           .reduce((max, f) => Math.max(max, f.order_index), -1) + 1;
         const { error } = await (supabase as any).from('drive_files').insert({
           drive_id: data.drive_id, name: data.name,
@@ -899,7 +904,7 @@ export default function AdminLibrary() {
     } catch (e: any) {
       toast({ title: '❌ خطأ', description: e.message, variant: 'destructive' });
     }
-  }, [fileModal, filesMap]);
+  }, [fileModal, getCachedFolderFiles]);
 
   // ── حذف ──
   const handleConfirmDelete = async () => {
@@ -973,21 +978,20 @@ export default function AdminLibrary() {
   };
 
   const handleMoveFileUp = (file: DriveFile, folderId: string) => {
-    const siblings = (filesMap[folderId] ?? []).sort((a, b) => a.order_index - b.order_index);
+    const siblings = [...getCachedFolderFiles(folderId)].sort((a, b) => a.order_index - b.order_index);
     const idx = siblings.findIndex(f => f.id === file.id);
     if (idx > 0) swapFileOrder(file, siblings[idx - 1]);
   };
 
   const handleMoveFileDown = (file: DriveFile, folderId: string) => {
-    const siblings = (filesMap[folderId] ?? []).sort((a, b) => a.order_index - b.order_index);
+    const siblings = [...getCachedFolderFiles(folderId)].sort((a, b) => a.order_index - b.order_index);
     const idx = siblings.findIndex(f => f.id === file.id);
     if (idx < siblings.length - 1) swapFileOrder(file, siblings[idx + 1]);
   };
 
   // ── إحصائيات ──
   const premiumFolders  = allFolders.filter(f => f.is_premium).length;
-  const premiumFiles    = allFiles.filter(f => f.is_premium).length;
-  const isLoading       = foldersLoading || filesLoading;
+  const isLoading       = foldersLoading;
 
   return (
     <AdminLayout>
@@ -1017,8 +1021,8 @@ export default function AdminLibrary() {
           {[
             { label: 'إجمالي المجلدات', value: allFolders.length,   color: 'text-blue-600',    bg: 'bg-blue-50 dark:bg-blue-950/30'    },
             { label: 'مجلدات مدفوعة',  value: premiumFolders,        color: 'text-amber-600',   bg: 'bg-amber-50 dark:bg-amber-950/30'  },
-            { label: 'إجمالي الملفات', value: allFiles.length,       color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
-            { label: 'ملفات مدفوعة',   value: premiumFiles,          color: 'text-rose-600',    bg: 'bg-rose-50 dark:bg-rose-950/30'    },
+            { label: 'إجمالي الملفات', value: filesStats?.total ?? 0,   color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
+            { label: 'ملفات مدفوعة',   value: filesStats?.premium ?? 0, color: 'text-rose-600',    bg: 'bg-rose-50 dark:bg-rose-950/30'    },
           ].map(stat => (
             <div key={stat.label} className={cn('rounded-2xl p-4 border border-border', stat.bg)}>
               <p className={cn('text-2xl font-black', stat.color)}>{isLoading ? '…' : stat.value}</p>
@@ -1031,8 +1035,8 @@ export default function AdminLibrary() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
             { label: 'مشتركون نشطون',   value: activeSubscribers, color: 'text-violet-600',  bg: 'bg-violet-50 dark:bg-violet-950/30',  icon: <Users className="w-4 h-4" />,      desc: 'كلمة مرور مستخدمة' },
-            { label: 'إجمالي المشاهدات', value: totalViews,        color: 'text-sky-600',     bg: 'bg-sky-50 dark:bg-sky-950/30',        icon: <Eye className="w-4 h-4" />,        desc: 'فتح ملف' },
-            { label: 'إجمالي التحميلات', value: totalDownloads,    color: 'text-teal-600',    bg: 'bg-teal-50 dark:bg-teal-950/30',      icon: <Download className="w-4 h-4" />,   desc: 'تحميل ملف' },
+            { label: 'إجمالي المشاهدات', value: filesStats?.views ?? 0,     color: 'text-sky-600',     bg: 'bg-sky-50 dark:bg-sky-950/30',        icon: <Eye className="w-4 h-4" />,        desc: 'فتح ملف' },
+            { label: 'إجمالي التحميلات', value: filesStats?.downloads ?? 0, color: 'text-teal-600',    bg: 'bg-teal-50 dark:bg-teal-950/30',      icon: <Download className="w-4 h-4" />,   desc: 'تحميل ملف' },
           ].map(stat => (
             <div key={stat.label} className={cn('rounded-2xl p-4 border border-border flex items-center gap-4', stat.bg)}>
               <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0 opacity-80', stat.color,
@@ -1168,7 +1172,7 @@ export default function AdminLibrary() {
               {rootFolders.map((folder, idx) => (
                 <FolderNode
                   key={folder.drive_id} folder={folder} allFolders={allFolders}
-                  filesMap={filesMap} depth={0}
+                  depth={0}
                   isFirst={idx === 0} isLast={idx === rootFolders.length - 1}
                   onAddSubFolder={(pid, pname) => setFolderModal({ mode: 'add', parentId: pid, parentName: pname })}
                   onEditFolder={(f) => setFolderModal({ mode: 'edit', parentId: f.parent_id, parentName: '', initial: f })}
