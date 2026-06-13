@@ -1171,7 +1171,7 @@ export default function AdminLibrary() {
               {rootFolders.map((folder, idx) => (
                 <FolderNode
                   key={folder.drive_id} folder={folder} allFolders={allFolders}
-                  filesMap={filesMap} depth={0}
+                  depth={0}
                   isFirst={idx === 0} isLast={idx === rootFolders.length - 1}
                   onAddSubFolder={(pid, pname) => setFolderModal({ mode: 'add', parentId: pid, parentName: pname })}
                   onEditFolder={(f) => setFolderModal({ mode: 'edit', parentId: f.parent_id, parentName: '', initial: f })}
