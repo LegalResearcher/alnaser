@@ -977,21 +977,20 @@ export default function AdminLibrary() {
   };
 
   const handleMoveFileUp = (file: DriveFile, folderId: string) => {
-    const siblings = (filesMap[folderId] ?? []).sort((a, b) => a.order_index - b.order_index);
+    const siblings = [...getCachedFolderFiles(folderId)].sort((a, b) => a.order_index - b.order_index);
     const idx = siblings.findIndex(f => f.id === file.id);
     if (idx > 0) swapFileOrder(file, siblings[idx - 1]);
   };
 
   const handleMoveFileDown = (file: DriveFile, folderId: string) => {
-    const siblings = (filesMap[folderId] ?? []).sort((a, b) => a.order_index - b.order_index);
+    const siblings = [...getCachedFolderFiles(folderId)].sort((a, b) => a.order_index - b.order_index);
     const idx = siblings.findIndex(f => f.id === file.id);
     if (idx < siblings.length - 1) swapFileOrder(file, siblings[idx + 1]);
   };
 
   // ── إحصائيات ──
   const premiumFolders  = allFolders.filter(f => f.is_premium).length;
-  const premiumFiles    = allFiles.filter(f => f.is_premium).length;
-  const isLoading       = foldersLoading || filesLoading;
+  const isLoading       = foldersLoading;
 
   return (
     <AdminLayout>
