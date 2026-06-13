@@ -22,7 +22,7 @@ import {
   Pencil, Trash2, ChevronDown, ChevronLeft, Crown,
   Lock, Unlock, ArrowUp, ArrowDown, X, Check, Loader2,
   Library, Save, Link as LinkIcon, Plus, GripVertical,
-  Eye, Download, DownloadOff,
+  Eye, Download, CloudOff,
   Users, CheckSquare, Square,
 } from 'lucide-react';
 
@@ -436,7 +436,7 @@ function FileRow({
             file.download_locked && !file.is_premium
               ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400'
               : 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-30')}>
-          <DownloadOff className="w-3 h-3" />
+          <CloudOff className="w-3 h-3" />
         </button>
         <button onClick={onEdit} title="تعديل"
           className="w-6 h-6 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors">
