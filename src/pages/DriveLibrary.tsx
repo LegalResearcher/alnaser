@@ -26,7 +26,7 @@ import { useLibrarySubscriptionMessage } from '@/hooks/useLibrarySubscriptionMes
 import { cn } from '@/lib/utils';
 import {
   Folder, FolderOpen, FileText, Scale, BookMarked, FileSignature,
-  Gavel, Library, ChevronLeft, Download, ExternalLink, X, Search,
+  Gavel, Library, ChevronLeft, Download, X, Search,
   BookOpen, Home, Loader2, FolderSearch, MessageSquareText, Lock, Crown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -256,12 +256,12 @@ function FolderCard({ folder, childCount, onClick, searchQuery, isLocked }: {
 // ─────────────────────────────────────────────────────────────
 // بطاقة ملف
 // ─────────────────────────────────────────────────────────────
-function FileCard({ file, onClick, searchQuery }: {
-  file: DriveFileX; onClick: () => void; searchQuery?: string;
+function FileCard({ file, onClick, searchQuery, isPremiumUnlocked }: {
+  file: DriveFileX; onClick: () => void; searchQuery?: string; isPremiumUnlocked?: boolean;
 }) {
   const IconComponent = getFileIcon(file.name);
   const cleanName = file.name.replace(/\.pdf$/i, '');
-  const isLocked = !!file.is_premium;
+  const isLocked = (!!file.is_premium || !!file.download_locked) && !isPremiumUnlocked;
   return (
     <button onClick={onClick}
       className={cn('group relative w-full text-right p-4 rounded-xl border border-border bg-card transition-all duration-250 focus-visible:outline-none focus-visible:ring-2',
@@ -348,13 +348,7 @@ function PdfViewer({ file, isPremiumUnlocked, onClose, onRequestAccess, onDownlo
           {isPreviewOnly && <PremiumLabel />}
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {/* زر فتح خارجياً — للمشتركين فقط (مدفوع كلياً أو download_locked) */}
-          {file.view_url && !isPreviewOnly && !isDownloadLocked && (
-            <a href={file.view_url} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-muted text-foreground hover:bg-muted/80 transition-colors border border-border">
-              <ExternalLink className="w-3.5 h-3.5" /><span className="hidden sm:inline">فتح خارجياً</span>
-            </a>
-          )}
+
           {/* حالة 1: مجاني كلياً — تحميل مباشر */}
           {file.download_url && !isPreviewOnly && !isDownloadLocked && (
             <a href={file.download_url} target="_blank" rel="noopener noreferrer"
@@ -856,7 +850,7 @@ function FolderContent({ currentFolderId, allFolders, isPremiumUnlocked, onFolde
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {filesX.map(file => (
-              <FileCard key={file.drive_id} file={file} onClick={() => onFileClick(file)} />
+              <FileCard key={file.drive_id} file={file} onClick={() => onFileClick(file)} isPremiumUnlocked={isPremiumUnlocked} />
             ))}
           </div>
         </section>
@@ -979,7 +973,8 @@ export default function DriveLibrary() {
 
   // ── فتح ملف ──
   const handleFileClick = (file: DriveFileX) => {
-    if (file.is_premium && !isPremiumUnlocked) {
+    const needsAuth = (file.is_premium || file.download_locked) && !isPremiumUnlocked;
+    if (needsAuth) {
       setPendingFile(file);
       setPendingFolder(null);
       setShowPasswordModal(true);
