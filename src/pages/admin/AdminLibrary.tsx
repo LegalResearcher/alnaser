@@ -530,9 +530,7 @@ function FolderNode({
         <GripVertical className="w-3.5 h-3.5 text-muted-foreground/30 shrink-0" />
         <button onClick={() => setExpanded(!expanded)}
           className="w-6 h-6 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
-          {hasChildren
-            ? (expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />)
-            : <span className="w-4 h-4" />}
+          {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
         </button>
         <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
           style={{ background: folder.is_premium ? 'rgba(245,158,11,0.12)' : 'rgba(var(--primary-rgb),0.1)' }}>
