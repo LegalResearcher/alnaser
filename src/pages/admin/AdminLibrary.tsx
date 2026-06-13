@@ -835,7 +835,9 @@ export default function AdminLibrary() {
     queryClient.invalidateQueries({ queryKey: ['drive-folders-all'] });
   };
   const invalidateFiles = () => {
-    queryClient.invalidateQueries({ queryKey: ['admin-drive-files'] });
+    // إبطال كل استعلامات ملفات المجلدات (مفتاحها يبدأ بـ admin-folder-files) + الإحصائيات
+    queryClient.invalidateQueries({ queryKey: ['admin-folder-files'] });
+    queryClient.invalidateQueries({ queryKey: ['admin-files-stats'] });
     queryClient.invalidateQueries({ queryKey: ['drive-files'] });
   };
 
