@@ -884,12 +884,14 @@ export default function AdminLibrary() {
           order_index: maxOrder, is_premium: data.is_premium ?? false,
         });
         if (error) throw error;
+        clearAppCache();
         toast({ title: '✅ تمت الإضافة', description: `تم إضافة المجلد "${data.name}"` });
       } else {
         const { error } = await (supabase as any).from('drive_folders')
           .update({ name: data.name, drive_id: data.drive_id, is_premium: data.is_premium })
           .eq('id', folderModal.initial!.id);
         if (error) throw error;
+        clearAppCache();
         toast({ title: '✅ تم التعديل', description: `تم تحديث "${data.name}"` });
       }
       invalidateFolders();
@@ -915,6 +917,7 @@ export default function AdminLibrary() {
           order_index: maxOrder, is_premium: data.is_premium ?? false,
         });
         if (error) throw error;
+        clearAppCache();
         toast({ title: '✅ تمت الإضافة', description: `تم إضافة "${data.name}"` });
       } else {
         const { error } = await (supabase as any).from('drive_files')
@@ -924,6 +927,7 @@ export default function AdminLibrary() {
             download_url: data.download_url, is_premium: data.is_premium,
           }).eq('id', fileModal.initial!.id);
         if (error) throw error;
+        clearAppCache();
         toast({ title: '✅ تم التعديل', description: `تم تحديث "${data.name}"` });
       }
       invalidateFiles();
@@ -955,6 +959,7 @@ export default function AdminLibrary() {
       const { error } = await (supabase as any).from('drive_folders')
         .update({ is_premium: !folder.is_premium }).eq('id', folder.id);
       if (error) throw error;
+      clearAppCache();
       invalidateFolders();
       toast({ title: folder.is_premium ? '🔓 صار مجانياً' : '🔒 صار مدفوعاً', description: folder.name });
     } catch (e: any) {
@@ -967,6 +972,7 @@ export default function AdminLibrary() {
       const { error } = await (supabase as any).from('drive_files')
         .update({ is_premium: !file.is_premium }).eq('id', file.id);
       if (error) throw error;
+      clearAppCache();
       invalidateFiles();
       toast({ title: file.is_premium ? '🔓 صار مجانياً' : '🔒 صار مدفوعاً', description: file.name });
     } catch (e: any) {
@@ -979,6 +985,7 @@ export default function AdminLibrary() {
       const { error } = await (supabase as any).from('drive_files')
         .update({ download_locked: !file.download_locked }).eq('id', file.id);
       if (error) throw error;
+      clearAppCache();
       invalidateFiles();
       toast({
         title: file.download_locked ? '🔓 التحميل متاح للجميع' : '📥 قُفل التحميل (قراءة مجانية)',
@@ -997,6 +1004,7 @@ export default function AdminLibrary() {
         .eq('folder_id', folderId)
         .eq('is_premium', false); // فقط الملفات غير المدفوعة كلياً
       if (error) throw error;
+      clearAppCache();
       invalidateFiles();
       toast({ title: '📥 قُفل التحميل للمجلد', description: `جميع ملفات "${folderName}" صارت قراءة مجانية فقط` });
     } catch (e: any) {
