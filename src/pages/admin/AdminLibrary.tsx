@@ -22,7 +22,7 @@ import {
   Pencil, Trash2, ChevronDown, ChevronLeft, Crown,
   Lock, Unlock, ArrowUp, ArrowDown, X, Check, Loader2,
   Library, Save, Link as LinkIcon, Plus, GripVertical,
-  Eye, Download, CloudOff,
+  Eye, Download, DownloadOff,
   Users, CheckSquare, Square,
 } from 'lucide-react';
 
@@ -436,7 +436,7 @@ function FileRow({
             file.download_locked && !file.is_premium
               ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400'
               : 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-30')}>
-          <CloudOff className="w-3 h-3" />
+          <DownloadOff className="w-3 h-3" />
         </button>
         <button onClick={onEdit} title="تعديل"
           className="w-6 h-6 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors">
@@ -459,6 +459,7 @@ function FolderNode({
   onAddSubFolder, onEditFolder, onDeleteFolder, onToggleFolderPremium,
   onMoveFolderUp, onMoveFolderDown,
   onAddFile, onEditFile, onDeleteFile, onToggleFilePremium, onToggleFileDownloadLocked,
+  onLockFolderDownloads,
   onMoveFileUp, onMoveFileDown,
   selectedFiles, onToggleFileSelect,
   onDragStartFile, onDropFile,
@@ -479,6 +480,7 @@ function FolderNode({
   onDeleteFile: (file: DriveFile) => void;
   onToggleFilePremium: (file: DriveFile) => void;
   onToggleFileDownloadLocked: (file: DriveFile) => void;
+  onLockFolderDownloads: (folderId: string, folderName: string) => void;
   onMoveFileUp: (file: DriveFile, fid: string) => void;
   onMoveFileDown: (file: DriveFile, fid: string) => void;
   selectedFiles: Set<number>;
@@ -576,6 +578,13 @@ function FolderNode({
                 : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700')}>
             {folder.is_premium ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
           </button>
+          {/* قفل تحميل جميع ملفات المجلد دفعة واحدة */}
+          <button
+            onClick={() => onLockFolderDownloads(folder.drive_id, folder.name)}
+            title="قفل التحميل لجميع ملفات المجلد (قراءة مجانية)"
+            className="w-6 h-6 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors">
+            <CloudOff className="w-3 h-3" />
+          </button>
           <button onClick={() => onAddFile(folder.drive_id, folder.name)} title="إضافة ملف"
             className="w-6 h-6 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center hover:bg-emerald-200 transition-colors">
             <FilePlus className="w-3 h-3" />
@@ -607,6 +616,7 @@ function FolderNode({
               onAddFile={onAddFile} onEditFile={onEditFile}
               onDeleteFile={onDeleteFile} onToggleFilePremium={onToggleFilePremium}
               onToggleFileDownloadLocked={onToggleFileDownloadLocked}
+              onLockFolderDownloads={onLockFolderDownloads}
               onMoveFileUp={onMoveFileUp} onMoveFileDown={onMoveFileDown}
               selectedFiles={selectedFiles} onToggleFileSelect={onToggleFileSelect}
               onDragStartFile={onDragStartFile} onDropFile={onDropFile}
@@ -979,6 +989,21 @@ export default function AdminLibrary() {
     }
   };
 
+  // قفل تحميل جميع ملفات المجلد دفعة واحدة
+  const handleLockFolderDownloads = async (folderId: string, folderName: string) => {
+    try {
+      const { error } = await (supabase as any).from('drive_files')
+        .update({ download_locked: true })
+        .eq('folder_id', folderId)
+        .eq('is_premium', false); // فقط الملفات غير المدفوعة كلياً
+      if (error) throw error;
+      invalidateFiles();
+      toast({ title: '📥 قُفل التحميل للمجلد', description: `جميع ملفات "${folderName}" صارت قراءة مجانية فقط` });
+    } catch (e: any) {
+      toast({ title: '❌ خطأ', description: e.message, variant: 'destructive' });
+    }
+  };
+
   // ── ترتيب المجلدات ──
   const swapFolderOrder = async (a: DriveFolder, b: DriveFolder) => {
     try {
@@ -1216,6 +1241,7 @@ export default function AdminLibrary() {
                   onDeleteFile={(f) => setDeleteConfirm({ type: 'file', id: f.id, name: f.name })}
                   onToggleFilePremium={handleToggleFilePremium}
                   onToggleFileDownloadLocked={handleToggleFileDownloadLocked}
+                  onLockFolderDownloads={handleLockFolderDownloads}
                   onMoveFileUp={handleMoveFileUp} onMoveFileDown={handleMoveFileDown}
                   selectedFiles={selectedFiles} onToggleFileSelect={toggleFileSelect}
                   onDragStartFile={handleDragStartFile} onDropFile={handleDropFile}
