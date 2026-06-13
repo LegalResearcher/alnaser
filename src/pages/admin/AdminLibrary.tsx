@@ -876,7 +876,7 @@ export default function AdminLibrary() {
     if (!fileModal) return;
     try {
       if (fileModal.mode === 'add') {
-        const maxOrder = (filesMap[fileModal.folderId] ?? [])
+        const maxOrder = getCachedFolderFiles(fileModal.folderId)
           .reduce((max, f) => Math.max(max, f.order_index), -1) + 1;
         const { error } = await (supabase as any).from('drive_files').insert({
           drive_id: data.drive_id, name: data.name,
