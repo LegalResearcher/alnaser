@@ -584,7 +584,7 @@ function FolderNode({
         <div className="mt-1 space-y-1" style={{ marginRight: `${indentPx + 20}px` }}>
           {subFolders.map((sf, idx) => (
             <FolderNode
-              key={sf.drive_id} folder={sf} allFolders={allFolders} filesMap={filesMap}
+              key={sf.drive_id} folder={sf} allFolders={allFolders}
               depth={0} isFirst={idx === 0} isLast={idx === subFolders.length - 1}
               onAddSubFolder={onAddSubFolder} onEditFolder={onEditFolder}
               onDeleteFolder={onDeleteFolder} onToggleFolderPremium={onToggleFolderPremium}
