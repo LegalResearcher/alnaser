@@ -692,13 +692,19 @@ export default function AdminLibrary() {
     },
   });
 
-  const { data: allFiles = [], isLoading: filesLoading } = useQuery<DriveFile[]>({
-    queryKey: ['admin-drive-files'],
+  // ── إحصائيات الملفات (3 أعمدة فقط — خفيف جداً) ──
+  const { data: filesStats } = useQuery({
+    queryKey: ['admin-files-stats'],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from('drive_files').select('*').order('order_index');
-      if (error) throw error;
-      return data;
+      const { data } = await (supabase as any)
+        .from('drive_files')
+        .select('is_premium, view_count, download_count');
+      return {
+        total:     data?.length ?? 0,
+        premium:   data?.filter((f: any) => f.is_premium).length ?? 0,
+        views:     data?.reduce((s: number, f: any) => s + (f.view_count ?? 0), 0) ?? 0,
+        downloads: data?.reduce((s: number, f: any) => s + (f.download_count ?? 0), 0) ?? 0,
+      };
     },
   });
 
@@ -715,35 +721,10 @@ export default function AdminLibrary() {
     },
   });
 
-  // ── إحصائيات المشاهدات والتحميلات الكلية ──
-  const { data: totalViews = 0 } = useQuery<number>({
-    queryKey: ['library-total-views'],
-    queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from('drive_files')
-        .select('view_count');
-      return (data ?? []).reduce((sum: number, f: any) => sum + (f.view_count ?? 0), 0);
-    },
-  });
-
-  const { data: totalDownloads = 0 } = useQuery<number>({
-    queryKey: ['library-total-downloads'],
-    queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from('drive_files')
-        .select('download_count');
-      return (data ?? []).reduce((sum: number, f: any) => sum + (f.download_count ?? 0), 0);
-    },
-  });
-
-  const filesMap = useMemo(() => {
-    const map: Record<string, DriveFile[]> = {};
-    allFiles.forEach(f => {
-      if (!map[f.folder_id]) map[f.folder_id] = [];
-      map[f.folder_id].push(f);
-    });
-    return map;
-  }, [allFiles]);
+  // قراءة ملفات مجلد من الكاش (إن وُجدت) — يستخدمها handlers الترتيب/النقل/الحفظ
+  const getCachedFolderFiles = useCallback((folderId: string): DriveFile[] => {
+    return queryClient.getQueryData<DriveFile[]>(['admin-folder-files', folderId]) ?? [];
+  }, [queryClient]);
 
   const rootFolders = useMemo(
     () => allFolders.filter(f => !f.parent_id || f.depth === 0).sort((a, b) => a.order_index - b.order_index),
