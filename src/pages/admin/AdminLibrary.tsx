@@ -756,7 +756,8 @@ export default function AdminLibrary() {
       const { error } = await (supabase as any)
         .from('drive_files').update({ is_premium: toPremium }).in('id', ids);
       if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ['admin-drive-files'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-folder-files'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-files-stats'] });
       queryClient.invalidateQueries({ queryKey: ['drive-files'] });
       toast({ title: toPremium ? '🔒 تم التحويل للمدفوع' : '🔓 تم التحويل للمجاني', description: `${ids.length} ملف` });
       clearSelection();
