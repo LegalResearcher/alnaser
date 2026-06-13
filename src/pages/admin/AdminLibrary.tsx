@@ -781,19 +781,21 @@ export default function AdminLibrary() {
     dragFile.current = null;
     if (srcFolderId === targetFolderId) return;
     try {
-      const maxOrder = (filesMap[targetFolderId] ?? [])
+      const maxOrder = getCachedFolderFiles(targetFolderId)
         .reduce((max, f) => Math.max(max, f.order_index), -1) + 1;
       const { error } = await (supabase as any)
         .from('drive_files').update({ folder_id: targetFolderId, order_index: maxOrder }).eq('id', file.id);
       if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ['admin-drive-files'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-folder-files', srcFolderId] });
+      queryClient.invalidateQueries({ queryKey: ['admin-folder-files', targetFolderId] });
+      queryClient.invalidateQueries({ queryKey: ['admin-files-stats'] });
       queryClient.invalidateQueries({ queryKey: ['drive-files'] });
       const targetName = allFolders.find(f => f.drive_id === targetFolderId)?.name ?? targetFolderId;
       toast({ title: '📁 تم النقل', description: `"${file.name.replace(/\.pdf$/i, '')}" → ${targetName}` });
     } catch (e: any) {
       toast({ title: '❌ فشل النقل', description: e.message, variant: 'destructive' });
     }
-  }, [filesMap, allFolders]);
+  }, [getCachedFolderFiles, allFolders, queryClient, toast]);
 
   const handleDragStartFolder = useCallback((f: DriveFolder) => {
     dragFolder.current = f;
