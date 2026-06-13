@@ -395,12 +395,10 @@ function PdfViewer({ file, isPremiumUnlocked, onClose, onRequestAccess, onDownlo
             <iframe src={embedSrc} className="w-full h-full border-0"
               title={file.name} onLoad={() => setLoading(false)} allow="autoplay" />
             {/* overlay يغطي أيقونة "فتح خارجي" التي يضيفها Google Drive في الزاوية */}
-            {isPreviewOnly && (
-              <div
-                className="absolute top-0 right-0 bg-background/95"
-                style={{ width: 48, height: 48, pointerEvents: 'all' }}
-              />
-            )}
+            <div
+              className="absolute top-0 right-0 bg-background/95"
+              style={{ width: 48, height: 48, pointerEvents: 'all' }}
+            />
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full gap-4 text-center p-8">
