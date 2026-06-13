@@ -819,7 +819,22 @@ function FolderContent({ currentFolderId, allFolders, isPremiumUnlocked, onFolde
     [allFolders, currentFolderId]
   );
   const { data: files = [], isLoading: filesLoading } = useFolderFiles(currentFolderId);
-  const filesX = files as DriveFileX[];
+
+  // ── إرث حالة المجلد الأب: إذا المجلد مدفوع → كل ملفاته تُعامَل كمدفوعة ──
+  const currentFolder = useMemo(
+    () => allFolders.find(f => f.drive_id === currentFolderId),
+    [allFolders, currentFolderId]
+  );
+  const folderIsPremium = !!currentFolder?.is_premium;
+
+  const filesX = useMemo(
+    () => (files as DriveFileX[]).map(file => ({
+      ...file,
+      is_premium:      folderIsPremium ? true : file.is_premium,
+      download_locked: folderIsPremium ? true : file.download_locked,
+    })),
+    [files, folderIsPremium]
+  );
   const isEmpty = !filesLoading && subFolders.length === 0 && filesX.length === 0;
 
   const childCountMap = useMemo(() => {
