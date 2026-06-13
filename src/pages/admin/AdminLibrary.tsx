@@ -441,7 +441,7 @@ function FileRow({
 // مكوّن: عقدة المجلد (تكرارية) — مع DnD + فلتر + تحديد جماعي
 // ─────────────────────────────────────────────────────────────
 function FolderNode({
-  folder, allFolders, filesMap, depth, isFirst, isLast,
+  folder, allFolders, depth, isFirst, isLast,
   onAddSubFolder, onEditFolder, onDeleteFolder, onToggleFolderPremium,
   onMoveFolderUp, onMoveFolderDown,
   onAddFile, onEditFile, onDeleteFile, onToggleFilePremium,
@@ -452,7 +452,7 @@ function FolderNode({
   premiumFilter,
 }: {
   folder: DriveFolder; allFolders: DriveFolder[];
-  filesMap: Record<string, DriveFile[]>; depth: number;
+  depth: number;
   isFirst: boolean; isLast: boolean;
   onAddSubFolder: (pid: string, pname: string) => void;
   onEditFolder: (f: DriveFolder) => void;
@@ -482,7 +482,22 @@ function FolderNode({
     () => allFolders.filter(f => f.parent_id === folder.drive_id).sort((a, b) => a.order_index - b.order_index),
     [allFolders, folder.drive_id]
   );
-  const rawFiles = filesMap[folder.drive_id] ?? [];
+
+  // جلب الملفات عند الفتح فقط (lazy loading)
+  const { data: rawFiles = [], isLoading: filesLoading } = useQuery<DriveFile[]>({
+    queryKey: ['admin-folder-files', folder.drive_id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('drive_files')
+        .select('*')
+        .eq('folder_id', folder.drive_id)
+        .order('order_index');
+      if (error) throw error;
+      return data;
+    },
+    enabled: expanded,
+    staleTime: 1000 * 60 * 5,
+  });
 
   // تطبيق فلتر الحالة على الملفات
   const files = useMemo(() => {
@@ -491,7 +506,6 @@ function FolderNode({
     return rawFiles;
   }, [rawFiles, premiumFilter]);
 
-  const hasChildren = subFolders.length > 0 || rawFiles.length > 0;
   const indentPx = depth * 20;
 
   return (
