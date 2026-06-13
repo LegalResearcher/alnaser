@@ -14,7 +14,7 @@ import { useState, useMemo, useCallback, useRef } from 'react';
 import { clearAppCache } from '@/hooks/useCachedQuery';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import {
