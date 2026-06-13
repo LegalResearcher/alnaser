@@ -346,13 +346,14 @@ function PdfViewer({ file, isPremiumUnlocked, onClose, onRequestAccess, onDownlo
           {isPreviewOnly && <PremiumLabel />}
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {file.view_url && (
+          {/* زر فتح خارجياً — للمشتركين فقط */}
+          {file.view_url && !isPreviewOnly && (
             <a href={file.view_url} target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-muted text-foreground hover:bg-muted/80 transition-colors border border-border">
               <ExternalLink className="w-3.5 h-3.5" /><span className="hidden sm:inline">فتح خارجياً</span>
             </a>
           )}
-          {/* زر التحميل — مخفي للمحتوى المدفوع غير المفتوح */}
+          {/* زر التحميل — يظهر دائماً، لكن يفتح رسالة الاشتراك لغير المشتركين */}
           {file.download_url && !isPreviewOnly && (
             <a href={file.download_url} target="_blank" rel="noopener noreferrer"
               onClick={onDownload}
@@ -360,12 +361,18 @@ function PdfViewer({ file, isPremiumUnlocked, onClose, onRequestAccess, onDownlo
               <Download className="w-3.5 h-3.5" /><span>تحميل</span>
             </a>
           )}
-          {isPreviewOnly && (
-            <button onClick={onRequestAccess}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black text-white transition-all"
-              style={{ background: 'linear-gradient(135deg, #d97706, #f59e0b)', boxShadow: '0 3px 10px rgba(217,119,6,0.4)' }}>
-              <Crown className="w-3.5 h-3.5" /><span>اشترك للتحميل</span>
+          {file.download_url && isPreviewOnly && (
+            <button
+              onClick={onRequestAccess}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-primary">
+              <Download className="w-3.5 h-3.5" /><span>تحميل</span>
             </button>
+          )}
+            <a href={file.download_url} target="_blank" rel="noopener noreferrer"
+              onClick={onDownload}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-primary">
+              <Download className="w-3.5 h-3.5" /><span>تحميل</span>
+            </a>
           )}
         </div>
       </div>
@@ -381,8 +388,17 @@ function PdfViewer({ file, isPremiumUnlocked, onClose, onRequestAccess, onDownlo
           </div>
         )}
         {embedSrc ? (
-          <iframe src={embedSrc} className="w-full h-full border-0"
-            title={file.name} onLoad={() => setLoading(false)} allow="autoplay" />
+          <div className="relative w-full h-full">
+            <iframe src={embedSrc} className="w-full h-full border-0"
+              title={file.name} onLoad={() => setLoading(false)} allow="autoplay" />
+            {/* overlay يغطي أيقونة "فتح خارجي" التي يضيفها Google Drive في الزاوية */}
+            {isPreviewOnly && (
+              <div
+                className="absolute top-0 right-0 bg-background/95"
+                style={{ width: 48, height: 48, pointerEvents: 'all' }}
+              />
+            )}
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full gap-4 text-center p-8">
             <FileText className="w-8 h-8 text-muted-foreground/50" />
