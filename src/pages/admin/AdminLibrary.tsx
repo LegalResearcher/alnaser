@@ -903,7 +903,7 @@ export default function AdminLibrary() {
     } catch (e: any) {
       toast({ title: '❌ خطأ', description: e.message, variant: 'destructive' });
     }
-  }, [fileModal, filesMap]);
+  }, [fileModal, getCachedFolderFiles]);
 
   // ── حذف ──
   const handleConfirmDelete = async () => {
