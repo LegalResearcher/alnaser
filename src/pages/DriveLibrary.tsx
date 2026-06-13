@@ -289,9 +289,10 @@ function FileCard({ file, onClick, searchQuery }: {
 // ─────────────────────────────────────────────────────────────
 // عارض PDF — مع قيد لوضع المعاينة (بدون تحميل)
 // ─────────────────────────────────────────────────────────────
-function PdfViewer({ file, isPremiumUnlocked, onClose, onRequestAccess }: {
+function PdfViewer({ file, isPremiumUnlocked, onClose, onRequestAccess, onDownload }: {
   file: DriveFileX; isPremiumUnlocked: boolean;
   onClose: () => void; onRequestAccess: () => void;
+  onDownload: () => void;
 }) {
   const [loading, setLoading] = useState(true);
 
@@ -354,6 +355,7 @@ function PdfViewer({ file, isPremiumUnlocked, onClose, onRequestAccess }: {
           {/* زر التحميل — مخفي للمحتوى المدفوع غير المفتوح */}
           {file.download_url && !isPreviewOnly && (
             <a href={file.download_url} target="_blank" rel="noopener noreferrer"
+              onClick={onDownload}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-primary">
               <Download className="w-3.5 h-3.5" /><span>تحميل</span>
             </a>
@@ -918,36 +920,14 @@ export default function DriveLibrary() {
     return map;
   }, [foldersX]);
 
-  // ── التحقق من أن المجلد أو أي أب له ليس مدفوعاً (حماية البحث) ──
-  const hasPremiumAncestor = useMemo(() => {
-    const cache: Record<string, boolean> = {};
-    const check = (folderId: string | null | undefined, depth = 0): boolean => {
-      if (!folderId || depth > 15) return false;
-      if (folderId in cache) return cache[folderId];
-      const folder = foldersX.find(f => f.drive_id === folderId);
-      if (!folder) return false;
-      const result = !!folder.is_premium || check(folder.parent_id, depth + 1);
-      cache[folderId] = result;
-      return result;
-    };
-    const map: Record<string, boolean> = {};
-    foldersX.forEach(f => { map[f.drive_id] = check(f.parent_id); });
-    return map;
-  }, [foldersX]);
-
   const searchResults = useMemo<SearchResult[]>(() => {
     const q = searchQuery.trim();
     if (!q || q.length < 2) return [];
     const lower = q.toLowerCase();
     return foldersX
-      .filter(f => {
-        if (!f.name.toLowerCase().includes(lower)) return false;
-        // إخفاء المجلدات المدفوعة وأبناء المجلدات المدفوعة إذا لم يكن المستخدم مشتركاً
-        if (!isPremiumUnlocked && (f.is_premium || hasPremiumAncestor[f.drive_id])) return false;
-        return true;
-      })
+      .filter(f => f.name.toLowerCase().includes(lower))
       .map(f => ({ type: 'folder' as const, item: f, path: folderPathMap[f.drive_id] || '' }));
-  }, [searchQuery, foldersX, folderPathMap, isPremiumUnlocked, hasPremiumAncestor]);
+  }, [searchQuery, foldersX, folderPathMap]);
 
   const isSearching = searchQuery.trim().length >= 2;
 
@@ -964,18 +944,27 @@ export default function DriveLibrary() {
     setBreadcrumbs(prev => [...prev, { drive_id: folder.drive_id, name: folder.name }]);
   };
 
+  // ── تسجيل إحصائيات المشاهدة والتحميل ──
+  const incrementFileStat = async (fileId: number, statType: 'view' | 'download') => {
+    try {
+      await (supabase as any).rpc('increment_file_stat', {
+        p_file_id: fileId,
+        p_stat_type: statType,
+      });
+    } catch (_) {
+      // لا نوقف تجربة المستخدم إذا فشل العداد
+    }
+  };
+
   // ── فتح ملف ──
   const handleFileClick = (file: DriveFileX) => {
     if (file.is_premium && !isPremiumUnlocked) {
-      // ملف مدفوع وغير مشترك:
-      // نحفظ الملف معلّقاً ونفتح مودال كلمة المرور
-      // (يفتح عارض PDF تلقائياً بعد نجاح التحقق)
       setPendingFile(file);
       setPendingFolder(null);
       setShowPasswordModal(true);
     } else {
-      // مجاني أو مشترك → نفتح العارض مباشرة
       setOpenFile(file);
+      incrementFileStat(file.id, 'view'); // ✅ تسجيل مشاهدة
     }
   };
 
@@ -991,6 +980,7 @@ export default function DriveLibrary() {
       setPendingFolder(null);
     } else if (pendingFile) {
       setOpenFile(pendingFile);
+      incrementFileStat(pendingFile.id, 'view'); // ✅ تسجيل مشاهدة بعد الاشتراك
       setPendingFile(null);
     }
   };
@@ -1152,6 +1142,7 @@ export default function DriveLibrary() {
           isPremiumUnlocked={isPremiumUnlocked}
           onClose={() => setOpenFile(null)}
           onRequestAccess={handleRequestAccessFromViewer}
+          onDownload={() => incrementFileStat(openFile.id, 'download')}
         />
       )}
 
