@@ -348,30 +348,17 @@ function PdfViewer({ file, isPremiumUnlocked, onClose, onRequestAccess, onDownlo
           {isPreviewOnly && <PremiumLabel />}
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {/* زر فتح خارجياً — للمشتركين فقط (مدفوع كلياً أو download_locked) */}
-          {file.view_url && !isPreviewOnly && !isDownloadLocked && (
-            <a href={file.view_url} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-muted text-foreground hover:bg-muted/80 transition-colors border border-border">
-              <ExternalLink className="w-3.5 h-3.5" /><span className="hidden sm:inline">فتح خارجياً</span>
-            </a>
-          )}
-          {/* حالة 1: مجاني كلياً — تحميل مباشر */}
-          {file.download_url && !isPreviewOnly && !isDownloadLocked && (
+          {/* زر فتح خارجياً — مخفي دائماً */}
+          {/* تحميل مباشر — للمشتركين فقط */}
+          {file.download_url && isPremiumUnlocked && (
             <a href={file.download_url} target="_blank" rel="noopener noreferrer"
               onClick={onDownload}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-primary">
               <Download className="w-3.5 h-3.5" /><span>تحميل</span>
             </a>
           )}
-          {/* حالة 2: قراءة مجانية + تحميل مدفوع */}
-          {file.download_url && isDownloadLocked && (
-            <button onClick={onRequestAccess}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-primary">
-              <Download className="w-3.5 h-3.5" /><span>تحميل</span>
-            </button>
-          )}
-          {/* حالة 3: مدفوع كلياً — اشتراك للقراءة والتحميل */}
-          {file.download_url && isPreviewOnly && (
+          {/* زر تحميل → رسالة اشتراك — لغير المشتركين دائماً */}
+          {file.download_url && !isPremiumUnlocked && (
             <button onClick={onRequestAccess}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-primary">
               <Download className="w-3.5 h-3.5" /><span>تحميل</span>
@@ -820,12 +807,17 @@ function FolderContent({ currentFolderId, allFolders, isPremiumUnlocked, onFolde
   );
   const { data: files = [], isLoading: filesLoading } = useFolderFiles(currentFolderId);
 
-  // ── إرث حالة المجلد الأب: إذا المجلد مدفوع → كل ملفاته تُعامَل كمدفوعة ──
-  const currentFolder = useMemo(
-    () => allFolders.find(f => f.drive_id === currentFolderId),
-    [allFolders, currentFolderId]
-  );
-  const folderIsPremium = !!currentFolder?.is_premium;
+  // ── إرث حالة المجلد الأب: إذا أي مجلد في سلسلة الآباء مدفوع → الملفات مدفوعة ──
+  const folderIsPremium = useMemo(() => {
+    let folderId: string | null = currentFolderId;
+    while (folderId) {
+      const folder = allFolders.find(f => f.drive_id === folderId);
+      if (!folder) break;
+      if (folder.is_premium) return true;
+      folderId = folder.parent_id;
+    }
+    return false;
+  }, [allFolders, currentFolderId]);
 
   const filesX = useMemo(
     () => (files as DriveFileX[]).map(file => ({
