@@ -320,6 +320,8 @@ function PdfViewer({ file, isPremiumUnlocked, onClose, onRequestAccess, onDownlo
   const cleanName = file.name.replace(/\.pdf$/i, '');
   // الملف مقيّد إذا كان مدفوعاً والمستخدم ليس مشتركاً
   const isPreviewOnly = !!file.is_premium && !isPremiumUnlocked;
+  // قراءة مجانية + تحميل مدفوع فقط
+  const isDownloadLocked = !!file.download_locked && !isPremiumUnlocked;
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -346,24 +348,31 @@ function PdfViewer({ file, isPremiumUnlocked, onClose, onRequestAccess, onDownlo
           {isPreviewOnly && <PremiumLabel />}
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {/* زر فتح خارجياً — للمشتركين فقط */}
-          {file.view_url && !isPreviewOnly && (
+          {/* زر فتح خارجياً — للمشتركين فقط (مدفوع كلياً أو download_locked) */}
+          {file.view_url && !isPreviewOnly && !isDownloadLocked && (
             <a href={file.view_url} target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-muted text-foreground hover:bg-muted/80 transition-colors border border-border">
               <ExternalLink className="w-3.5 h-3.5" /><span className="hidden sm:inline">فتح خارجياً</span>
             </a>
           )}
-          {/* زر التحميل — يظهر دائماً، لكن يفتح رسالة الاشتراك لغير المشتركين */}
-          {file.download_url && !isPreviewOnly && (
+          {/* حالة 1: مجاني كلياً — تحميل مباشر */}
+          {file.download_url && !isPreviewOnly && !isDownloadLocked && (
             <a href={file.download_url} target="_blank" rel="noopener noreferrer"
               onClick={onDownload}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-primary">
               <Download className="w-3.5 h-3.5" /><span>تحميل</span>
             </a>
           )}
+          {/* حالة 2: قراءة مجانية + تحميل مدفوع */}
+          {file.download_url && isDownloadLocked && (
+            <button onClick={onRequestAccess}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-primary">
+              <Download className="w-3.5 h-3.5" /><span>تحميل</span>
+            </button>
+          )}
+          {/* حالة 3: مدفوع كلياً — اشتراك للقراءة والتحميل */}
           {file.download_url && isPreviewOnly && (
-            <button
-              onClick={onRequestAccess}
+            <button onClick={onRequestAccess}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-primary">
               <Download className="w-3.5 h-3.5" /><span>تحميل</span>
             </button>
