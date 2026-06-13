@@ -609,27 +609,34 @@ function FolderNode({
               fileDragOver && 'ring-2 ring-primary ring-dashed bg-primary/5 p-1'
             )}
           >
-            {files.map((file, idx) => (
-              <div key={file.drive_id} className="mb-1">
-                <FileRow
-                  file={file}
-                  isFirst={idx === 0} isLast={idx === files.length - 1}
-                  onEdit={() => onEditFile(file, folder.name)}
-                  onDelete={() => onDeleteFile(file)}
-                  onTogglePremium={() => onToggleFilePremium(file)}
-                  onMoveUp={() => onMoveFileUp(file, folder.drive_id)}
-                  onMoveDown={() => onMoveFileDown(file, folder.drive_id)}
-                  selected={selectedFiles.has(file.id)}
-                  onToggleSelect={() => onToggleFileSelect(file.id)}
-                  onDragStart={(e) => { e.stopPropagation(); onDragStartFile(file, folder.drive_id); }}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => { e.preventDefault(); onDropFile(folder.drive_id); }}
-                />
+            {filesLoading ? (
+              <div className="flex items-center gap-2 py-2 px-3">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">جاري التحميل...</span>
               </div>
-            ))}
+            ) : (
+              files.map((file, idx) => (
+                <div key={file.drive_id} className="mb-1">
+                  <FileRow
+                    file={file}
+                    isFirst={idx === 0} isLast={idx === files.length - 1}
+                    onEdit={() => onEditFile(file, folder.name)}
+                    onDelete={() => onDeleteFile(file)}
+                    onTogglePremium={() => onToggleFilePremium(file)}
+                    onMoveUp={() => onMoveFileUp(file, folder.drive_id)}
+                    onMoveDown={() => onMoveFileDown(file, folder.drive_id)}
+                    selected={selectedFiles.has(file.id)}
+                    onToggleSelect={() => onToggleFileSelect(file.id)}
+                    onDragStart={(e) => { e.stopPropagation(); onDragStartFile(file, folder.drive_id); }}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => { e.preventDefault(); onDropFile(folder.drive_id); }}
+                  />
+                </div>
+              ))
+            )}
           </div>
 
-          {subFolders.length === 0 && rawFiles.length === 0 && (
+          {!filesLoading && subFolders.length === 0 && rawFiles.length === 0 && (
             <div className="flex items-center gap-2 py-2 px-3 rounded-xl border border-dashed border-border">
               <span className="text-xs text-muted-foreground">مجلد فارغ —</span>
               <button onClick={() => onAddFile(folder.drive_id, folder.name)}
