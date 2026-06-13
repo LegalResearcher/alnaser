@@ -397,7 +397,11 @@ function PdfViewer({ file, isPremiumUnlocked, onClose, onRequestAccess, onDownlo
             {/* overlay يغطي أيقونة "فتح خارجي" التي يضيفها Google Drive في الزاوية */}
             <div
               className="absolute top-0 right-0 bg-background/95"
-              style={{ width: 48, height: 48, pointerEvents: 'all' }}
+              style={{ width: 56, height: 56, pointerEvents: 'all', zIndex: 10 }}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); }}
             />
           </div>
         ) : (
