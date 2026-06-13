@@ -1020,8 +1020,8 @@ export default function AdminLibrary() {
           {[
             { label: 'إجمالي المجلدات', value: allFolders.length,   color: 'text-blue-600',    bg: 'bg-blue-50 dark:bg-blue-950/30'    },
             { label: 'مجلدات مدفوعة',  value: premiumFolders,        color: 'text-amber-600',   bg: 'bg-amber-50 dark:bg-amber-950/30'  },
-            { label: 'إجمالي الملفات', value: allFiles.length,       color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
-            { label: 'ملفات مدفوعة',   value: premiumFiles,          color: 'text-rose-600',    bg: 'bg-rose-50 dark:bg-rose-950/30'    },
+            { label: 'إجمالي الملفات', value: filesStats?.total ?? 0,   color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
+            { label: 'ملفات مدفوعة',   value: filesStats?.premium ?? 0, color: 'text-rose-600',    bg: 'bg-rose-50 dark:bg-rose-950/30'    },
           ].map(stat => (
             <div key={stat.label} className={cn('rounded-2xl p-4 border border-border', stat.bg)}>
               <p className={cn('text-2xl font-black', stat.color)}>{isLoading ? '…' : stat.value}</p>
