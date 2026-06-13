@@ -1034,8 +1034,8 @@ export default function AdminLibrary() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
             { label: 'مشتركون نشطون',   value: activeSubscribers, color: 'text-violet-600',  bg: 'bg-violet-50 dark:bg-violet-950/30',  icon: <Users className="w-4 h-4" />,      desc: 'كلمة مرور مستخدمة' },
-            { label: 'إجمالي المشاهدات', value: totalViews,        color: 'text-sky-600',     bg: 'bg-sky-50 dark:bg-sky-950/30',        icon: <Eye className="w-4 h-4" />,        desc: 'فتح ملف' },
-            { label: 'إجمالي التحميلات', value: totalDownloads,    color: 'text-teal-600',    bg: 'bg-teal-50 dark:bg-teal-950/30',      icon: <Download className="w-4 h-4" />,   desc: 'تحميل ملف' },
+            { label: 'إجمالي المشاهدات', value: filesStats?.views ?? 0,     color: 'text-sky-600',     bg: 'bg-sky-50 dark:bg-sky-950/30',        icon: <Eye className="w-4 h-4" />,        desc: 'فتح ملف' },
+            { label: 'إجمالي التحميلات', value: filesStats?.downloads ?? 0, color: 'text-teal-600',    bg: 'bg-teal-50 dark:bg-teal-950/30',      icon: <Download className="w-4 h-4" />,   desc: 'تحميل ملف' },
           ].map(stat => (
             <div key={stat.label} className={cn('rounded-2xl p-4 border border-border flex items-center gap-4', stat.bg)}>
               <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0 opacity-80', stat.color,
