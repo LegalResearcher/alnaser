@@ -368,12 +368,6 @@ function PdfViewer({ file, isPremiumUnlocked, onClose, onRequestAccess, onDownlo
               <Download className="w-3.5 h-3.5" /><span>تحميل</span>
             </button>
           )}
-            <a href={file.download_url} target="_blank" rel="noopener noreferrer"
-              onClick={onDownload}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-primary">
-              <Download className="w-3.5 h-3.5" /><span>تحميل</span>
-            </a>
-          )}
         </div>
       </div>
 
