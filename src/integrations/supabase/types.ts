@@ -514,9 +514,11 @@ export type Database = {
       drive_files: {
         Row: {
           created_at: string
+          download_count: number
           download_url: string | null
           drive_id: string
           embed_url: string | null
+          extracted_title: string | null
           folder_id: string
           id: number
           is_premium: boolean
@@ -524,13 +526,16 @@ export type Database = {
           name: string
           order_index: number
           updated_at: string
+          view_count: number
           view_url: string | null
         }
         Insert: {
           created_at?: string
+          download_count?: number
           download_url?: string | null
           drive_id: string
           embed_url?: string | null
+          extracted_title?: string | null
           folder_id: string
           id?: number
           is_premium?: boolean
@@ -538,13 +543,16 @@ export type Database = {
           name: string
           order_index?: number
           updated_at?: string
+          view_count?: number
           view_url?: string | null
         }
         Update: {
           created_at?: string
+          download_count?: number
           download_url?: string | null
           drive_id?: string
           embed_url?: string | null
+          extracted_title?: string | null
           folder_id?: string
           id?: number
           is_premium?: boolean
@@ -552,6 +560,7 @@ export type Database = {
           name?: string
           order_index?: number
           updated_at?: string
+          view_count?: number
           view_url?: string | null
         }
         Relationships: [
@@ -1402,6 +1411,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_file_stat: {
+        Args: { p_file_id: number; p_stat_type: string }
+        Returns: undefined
       }
       is_admin_or_editor: { Args: { _user_id: string }; Returns: boolean }
       record_question_answer: {

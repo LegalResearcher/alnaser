@@ -27,6 +27,8 @@ export interface DriveFile {
   download_url: string | null;
   order_index: number;
   is_premium: boolean;
+  view_count: number;
+  download_count: number;
 }
 
 /** جلب كل المجلدات مرة واحدة — يُخزَّن في cache */
