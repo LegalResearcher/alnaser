@@ -49,6 +49,15 @@ jobs:
           }
           CAPEOF
 
+      - name: Fix share URLs for mobile
+        run: |
+          sed -i 's/window\.location\.origin/((window as any).Capacitor ? "https:\/\/www.alnaseer.org" : window.location.origin)/g' src/pages/ExamResult.tsx
+          sed -i 's/window\.location\.origin/((window as any).Capacitor ? "https:\/\/www.alnaseer.org" : window.location.origin)/g' src/pages/ExamPage.tsx
+          sed -i 's/window\.location\.origin/((window as any).Capacitor ? "https:\/\/www.alnaseer.org" : window.location.origin)/g' src/pages/BattleRoom.tsx
+          sed -i 's/window\.location\.origin/((window as any).Capacitor ? "https:\/\/www.alnaseer.org" : window.location.origin)/g' src/pages/BattleCreate.tsx
+          sed -i 's/window\.location\.origin/((window as any).Capacitor ? "https:\/\/www.alnaseer.org" : window.location.origin)/g' src/pages/SharedQuestion.tsx
+          sed -i 's/window\.location\.href/(((window as any).Capacitor ? "https:\/\/www.alnaseer.org" : window.location.origin) + window.location.hash)/g' src/pages/ChallengePage.tsx
+
       - name: Build Vite project
         run: npm run build
 
