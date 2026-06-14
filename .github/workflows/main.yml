@@ -27,15 +27,24 @@ jobs:
           echo "VITE_SUPABASE_PROJECT_ID=${{ secrets.VITE_SUPABASE_PROJECT_ID }}" >> .env
       - name: Install dependencies
         run: npm install --legacy-peer-deps
+      - name: Install Capacitor packages
+        run: npm install --legacy-peer-deps @capacitor/core @capacitor/android @capacitor/cli
+      - name: Create capacitor config
+        run: |
+          cat > capacitor.config.json << 'EOF'
+          {
+            "appId": "org.alnaseer.legal",
+            "appName": "منصة الناصر",
+            "webDir": "dist",
+            "server": {
+              "androidScheme": "https"
+            }
+          }
+          EOF
       - name: Build Vite project
         run: npm run build
-      - name: Install Capacitor CLI
-        run: npm install -g @capacitor/cli
       - name: Add Android platform
-        run: |
-          if [ ! -d "android" ]; then
-            npx cap add android
-          fi
+        run: npx cap add android
       - name: Sync Capacitor
         run: npx cap sync android
       - name: Grant execute permission
