@@ -3,6 +3,7 @@
  * Page: About — عن المنصة
  */
 
+import { useState, useEffect } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import {
   Scale, BookOpen, Target, Users, Award, Code2,
@@ -10,8 +11,23 @@ import {
   Swords, MessageSquare, Zap, ChevronLeft,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 const About = () => {
+  const [questionsCount, setQuestionsCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    supabase
+      .from('questions')
+      .select('id', { count: 'exact', head: true })
+      .then(({ count }) => { if (count) setQuestionsCount(count); });
+  }, []);
+
+  // تنسيق العدد بالأرقام العربية مع إضافة + في النهاية
+  const formattedCount = questionsCount
+    ? `+${questionsCount.toLocaleString('ar-EG')}`
+    : '+25,000';
+
   return (
     <MainLayout>
       <section className="py-12 md:py-24 min-h-screen bg-slate-50/50" dir="rtl">
@@ -30,7 +46,9 @@ const About = () => {
               </span>
             </h1>
             <p className="text-slate-500 text-lg max-w-2xl mx-auto leading-relaxed">
-              منصة رقمية مستقلة تضم أكثر من 25,000 سؤال مؤتمت ومكتبة قانونية متكاملة لتدريب وتقييم طلاب الشريعة والقانون — تتضمن أقساماً مجانية ومدفوعة.
+              منصة رقمية مستقلة تضم أكثر من{' '}
+              <span className="font-black text-primary">{formattedCount} سؤال</span>{' '}
+              مؤتمت ومكتبة قانونية متكاملة لتدريب وتقييم طلاب الشريعة والقانون، ودعم الباحثين والمحامين — تتضمن أقساماً مجانية ومدفوعة.
             </p>
           </div>
 
@@ -65,7 +83,7 @@ const About = () => {
               <h3 className="text-xl font-black text-slate-900">من نحن</h3>
             </div>
             <p className="text-slate-600 leading-relaxed text-base">
-              منصة الناصر القانونية هي منصة رقمية مستقلة متخصصة في التدريب القانوني وأتمتة مراجعة الاختبارات لطلاب الشريعة والقانون في اليمن. تم تطوير المنصة كأداة تقنية مساعدة بإشراف وإعداد المؤسس والمطور القانوني: أ. معين الناصر، لتمكين الطلاب والباحثين من تقييم قدراتهم وتطوير ملكتهم القانونية عبر بيئة تفاعلية ذكية.
+              منصة الناصر القانونية هي منصة رقمية مستقلة متخصصة في التدريب القانوني وأتمتة مراجعة الاختبارات في اليمن. تم تطوير المنصة كأداة تقنية مساعدة بإشراف وإعداد المؤسس والمطور القانوني: أ. معين الناصر، لتمكين الطلاب والمحامين والباحثين من تقييم قدراتهم وتطوير ملكتهم القانونية عبر بيئة تفاعلية ذكية.
             </p>
             <p className="text-slate-600 leading-relaxed text-base mt-4">
               تتيح المنصة للمستخدمين الاستفادة من خدماتها عبر مسارات مرنة تشمل أقساماً مجانية بالكامل تضمن حق الوصول المعرفي الأساسي للجميع، إلى جانب أقسام وخدمات متقدمة مدفوعة توفر مزايا تدريبية مخصصة وأنظمة مراجعة أعمق للمشتركين.
@@ -92,7 +110,7 @@ const About = () => {
               {[
                 {
                   icon: BookOpen,
-                  title: '+25,000 سؤال قانوني',
+                  title: `${formattedCount} سؤال قانوني`,
                   desc: 'بنك أسئلة ضخم مصمم بدقة لمحاكاة الامتحانات الرسمية وتغطية كافة فروع القانون',
                   color: 'bg-blue-50 text-blue-600',
                 },
