@@ -1489,7 +1489,7 @@ const BattleRoom = () => {
 
     // platform name
     ctx.font = 'bold 16px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.9)';
-    ctx.fillText('منصة الباحث القانوني — غرفة المنافسة', W / 2, 165);
+    ctx.fillText('منصة الناصر القانونية — غرفة المنافسة', W / 2, 165);
 
     // subject
     ctx.font = '13px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.65)';
