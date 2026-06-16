@@ -281,7 +281,7 @@ const ExamResult = () => {
     ctx.font = 'bold 50px Arial'; ctx.fillStyle = 'white';
     ctx.fillText(state.passed ? '🏆' : '🎖️', W/2, 135);
     ctx.font = 'bold 18px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.9)';
-    ctx.fillText('منصة الباحث القانوني', W/2, 220);
+    ctx.fillText('منصة الناصر القانونية', W/2, 220);
     ctx.font = '14px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.7)';
     ctx.fillText(`${state.levelName||''} • ${state.subjectName||''}`, W/2, 250);
     ctx.font = 'bold 24px Arial'; ctx.fillStyle = 'white';
