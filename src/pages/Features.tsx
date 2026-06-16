@@ -3,8 +3,10 @@
  * Component: Features — صفحة المزايا
  */
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useCachedQuery } from '@/hooks/useCachedQuery';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { cn } from '@/lib/utils';
 import {
@@ -18,7 +20,10 @@ import {
 } from 'lucide-react';
 
 /* ─────────────── بيانات المزايا ─────────────── */
-const features = [
+const buildFeatures = (questionsCount?: number, subjectsCount?: number) => {
+  const q = questionsCount ? `+${questionsCount.toLocaleString('ar-EG')}` : '+١٠,٤٩٢';
+  const s = subjectsCount  ? String(subjectsCount)                        : '47';
+  return [
   {
     id: 'bank',
     icon: BookOpen,
@@ -29,7 +34,7 @@ const features = [
     accent: 'text-blue-600 dark:text-blue-400',
     tag: 'الأساس',
     title: 'بنك أسئلة ضخم',
-    short: '+١٠,٤٩٢ سؤال في 47 مادة موزعة على ٤ مستويات',
+    short: `${q} سؤال في ${s} مادة موزعة على ٤ مستويات`,
     details: [
       'جميع الأسئلة من اختبارات جامعة صنعاء الفعلية',
       'مُصنَّفة حسب المستوى والمادة والسنة والنموذج',
@@ -318,15 +323,11 @@ const features = [
       'اسمك يُسجَّل مراجعاً في السؤال ذاته إن ثبتت صحة ملاحظتك',
     ],
   },
-];
+  ]; // end return
+}; // end buildFeatures
 
-/* ─────────────── Stats ─────────────── */
-const stats = [
-  { icon: BookOpen,      value: '+١٠,٤٩٢', label: 'سؤال قانوني',       color: 'text-blue-500' },
-  { icon: Target,        value: '47',       label: 'مادة دراسية',       color: 'text-violet-500' },
-  { icon: Users,         value: '٤',        label: 'مستويات أكاديمية',  color: 'text-emerald-500' },
-  { icon: Star,          value: '١٣',       label: 'مزايا حصرية',       color: 'text-amber-500' },
-];
+/* ─────────────── Stats (type for StatItem) ─────────────── */
+type StatEntry = { icon: React.ElementType; value: string; label: string; color: string };
 
 /* ─────────────── تحويل الأرقام العربية إلى إنجليزية ─────────────── */
 function arabicToInt(str: string): number {
@@ -358,7 +359,7 @@ function useCountUp(target: number, duration = 1800, start = false) {
 }
 
 /* ─────────────── Stat Item with count-up ─────────────── */
-function StatItem({ stat, animate }: { stat: typeof stats[0]; animate: boolean }) {
+function StatItem({ stat, animate }: { stat: StatEntry; animate: boolean }) {
   const Icon = stat.icon;
   const numericTarget = arabicToInt(stat.value);
   const count = useCountUp(numericTarget, 1800, animate);
@@ -385,6 +386,33 @@ function StatItem({ stat, animate }: { stat: typeof stats[0]; animate: boolean }
 /* ─────────────── الصفحة الرئيسية ─────────────── */
 const FeaturesPage = () => {
   const navigate = useNavigate();
+
+  // ── جلب الإحصائيات الحية من Supabase ──
+  const { data: liveStats } = useCachedQuery<{ questionsCount: number; subjectsCount: number; studentsCount: number }>(
+    ['features-stats'],
+    async () => {
+      const [qRes, sRes, uRes] = await Promise.all([
+        supabase.from('questions').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+        supabase.from('subjects').select('id', { count: 'exact', head: true }),
+        supabase.from('student_profiles').select('id', { count: 'exact', head: true }),
+      ]);
+      return {
+        questionsCount: qRes.count || 0,
+        subjectsCount:  sRes.count || 0,
+        studentsCount:  uRes.count || 0,
+      };
+    }
+  );
+
+  const stats: StatEntry[] = [
+    { icon: BookOpen, value: liveStats ? `+${liveStats.questionsCount.toLocaleString('ar-EG')}` : '+١٠,٤٩٢', label: 'سؤال قانوني',      color: 'text-blue-500'    },
+    { icon: Target,   value: liveStats ? String(liveStats.subjectsCount)                         : '47',       label: 'مادة دراسية',      color: 'text-violet-500'  },
+    { icon: Users,    value: '٤',                                                                               label: 'مستويات أكاديمية', color: 'text-emerald-500' },
+    { icon: Star,     value: '١٣',                                                                              label: 'مزايا حصرية',      color: 'text-amber-500'   },
+  ];
+
+  const features = buildFeatures(liveStats?.questionsCount, liveStats?.subjectsCount);
+
   const [expandAll, setExpandAll] = useState(false);
   const [statsVisible, setStatsVisible] = useState(false);
   const statsRef = useRef<HTMLDivElement>(null);
@@ -541,7 +569,7 @@ const FeaturesPage = () => {
                       <span key={i} className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900 border-2 border-background flex items-center justify-center text-[8px]">👤</span>
                     ))}
                   </span>
-                  انضم لأكثر من <strong className="text-foreground">٢,٠٠٠ طالب</strong> يستعدون الآن
+                  انضم لأكثر من <strong className="text-foreground">{liveStats ? `${liveStats.studentsCount.toLocaleString('ar-EG')} طالب` : '٢,٠٠٠ طالب'}</strong> يستعدون الآن
                 </span>
               </p>
 
@@ -651,12 +679,12 @@ const FeaturesPage = () => {
               <div className="flex flex-wrap items-center justify-center gap-4 mb-7 text-xs text-muted-foreground font-semibold">
                 <span className="flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5 text-emerald-500" />
-                  +٢,٠٠٠ طالب نشط
+                  +{liveStats ? liveStats.studentsCount.toLocaleString('ar-EG') : '٢,٠٠٠'} طالب نشط
                 </span>
                 <span className="w-1 h-1 rounded-full bg-border" />
                 <span className="flex items-center gap-1.5">
                   <BookOpen className="w-3.5 h-3.5 text-blue-500" />
-                  +١٠,٤٩٢ سؤال
+                  +{liveStats ? liveStats.questionsCount.toLocaleString('ar-EG') : '١٠,٤٩٢'} سؤال
                 </span>
                 <span className="w-1 h-1 rounded-full bg-border" />
                 <span className="flex items-center gap-1.5">
