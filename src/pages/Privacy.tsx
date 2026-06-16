@@ -77,7 +77,7 @@ const Privacy = () => (
             سياسة <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-600">الخصوصية</span>
           </h1>
           <p className="text-muted-foreground text-base md:text-lg max-w-2xl mx-auto">
-            منصة <strong>الناصر — الباحث القانوني</strong> مبنية على مبدأ بسيط: لا نجمع بياناتك أصلاً. استخدم المنصة بحرية تامة دون أي قلق على خصوصيتك.
+            منصة <strong>الناصر القانونية</strong> مبنية على مبدأ بسيط: لا نجمع بياناتك أصلاً. استخدم المنصة بحرية تامة دون أي قلق على خصوصيتك.
           </p>
           <p className="text-xs text-muted-foreground">
             آخر تحديث: {new Date().toLocaleDateString('ar-YE', { year: 'numeric', month: 'long', day: 'numeric' })}
