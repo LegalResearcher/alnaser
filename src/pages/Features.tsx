@@ -500,7 +500,7 @@ const FeaturesPage = () => {
                 كل ما يميّز{' '}
                 <span className="relative inline-block text-transparent bg-clip-text"
                   style={{ backgroundImage: 'linear-gradient(135deg, hsl(217 91% 55%), hsl(199 89% 48%))' }}>
-                  الباحث القانوني
+                  منصة الناصر القانونية
                   {/* خط تحت العنوان */}
                   <span className="absolute -bottom-1 right-0 left-0 h-[3px] rounded-full opacity-60"
                     style={{ background: 'linear-gradient(90deg, hsl(217 91% 55%), hsl(199 89% 48%))' }} />
