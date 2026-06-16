@@ -169,7 +169,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             </Button>
             <div className="hidden md:flex flex-col">
               <h1 className="text-xl font-black text-slate-800 tracking-tight">مرحباً بك مجدداً</h1>
-              <p className="text-xs text-slate-500 font-medium">لوحة التحكم في منصة الباحث القانوني</p>
+              <p className="text-xs text-slate-500 font-medium">لوحة التحكم في منصة الناصر القانونية</p>
             </div>
           </div>
 
