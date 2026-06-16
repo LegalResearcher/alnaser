@@ -51,7 +51,7 @@ const About = () => {
               <h2 className="text-3xl md:text-4xl font-black mb-2">أ. معين الناصر</h2>
               <p className="text-white/70 font-bold text-sm mb-6">مؤسس منصة الناصر القانونية</p>
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 text-sm font-bold">
-                ⚖️ مجهود شخصي لخدمة طلاب الشريعة والقانون
+                ⚖️ ​"منصة رقمية مستقلة لتدريب وتقييم طلاب الشريعة والقانون"
               </div>
             </div>
           </div>
