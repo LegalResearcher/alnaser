@@ -18,6 +18,7 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import {
   useAllFolders,
   useFolderFiles,
+  useAllFileCounts,
   DriveFolder,
   DriveFile,
 } from '@/hooks/useDriveLibrary';
@@ -130,6 +131,23 @@ const ROOT_COLORS = [
   { icon: 'text-rose-500',    bg: 'bg-rose-500/10',    hover: 'hover:border-rose-400/50 hover:bg-rose-500/[0.04]',    ring: 'focus-visible:ring-rose-400/50',    arrowHover: 'group-hover:text-rose-500'    },
   { icon: 'text-cyan-500',    bg: 'bg-cyan-500/10',    hover: 'hover:border-cyan-400/50 hover:bg-cyan-500/[0.04]',    ring: 'focus-visible:ring-cyan-400/50',    arrowHover: 'group-hover:text-cyan-500'    },
 ];
+
+/**
+ * يحسب إجمالي عدد العناصر داخل مجلد معيّن: المجلدات الفرعية (على كل المستويات)
+ * + الملفات المباشرة في كل واحد منها. هذا يحل مشكلة ظهور "0 عناصر" للمجلدات
+ * التي تحتوي ملفات مباشرة بدون مجلدات فرعية.
+ */
+function getFolderItemCount(
+  folderId: string,
+  allFolders: DriveFolderX[],
+  fileCounts: Record<string, number>
+): number {
+  const children = allFolders.filter(f => f.parent_id === folderId);
+  return children.reduce(
+    (sum, child) => sum + 1 + getFolderItemCount(child.drive_id, allFolders, fileCounts),
+    fileCounts[folderId] ?? 0
+  );
+}
 
 function getFileIcon(name: string) {
   const n = name.toLowerCase();
@@ -810,8 +828,8 @@ function SearchResults({ results, query, onFolderClick, isPremiumUnlocked }: {
 // ─────────────────────────────────────────────────────────────
 // محتوى المجلد
 // ─────────────────────────────────────────────────────────────
-function FolderContent({ currentFolderId, allFolders, isPremiumUnlocked, onFolderClick, onFileClick }: {
-  currentFolderId: string; allFolders: DriveFolderX[]; isPremiumUnlocked: boolean;
+function FolderContent({ currentFolderId, allFolders, fileCounts, isPremiumUnlocked, onFolderClick, onFileClick }: {
+  currentFolderId: string; allFolders: DriveFolderX[]; fileCounts: Record<string, number>; isPremiumUnlocked: boolean;
   onFolderClick: (folder: DriveFolderX) => void; onFileClick: (file: DriveFileX) => void;
 }) {
   const subFolders = useMemo(
@@ -857,9 +875,9 @@ function FolderContent({ currentFolderId, allFolders, isPremiumUnlocked, onFolde
 
   const childCountMap = useMemo(() => {
     const map: Record<string, number> = {};
-    subFolders.forEach(sf => { map[sf.drive_id] = allFolders.filter(f => f.parent_id === sf.drive_id).length; });
+    subFolders.forEach(sf => { map[sf.drive_id] = getFolderItemCount(sf.drive_id, allFolders, fileCounts); });
     return map;
-  }, [subFolders, allFolders]);
+  }, [subFolders, allFolders, fileCounts]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -910,6 +928,7 @@ function FolderContent({ currentFolderId, allFolders, isPremiumUnlocked, onFolde
 // ─────────────────────────────────────────────────────────────
 export default function DriveLibrary() {
   const { data: allFolders = [], isLoading: foldersLoading } = useAllFolders();
+  const { data: fileCounts = {} } = useAllFileCounts();
   const foldersX = allFolders as DriveFolderX[];
 
   const [breadcrumbs, setBreadcrumbs]         = useState<Crumb[]>([]);
@@ -957,9 +976,9 @@ export default function DriveLibrary() {
   const stats = useMemo(() => ({ totalFolders: foldersX.length, rootCount: rootFolders.length }), [foldersX, rootFolders]);
   const rootChildCount = useMemo(() => {
     const map: Record<string, number> = {};
-    rootFolders.forEach(rf => { map[rf.drive_id] = foldersX.filter(f => f.parent_id === rf.drive_id).length; });
+    rootFolders.forEach(rf => { map[rf.drive_id] = getFolderItemCount(rf.drive_id, foldersX, fileCounts); });
     return map;
-  }, [rootFolders, foldersX]);
+  }, [rootFolders, foldersX, fileCounts]);
 
   const folderPathMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -1182,6 +1201,7 @@ export default function DriveLibrary() {
           <FolderContent
             currentFolderId={currentFolderId}
             allFolders={foldersX}
+            fileCounts={fileCounts}
             isPremiumUnlocked={isPremiumUnlocked}
             onFolderClick={handleFolderClick}
             onFileClick={handleFileClick}
