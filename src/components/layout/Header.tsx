@@ -1,6 +1,6 @@
 /**
  * Alnasser Tech Digital Solutions
- * Component: Header — Version 5.0 (100% Exact Visual Clone)
+ * Component: Header — Version 7.0 (100% Exact Shield-Right Text-Left Match)
  */
 
 import { Link, useLocation } from 'react-router-dom';
@@ -80,72 +80,92 @@ export function Header() {
       )}
       style={isHeroPage ? { backgroundColor: isScrolled ? 'rgba(2, 6, 23, 0.98)' : '#020617' } : {}}
     >
-      {/* خط تقدم القراءة السفلي البسيط */}
       <div
         className="absolute bottom-0 right-0 h-[1.5px] pointer-events-none transition-all duration-150"
         style={{
           width: `${scrollProgress}%`,
-          background: 'linear-gradient(to left, #CDA052, transparent)',
+          background: 'linear-gradient(to left, #e2cb99, transparent)',
         }}
       />
 
       <div className="container mx-auto px-4 md:px-8">
-        {/* الترتيب والاتجاه متوافق 100% مع الصورة (الشعار يمين، الأزرار يسار) */}
         <div className="flex items-center justify-between h-14" dir="rtl">
 
-          {/* قسم الشعار النصي والأيقونة المدمجة */}
-          <Link to="/" className="flex items-center gap-3 group shrink-0 select-none">
-            {/* النصوص بمحاذاة وإدخال لوني مطابق للصورة */}
-            <div className="flex flex-col text-right leading-tight">
+          {/* الهوية البصرية: الشعار (الكرة والدرع) يمين، والنص يسار كما في الصورة حرفياً */}
+          <Link to="/" className="flex items-center gap-3.5 group shrink-0 select-none">
+            
+            {/* 1. الأيقونة الرسومية المتقدمة (الآن مستقرة في جهة اليمين تماماً) */}
+            <div className="relative flex items-center justify-center w-12 h-12 transition-transform duration-300 group-hover:scale-[1.03]">
+              <svg viewBox="0 0 120 120" className="w-full h-full drop-shadow-[0_4px_12px_rgba(226,203,153,0.15)]">
+                <defs>
+                  <linearGradient id="gold-metallic" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#f5e6c4" />
+                    <stop offset="30%" stopColor="#d1b47b" />
+                    <stop offset="70%" stopColor="#b09358" />
+                    <stop offset="100%" stopColor="#e2cb99" />
+                  </linearGradient>
+                  <linearGradient id="shield-shadow" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#1e293b" />
+                    <stop offset="100%" stopColor="#0b0f19" />
+                  </linearGradient>
+                </defs>
+
+                {/* هيكل الدرع ثلاثي الأبعاد */}
+                <path 
+                  d="M60 12 L98 28 C98 68, 82 94, 60 106 C38 94, 22 68, 22 28 Z" 
+                  fill="url(#shield-shadow)" 
+                  stroke="url(#gold-metallic)" 
+                  strokeWidth="4"
+                  strokeLinejoin="round"
+                />
+                <path 
+                  d="M60 20 L90 32 C90 64, 76 87, 60 97 C44 87, 30 64, 30 32 Z" 
+                  fill="#030712" 
+                  stroke="url(#gold-metallic)" 
+                  strokeWidth="1.5" 
+                  opacity="0.85"
+                />
+
+                {/* شبكة الكرة الأرضية الدائرية الخلفية للميزان */}
+                <g stroke="url(#gold-metallic)" strokeWidth="1.2" fill="none" opacity="0.65">
+                  <circle cx="60" cy="56" r="26" strokeWidth="2" />
+                  <path d="M34 56 L86 56" />
+                  <path d="M60 30 L60 82" />
+                  <path d="M37.5 43 Q60 52 82.5 43" />
+                  <path d="M37.5 69 Q60 60 82.5 69" />
+                  <path d="M47 33 Q56 56 47 79" />
+                  <path d="M73 33 Q64 56 73 79" />
+                </g>
+
+                {/* ميزان العدالة والسيف المعدني */}
+                <g stroke="url(#gold-metallic)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none">
+                  <line x1="60" y1="32" x2="60" y2="80" strokeWidth="3.5" />
+                  <line x1="50" y1="80" x2="70" y2="80" strokeWidth="4" />
+                  <path d="M36 46 Q60 41 84 46" strokeWidth="3.5" />
+                  <line x1="36" y1="46" x2="29" y2="64" strokeWidth="1.2" />
+                  <line x1="36" y1="46" x2="43" y2="64" strokeWidth="1.2" />
+                  <path d="M26 64 L46 64 L36 72 Z" fill="url(#gold-metallic)" strokeWidth="1" />
+                  <line x1="84" y1="46" x2="77" y2="64" strokeWidth="1.2" />
+                  <line x1="84" y1="46" x2="91" y2="64" strokeWidth="1.2" />
+                  <path d="M74 64 L94 64 L84 72 Z" fill="url(#gold-metallic)" strokeWidth="1" />
+                </g>
+              </svg>
+            </div>
+
+            {/* 2. النصوص الجانبية (مستقرة على جهة اليسار ومحاذاتها لليمين باتجاه الشعار) */}
+            <div className="flex flex-col text-right leading-[1.25]">
               <span className={cn(
-                "text-[16px] md:text-[19px] font-black tracking-tight transition-colors duration-300 font-sans", 
+                "text-[17px] md:text-[20px] font-black tracking-tight font-sans transition-colors duration-300", 
                 isLightBg ? "text-slate-900" : "text-white"
               )}>
-                منصة الناصر <span className="text-[#CDA052] font-black">القانونية</span>
+                منصة الناصر القانونية
               </span>
               <span className={cn(
-                "text-[8px] md:text-[9.5px] font-bold tracking-[0.06em] transition-colors duration-300 font-sans", 
-                isLightBg ? "text-slate-500" : "text-white opacity-90"
+                "text-[8px] md:text-[9.5px] font-bold tracking-[0.05em] font-sans transition-colors duration-300", 
+                isLightBg ? "text-amber-700/90" : "text-[#e2cb99]"
               )}>
                 AL-NASSER LEGAL PLATFORM
               </span>
-            </div>
-
-            {/* الأيقونة الرسومية الشعار (الدرع والميزان الملكي) */}
-            <div className="relative flex items-center justify-center w-11 h-11 transition-transform duration-300 group-hover:scale-[1.03]">
-              <svg viewBox="0 0 100 100" className="w-full h-full">
-                {/* الخلفية الدائرية المعتمة للشعار */}
-                <circle cx="50" cy="50" r="44" fill="#030a21" stroke="#CDA052" strokeWidth="1" opacity="0.4" />
-                
-                {/* مجسم الدرع الخارجي المستوحى من اللوجو المرفق */}
-                <path 
-                  d="M50 14 L82 25 C82 60, 68 82, 50 90 C32 82, 18 60, 18 25 Z" 
-                  fill="none" 
-                  stroke="#CDA052" 
-                  strokeWidth="3.5"
-                  strokeLinejoin="round"
-                />
-                
-                {/* تفاصيل الميزان بدقة */}
-                <g stroke="#CDA052" strokeWidth="2.5" strokeLinecap="round" fill="none">
-                  {/* قاعدة وعمود الوسط */}
-                  <line x1="50" y1="32" x2="50" y2="76" />
-                  <line x1="40" y1="76" x2="60" y2="76" strokeWidth="3.5" />
-                  
-                  {/* ذراع الميزان العرضي */}
-                  <line x1="30" y1="44" x2="70" y2="44" strokeWidth="3" />
-                  
-                  {/* كفة الميزان اليمنى وسلاسلها */}
-                  <line x1="30" y1="44" x2="24" y2="58" strokeWidth="1.2" />
-                  <line x1="30" y1="44" x2="36" y2="58" strokeWidth="1.2" />
-                  <path d="M22 58 Q30 65 38 58 Z" fill="#CDA052" />
-
-                  {/* كفة الميزان اليسرى وسلاسلها */}
-                  <line x1="70" y1="44" x2="64" y2="58" strokeWidth="1.2" />
-                  <line x1="70" y1="44" x2="76" y2="58" strokeWidth="1.2" />
-                  <path d="M62 58 Q70 65 78 58 Z" fill="#CDA052" />
-                </g>
-              </svg>
             </div>
           </Link>
 
@@ -188,9 +208,8 @@ export function Header() {
             })}
           </nav>
 
-          {/* الجانب الأيسر (أيقونة القائمة وزر المظهر المتطابقين تماماً مع الصورة) */}
+          {/* الأزرار الجانبية اليسرى (أيقونة القائمة والـ Theme) */}
           <div className="flex items-center gap-2">
-            {/* زر التغيير بين المظهر الليلي والنهاري (الاستايل الدائري الشفاف في لقطة الشاشة) */}
             <div className={cn(
               "rounded-full p-1 transition-colors duration-200",
               isHeroPage ? "bg-white/5 hover:bg-white/10 text-white" : ""
@@ -198,7 +217,6 @@ export function Header() {
               <ThemeToggle />
             </div>
             
-            {/* زر الـ Hamburger المطابق تماماً للشرطتين بالصورة من حيث الطول والمحاذاة */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               aria-label="القائمة الحركية"
@@ -210,10 +228,8 @@ export function Header() {
               {isMenuOpen ? (
                 <X className="w-[22px] h-[22px]" />
               ) : (
-                <div className="flex flex-col gap-[5.5px] items-start w-[22px]">
-                  {/* شرطة علوية طويلة */}
+                <div className="flex flex-col gap-[5px] items-start w-[22px]">
                   <span className={cn("block h-[2px] w-full rounded-full transition-all", isLightBg ? "bg-slate-900" : "bg-white")} />
-                  {/* شرطة سفلية أقصر من جهة اليمين تماماً كالصورة */}
                   <span className={cn("block h-[2px] w-[14px] rounded-full transition-all", isLightBg ? "bg-slate-900/70" : "bg-white/80")} />
                 </div>
               )}
@@ -221,7 +237,7 @@ export function Header() {
           </div>
         </div>
 
-        {/* القائمة المنسدلة على الهواتف الذكية */}
+        {/* قائمة المحمول المنسدلة */}
         {isMenuOpen && (
           <nav className="md:hidden mt-3 mb-1 rounded-2xl overflow-hidden border border-slate-100 dark:border-white/5 bg-white dark:bg-slate-950 shadow-2xl shadow-black/40 animate-in slide-in-from-top-2 duration-200" dir="rtl">
             <div className="p-2 pb-1">
@@ -246,11 +262,11 @@ export function Header() {
                     onClick={() => setIsMenuOpen(false)}
                     className={cn(
                       "flex items-center justify-between px-4 py-3.5 rounded-xl text-[15px] font-semibold transition-all duration-150",
-                      isActive ? "text-[#CDA052] bg-[#CDA052]/10" : "text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5"
+                      isActive ? "text-[#e2cb99] bg-[#e2cb99]/10" : "text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5"
                     )}
                   >
                     {link.label}
-                    {isActive && <span className="w-1.5 h-1.5 rounded-full bg-[#CDA052]" />}
+                    {isActive && <span className="w-1.5 h-1.5 rounded-full bg-[#e2cb99]" />}
                   </Link>
                 );
               })}
