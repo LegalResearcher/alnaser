@@ -5,7 +5,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
-import { ChevronRight, Search, Star } from 'lucide-react';
+import { ChevronRight, Search, Star, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   CATEGORY_THEME, LegalCategory, useLegalDocumentsList, useLegalFavorites, useIsPremiumUnlocked,
@@ -13,6 +13,7 @@ import {
 import {
   LibraryPasswordModal, LibrarySubscriptionModal,
 } from '@/components/shared/LibrarySubscriptionModals';
+import { LegalAboutModal } from '@/components/legal-library/LegalAboutModal';
 
 const VALID_CATEGORIES: LegalCategory[] = ['law', 'regulation', 'prosecution_instruction'];
 
@@ -50,6 +51,7 @@ export default function LegalDocumentList() {
   const [pendingDoc, setPendingDoc] = useState<{ id: number; file_name: string } | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [showAboutModal, setShowAboutModal] = useState(false);
   const { isPremiumUnlocked, setIsPremiumUnlocked } = useIsPremiumUnlocked();
   const { isFavorite, toggleFavorite } = useLegalFavorites();
 
@@ -160,10 +162,20 @@ export default function LegalDocumentList() {
 
       {/* شريط التنقل السفلي */}
       <div className="fixed bottom-0 inset-x-0 z-30 bg-white dark:bg-card border-t border-border">
-        <div className="container max-w-5xl grid grid-cols-2">
-          <button className="flex flex-col items-center gap-0.5 py-2.5 text-amber-500">
+        <div className="container max-w-5xl grid grid-cols-3">
+          <button
+            onClick={() => navigate('/library/favorites')}
+            className="flex flex-col items-center gap-0.5 py-2.5 text-amber-500"
+          >
             <Star className="w-5 h-5" />
             <span className="text-[10px] font-bold">المفضلة</span>
+          </button>
+          <button
+            onClick={() => setShowAboutModal(true)}
+            className="flex flex-col items-center gap-0.5 py-2.5 text-muted-foreground"
+          >
+            <Info className="w-5 h-5" />
+            <span className="text-[10px] font-bold">حول</span>
           </button>
           <button
             onClick={() => navigate('/library/search')}
@@ -174,6 +186,12 @@ export default function LegalDocumentList() {
           </button>
         </div>
       </div>
+
+      <LegalAboutModal
+        open={showAboutModal}
+        onClose={() => setShowAboutModal(false)}
+        sectionLabel={theme.label}
+      />
 
       {showPasswordModal && (
         <LibraryPasswordModal
