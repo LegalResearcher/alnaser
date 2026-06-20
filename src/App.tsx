@@ -37,6 +37,7 @@ const HonorCertificateOld = lazy(() => import("./pages/HonorCertificateOld")); /
 const DriveLibrary        = lazy(() => import("./pages/DriveLibrary"));         // ← المكتبة التعليمية (محتوى آخر غير قوانين اليمن)
 const LegalLibraryHome    = lazy(() => import("./pages/LegalLibraryHome"));     // ← المكتبة القانونية الجديدة (شبكة الأقسام)
 const LegalDocumentList   = lazy(() => import("./pages/LegalDocumentList"));    // ← قوائم القوانين/اللوائح/تعليمات النيابة
+const LegalFavorites      = lazy(() => import("./pages/LegalFavorites"));       // ← صفحة المفضلة المستقلة لكل أقسام المكتبة
 const LegalDocumentViewer = lazy(() => import("./pages/LegalDocumentViewer"));  // ← عارض نص القانون/اللائحة/التعليمات
 const LegalGlobalSearch   = lazy(() => import("./pages/LegalGlobalSearch"));    // ← البحث الشامل في المكتبة القانونية
 const LegalJudicialHome   = lazy(() => import("./pages/LegalJudicialHome"));    // ← شبكة دوائر القواعد القضائية
@@ -120,6 +121,7 @@ const App = () => (
                     <Route path="/library/search"       element={<LegalGlobalSearch />} />
                     <Route path="/library/judicial"     element={<LegalJudicialHome />} />
                     <Route path="/library/judicial/:circuit" element={<LegalJudicialRulesList />} />
+                    <Route path="/library/favorites"    element={<LegalFavorites />} />
                     <Route path="/library/:category"    element={<LegalDocumentList />} />
                     <Route path="/library/doc/:id"      element={<LegalDocumentViewer />} />
                     {/* المكتبة القديمة (drive_folders/drive_files) — لمحتوى آخر غير قوانين اليمن كالنماذج والصيغ والأبحاث */}
