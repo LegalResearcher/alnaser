@@ -34,7 +34,13 @@ const SuggestQuestion  = lazy(() => import("./pages/SuggestQuestion"));
 const SharedQuestion   = lazy(() => import("./pages/SharedQuestion"));
 const HonorCertificate    = lazy(() => import("./pages/HonorCertificate"));    // ← وثيقة الشرف (الجديدة)
 const HonorCertificateOld = lazy(() => import("./pages/HonorCertificateOld")); // ← وثيقة الشرف (القديمة)
-const DriveLibrary        = lazy(() => import("./pages/DriveLibrary"));         // ← المكتبة التعليمية
+const DriveLibrary        = lazy(() => import("./pages/DriveLibrary"));         // ← المكتبة التعليمية (محتوى آخر غير قوانين اليمن)
+const LegalLibraryHome    = lazy(() => import("./pages/LegalLibraryHome"));     // ← المكتبة القانونية الجديدة (شبكة الأقسام)
+const LegalDocumentList   = lazy(() => import("./pages/LegalDocumentList"));    // ← قوائم القوانين/اللوائح/تعليمات النيابة
+const LegalDocumentViewer = lazy(() => import("./pages/LegalDocumentViewer"));  // ← عارض نص القانون/اللائحة/التعليمات
+const LegalGlobalSearch   = lazy(() => import("./pages/LegalGlobalSearch"));    // ← البحث الشامل في المكتبة القانونية
+const LegalJudicialHome   = lazy(() => import("./pages/LegalJudicialHome"));    // ← شبكة دوائر القواعد القضائية
+const LegalJudicialRulesList = lazy(() => import("./pages/LegalJudicialRulesList")); // ← قواعد دائرة معيّنة
 
 // صفحات الإدارة — Lazy Loading
 const AdminLogin            = lazy(() => import("./pages/admin/AdminLogin"));
@@ -110,7 +116,14 @@ const App = () => (
                     <Route path="/suggest"             element={<SuggestQuestion />} />
                     <Route path="/honor-certificate"   element={<HonorCertificate />} />
                     <Route path="/honor-v1"            element={<HonorCertificateOld />} />
-                    <Route path="/library"             element={<DriveLibrary />} />
+                    <Route path="/library"             element={<LegalLibraryHome />} />
+                    <Route path="/library/search"       element={<LegalGlobalSearch />} />
+                    <Route path="/library/judicial"     element={<LegalJudicialHome />} />
+                    <Route path="/library/judicial/:circuit" element={<LegalJudicialRulesList />} />
+                    <Route path="/library/:category"    element={<LegalDocumentList />} />
+                    <Route path="/library/doc/:id"      element={<LegalDocumentViewer />} />
+                    {/* المكتبة القديمة (drive_folders/drive_files) — لمحتوى آخر غير قوانين اليمن كالنماذج والصيغ والأبحاث */}
+                    <Route path="/library/files"        element={<DriveLibrary />} />
 
                     {/* ── غرف المنافسة الجماعية ── */}
                     <Route path="/battle/create"  element={<BattleCreate />} />
