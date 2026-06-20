@@ -1,6 +1,6 @@
 /**
  * Alnasser Tech Digital Solutions
- * Component: Header — Version 4.0 (World-Class / Accurately Visual Match)
+ * Component: Header — Version 5.0 (100% Exact Visual Clone)
  */
 
 import { Link, useLocation } from 'react-router-dom';
@@ -73,84 +73,86 @@ export function Header() {
       className={cn(
         "sticky top-0 z-50 w-full transition-all duration-500",
         isScrolled
-          ? "backdrop-blur-2xl border-b border-white/8 shadow-xl shadow-black/25 py-2"
+          ? "backdrop-blur-2xl border-b border-white/5 shadow-xl shadow-black/40 py-2"
           : isHeroPage
             ? "py-4"
             : "bg-background/95 backdrop-blur-xl border-b border-border/40 py-3"
       )}
-      style={isHeroPage ? { backgroundColor: isScrolled ? 'rgba(2,6,23,0.96)' : 'rgb(2,6,23)' } : {}}
+      style={isHeroPage ? { backgroundColor: isScrolled ? 'rgba(2, 6, 23, 0.98)' : '#020617' } : {}}
     >
+      {/* خط تقدم القراءة السفلي البسيط */}
       <div
-        className="absolute bottom-0 right-0 h-[2px] pointer-events-none transition-all duration-150"
+        className="absolute bottom-0 right-0 h-[1.5px] pointer-events-none transition-all duration-150"
         style={{
           width: `${scrollProgress}%`,
-          background: 'linear-gradient(to left, hsl(217 91% 60%), hsl(199 89% 55%), transparent)',
+          background: 'linear-gradient(to left, #CDA052, transparent)',
         }}
       />
 
-      <div className="container mx-auto px-5 md:px-8">
+      <div className="container mx-auto px-4 md:px-8">
+        {/* الترتيب والاتجاه متوافق 100% مع الصورة (الشعار يمين، الأزرار يسار) */}
         <div className="flex items-center justify-between h-14" dir="rtl">
 
-          {/* الشعار المتطابق 100% مع الهوية البصرية الرسمية */}
+          {/* قسم الشعار النصي والأيقونة المدمجة */}
           <Link to="/" className="flex items-center gap-3 group shrink-0 select-none">
-            <div className="flex flex-col text-right leading-none gap-[2px]">
+            {/* النصوص بمحاذاة وإدخال لوني مطابق للصورة */}
+            <div className="flex flex-col text-right leading-tight">
               <span className={cn(
-                "text-[16px] md:text-[18px] font-black tracking-tight transition-colors duration-300", 
+                "text-[16px] md:text-[19px] font-black tracking-tight transition-colors duration-300 font-sans", 
                 isLightBg ? "text-slate-900" : "text-white"
               )}>
-                منصة الناصر <span className="text-[#cda052] font-extrabold">القانونية</span>
+                منصة الناصر <span className="text-[#CDA052] font-black">القانونية</span>
               </span>
               <span className={cn(
-                "text-[8px] md:text-[9px] font-bold tracking-[0.05em] transition-colors duration-300 opacity-80 font-sans", 
-                isLightBg ? "text-slate-500" : "text-[#cda052]/90"
+                "text-[8px] md:text-[9.5px] font-bold tracking-[0.06em] transition-colors duration-300 font-sans", 
+                isLightBg ? "text-slate-500" : "text-white opacity-90"
               )}>
                 AL-NASSER LEGAL PLATFORM
               </span>
             </div>
 
-            {/* أيقونة الدرع والميزان الذهبي المصممة برمجياً */}
-            <div className="relative flex items-center justify-center w-10 h-11 transition-transform duration-300 group-hover:scale-105">
-              <svg viewBox="0 0 100 110" className="w-full h-full drop-shadow-[0_2px_8px_rgba(205,160,82,0.2)]">
-                {/* الدرع الخلفي المحيط */}
+            {/* الأيقونة الرسومية الشعار (الدرع والميزان الملكي) */}
+            <div className="relative flex items-center justify-center w-11 h-11 transition-transform duration-300 group-hover:scale-[1.03]">
+              <svg viewBox="0 0 100 100" className="w-full h-full">
+                {/* الخلفية الدائرية المعتمة للشعار */}
+                <circle cx="50" cy="50" r="44" fill="#030a21" stroke="#CDA052" strokeWidth="1" opacity="0.4" />
+                
+                {/* مجسم الدرع الخارجي المستوحى من اللوجو المرفق */}
                 <path 
-                  d="M50 5 L90 20 C90 60, 75 90, 50 105 C25 90, 10 60, 10 20 Z" 
+                  d="M50 14 L82 25 C82 60, 68 82, 50 90 C32 82, 18 60, 18 25 Z" 
                   fill="none" 
-                  stroke="#cda052" 
-                  strokeWidth="4"
+                  stroke="#CDA052" 
+                  strokeWidth="3.5"
                   strokeLinejoin="round"
                 />
-                {/* الخط الداخلي للدرع ليعطي عمق ثلاثي الأبعاد */}
-                <path 
-                  d="M50 12 L82 25 C82 58, 70 84, 50 96 C30 84, 18 58, 18 25 Z" 
-                  fill="none" 
-                  stroke="#cda052" 
-                  strokeWidth="1.5" 
-                  opacity="0.6"
-                />
-                {/* ميزان العدالة بالمنتصف */}
-                <g stroke="#cda052" strokeWidth="3" strokeLinecap="round" fill="none">
-                  {/* عمود الميزان الرئيسي */}
-                  <line x1="50" y1="30" x2="50" y2="85" />
-                  <line x1="42" y1="85" x2="58" y2="85" strokeWidth="4" />
-                  {/* الذراع الأفقي */}
-                  <line x1="28" y1="42" x2="72" y2="42" strokeWidth="3.5" />
-                  {/* كفة الميزان اليسرى */}
-                  <line x1="28" y1="42" x2="22" y2="60" strokeWidth="1.5" />
-                  <line x1="28" y1="42" x2="34" y2="60" strokeWidth="1.5" />
-                  <path d="M18 60 Q28 68 38 60 Z" fill="#cda052" opacity="0.8" />
-                  {/* كفة الميزان اليمنى */}
-                  <line x1="72" y1="42" x2="66" y2="60" strokeWidth="1.5" />
-                  <line x1="72" y1="42" x2="78" y2="60" strokeWidth="1.5" />
-                  <path d="M62 60 Q72 68 82 60 Z" fill="#cda052" opacity="0.8" />
+                
+                {/* تفاصيل الميزان بدقة */}
+                <g stroke="#CDA052" strokeWidth="2.5" strokeLinecap="round" fill="none">
+                  {/* قاعدة وعمود الوسط */}
+                  <line x1="50" y1="32" x2="50" y2="76" />
+                  <line x1="40" y1="76" x2="60" y2="76" strokeWidth="3.5" />
+                  
+                  {/* ذراع الميزان العرضي */}
+                  <line x1="30" y1="44" x2="70" y2="44" strokeWidth="3" />
+                  
+                  {/* كفة الميزان اليمنى وسلاسلها */}
+                  <line x1="30" y1="44" x2="24" y2="58" strokeWidth="1.2" />
+                  <line x1="30" y1="44" x2="36" y2="58" strokeWidth="1.2" />
+                  <path d="M22 58 Q30 65 38 58 Z" fill="#CDA052" />
+
+                  {/* كفة الميزان اليسرى وسلاسلها */}
+                  <line x1="70" y1="44" x2="64" y2="58" strokeWidth="1.2" />
+                  <line x1="70" y1="44" x2="76" y2="58" strokeWidth="1.2" />
+                  <path d="M62 58 Q70 65 78 58 Z" fill="#CDA052" />
                 </g>
               </svg>
             </div>
           </Link>
 
-          {/* روابط التنقل المتجاوبة */}
+          {/* روابط النافبار العادية للشاشات الكبيرة */}
           <nav className={cn(
             "hidden md:flex items-center p-1.5 rounded-full border backdrop-blur-md transition-all duration-300",
-            isLightBg ? "bg-muted/70 border-border/50" : "bg-white/8 border-white/10"
+            isLightBg ? "bg-muted/70 border-border/50" : "bg-white/5 border-white/10"
           )}>
             {navLinks.map((link) => {
               const isActive = location.pathname === link.href;
@@ -161,7 +163,7 @@ export function Header() {
                     href={link.href}
                     className={cn(
                       "relative px-4 py-2 rounded-full text-sm font-bold transition-all duration-200",
-                      isLightBg ? "text-muted-foreground hover:text-foreground" : "text-white/60 hover:text-white"
+                      isLightBg ? "text-muted-foreground hover:text-foreground" : "text-white/70 hover:text-white"
                     )}
                   >
                     {link.label}
@@ -174,11 +176,11 @@ export function Header() {
                   to={link.href}
                   className={cn(
                     "relative px-4 py-2 rounded-full text-sm font-bold transition-all duration-200",
-                    isActive ? "text-white" : isLightBg ? "text-muted-foreground hover:text-foreground" : "text-white/60 hover:text-white"
+                    isActive ? "text-white" : isLightBg ? "text-muted-foreground hover:text-foreground" : "text-white/70 hover:text-white"
                   )}
                 >
                   {isActive && (
-                    <span className="absolute inset-0 rounded-full -z-10" style={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)' }} />
+                    <span className="absolute inset-0 rounded-full -z-10" style={{ background: 'linear-gradient(135deg, #0f172a, #1e293b)' }} />
                   )}
                   {link.label}
                 </Link>
@@ -186,35 +188,42 @@ export function Header() {
             })}
           </nav>
 
-          {/* أزرار التحكم والـ Hamburger Menu */}
-          <div className="flex items-center gap-3">
-            <div className={isHeroPage ? "[&_button]:bg-white/10 [&_button]:text-white [&_button:hover]:bg-white/20" : ""}>
+          {/* الجانب الأيسر (أيقونة القائمة وزر المظهر المتطابقين تماماً مع الصورة) */}
+          <div className="flex items-center gap-2">
+            {/* زر التغيير بين المظهر الليلي والنهاري (الاستايل الدائري الشفاف في لقطة الشاشة) */}
+            <div className={cn(
+              "rounded-full p-1 transition-colors duration-200",
+              isHeroPage ? "bg-white/5 hover:bg-white/10 text-white" : ""
+            )}>
               <ThemeToggle />
             </div>
             
+            {/* زر الـ Hamburger المطابق تماماً للشرطتين بالصورة من حيث الطول والمحاذاة */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              aria-label="القائمة"
+              aria-label="القائمة الحركية"
               className={cn(
-                "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90",
-                isLightBg ? "text-slate-900 hover:bg-slate-100" : "text-white hover:bg-white/10"
+                "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 active:scale-95",
+                isLightBg ? "text-slate-900 hover:bg-slate-100" : "text-white hover:bg-white/5"
               )}
             >
               {isMenuOpen ? (
                 <X className="w-[22px] h-[22px]" />
               ) : (
-                <div className="flex flex-col gap-[5px] items-start w-5">
-                  <span className={cn("block h-[2px] w-5 rounded-full transition-all", isLightBg ? "bg-slate-900" : "bg-white")} />
-                  <span className={cn("block h-[2px] w-3 rounded-full transition-all", isLightBg ? "bg-slate-900/80" : "bg-white/80")} />
+                <div className="flex flex-col gap-[5.5px] items-start w-[22px]">
+                  {/* شرطة علوية طويلة */}
+                  <span className={cn("block h-[2px] w-full rounded-full transition-all", isLightBg ? "bg-slate-900" : "bg-white")} />
+                  {/* شرطة سفلية أقصر من جهة اليمين تماماً كالصورة */}
+                  <span className={cn("block h-[2px] w-[14px] rounded-full transition-all", isLightBg ? "bg-slate-900/70" : "bg-white/80")} />
                 </div>
               )}
             </button>
           </div>
         </div>
 
-        {/* قائمة الموبايل المنسدلة */}
+        {/* القائمة المنسدلة على الهواتف الذكية */}
         {isMenuOpen && (
-          <nav className="md:hidden mt-2 mb-1 rounded-2xl overflow-hidden border border-slate-100 dark:border-white/8 bg-white dark:bg-slate-900 shadow-2xl shadow-black/20 animate-in slide-in-from-top-2 fade-in duration-200" dir="rtl">
+          <nav className="md:hidden mt-3 mb-1 rounded-2xl overflow-hidden border border-slate-100 dark:border-white/5 bg-white dark:bg-slate-950 shadow-2xl shadow-black/40 animate-in slide-in-from-top-2 duration-200" dir="rtl">
             <div className="p-2 pb-1">
               {navLinks.map((link) => {
                 const isActive = location.pathname === link.href;
@@ -237,16 +246,17 @@ export function Header() {
                     onClick={() => setIsMenuOpen(false)}
                     className={cn(
                       "flex items-center justify-between px-4 py-3.5 rounded-xl text-[15px] font-semibold transition-all duration-150",
-                      isActive ? "text-blue-600 bg-blue-50 dark:bg-blue-950/30" : "text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5"
+                      isActive ? "text-[#CDA052] bg-[#CDA052]/10" : "text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5"
                     )}
                   >
                     {link.label}
-                    {isActive && <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />}
+                    {isActive && <span className="w-1.5 h-1.5 rounded-full bg-[#CDA052]" />}
                   </Link>
                 );
               })}
             </div>
-            <div className="px-3 pb-3 pt-2 space-y-2 border-t border-slate-100 dark:border-white/6">
+            
+            <div className="px-3 pb-3 pt-2 space-y-2 border-t border-slate-100 dark:border-white/5">
               <a
                 href="https://t.me/muen2025"
                 target="_blank"
@@ -258,7 +268,7 @@ export function Header() {
               </a>
               <Link to="/levels" onClick={() => setIsMenuOpen(false)}>
                 <Button
-                  className="w-full h-11 rounded-xl font-bold text-white text-[15px] active:scale-[0.98] transition-transform bg-gradient-to-r from-blue-700 to-blue-500 hover:opacity-90"
+                  className="w-full h-11 rounded-xl font-bold text-white text-[15px] bg-gradient-to-r from-blue-700 to-blue-500 hover:opacity-95 transition-all"
                 >
                   ابدأ الاختبار الآن
                 </Button>
