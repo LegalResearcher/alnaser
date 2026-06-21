@@ -17,7 +17,7 @@ import {
   Calendar, Info,
 } from 'lucide-react';
 
-export const LEGAL_ONBOARDING_KEY = 'legal_library_onboarding_seen_v1';
+export const LEGAL_ONBOARDING_KEY = 'legal_library_onboarding_seen_v2';
 const LEGAL_TRIAL_START_KEY = 'legal_library_trial_start_v1';
 const TRIAL_DAYS = 3;
 
