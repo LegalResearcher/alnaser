@@ -43,7 +43,10 @@ const LegalGlobalSearch   = lazy(() => import("./pages/LegalGlobalSearch"));    
 const LegalJudicialHome   = lazy(() => import("./pages/LegalJudicialHome"));    // ← شبكة دوائر القواعد القضائية
 const LegalJudicialRulesList = lazy(() => import("./pages/LegalJudicialRulesList")); // ← قواعد دائرة معيّنة
 const LegalSubscription    = lazy(() => import("./pages/LegalSubscription"));    // ← شاشة "اشتراكي" (باقات شهري/سنوي)
-const LegalOtherServices   = lazy(() => import("./pages/LegalOtherServices"));   // ← إصلاح مؤقت لمسار "خدماتنا الأخرى"
+const LegalOtherServices   = lazy(() => import("./pages/LegalOtherServices"));   // ← "خدماتنا الأخرى": شبكة الخدمات
+const LegalSupremeCourtService = lazy(() => import("./pages/LegalSupremeCourtService")); // ← تفاصيل خدمة "أحكام المحكمة العليا"
+const LegalRulingsIndex    = lazy(() => import("./pages/LegalRulingsIndex"));    // ← "فهارس الأحكام" (الدوائر السبع + المواضيع)
+const LegalReferencesService = lazy(() => import("./pages/LegalReferencesService")); // ← تفاصيل خدمة "توفير مراجع قانونية حسب الطلب"
 
 // صفحات الإدارة — Lazy Loading
 const AdminLogin            = lazy(() => import("./pages/admin/AdminLogin"));
@@ -126,6 +129,9 @@ const App = () => (
                     <Route path="/library/favorites"    element={<LegalFavorites />} />
                     <Route path="/library/subscription"  element={<LegalSubscription />} />
                     <Route path="/library/other-services" element={<LegalOtherServices />} />
+                    <Route path="/library/other-services/supreme-court" element={<LegalSupremeCourtService />} />
+                    <Route path="/library/other-services/supreme-court/index" element={<LegalRulingsIndex />} />
+                    <Route path="/library/other-services/legal-references" element={<LegalReferencesService />} />
                     <Route path="/library/:category"    element={<LegalDocumentList />} />
                     <Route path="/library/doc/:id"      element={<LegalDocumentViewer />} />
                     {/* المكتبة القديمة (drive_folders/drive_files) — لمحتوى آخر غير قوانين اليمن كالنماذج والصيغ والأبحاث */}
