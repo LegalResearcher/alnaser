@@ -4,18 +4,42 @@
  * المحفوظة عبر أقسام المكتبة القانونية كاملةً، بصرف النظر عن القسم الحالي.
  * حالة الفراغ مطابقة للقطة الشاشة المرجعية: رسالة وسطية بسيطة بدون أي زخرفة إضافية.
  */
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { ChevronRight, Star, Trash2, Scale } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { CATEGORY_THEME, useResolvedLegalFavorites } from '@/hooks/useLegalLibrary';
+import { CATEGORY_THEME, useResolvedLegalFavorites, useLegalAccessMode } from '@/hooks/useLegalLibrary';
 import { saveReadingPosition } from '@/hooks/useReaderPreferences';
+import { FeatureLockedModal } from '@/components/legal-library/LegalLimitedAccessModals';
 
 export default function LegalFavorites() {
   const navigate = useNavigate();
+  const { isLimitedMode } = useLegalAccessMode();
+  const [showLockedModal, setShowLockedModal] = useState(isLimitedMode);
   const {
     isLoading, isEmpty, favoriteDocuments, favoriteRules, favoriteArticles, toggleFavorite,
   } = useResolvedLegalFavorites();
+
+  // ── المفضلة محجوبة بالكامل في وضع الاستخدام المجاني المحدود ──
+  if (isLimitedMode) {
+    return (
+      <MainLayout>
+        <div className="bg-[#1a2744] sticky top-0 z-30">
+          <div className="container max-w-3xl flex items-center gap-3 py-4">
+            <button onClick={() => navigate(-1)} className="text-white p-1 -m-1" aria-label="رجوع">
+              <ChevronRight className="w-5 h-5" />
+            </button>
+            <h1 className="text-lg font-black text-white">المفضلة</h1>
+          </div>
+        </div>
+        <div className="bg-[#f5f5f5] dark:bg-background min-h-[calc(100vh-64px)]" />
+        {showLockedModal && (
+          <FeatureLockedModal onClose={() => { setShowLockedModal(false); navigate(-1); }} />
+        )}
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
