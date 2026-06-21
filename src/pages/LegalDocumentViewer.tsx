@@ -1,20 +1,30 @@
 /**
  * LegalDocumentViewer.tsx
  * عارض نص القانون/اللائحة/تعليمات النيابة (البند 4 — الأهم في المواصفة)
- * يقرأ من عمود content (JSONB) كاملاً ويعرض كل عنصر حسب type.
+ * يقرأ من عمود content (JSONB) ويعرض كل عنصر حسب type.
  * البحث الداخلي وبناء الفهرس يتمّان بالكامل على جانب العميل بعد الجلب مرة واحدة.
+ *
+ * ⚠️ إصلاح أمني (راجع useLegalLibrary.ts): الجلب أصبح على خطوتين — بيانات
+ * خفيفة (meta) أولاً لمعرفة is_premium، ثم لا يُطلب نص content الكامل من
+ * الخادم إطلاقاً إلا إن كان المستند غير مدفوع أو كان المستخدم متحقَّقاً منه
+ * فعلاً. بهذا لا يعود فتح الرابط مباشرة /library/doc/123 يكشف نص أي قانون
+ * مدفوع — قبل هذا الإصلاح كان content يُجلب بالكامل بصرف النظر عن is_premium.
  */
 import { useEffect, useMemo, useRef, useState, MutableRefObject } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import {
-  ChevronRight, Menu, Moon, Sun, Type, Search, X, Heart, Copy, Check, Landmark,
+  ChevronRight, Menu, Moon, Sun, Type, Search, X, Heart, Copy, Check, Landmark, Lock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
-  CATEGORY_THEME, LegalContentItem, useLegalDocument, useLegalFavorites,
+  CATEGORY_THEME, LegalContentItem, useLegalDocumentMeta, useLegalDocumentContent,
+  useLegalFavorites, useIsPremiumUnlocked,
 } from '@/hooks/useLegalLibrary';
 import { useReaderPreferences, saveReadingPosition, getReadingPosition } from '@/hooks/useReaderPreferences';
+import {
+  LibraryPasswordModal, LibrarySubscriptionModal,
+} from '@/components/shared/LibrarySubscriptionModals';
 
 type Theme = typeof CATEGORY_THEME['law'];
 
@@ -35,7 +45,18 @@ export default function LegalDocumentViewer() {
   const navigate = useNavigate();
   const docId = id ? parseInt(id, 10) : null;
 
-  const { data: document, isLoading } = useLegalDocument(docId);
+  const { data: meta, isLoading: metaLoading } = useLegalDocumentMeta(docId);
+  const { isPremiumUnlocked, setIsPremiumUnlocked } = useIsPremiumUnlocked();
+
+  // مدفوع ولم يتحقق المستخدم بعد؟ — إن كان كذلك لا نطلب content من الخادم إطلاقاً
+  const isLocked = !!meta?.is_premium && !isPremiumUnlocked;
+
+  const { data: contentData, isLoading: contentLoading } = useLegalDocumentContent(docId, !isLocked);
+
+  // مستند مُجمَّع للاستخدام في باقي الصفحة — content فاضي طالما محجوب (لم يُطلب أصلاً)
+  const document = meta ? { ...meta, content: (isLocked ? [] : contentData) ?? [] } : null;
+  const isLoading = metaLoading || (!isLocked && contentLoading);
+
   const { isFavorite, toggleFavorite } = useLegalFavorites();
   const { fontSize, increaseFont, decreaseFont, nightMode, toggleNightMode } = useReaderPreferences();
   const { copy, copiedKey } = useCopyToClipboard();
@@ -46,6 +67,8 @@ export default function LegalDocumentViewer() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchByNumber, setSearchByNumber] = useState(false);
   const [exactMatch, setExactMatch] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
   const articleRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const sectionRefs = useRef<Record<number, HTMLDivElement | null>>({});
@@ -81,18 +104,18 @@ export default function LegalDocumentViewer() {
 
   // ── استرجاع موضع القراءة المحفوظ عند فتح المستند ──
   useEffect(() => {
-    if (!docId || !document) return;
+    if (!docId || !document || isLocked) return;
     const saved = getReadingPosition(docId);
     if (saved && articleRefs.current[saved]) {
       setTimeout(() => {
         articleRefs.current[saved]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 150);
     }
-  }, [docId, document]);
+  }, [docId, document, isLocked]);
 
   // ── مراقبة آخر مادة ظاهرة فعلياً في الشاشة وحفظ موضعها (IntersectionObserver حقيقي) ──
   useEffect(() => {
-    if (!docId || !document) return;
+    if (!docId || !document || isLocked) return;
     observerRef.current?.disconnect();
     const observer = new IntersectionObserver(
       (entries) => {
@@ -107,7 +130,7 @@ export default function LegalDocumentViewer() {
     observerRef.current = observer;
     Object.values(articleRefs.current).forEach(el => { if (el) observer.observe(el); });
     return () => observer.disconnect();
-  }, [docId, document]);
+  }, [docId, document, isLocked]);
 
   const scrollToIndex = (idx: number) => {
     setShowIndex(false);
@@ -142,6 +165,8 @@ export default function LegalDocumentViewer() {
     );
   }
 
+  const categoryLabel = category === 'law' ? 'قانون' : category === 'regulation' ? 'لائحة' : 'تعليمة';
+
   return (
     <MainLayout>
       <div className={cn(nightMode ? 'bg-slate-950 text-slate-100' : 'bg-background', 'min-h-screen')}>
@@ -162,42 +187,46 @@ export default function LegalDocumentViewer() {
             <h1 className="flex-1 text-center text-sm sm:text-base font-black text-white leading-snug line-clamp-2 px-1">
               {document.file_name}
             </h1>
-            <button onClick={() => setShowIndex(true)} className="text-white p-1.5 -m-1 shrink-0" aria-label="الفهرس">
-              <Menu className="w-5 h-5" />
-            </button>
+            {!isLocked && (
+              <button onClick={() => setShowIndex(true)} className="text-white p-1.5 -m-1 shrink-0" aria-label="الفهرس">
+                <Menu className="w-5 h-5" />
+              </button>
+            )}
           </div>
 
-          {/* شريط البحث الداخلي */}
-          <div className="container max-w-3xl pb-3">
-            <div className="relative">
-              <input
-                value={searchQuery}
-                onChange={(e) => { setSearchQuery(e.target.value); setSearchOpen(true); }}
-                onFocus={() => setSearchOpen(true)}
-                placeholder="ابحث داخل نصوص المواد..."
-                className="w-full h-10 pr-9 pl-9 rounded-xl bg-white/95 text-sm text-right outline-none"
-              />
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              {searchQuery && (
-                <button onClick={() => { setSearchQuery(''); setSearchOpen(false); }} className="absolute left-3 top-1/2 -translate-y-1/2">
-                  <X className="w-4 h-4 text-slate-400" />
+          {/* شريط البحث الداخلي — مخفي بالكامل طالما المستند محجوباً (لا content لنبحث فيه أصلاً) */}
+          {!isLocked && (
+            <div className="container max-w-3xl pb-3">
+              <div className="relative">
+                <input
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); setSearchOpen(true); }}
+                  onFocus={() => setSearchOpen(true)}
+                  placeholder="ابحث داخل نصوص المواد..."
+                  className="w-full h-10 pr-9 pl-9 rounded-xl bg-white/95 text-sm text-right outline-none"
+                />
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                {searchQuery && (
+                  <button onClick={() => { setSearchQuery(''); setSearchOpen(false); }} className="absolute left-3 top-1/2 -translate-y-1/2">
+                    <X className="w-4 h-4 text-slate-400" />
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center justify-end gap-4 mt-2">
+                <label className="flex items-center gap-1.5 text-[11px] font-bold text-white/90">
+                  <input type="checkbox" checked={exactMatch} onChange={(e) => setExactMatch(e.target.checked)} className="accent-amber-400" />
+                  مطابق تام
+                </label>
+                <button
+                  onClick={() => setSearchByNumber(v => !v)}
+                  className={cn('text-[11px] font-bold px-2.5 py-1 rounded-full transition-colors',
+                    searchByNumber ? 'bg-amber-400 text-slate-900' : 'bg-white/15 text-white/90')}
+                >
+                  بحث بالرقم
                 </button>
-              )}
+              </div>
             </div>
-            <div className="flex items-center justify-end gap-4 mt-2">
-              <label className="flex items-center gap-1.5 text-[11px] font-bold text-white/90">
-                <input type="checkbox" checked={exactMatch} onChange={(e) => setExactMatch(e.target.checked)} className="accent-amber-400" />
-                مطابق تام
-              </label>
-              <button
-                onClick={() => setSearchByNumber(v => !v)}
-                className={cn('text-[11px] font-bold px-2.5 py-1 rounded-full transition-colors',
-                  searchByNumber ? 'bg-amber-400 text-slate-900' : 'bg-white/15 text-white/90')}
-              >
-                بحث بالرقم
-              </button>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* لوحة حجم الخط */}
@@ -211,51 +240,82 @@ export default function LegalDocumentViewer() {
           </div>
         )}
 
-        {/* نتائج البحث */}
-        {searchOpen && searchQuery.trim() && (
-          <div className="container max-w-3xl py-3">
-            <div className="bg-card border border-border rounded-2xl divide-y divide-border max-h-72 overflow-y-auto">
-              {searchResults.length === 0 ? (
-                <p className="p-4 text-sm text-center text-muted-foreground">لا توجد نتائج</p>
-              ) : (
-                searchResults.map(({ item, idx }) => (
-                  <button
-                    key={idx}
-                    onClick={() => scrollToArticle(idx)}
-                    className="w-full text-right p-3 hover:bg-muted/60 transition-colors"
-                  >
-                    <span className={cn('text-xs font-black', theme.articleNumColor)}>المادة ({item.num})</span>
-                    <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{item.text}</p>
-                  </button>
-                ))
-              )}
+        {isLocked ? (
+          /* ── حالة الحجب: لا يُعرض أي جزء من النص لأنه أصلاً لم يُطلب من الخادم ── */
+          <div className="container max-w-3xl py-10">
+            <div className={cn('rounded-2xl border p-8 text-center', nightMode ? 'bg-slate-900 border-slate-800' : 'bg-card border-border')}>
+              <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                <Lock className="w-7 h-7 text-amber-600 dark:text-amber-400" />
+              </div>
+              <h2 className="font-black text-base mb-2">هذا {categoryLabel} مدفوع</h2>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+                أدخل كلمة المرور أو فعّل الاشتراك للوصول إلى النص الكامل لـ«{document.file_name}».
+              </p>
+              <div className="flex flex-col gap-2 max-w-xs mx-auto">
+                <button
+                  onClick={() => setShowPasswordModal(true)}
+                  className={cn('h-11 rounded-2xl font-black text-sm text-white', theme.headerBg)}
+                >
+                  إدخال كلمة المرور
+                </button>
+                <button
+                  onClick={() => setShowSubscriptionModal(true)}
+                  className="h-11 rounded-2xl font-black text-sm border border-border text-foreground"
+                >
+                  الاشتراك المدفوع
+                </button>
+              </div>
             </div>
           </div>
-        )}
+        ) : (
+          <>
+            {/* نتائج البحث */}
+            {searchOpen && searchQuery.trim() && (
+              <div className="container max-w-3xl py-3">
+                <div className="bg-card border border-border rounded-2xl divide-y divide-border max-h-72 overflow-y-auto">
+                  {searchResults.length === 0 ? (
+                    <p className="p-4 text-sm text-center text-muted-foreground">لا توجد نتائج</p>
+                  ) : (
+                    searchResults.map(({ item, idx }) => (
+                      <button
+                        key={idx}
+                        onClick={() => scrollToArticle(idx)}
+                        className="w-full text-right p-3 hover:bg-muted/60 transition-colors"
+                      >
+                        <span className={cn('text-xs font-black', theme.articleNumColor)}>المادة ({item.num})</span>
+                        <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{item.text}</p>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
 
-        {/* المحتوى */}
-        <div className="container max-w-3xl py-6 space-y-4" style={{ fontSize: `${fontSize}px` }}>
-          {document.content.map((item, idx) => (
-            <ContentBlock
-              key={idx}
-              item={item}
-              idx={idx}
-              theme={theme}
-              docId={document.id}
-              articleRefs={articleRefs}
-              sectionRefs={sectionRefs}
-              isFavorite={isFavorite}
-              toggleFavorite={toggleFavorite}
-              copy={copy}
-              copiedKey={copiedKey}
-              nightMode={nightMode}
-            />
-          ))}
-        </div>
+            {/* المحتوى */}
+            <div className="container max-w-3xl py-6 space-y-4" style={{ fontSize: `${fontSize}px` }}>
+              {document.content.map((item, idx) => (
+                <ContentBlock
+                  key={idx}
+                  item={item}
+                  idx={idx}
+                  theme={theme}
+                  docId={document.id}
+                  articleRefs={articleRefs}
+                  sectionRefs={sectionRefs}
+                  isFavorite={isFavorite}
+                  toggleFavorite={toggleFavorite}
+                  copy={copy}
+                  copiedKey={copiedKey}
+                  nightMode={nightMode}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {/* الفهرس (Drawer) */}
-      {showIndex && (
+      {showIndex && !isLocked && (
         <div className="fixed inset-0 z-[9997]" onClick={() => setShowIndex(false)}>
           <div className="absolute inset-0 bg-black/50" />
           <div
@@ -283,6 +343,20 @@ export default function LegalDocumentViewer() {
             </div>
           </div>
         </div>
+      )}
+
+      {showPasswordModal && (
+        <LibraryPasswordModal
+          onSuccess={() => { setIsPremiumUnlocked(true); setShowPasswordModal(false); }}
+          onSubscribe={() => { setShowPasswordModal(false); setShowSubscriptionModal(true); }}
+          onClose={() => setShowPasswordModal(false)}
+        />
+      )}
+      {showSubscriptionModal && (
+        <LibrarySubscriptionModal
+          fileName={document.file_name}
+          onClose={() => setShowSubscriptionModal(false)}
+        />
       )}
     </MainLayout>
   );
@@ -351,15 +425,15 @@ function ContentBlock({
           className={cn('rounded-2xl border p-5', nightMode ? 'bg-slate-900 border-slate-800' : 'bg-card border-border')}
         >
           <div className="flex items-center justify-between mb-3">
+            <span className={cn('font-black text-base', theme.articleNumColor)}>المادة ({item.num})</span>
             <div className="flex items-center gap-3">
-              <button onClick={() => toggleFavorite('article', articleRef)} aria-label="مفضلة">
-                <Heart className={cn('w-4 h-4', fav ? 'fill-rose-500 text-rose-500' : 'text-muted-foreground/50')} />
-              </button>
               <button onClick={() => copy(text, key)} aria-label="نسخ">
                 {copiedKey === key ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4 text-muted-foreground/50" />}
               </button>
+              <button onClick={() => toggleFavorite('article', articleRef)} aria-label="مفضلة">
+                <Heart className={cn('w-4 h-4', fav ? 'fill-rose-500 text-rose-500' : 'text-muted-foreground/50')} />
+              </button>
             </div>
-            <span className={cn('font-black text-base', theme.articleNumColor)}>المادة ({item.num})</span>
           </div>
           <p className="leading-loose whitespace-pre-line">{displayText}</p>
           {isLong && (
