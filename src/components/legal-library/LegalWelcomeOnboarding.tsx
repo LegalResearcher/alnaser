@@ -19,7 +19,7 @@ import {
 
 export const LEGAL_ONBOARDING_KEY = 'legal_library_onboarding_seen_v2';
 const LEGAL_TRIAL_START_KEY = 'legal_library_trial_start_v1';
-const TRIAL_DAYS = 3;
+export const TRIAL_DAYS = 3;
 
 export function hasSeenLegalOnboarding(): boolean {
   try { return localStorage.getItem(LEGAL_ONBOARDING_KEY) === '1'; } catch { return true; }
@@ -43,7 +43,18 @@ function ensureTrialStarted(): { start: Date; end: Date } {
   return { start, end };
 }
 
-function formatDate(d: Date): string {
+/** يقرأ تاريخي بدء/انتهاء التجربة المجانية إن كانت قد بدأت فعلاً، دون إنشائها. */
+export function getLegalTrialDates(): { start: Date; end: Date } | null {
+  let startIso: string | null = null;
+  try { startIso = localStorage.getItem(LEGAL_TRIAL_START_KEY); } catch { /* ignore */ }
+  if (!startIso) return null;
+  const start = new Date(startIso);
+  const end = new Date(start);
+  end.setDate(end.getDate() + TRIAL_DAYS);
+  return { start, end };
+}
+
+export function formatDate(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
