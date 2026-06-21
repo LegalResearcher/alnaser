@@ -42,6 +42,8 @@ const LegalDocumentViewer = lazy(() => import("./pages/LegalDocumentViewer"));  
 const LegalGlobalSearch   = lazy(() => import("./pages/LegalGlobalSearch"));    // ← البحث الشامل في المكتبة القانونية
 const LegalJudicialHome   = lazy(() => import("./pages/LegalJudicialHome"));    // ← شبكة دوائر القواعد القضائية
 const LegalJudicialRulesList = lazy(() => import("./pages/LegalJudicialRulesList")); // ← قواعد دائرة معيّنة
+const LegalSubscription    = lazy(() => import("./pages/LegalSubscription"));    // ← شاشة "اشتراكي" (باقات شهري/سنوي)
+const LegalOtherServices   = lazy(() => import("./pages/LegalOtherServices"));   // ← إصلاح مؤقت لمسار "خدماتنا الأخرى"
 
 // صفحات الإدارة — Lazy Loading
 const AdminLogin            = lazy(() => import("./pages/admin/AdminLogin"));
@@ -122,6 +124,8 @@ const App = () => (
                     <Route path="/library/judicial"     element={<LegalJudicialHome />} />
                     <Route path="/library/judicial/:circuit" element={<LegalJudicialRulesList />} />
                     <Route path="/library/favorites"    element={<LegalFavorites />} />
+                    <Route path="/library/subscription"  element={<LegalSubscription />} />
+                    <Route path="/library/other-services" element={<LegalOtherServices />} />
                     <Route path="/library/:category"    element={<LegalDocumentList />} />
                     <Route path="/library/doc/:id"      element={<LegalDocumentViewer />} />
                     {/* المكتبة القديمة (drive_folders/drive_files) — لمحتوى آخر غير قوانين اليمن كالنماذج والصيغ والأبحاث */}
