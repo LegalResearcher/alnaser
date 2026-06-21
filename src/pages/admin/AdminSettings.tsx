@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { Settings, User, Lock, Save, MessageSquare, CalendarDays, ShieldCheck, ShieldOff } from 'lucide-react';
+import { Settings, User, Lock, Save, MessageSquare, CalendarDays, ShieldCheck, ShieldOff, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -88,6 +88,14 @@ const AdminSettings = () => {
   const [libNote, setLibNote] = useState('يرجى تحويل المبلغ إلى الحساب الموضح، ثم رفع صورة الإيصال وتعبئة البيانات لتأكيد الاشتراك.');
   const [libMsgLoading, setLibMsgLoading] = useState(false);
 
+  // باقتا اشتراك المكتبة (شهري / سنوي) — تظهر في شاشة "اشتراكي" بالمكتبة القانونية
+  const [planCurrency, setPlanCurrency] = useState('$');
+  const [planMonthlyPrice, setPlanMonthlyPrice] = useState('4');
+  const [planAnnualPrice, setPlanAnnualPrice] = useState('19');
+  const [planMonthlyLabel, setPlanMonthlyLabel] = useState('اشتراك شهري');
+  const [planAnnualLabel, setPlanAnnualLabel] = useState('اشتراك سنوي');
+  const [planLoading, setPlanLoading] = useState(false);
+
   useEffect(() => {
     (async () => {
       const { data } = await (supabase as any)
@@ -124,6 +132,26 @@ const AdminSettings = () => {
     })();
   }, []);
 
+  useEffect(() => {
+    (async () => {
+      const { data } = await (supabase as any)
+        .from('platform_settings')
+        .select('value')
+        .eq('key', 'library_subscription_plans')
+        .maybeSingle();
+      if (data?.value) {
+        try {
+          const parsed = JSON.parse(data.value);
+          if (parsed.currency)     setPlanCurrency(parsed.currency);
+          if (parsed.monthlyPrice) setPlanMonthlyPrice(parsed.monthlyPrice);
+          if (parsed.annualPrice)  setPlanAnnualPrice(parsed.annualPrice);
+          if (parsed.monthlyLabel) setPlanMonthlyLabel(parsed.monthlyLabel);
+          if (parsed.annualLabel)  setPlanAnnualLabel(parsed.annualLabel);
+        } catch {}
+      }
+    })();
+  }, []);
+
   const saveSubscriptionMessage = async () => {
     setSubMsgLoading(true);
     const value = JSON.stringify({ fee: subFee, feeLabel: subFeeLabel, note: subNote });
@@ -144,6 +172,23 @@ const AdminSettings = () => {
     queryClient.invalidateQueries({ queryKey: ['library_subscription_message'] });
     setLibMsgLoading(false);
     toast({ title: 'تم الحفظ', description: 'تم تحديث رسالة اشتراك المكتبة بنجاح' });
+  };
+
+  const saveLibrarySubscriptionPlans = async () => {
+    setPlanLoading(true);
+    const value = JSON.stringify({
+      currency: planCurrency,
+      monthlyPrice: planMonthlyPrice,
+      annualPrice: planAnnualPrice,
+      monthlyLabel: planMonthlyLabel,
+      annualLabel: planAnnualLabel,
+    });
+    await (supabase as any)
+      .from('platform_settings')
+      .upsert({ key: 'library_subscription_plans', value }, { onConflict: 'key' });
+    queryClient.invalidateQueries({ queryKey: ['library_subscription_plans'] });
+    setPlanLoading(false);
+    toast({ title: 'تم الحفظ', description: 'تم تحديث باقتي اشتراك المكتبة بنجاح' });
   };
 
   const toggleYear = (levelId: string, year: number) => {
@@ -507,6 +552,79 @@ const AdminSettings = () => {
             >
               <Save className="w-4 h-4" />
               {libMsgLoading ? 'جاري الحفظ...' : 'حفظ رسالة المكتبة'}
+            </Button>
+          </div>
+        </div>
+
+        {/* ── باقتا اشتراك المكتبة (شهري / سنوي) ── */}
+        <div className="bg-card rounded-xl border p-4 sm:p-6" dir="rtl">
+          <h2 className="font-bold mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
+            <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" />
+            باقتا اشتراك المكتبة (شهري / سنوي)
+          </h2>
+          <p className="text-xs text-muted-foreground mb-4">
+            الأسعار التي تظهر في شاشة "اشتراكي" بالمكتبة القانونية عند اختيار باقة شهرية أو سنوية.
+          </p>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-sm">رمز العملة</Label>
+              <Input
+                value={planCurrency}
+                onChange={e => setPlanCurrency(e.target.value)}
+                placeholder="مثال: $ / ريال"
+                className="bg-background text-sm w-32"
+                dir="rtl"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="text-sm">تسمية الباقة الشهرية</Label>
+                <Input
+                  value={planMonthlyLabel}
+                  onChange={e => setPlanMonthlyLabel(e.target.value)}
+                  className="bg-background text-sm"
+                  dir="rtl"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">سعر الباقة الشهرية</Label>
+                <Input
+                  value={planMonthlyPrice}
+                  onChange={e => setPlanMonthlyPrice(e.target.value)}
+                  placeholder="مثال: 4"
+                  className="bg-background text-sm"
+                  dir="ltr"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="text-sm">تسمية الباقة السنوية</Label>
+                <Input
+                  value={planAnnualLabel}
+                  onChange={e => setPlanAnnualLabel(e.target.value)}
+                  className="bg-background text-sm"
+                  dir="rtl"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">سعر الباقة السنوية</Label>
+                <Input
+                  value={planAnnualPrice}
+                  onChange={e => setPlanAnnualPrice(e.target.value)}
+                  placeholder="مثال: 19"
+                  className="bg-background text-sm"
+                  dir="ltr"
+                />
+              </div>
+            </div>
+            <Button
+              onClick={saveLibrarySubscriptionPlans}
+              disabled={planLoading}
+              className="gradient-primary text-primary-foreground border-0 gap-2 w-full sm:w-auto"
+            >
+              <Save className="w-4 h-4" />
+              {planLoading ? 'جاري الحفظ...' : 'حفظ باقتي الاشتراك'}
             </Button>
           </div>
         </div>
