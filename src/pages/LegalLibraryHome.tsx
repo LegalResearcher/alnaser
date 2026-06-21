@@ -4,12 +4,13 @@
  * البند 2 من مواصفة Lovable: هيدر كحلي، بطاقتان كاملتا العرض + بطاقتان بعرض نصف،
  * زر بحث شامل ثابت أسفل الشبكة.
  */
-import { useState, ElementType } from 'react';
+import { useState, useEffect, ElementType } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Scale, Landmark, FileText, Menu, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LegalSidebarDrawer } from '@/components/legal-library/LegalSidebarDrawer';
+import { LegalWelcomeOnboarding, hasSeenLegalOnboarding } from '@/components/legal-library/LegalWelcomeOnboarding';
 
 function RootCard({
   icon: Icon, title, subtitle, fullWidth, onClick,
@@ -36,6 +37,11 @@ function RootCard({
 export default function LegalLibraryHome() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    if (!hasSeenLegalOnboarding()) setShowOnboarding(true);
+  }, []);
 
   return (
     <MainLayout>
@@ -100,6 +106,10 @@ export default function LegalLibraryHome() {
       </div>
 
       <LegalSidebarDrawer open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      {showOnboarding && (
+        <LegalWelcomeOnboarding onDone={() => setShowOnboarding(false)} />
+      )}
     </MainLayout>
   );
 }
