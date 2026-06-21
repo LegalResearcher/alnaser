@@ -22,8 +22,9 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
-import { CATEGORY_THEME, LegalCategory } from '@/hooks/useLegalLibrary';
+import { CATEGORY_THEME, LegalCategory, useLegalAccessMode } from '@/hooks/useLegalLibrary';
 import { useReaderPreferences } from '@/hooks/useReaderPreferences';
+import { FeatureLockedModal } from '@/components/legal-library/LegalLimitedAccessModals';
 
 const CATEGORY_FILTERS: { value: LegalCategory; label: string }[] = [
   { value: 'law', label: 'القوانين' },
@@ -116,6 +117,8 @@ function ArticleResultCard({
 
 export default function LegalGlobalSearch() {
   const navigate = useNavigate();
+  const { isLimitedMode } = useLegalAccessMode();
+  const [showLockedModal, setShowLockedModal] = useState(isLimitedMode);
   const [query, setQuery] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -215,6 +218,26 @@ export default function LegalGlobalSearch() {
   };
 
   const handleSubmit = () => setSubmittedQuery(query);
+
+  // ── البحث الشامل محجوب بالكامل في وضع الاستخدام المجاني المحدود ──
+  if (isLimitedMode) {
+    return (
+      <MainLayout>
+        <div className="bg-[#1a2744] sticky top-0 z-30">
+          <div className="container max-w-3xl flex items-center gap-3 py-4">
+            <button onClick={() => navigate(-1)} className="text-white p-1 -m-1">
+              <ChevronRight className="w-5 h-5" />
+            </button>
+            <h1 className="text-lg font-black text-white">بحث شامل في القوانين</h1>
+          </div>
+        </div>
+        <div className="min-h-[calc(100vh-64px)]" />
+        {showLockedModal && (
+          <FeatureLockedModal onClose={() => { setShowLockedModal(false); navigate(-1); }} />
+        )}
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
