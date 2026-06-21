@@ -11,6 +11,8 @@ import { Scale, Landmark, FileText, Menu, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LegalSidebarDrawer } from '@/components/legal-library/LegalSidebarDrawer';
 import { LegalWelcomeOnboarding, hasSeenLegalOnboarding } from '@/components/legal-library/LegalWelcomeOnboarding';
+import { TrialEndedScreen, LimitedUsageModal } from '@/components/legal-library/LegalLimitedAccessModals';
+import { useLegalAccessMode } from '@/hooks/useLegalLibrary';
 
 function RootCard({
   icon: Icon, title, subtitle, fullWidth, onClick,
@@ -38,6 +40,8 @@ export default function LegalLibraryHome() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showLimitedUsageModal, setShowLimitedUsageModal] = useState(false);
+  const { shouldShowTrialEndedScreen, enterLimitedMode, trialDates } = useLegalAccessMode();
 
   useEffect(() => {
     if (!hasSeenLegalOnboarding()) setShowOnboarding(true);
@@ -109,6 +113,20 @@ export default function LegalLibraryHome() {
 
       {showOnboarding && (
         <LegalWelcomeOnboarding onDone={() => setShowOnboarding(false)} />
+      )}
+
+      {!showOnboarding && shouldShowTrialEndedScreen && !showLimitedUsageModal && (
+        <TrialEndedScreen
+          trialDates={trialDates}
+          onGoSubscribe={() => navigate('/library/subscription')}
+          onContinueLimited={() => setShowLimitedUsageModal(true)}
+        />
+      )}
+
+      {showLimitedUsageModal && (
+        <LimitedUsageModal
+          onEnter={() => { enterLimitedMode(); setShowLimitedUsageModal(false); }}
+        />
       )}
     </MainLayout>
   );
