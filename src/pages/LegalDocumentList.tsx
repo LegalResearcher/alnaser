@@ -9,11 +9,13 @@ import { ChevronRight, Search, Star, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   CATEGORY_THEME, LegalCategory, useLegalDocumentsList, useLegalFavorites, useIsPremiumUnlocked,
+  useLegalAccessMode,
 } from '@/hooks/useLegalLibrary';
 import {
   LibraryPasswordModal, LibrarySubscriptionModal,
 } from '@/components/shared/LibrarySubscriptionModals';
 import { LegalAboutModal } from '@/components/legal-library/LegalAboutModal';
+import { FeatureLockedModal } from '@/components/legal-library/LegalLimitedAccessModals';
 
 const VALID_CATEGORIES: LegalCategory[] = ['law', 'regulation', 'prosecution_instruction'];
 
@@ -54,6 +56,8 @@ export default function LegalDocumentList() {
   const [showAboutModal, setShowAboutModal] = useState(false);
   const { isPremiumUnlocked, setIsPremiumUnlocked } = useIsPremiumUnlocked();
   const { isFavorite, toggleFavorite } = useLegalFavorites();
+  const { isLimitedMode } = useLegalAccessMode();
+  const [showFeatureLockedModal, setShowFeatureLockedModal] = useState(false);
 
   // يحدَّد القسم من الراوت: /library/laws | /library/regulations | /library/prosecutions
   const segment = params.category as string;
@@ -74,12 +78,17 @@ export default function LegalDocumentList() {
   const all = filtered;
 
   const handleOpen = (doc: { id: number; file_name: string; is_premium: boolean }) => {
-    if (doc.is_premium && !isPremiumUnlocked) {
+    if (doc.is_premium && !isPremiumUnlocked && !isLimitedMode) {
       setPendingDoc({ id: doc.id, file_name: doc.file_name });
       setShowPasswordModal(true);
       return;
     }
     navigate(`/library/doc/${doc.id}`);
+  };
+
+  const guardedToggleFavorite = (docId: number) => {
+    if (isLimitedMode) { setShowFeatureLockedModal(true); return; }
+    toggleFavorite('document', String(docId));
   };
 
   return (
@@ -99,7 +108,11 @@ export default function LegalDocumentList() {
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              if (isLimitedMode) { setShowFeatureLockedModal(true); return; }
+              setSearch(e.target.value);
+            }}
+            onFocus={() => { if (isLimitedMode) setShowFeatureLockedModal(true); }}
             placeholder={`ابحث عن ${category === 'law' ? 'القانون' : category === 'regulation' ? 'اللائحة' : 'التعليمات'}...`}
             className="w-full h-11 pr-10 pl-4 rounded-2xl border border-border bg-white dark:bg-card text-sm text-right outline-none focus:border-primary/50"
           />
@@ -127,7 +140,7 @@ export default function LegalDocumentList() {
                 circleClass={theme.circleColor}
                 locked={doc.is_premium && !isPremiumUnlocked}
                 onClick={() => handleOpen(doc)}
-                onToggleFavorite={() => toggleFavorite('document', String(doc.id))}
+                onToggleFavorite={() => guardedToggleFavorite(doc.id)}
               />
             ))}
           </section>
@@ -152,7 +165,7 @@ export default function LegalDocumentList() {
                   circleClass="bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300"
                   locked={doc.is_premium && !isPremiumUnlocked}
                   onClick={() => handleOpen(doc)}
-                  onToggleFavorite={() => toggleFavorite('document', String(doc.id))}
+                  onToggleFavorite={() => guardedToggleFavorite(doc.id)}
                 />
               ))
             )}
@@ -164,7 +177,10 @@ export default function LegalDocumentList() {
       <div className="fixed bottom-0 inset-x-0 z-30 bg-white dark:bg-card border-t border-border">
         <div className="container max-w-5xl grid grid-cols-3">
           <button
-            onClick={() => navigate('/library/favorites')}
+            onClick={() => {
+              if (isLimitedMode) { setShowFeatureLockedModal(true); return; }
+              navigate('/library/favorites');
+            }}
             className="flex flex-col items-center gap-0.5 py-2.5 text-amber-500"
           >
             <Star className="w-5 h-5" />
@@ -178,7 +194,10 @@ export default function LegalDocumentList() {
             <span className="text-[10px] font-bold">حول</span>
           </button>
           <button
-            onClick={() => navigate('/library/search')}
+            onClick={() => {
+              if (isLimitedMode) { setShowFeatureLockedModal(true); return; }
+              navigate('/library/search');
+            }}
             className="flex flex-col items-center gap-0.5 py-2.5 text-muted-foreground"
           >
             <Search className="w-5 h-5" />
@@ -209,6 +228,9 @@ export default function LegalDocumentList() {
           fileName={pendingDoc.file_name}
           onClose={() => { setShowSubscriptionModal(false); setPendingDoc(null); }}
         />
+      )}
+      {showFeatureLockedModal && (
+        <FeatureLockedModal onClose={() => setShowFeatureLockedModal(false)} />
       )}
     </MainLayout>
   );
