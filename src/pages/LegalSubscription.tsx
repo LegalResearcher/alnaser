@@ -14,20 +14,37 @@
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
-import { ChevronRight, Crown, Lock, KeyRound, MessageSquareText, CheckCircle2 } from 'lucide-react';
+import { ChevronRight, Crown, Lock, KeyRound, MessageSquareText, CheckCircle2, Gift, Calendar, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsPremiumUnlocked } from '@/hooks/useLegalLibrary';
 import { useLibrarySubscriptionMessage, useLibrarySubscriptionPlans } from '@/hooks/useLibrarySubscriptionMessage';
 import { LibraryPasswordModal, LibrarySubscriptionModal } from '@/components/shared/LibrarySubscriptionModals';
+import { getLegalTrialDates, formatDate, TRIAL_DAYS } from '@/components/legal-library/LegalWelcomeOnboarding';
 
 export default function LegalSubscription() {
   const navigate = useNavigate();
-  const { isPremiumUnlocked, setIsPremiumUnlocked, checked } = useIsPremiumUnlocked();
+  const { isPremiumUnlocked, setIsPremiumUnlocked, checked, subscriptionDates } = useIsPremiumUnlocked();
   const subMsg = useLibrarySubscriptionMessage();
   const plans = useLibrarySubscriptionPlans();
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<{ fileName: string; fee: string } | null>(null);
+
+  const trialDates = getLegalTrialDates();
+  const trialDaysLeft = trialDates ? Math.max(0, Math.ceil((trialDates.end.getTime() - Date.now()) / 86400000)) : 0;
+  const trialActive = !!trialDates && trialDaysLeft > 0;
+  const trialProgressPct = trialDates ? Math.min(100, Math.max(0, ((TRIAL_DAYS - trialDaysLeft) / TRIAL_DAYS) * 100)) : 0;
+
+  const subTotalDays = subscriptionDates?.end
+    ? Math.max(1, Math.round((subscriptionDates.end.getTime() - subscriptionDates.start.getTime()) / 86400000))
+    : 0;
+  const subDaysLeft = subscriptionDates?.end
+    ? Math.max(0, Math.ceil((subscriptionDates.end.getTime() - Date.now()) / 86400000))
+    : 0;
+  const subActive = !subscriptionDates ? false : (subscriptionDates.end ? subDaysLeft > 0 : true);
+  const subProgressPct = subscriptionDates?.end && subTotalDays > 0
+    ? Math.min(100, Math.max(0, ((subTotalDays - subDaysLeft) / subTotalDays) * 100))
+    : 100;
 
   const allLines = subMsg.note.split(/\n|(?<=\.)(?=\s*\S)/).map((l: string) => l.trim()).filter(Boolean);
   const featureLines = allLines.filter((l: string) => !l.endsWith('**'));
@@ -83,6 +100,134 @@ export default function LegalSubscription() {
             </>
           )}
         </div>
+
+        {/* بطاقة الاشتراك المدفوع — نفس منطق وتصميم بطاقة التجربة، تبقى ظاهرة دائماً */}
+        {isPremiumUnlocked && subscriptionDates && (
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="flex items-center justify-between mb-4">
+              <span className={cn(
+                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black',
+                subActive
+                  ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-muted text-muted-foreground'
+              )}>
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                {subActive ? 'نشط' : 'منتهي'}
+              </span>
+              <div className="flex items-center gap-2.5">
+                <p className="font-black text-foreground">اشتراكك المدفوع</p>
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
+                  <Crown className="w-4 h-4 text-emerald-600" />
+                </div>
+              </div>
+            </div>
+
+            {/* شريط التقدّم وعداد الأيام — فقط إن كان للاشتراك تاريخ انتهاء محدد */}
+            {subscriptionDates.end ? (
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-bold text-muted-foreground">{subTotalDays} يوم</span>
+                  <span className={cn(
+                    'text-xs font-black',
+                    subActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'
+                  )}>
+                    {subActive ? `متبقي ${subDaysLeft} يوم` : 'انتهت المدة'}
+                  </span>
+                </div>
+                <div className="h-2 rounded-full bg-muted overflow-hidden">
+                  <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${subProgressPct}%` }} />
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-4">اشتراك ساري بلا تاريخ انتهاء محدد</p>
+            )}
+
+            <div className="border-t border-border pt-3 space-y-2 text-right">
+              <div className="flex items-center justify-end gap-2">
+                <span className="text-sm font-bold text-foreground">{formatDate(subscriptionDates.start)}</span>
+                <span className="text-xs font-bold text-muted-foreground">بداية الاشتراك:</span>
+                <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+              </div>
+              {subscriptionDates.end && (
+                <div className="flex items-center justify-end gap-2">
+                  <span className="text-sm font-bold text-foreground">{formatDate(subscriptionDates.end)}</span>
+                  <span className="text-xs font-bold text-muted-foreground">نهاية الاشتراك:</span>
+                  <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                </div>
+              )}
+            </div>
+
+            {!subActive && (
+              <div className="mt-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-4 flex items-start gap-2.5 text-right">
+                <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                <p className="text-xs font-bold text-amber-700 dark:text-amber-400 leading-relaxed">
+                  انتهت مدة اشتراكك. جدّد الاشتراك لمواصلة الوصول الكامل لنصوص المكتبة.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* بطاقة التجربة المجانية — تبقى ظاهرة دائماً (وليس فقط أول مرة) */}
+        {!isPremiumUnlocked && trialDates && (
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="flex items-center justify-between mb-4">
+              <span className={cn(
+                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black',
+                trialActive
+                  ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-muted text-muted-foreground'
+              )}>
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                {trialActive ? 'نشطة' : 'منتهية'}
+              </span>
+              <div className="flex items-center gap-2.5">
+                <p className="font-black text-foreground">التجربة المجانية</p>
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center">
+                  <Gift className="w-4 h-4 text-emerald-600" />
+                </div>
+              </div>
+            </div>
+
+            {/* شريط التقدّم وعداد الأيام */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-bold text-muted-foreground">{TRIAL_DAYS} أيام</span>
+                <span className={cn(
+                  'text-xs font-black',
+                  trialActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'
+                )}>
+                  {trialActive ? `متبقي ${trialDaysLeft} يوم` : 'انتهت المدة'}
+                </span>
+              </div>
+              <div className="h-2 rounded-full bg-muted overflow-hidden">
+                <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${trialProgressPct}%` }} />
+              </div>
+            </div>
+
+            <div className="border-t border-border pt-3 space-y-2 text-right">
+              <div className="flex items-center justify-end gap-2">
+                <span className="text-sm font-bold text-foreground">{formatDate(trialDates.start)}</span>
+                <span className="text-xs font-bold text-muted-foreground">بداية التجربة:</span>
+                <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <span className="text-sm font-bold text-foreground">{formatDate(trialDates.end)}</span>
+                <span className="text-xs font-bold text-muted-foreground">نهاية التجربة:</span>
+                <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+              </div>
+            </div>
+
+            {!trialActive && (
+              <div className="mt-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-4 flex items-start gap-2.5 text-right">
+                <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                <p className="text-xs font-bold text-amber-700 dark:text-amber-400 leading-relaxed">
+                  انتهت فترة تجربتك المجانية. اشترك الآن لمواصلة الوصول الكامل لنصوص المكتبة.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* إدخال رمز تفعيل لمن اشترك مسبقاً */}
         {!isPremiumUnlocked && (
