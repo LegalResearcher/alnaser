@@ -1,11 +1,27 @@
 /**
- * LegalOtherServices.tsx — إصلاح مؤقت لمسار /library/other-services
- * كان هذا المسار مُشاراً إليه من LegalSidebarDrawer.tsx بدون صفحة فعلية (404).
- * صفحة بسيطة "قريباً" إلى أن يُحدَّد محتواها لاحقاً.
+ * LegalOtherServices.tsx — صفحة "خدماتنا الأخرى" (/library/other-services)
+ * شبكة بطاقتين تطابق التصميم المرجعي:
+ *  1) أحكام المحكمة العليا       → /library/other-services/supreme-court
+ *  2) توفير مراجع قانونية حسب الطلب → /library/other-services/legal-references
  */
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
-import { ChevronRight, Grid3x3, MessageSquareText } from 'lucide-react';
+import { ChevronRight, Gavel, BookOpenText } from 'lucide-react';
+
+const SERVICES = [
+  {
+    key: 'supreme-court',
+    title: 'أحكام المحكمة العليا',
+    icon: Gavel,
+    path: '/library/other-services/supreme-court',
+  },
+  {
+    key: 'legal-references',
+    title: 'توفير مراجع قانونية حسب الطلب',
+    icon: BookOpenText,
+    path: '/library/other-services/legal-references',
+  },
+] as const;
 
 export default function LegalOtherServices() {
   const navigate = useNavigate();
@@ -21,22 +37,17 @@ export default function LegalOtherServices() {
         </div>
       </div>
 
-      <div className="container max-w-5xl py-20 flex flex-col items-center text-center">
-        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-5">
-          <Grid3x3 className="w-7 h-7 text-muted-foreground/50" />
-        </div>
-        <h2 className="text-base font-bold text-foreground mb-2">هذه الصفحة قريباً</h2>
-        <p className="text-sm text-muted-foreground mb-6 max-w-xs">
-          سيتم هنا قريباً عرض خدمات منصة الناصر القانونية الأخرى (بنك الأسئلة، غرفة المنافسة، وغيرها).
-        </p>
-        <a
-          href={`https://t.me/MuenAlnaser?text=${encodeURIComponent('استفسار عن خدمات منصة الناصر القانونية\nhttps://alnaseer.org')}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 text-sm text-primary font-semibold hover:underline"
-        >
-          <MessageSquareText className="w-4 h-4" /> تواصل معنا
-        </a>
+      <div className="container max-w-5xl py-6 pb-24 flex flex-col gap-4">
+        {SERVICES.map(({ key, title, icon: Icon, path }) => (
+          <button
+            key={key}
+            onClick={() => navigate(path)}
+            className="w-full bg-card rounded-2xl border border-border p-8 flex flex-col items-center text-center gap-4 shadow-card hover:shadow-card-md transition-all active:scale-[0.99]"
+          >
+            <Icon className="w-12 h-12 text-[#b8923f]" strokeWidth={1.5} />
+            <p className="text-base font-black text-foreground">{title}</p>
+          </button>
+        ))}
       </div>
     </MainLayout>
   );
