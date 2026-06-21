@@ -158,10 +158,13 @@ export function LibraryPasswordModal({ onSuccess, onSubscribe, onClose }: {
   );
 }
 
-export function LibrarySubscriptionModal({ fileName, onClose }: {
+export function LibrarySubscriptionModal({ fileName, onClose, feeOverride }: {
   fileName: string; onClose: () => void;
+  /** سعر مخصص يُعرض بدل subMsg.fee — يُستخدم عند الدخول من بطاقة باقة شهرية/سنوية محددة السعر */
+  feeOverride?: string;
 }) {
   const subMsg = useLibrarySubscriptionMessage();
+  const displayFee = feeOverride || subMsg.fee;
   const { toast } = useToast();
   const [studentName, setStudentName] = useState('');
   const [phone, setPhone] = useState('');
@@ -200,7 +203,7 @@ export function LibrarySubscriptionModal({ fileName, onClose }: {
 
       await supabase.functions.invoke('send-telegram', {
         body: {
-          message: `🔔 <b>طلب اشتراك جديد (المكتبة)</b>\n\n👤 ${studentName.trim()}\n📱 ${phone.trim()}\n📄 الملف: ${fileName}${wallet ? `\n💳 المحفظة: ${wallet}` : ''}${receiptUrl ? `\n🖼 الإيصال: ${receiptUrl}` : ''}\n💰 المبلغ: ${subMsg.fee}\n\n⏳ في انتظار التأكيد من لوحة التحكم`,
+          message: `🔔 <b>طلب اشتراك جديد (المكتبة)</b>\n\n👤 ${studentName.trim()}\n📱 ${phone.trim()}\n📄 الملف: ${fileName}${wallet ? `\n💳 المحفظة: ${wallet}` : ''}${receiptUrl ? `\n🖼 الإيصال: ${receiptUrl}` : ''}\n💰 المبلغ: ${displayFee}\n\n⏳ في انتظار التأكيد من لوحة التحكم`,
         },
       });
 
@@ -240,7 +243,7 @@ export function LibrarySubscriptionModal({ fileName, onClose }: {
             <>
               <div className="space-y-2">
                 <p className="text-xs font-black text-blue-700 dark:text-blue-400 text-right">
-                  💰 الرسوم: <span className="text-base">{subMsg.fee}</span>
+                  💰 الرسوم: <span className="text-base">{displayFee}</span>
                 </p>
                 {featureLines.length > 0 && (
                   <div className="bg-blue-50 dark:bg-blue-950/30 rounded-2xl p-3.5 border border-blue-100 dark:border-blue-800/40 space-y-1.5">
