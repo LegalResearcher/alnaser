@@ -14,7 +14,7 @@ import { useEffect, useMemo, useRef, useState, MutableRefObject } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import {
-  ChevronRight, Menu, Moon, Sun, Type, Search, X, Heart, Copy, Check, Landmark, Lock,
+  ChevronRight, Moon, Sun, Type, Search, X, Heart, Copy, Check, Landmark, Lock, LayoutList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -62,6 +62,8 @@ export default function LegalDocumentViewer() {
   const { copy, copiedKey } = useCopyToClipboard();
 
   const [showIndex, setShowIndex] = useState(false);
+  const [indexTab, setIndexTab] = useState<'subjects' | 'numbers'>('subjects');
+  const [indexSearch, setIndexSearch] = useState('');
   const [showFontPanel, setShowFontPanel] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -78,12 +80,30 @@ export default function LegalDocumentViewer() {
   const theme = CATEGORY_THEME[category];
 
   // ── بناء الفهرس من كل عناصر section (client-side) ──
-  const indexItems = useMemo(() => {
+  const sectionItems = useMemo(() => {
     if (!document) return [];
     return document.content
       .map((item, idx) => ({ item, idx }))
       .filter(({ item }) => item.type === 'section');
   }, [document]);
+
+  // ── بناء فهرس أرقام المواد (client-side) ──
+  const articleIndexItems = useMemo(() => {
+    if (!document) return [];
+    return document.content
+      .map((item, idx) => ({ item, idx }))
+      .filter(({ item }) => item.type === 'article');
+  }, [document]);
+
+  const indexItems = useMemo(() => {
+    const q = indexSearch.trim();
+    if (indexTab === 'numbers') {
+      if (!q) return articleIndexItems;
+      return articleIndexItems.filter(({ item }) => (item.num ?? '').includes(q));
+    }
+    if (!q) return sectionItems;
+    return sectionItems.filter(({ item }) => (item.title ?? '').includes(q));
+  }, [indexTab, indexSearch, sectionItems, articleIndexItems]);
 
   // ── البحث الداخلي (client-side بالكامل فوق المصفوفة المجلوبة مسبقاً) ──
   const searchResults = useMemo(() => {
@@ -137,6 +157,14 @@ export default function LegalDocumentViewer() {
     sectionRefs.current[idx]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  const jumpToArticleFromIndex = (idx: number) => {
+    setShowIndex(false);
+    const key = String(idx);
+    setTimeout(() => {
+      articleRefs.current[key]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  };
+
   const scrollToArticle = (idx: number) => {
     setSearchOpen(false);
     const key = String(idx);
@@ -187,11 +215,6 @@ export default function LegalDocumentViewer() {
             <h1 className="flex-1 text-center text-sm sm:text-base font-black text-white leading-snug line-clamp-2 px-1">
               {document.file_name}
             </h1>
-            {!isLocked && (
-              <button onClick={() => setShowIndex(true)} className="text-white p-1.5 -m-1 shrink-0" aria-label="الفهرس">
-                <Menu className="w-5 h-5" />
-              </button>
-            )}
           </div>
 
           {/* شريط البحث الداخلي — مخفي بالكامل طالما المستند محجوباً (لا content لنبحث فيه أصلاً) */}
@@ -223,6 +246,14 @@ export default function LegalDocumentViewer() {
                     searchByNumber ? 'bg-amber-400 text-slate-900' : 'bg-white/15 text-white/90')}
                 >
                   بحث بالرقم
+                </button>
+                <button
+                  onClick={() => setShowIndex(true)}
+                  className="flex items-center gap-1.5 text-[11px] font-black px-2.5 py-1 rounded-full bg-white/90 text-foreground shrink-0"
+                  aria-label="الفهرس"
+                >
+                  الفهرس
+                  <LayoutList className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
@@ -314,31 +345,80 @@ export default function LegalDocumentViewer() {
         )}
       </div>
 
-      {/* الفهرس (Drawer) */}
+      {/* الفهرس (Bottom Sheet) — تبويب المواضيع والفصول وتبويب أرقام المواد */}
       {showIndex && !isLocked && (
-        <div className="fixed inset-0 z-[9997]" onClick={() => setShowIndex(false)}>
+        <div className="fixed inset-0 z-[9998]" onClick={() => setShowIndex(false)}>
           <div className="absolute inset-0 bg-black/50" />
           <div
-            className="absolute top-0 left-0 h-full w-[85%] max-w-sm bg-background shadow-2xl flex flex-col animate-in slide-in-from-left duration-200"
+            className="absolute bottom-0 inset-x-0 max-h-[85vh] bg-background rounded-t-3xl shadow-2xl flex flex-col animate-in slide-in-from-bottom duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className={cn(theme.headerBg, 'p-4 flex items-center justify-between')}>
-              <h3 className="text-white font-black text-sm">الفهرس</h3>
-              <button onClick={() => setShowIndex(false)} className="text-white"><X className="w-5 h-5" /></button>
+            <div className="flex justify-center pt-2.5 pb-1.5">
+              <span className="w-10 h-1 rounded-full bg-border" />
             </div>
-            <div className="flex-1 overflow-y-auto p-3 space-y-1">
-              {indexItems.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-10">لا توجد أقسام في هذا المستند</p>
-              ) : (
-                indexItems.map(({ item, idx }) => (
-                  <button
-                    key={idx}
-                    onClick={() => scrollToIndex(idx)}
-                    className="w-full text-right p-3 rounded-xl hover:bg-muted text-sm font-bold text-foreground"
-                  >
-                    {item.level ? `${item.level} — ` : ''}{item.title}
+
+            <div className="px-4">
+              <div className="relative">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  value={indexSearch}
+                  onChange={(e) => setIndexSearch(e.target.value)}
+                  placeholder="ابحث في الفهرس أو رقم المادة..."
+                  className="w-full h-11 pr-9 pl-9 rounded-xl border border-border bg-card text-sm text-right outline-none"
+                  autoFocus
+                />
+                {indexSearch && (
+                  <button onClick={() => setIndexSearch('')} className="absolute left-3 top-1/2 -translate-y-1/2">
+                    <X className="w-4 h-4 text-slate-400" />
                   </button>
-                ))
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-6 mt-3 border-b border-border">
+                <button
+                  onClick={() => setIndexTab('numbers')}
+                  className={cn('pb-2.5 text-sm font-black transition-colors',
+                    indexTab === 'numbers' ? cn(theme.articleNumColor, 'border-b-2', theme.accentBorder) : 'text-muted-foreground')}
+                >
+                  أرقام المواد
+                </button>
+                <button
+                  onClick={() => setIndexTab('subjects')}
+                  className={cn('pb-2.5 text-sm font-black transition-colors',
+                    indexTab === 'subjects' ? cn(theme.articleNumColor, 'border-b-2', theme.accentBorder) : 'text-muted-foreground')}
+                >
+                  المواضيع والفصول
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4">
+              {indexItems.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-10">لا توجد نتائج</p>
+              ) : indexTab === 'subjects' ? (
+                <div className="space-y-2.5">
+                  {indexItems.map(({ item, idx }) => (
+                    <button
+                      key={idx}
+                      onClick={() => scrollToIndex(idx)}
+                      className="w-full text-right p-3.5 rounded-xl border border-border bg-card text-sm font-bold text-foreground"
+                    >
+                      {item.level ? `${item.level} — ` : ''}{item.title}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-2.5">
+                  {indexItems.map(({ item, idx }) => (
+                    <button
+                      key={idx}
+                      onClick={() => jumpToArticleFromIndex(idx)}
+                      className={cn('rounded-xl border py-3 text-center', theme.accentBorder, theme.accentBg)}
+                    >
+                      <span className={cn('text-xs font-black', theme.articleNumColor)}>المادة ({item.num})</span>
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
           </div>
