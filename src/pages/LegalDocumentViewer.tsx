@@ -19,12 +19,13 @@ import {
 import { cn } from '@/lib/utils';
 import {
   CATEGORY_THEME, LegalContentItem, useLegalDocumentMeta, useLegalDocumentContent,
-  useLegalFavorites, useIsPremiumUnlocked,
+  useLegalFavorites, useIsPremiumUnlocked, useLegalAccessMode,
 } from '@/hooks/useLegalLibrary';
 import { useReaderPreferences, saveReadingPosition, getReadingPosition } from '@/hooks/useReaderPreferences';
 import {
   LibraryPasswordModal, LibrarySubscriptionModal,
 } from '@/components/shared/LibrarySubscriptionModals';
+import { FeatureLockedModal } from '@/components/legal-library/LegalLimitedAccessModals';
 
 type Theme = typeof CATEGORY_THEME['law'];
 
@@ -47,11 +48,14 @@ export default function LegalDocumentViewer() {
 
   const { data: meta, isLoading: metaLoading } = useLegalDocumentMeta(docId);
   const { isPremiumUnlocked, setIsPremiumUnlocked } = useIsPremiumUnlocked();
+  const { isLimitedMode } = useLegalAccessMode();
 
   // مدفوع ولم يتحقق المستخدم بعد؟ — إن كان كذلك لا نطلب content من الخادم إطلاقاً
-  const isLocked = !!meta?.is_premium && !isPremiumUnlocked;
+  // ⚠️ في وضع الاستخدام المجاني المحدود تُفتح القراءة الكاملة لكل المستندات
+  // (حتى المدفوعة)، لذا isLocked يبقى false دائماً في هذا الوضع.
+  const isLocked = !isLimitedMode && !!meta?.is_premium && !isPremiumUnlocked;
 
-  const { data: contentData, isLoading: contentLoading } = useLegalDocumentContent(docId, !isLocked);
+  const { data: contentData, isLoading: contentLoading } = useLegalDocumentContent(docId, !isLocked, isLimitedMode);
 
   // مستند مُجمَّع للاستخدام في باقي الصفحة — content فاضي طالما محجوب (لم يُطلب أصلاً)
   const document = meta ? { ...meta, content: (isLocked ? [] : contentData) ?? [] } : null;
@@ -71,6 +75,17 @@ export default function LegalDocumentViewer() {
   const [exactMatch, setExactMatch] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [showFeatureLockedModal, setShowFeatureLockedModal] = useState(false);
+
+  // ── في وضع الاستخدام المجاني المحدود: البحث/النسخ/المفضلة محجوبة بنافذة "عذراً" ──
+  const guardedCopy = (text: string, key: string) => {
+    if (isLimitedMode) { setShowFeatureLockedModal(true); return; }
+    copy(text, key);
+  };
+  const guardedToggleFavorite = (t: 'article', ref: string) => {
+    if (isLimitedMode) { setShowFeatureLockedModal(true); return; }
+    toggleFavorite(t, ref);
+  };
 
   const articleRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const sectionRefs = useRef<Record<number, HTMLDivElement | null>>({});
@@ -217,14 +232,21 @@ export default function LegalDocumentViewer() {
             </h1>
           </div>
 
-          {/* شريط البحث الداخلي — مخفي بالكامل طالما المستند محجوباً (لا content لنبحث فيه أصلاً) */}
+          {/* شريط البحث الداخلي — مخفي بالكامل طالما المستند محجوباً (لا content لنبحث فيه أصلاً)
+              وفي وضع الاستخدام المجاني المحدود يظهر شكلاً لكنه محجوب عن الاستخدام الفعلي */}
           {!isLocked && (
             <div className="container max-w-3xl pb-3">
               <div className="relative">
                 <input
                   value={searchQuery}
-                  onChange={(e) => { setSearchQuery(e.target.value); setSearchOpen(true); }}
-                  onFocus={() => setSearchOpen(true)}
+                  onChange={(e) => {
+                    if (isLimitedMode) { setShowFeatureLockedModal(true); return; }
+                    setSearchQuery(e.target.value); setSearchOpen(true);
+                  }}
+                  onFocus={() => {
+                    if (isLimitedMode) { setShowFeatureLockedModal(true); return; }
+                    setSearchOpen(true);
+                  }}
                   placeholder="ابحث داخل نصوص المواد..."
                   className="w-full h-10 pr-9 pl-9 rounded-xl bg-white/95 text-sm text-right outline-none"
                 />
@@ -237,18 +259,32 @@ export default function LegalDocumentViewer() {
               </div>
               <div className="flex items-center justify-end gap-4 mt-2">
                 <label className="flex items-center gap-1.5 text-[11px] font-bold text-white/90">
-                  <input type="checkbox" checked={exactMatch} onChange={(e) => setExactMatch(e.target.checked)} className="accent-amber-400" />
+                  <input
+                    type="checkbox"
+                    checked={exactMatch}
+                    onChange={(e) => {
+                      if (isLimitedMode) { setShowFeatureLockedModal(true); return; }
+                      setExactMatch(e.target.checked);
+                    }}
+                    className="accent-amber-400"
+                  />
                   مطابق تام
                 </label>
                 <button
-                  onClick={() => setSearchByNumber(v => !v)}
+                  onClick={() => {
+                    if (isLimitedMode) { setShowFeatureLockedModal(true); return; }
+                    setSearchByNumber(v => !v);
+                  }}
                   className={cn('text-[11px] font-bold px-2.5 py-1 rounded-full transition-colors',
                     searchByNumber ? 'bg-amber-400 text-slate-900' : 'bg-white/15 text-white/90')}
                 >
                   بحث بالرقم
                 </button>
                 <button
-                  onClick={() => setShowIndex(true)}
+                  onClick={() => {
+                    if (isLimitedMode) { setShowFeatureLockedModal(true); return; }
+                    setShowIndex(true);
+                  }}
                   className="flex items-center gap-1.5 text-[11px] font-black px-2.5 py-1 rounded-full bg-white/90 text-foreground shrink-0"
                   aria-label="الفهرس"
                 >
@@ -334,8 +370,8 @@ export default function LegalDocumentViewer() {
                   articleRefs={articleRefs}
                   sectionRefs={sectionRefs}
                   isFavorite={isFavorite}
-                  toggleFavorite={toggleFavorite}
-                  copy={copy}
+                  toggleFavorite={guardedToggleFavorite}
+                  copy={guardedCopy}
                   copiedKey={copiedKey}
                   nightMode={nightMode}
                 />
@@ -437,6 +473,9 @@ export default function LegalDocumentViewer() {
           fileName={document.file_name}
           onClose={() => setShowSubscriptionModal(false)}
         />
+      )}
+      {showFeatureLockedModal && (
+        <FeatureLockedModal onClose={() => setShowFeatureLockedModal(false)} />
       )}
     </MainLayout>
   );
