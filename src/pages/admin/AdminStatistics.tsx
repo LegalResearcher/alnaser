@@ -8,6 +8,23 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
+// تسميات أقسام المكتبة (مفتاح القسم المستخرج من page_path → اسم عربي للعرض)
+const LIBRARY_SECTION_LABELS: Record<string, string> = {
+  home: 'الرئيسية',
+  laws: 'القوانين اليمنية',
+  regulations: 'اللوائح',
+  prosecutions: 'تعليمات النيابة',
+  judicial: 'القواعد القضائية',
+  favorites: 'المفضلة',
+  search: 'البحث الشامل',
+  subscription: 'الاشتراك',
+  'other-services': 'خدماتنا الأخرى',
+  files: 'مكتبة الملفات',
+  doc: 'عرض المستندات',
+};
+
+const libraryLabel = (key: string) => LIBRARY_SECTION_LABELS[key] || key;
+
 const EXAM_FORM_LABELS: Record<string, { label: string; color: string }> = {
   General:  { label: 'عام',            color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
   Parallel: { label: 'موازي',          color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' },
@@ -195,7 +212,63 @@ const AdminStatistics = () => {
     },
   });
 
-  // إحصائيات التطبيق
+  // جلب زيارات كل قسم من المكتبة من site_analytics (بنفس منطق المستويات تماماً)
+  const { data: libraryVisits, isLoading: libraryLoading } = useQuery({
+    queryKey: ['library-visits-stats'],
+    queryFn: async () => {
+      // جلب الأرقام المحفوظة (المؤرشفة) من platform_stats
+      const { data: savedStatsLib } = await supabase
+        .from('platform_stats')
+        .select('library_visits')
+        .eq('id', 1)
+        .single();
+      const archivedLibraryVisits = ((savedStatsLib as Record<string, any> | null)?.library_visits ?? {}) as Record<string, number>;
+
+      // جلب الزيارات الحالية (المتبقية في الجدول، لم تُؤرشف بعد)
+      // استعلامان منفصلان (تطابق تام للصفحة الرئيسية + like للأقسام الفرعية)
+      // لتجنّب أي التباس في صياغة or() مع like داخل PostgREST
+      const fetchAllPaths = async (filterFn: (q: any) => any) => {
+        let rows: any[] = [];
+        let from = 0;
+        const PAGE_SIZE = 1000;
+        while (true) {
+          const { data: batch } = await filterFn(
+            supabase.from('site_analytics').select('page_path')
+          ).range(from, from + PAGE_SIZE - 1);
+          if (!batch || batch.length === 0) break;
+          rows = [...rows, ...batch];
+          if (batch.length < PAGE_SIZE) break;
+          from += PAGE_SIZE;
+        }
+        return rows;
+      };
+
+      const [homeRows, subRows] = await Promise.all([
+        fetchAllPaths((q) => q.eq('page_path', '/library')),
+        fetchAllPaths((q) => q.like('page_path', '/library/%')),
+      ]);
+      const allAnalytics = [...homeRows, ...subRows];
+
+      const currentVisitMap: Record<string, number> = {};
+      allAnalytics.forEach((row) => {
+        const path = row.page_path as string;
+        const sectionKey = path === '/library' ? 'home' : path.split('/')[2];
+        if (sectionKey) currentVisitMap[sectionKey] = (currentVisitMap[sectionKey] || 0) + 1;
+      });
+
+      // دمج الأرشيف مع الحالي لكل المفاتيح الظاهرة في كليهما
+      const allKeys = new Set([...Object.keys(archivedLibraryVisits), ...Object.keys(currentVisitMap)]);
+      return Array.from(allKeys)
+        .map((key) => ({
+          id: key,
+          name: libraryLabel(key),
+          visits: (archivedLibraryVisits[key] ?? 0) + (currentVisitMap[key] ?? 0),
+        }))
+        .sort((a, b) => b.visits - a.visits);
+    },
+  });
+
+
   const { data: appStats } = useQuery({
     queryKey: ['app-stats'],
     queryFn: async () => {
@@ -557,6 +630,54 @@ const AdminStatistics = () => {
               })}
               {(!levelVisits || levelVisits.length === 0) && (
                 <p className="text-center text-muted-foreground text-sm py-8">لا توجد بيانات زيارات بعد</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* زيارات المكتبة */}
+        <div className="bg-card rounded-xl border p-4 sm:p-5">
+          <h3 className="font-bold mb-4 flex items-center gap-2 text-sm sm:text-base">
+            <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+            الزيارات الفعلية حسب أقسام المكتبة
+          </h3>
+          {libraryLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-14 rounded-xl" />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {libraryVisits?.map((section, index) => {
+                const maxVisits = Math.max(...(libraryVisits.map(l => l.visits)), 1);
+                const percentage = Math.round((section.visits / maxVisits) * 100);
+                const colors = ['bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-purple-500', 'bg-pink-500', 'bg-indigo-500'];
+                const color = colors[index % colors.length];
+                return (
+                  <div key={section.id} className="flex items-center gap-3 sm:gap-4 p-3 rounded-xl bg-muted/40 hover:bg-muted/70 transition-colors">
+                    <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg ${color} flex items-center justify-center shrink-0`}>
+                      <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="font-semibold text-sm truncate">{section.name}</span>
+                        <span className="font-bold text-sm shrink-0 mr-2">
+                          {section.visits.toLocaleString('ar-SA')} زيارة
+                        </span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full ${color} transition-all duration-700`}
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {(!libraryVisits || libraryVisits.length === 0) && (
+                <p className="text-center text-muted-foreground text-sm py-8">لا توجد بيانات زيارات للمكتبة بعد</p>
               )}
             </div>
           )}
