@@ -97,24 +97,23 @@ export default function LegalRulingsIndex() {
             <p className="text-base font-bold text-foreground leading-7">
               إذا أردت الحصول على أحكام عليا حول هذا الموضوع، يرجى التواصل بنا
             </p>
-            <a
-              href={
-                selectedTopic
-                  ? buildTelegramLink(
-                      `مرحباً، أود الحصول على أحكام عليا بخصوص موضوع: ${selectedTopic}`,
-                    )
-                  : '#'
-              }
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => setSelectedTopic(null)}
+            <button
+              type="button"
+              onClick={() => {
+                if (!selectedTopic) return;
+                const link = buildTelegramLink(
+                  `مرحباً، أود الحصول على أحكام عليا بخصوص موضوع: ${selectedTopic}`,
+                );
+                window.open(link, '_blank', 'noopener,noreferrer');
+                setSelectedTopic(null);
+              }}
               className="flex flex-col items-center gap-2"
             >
               <span className="w-12 h-12 rounded-full bg-[#b8923f]/10 flex items-center justify-center">
                 <Send className="w-5 h-5 text-[#b8923f]" />
               </span>
               <span className="text-sm font-bold text-[#b8923f]">إرسال طلب</span>
-            </a>
+            </button>
           </div>
         </DrawerContent>
       </Drawer>
