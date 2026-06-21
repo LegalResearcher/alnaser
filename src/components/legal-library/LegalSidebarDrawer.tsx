@@ -53,7 +53,7 @@ export function LegalSidebarDrawer({ open, onClose }: { open: boolean; onClose: 
             <span className="font-bold text-foreground">اشتراكي</span>
           </button>
           <a
-            href={`https://wa.me/?text=${encodeURIComponent('استفسار بخصوص المكتبة القانونية — منصة الناصر القانونية\nhttps://alnaseer.org')}`}
+            href={`https://t.me/MuenAlnaser?text=${encodeURIComponent('استفسار بخصوص المكتبة القانونية — منصة الناصر القانونية\nhttps://alnaseer.org')}`}
             target="_blank"
             rel="noopener noreferrer"
             className="w-full flex items-center justify-between px-3 py-3.5 rounded-xl hover:bg-muted transition-colors text-right"
