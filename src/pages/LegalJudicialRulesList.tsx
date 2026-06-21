@@ -18,18 +18,21 @@ import { ChevronRight, ChevronDown, ChevronUp, Search, Copy, Check, Heart, Lock 
 import { cn } from '@/lib/utils';
 import {
   useJudicialRulesByCircuit, useJudicialRuleContent, useLegalFavorites, useIsPremiumUnlocked,
-  JudicialRuleMeta,
+  useLegalAccessMode, JudicialRuleMeta,
 } from '@/hooks/useLegalLibrary';
 import {
   LibraryPasswordModal, LibrarySubscriptionModal,
 } from '@/components/shared/LibrarySubscriptionModals';
+import { FeatureLockedModal } from '@/components/legal-library/LegalLimitedAccessModals';
 
 function RuleCard({
-  rule, isPremiumUnlocked, onRequestUnlock,
+  rule, isPremiumUnlocked, isLimitedMode, onRequestUnlock, onFeatureLocked,
 }: {
   rule: JudicialRuleMeta;
   isPremiumUnlocked: boolean;
+  isLimitedMode: boolean;
   onRequestUnlock: (rule: JudicialRuleMeta) => void;
+  onFeatureLocked: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [showFull, setShowFull] = useState(false);
@@ -38,8 +41,9 @@ function RuleCard({
   const ruleRef = String(rule.id);
   const fav = isFavorite('rule', ruleRef);
 
-  const isLocked = rule.is_premium && !isPremiumUnlocked;
-  const { data: content, isLoading: contentLoading } = useJudicialRuleContent(rule.id, expanded && !isLocked);
+  // في وضع الاستخدام المجاني المحدود: القراءة مفتوحة لكل القواعد حتى المدفوعة
+  const isLocked = !isLimitedMode && rule.is_premium && !isPremiumUnlocked;
+  const { data: content, isLoading: contentLoading } = useJudicialRuleContent(rule.id, expanded && !isLocked, isLimitedMode);
 
   const handleToggle = () => {
     if (isLocked) {
@@ -50,12 +54,18 @@ function RuleCard({
   };
 
   const copy = async () => {
+    if (isLimitedMode) { onFeatureLocked(); return; }
     if (!content) return;
     try {
       await navigator.clipboard.writeText(content);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch { /* ignore */ }
+  };
+
+  const handleToggleFavorite = () => {
+    if (isLimitedMode) { onFeatureLocked(); return; }
+    toggleFavorite('rule', ruleRef);
   };
 
   return (
@@ -102,7 +112,7 @@ function RuleCard({
               <button onClick={copy} disabled={!content}>
                 {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4 text-muted-foreground/50" />}
               </button>
-              <button onClick={() => toggleFavorite('rule', ruleRef)}>
+              <button onClick={handleToggleFavorite}>
                 <Heart className={cn('w-4 h-4', fav ? 'fill-rose-500 text-rose-500' : 'text-muted-foreground/50')} />
               </button>
             </div>
@@ -139,10 +149,12 @@ export default function LegalJudicialRulesList() {
 
   const { data: rules = [], isLoading } = useJudicialRulesByCircuit(decodedCircuit);
   const { isPremiumUnlocked, setIsPremiumUnlocked } = useIsPremiumUnlocked();
+  const { isLimitedMode } = useLegalAccessMode();
 
   const [pendingRule, setPendingRule] = useState<JudicialRuleMeta | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [showFeatureLockedModal, setShowFeatureLockedModal] = useState(false);
 
   const requestUnlock = (rule: JudicialRuleMeta) => {
     setPendingRule(rule);
@@ -172,7 +184,11 @@ export default function LegalJudicialRulesList() {
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                if (isLimitedMode) { setShowFeatureLockedModal(true); return; }
+                setSearch(e.target.value);
+              }}
+              onFocus={() => { if (isLimitedMode) setShowFeatureLockedModal(true); }}
               placeholder="بحث بالموجز أو رقم الطعن..."
               className="w-full h-10 pr-9 pl-4 rounded-xl bg-white text-sm text-right outline-none"
             />
@@ -196,7 +212,9 @@ export default function LegalJudicialRulesList() {
             key={rule.id}
             rule={rule}
             isPremiumUnlocked={isPremiumUnlocked}
+            isLimitedMode={isLimitedMode}
             onRequestUnlock={requestUnlock}
+            onFeatureLocked={() => setShowFeatureLockedModal(true)}
           />
         ))}
       </div>
@@ -213,6 +231,9 @@ export default function LegalJudicialRulesList() {
           fileName={pendingRule.subject}
           onClose={() => { setShowSubscriptionModal(false); setPendingRule(null); }}
         />
+      )}
+      {showFeatureLockedModal && (
+        <FeatureLockedModal onClose={() => setShowFeatureLockedModal(false)} />
       )}
     </MainLayout>
   );
