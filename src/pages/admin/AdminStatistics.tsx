@@ -53,51 +53,39 @@ const AdminStatistics = () => {
       const archivedBySubjectP  = (savedStats?.passed_by_subject  ?? {}) as Record<string, number>;
       const archivedBySubjectF  = (savedStats?.failed_by_subject  ?? {}) as Record<string, number>;
 
-      // جلب البيانات الحالية (المتبقية في Supabase)
-      const analyticsCount = await supabase
-        .from('site_analytics')
-        .select('id', { count: 'exact', head: true });
-
-      const { data: subjectsData } = await supabase
-        .from('subjects')
-        .select('id, name, level_id, levels(name)')
-        .limit(1000);
-
-      let allResults: any[] = [];
-      let from = 0;
-      const PAGE_SIZE = 1000;
-      while (true) {
-        const { data: batch, error } = await supabase
+      // جلب البيانات الحالية — الجمع/العدّ يتم داخل قاعدة البيانات عبر RPC
+      // (get_exam_results_summary) بدل سحب آلاف صفوف exam_results للمتصفح؛
+      // فقط آخر 10 اختبارات تُجلب كصفوف فعلية (للعرض في "آخر الاختبارات")
+      const [analyticsCount, examSummaryRes, recentExamsRes] = await Promise.all([
+        supabase.from('site_analytics').select('id', { count: 'exact', head: true }),
+        (supabase as any).rpc('get_exam_results_summary'),
+        supabase
           .from('exam_results')
-          .select('id, passed, subject_id, created_at, exam_form')
-          .range(from, from + PAGE_SIZE - 1);
-        if (error || !batch || batch.length === 0) break;
-        allResults = [...allResults, ...batch];
-        if (batch.length < PAGE_SIZE) break;
-        from += PAGE_SIZE;
-      }
+          .select('id, passed, created_at, exam_form, subjects(name)')
+          .order('created_at', { ascending: false })
+          .limit(10),
+      ]);
+
+      const summary = (examSummaryRes.data ?? {}) as {
+        total?: number; passed?: number; failed?: number;
+        by_subject?: { subject_name: string; level_name: string; total: number; passed: number; failed: number }[];
+        daily?: { date: string; count: number }[];
+      };
 
       // دمج الأرقام الحالية مع المحفوظة
       const totalVisits = archivedVisits + (analyticsCount.count ?? 0);
-
-      const subjectMap = new Map(subjectsData?.map(s => [s.id, s.name]) || []);
-      const levelMap   = new Map(subjectsData?.map(s => [s.id, (s.levels as any)?.name || '']) || []);
 
       const examsBySubject:  Record<string, number> = { ...archivedBySubjectE };
       const passedBySubject: Record<string, number> = { ...archivedBySubjectP };
       const failedBySubject: Record<string, number> = { ...archivedBySubjectF };
       const subjectLevelMap: Record<string, string>  = {};
 
-      allResults.forEach((r: any) => {
-        const name  = subjectMap.get(r.subject_id) || 'غير معروف';
-        const level = levelMap.get(r.subject_id)   || '';
-        examsBySubject[name]  = (examsBySubject[name]  || 0) + 1;
-        if (r.passed) {
-          passedBySubject[name] = (passedBySubject[name] || 0) + 1;
-        } else {
-          failedBySubject[name] = (failedBySubject[name] || 0) + 1;
-        }
-        if (!subjectLevelMap[name]) subjectLevelMap[name] = level;
+      (summary.by_subject || []).forEach((row) => {
+        const name = row.subject_name || 'غير معروف';
+        examsBySubject[name]  = (examsBySubject[name]  || 0) + (row.total  || 0);
+        passedBySubject[name] = (passedBySubject[name] || 0) + (row.passed || 0);
+        failedBySubject[name] = (failedBySubject[name] || 0) + (row.failed || 0);
+        if (!subjectLevelMap[name]) subjectLevelMap[name] = row.level_name || '';
       });
 
       const subjectData = Object.entries(examsBySubject)
@@ -115,36 +103,28 @@ const AdminStatistics = () => {
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
 
-      const dailyExams: Record<string, { label: string; count: number }> = {};
-      allResults.forEach((r: any) => {
-        const d     = new Date(r.created_at);
-        const key   = d.toISOString().split('T')[0];
-        const label = d.toLocaleDateString('ar-SA');
-        if (!dailyExams[key]) dailyExams[key] = { label, count: 0 };
-        dailyExams[key].count += 1;
-      });
-      const dailyData = Object.entries(dailyExams)
-        .sort(([a], [b]) => a.localeCompare(b))
+      const dailyData = (summary.daily || [])
         .slice(-7)
-        .map(([, val]) => ({ date: val.label, count: val.count }));
+        .map((d) => ({
+          date:  new Date(`${d.date}T00:00:00Z`).toLocaleDateString('ar-SA'),
+          count: d.count,
+        }));
 
-      const currentPassed = allResults.filter((r: any) => r.passed).length;
-      const currentFailed = allResults.length - currentPassed;
+      const currentPassed = summary.passed ?? 0;
+      const currentFailed = summary.failed ?? 0;
+      const currentTotal  = summary.total  ?? 0;
       const totalPassed   = archivedPassed + currentPassed;
       const totalFailed   = archivedFailed + currentFailed;
-      const totalExams    = archivedExams  + allResults.length;
+      const totalExams    = archivedExams  + currentTotal;
       const passRate      = totalExams > 0 ? Math.round((totalPassed / totalExams) * 100) : 0;
 
-      const recentExams = [...allResults]
-        .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        .slice(0, 10)
-        .map((r: any) => ({
-          name:      subjectMap.get(r.subject_id) || 'غير معروف',
-          passed:    r.passed,
-          date:      new Date(r.created_at).toLocaleDateString('ar-SA'),
-          time:      new Date(r.created_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
-          exam_form: r.exam_form || null,
-        }));
+      const recentExams = (recentExamsRes.data || []).map((r: any) => ({
+        name:      r.subjects?.name || 'غير معروف',
+        passed:    r.passed,
+        date:      new Date(r.created_at).toLocaleDateString('ar-SA'),
+        time:      new Date(r.created_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
+        exam_form: r.exam_form || null,
+      }));
 
       return {
         totalVisits,
@@ -163,48 +143,25 @@ const AdminStatistics = () => {
     },
   });
 
-  // جلب زيارات كل مستوى من site_analytics
+  // جلب زيارات كل مستوى — العدّ يتم داخل قاعدة البيانات عبر RPC بدل حلقة صفحات
   const { data: levelVisits, isLoading: levelsLoading } = useQuery({
     queryKey: ['level-visits-stats'],
     queryFn: async () => {
-      const { data: levels } = await supabase
-        .from('levels')
-        .select('id, name')
-        .order('order_index');
+      const [levelsRes, savedStatsRes, countsRes] = await Promise.all([
+        supabase.from('levels').select('id, name').order('order_index'),
+        supabase.from('platform_stats').select('level_visits').eq('id', 1).single(),
+        (supabase as any).rpc('get_level_visit_counts'),
+      ]);
 
-      // جلب الأرقام المحفوظة من platform_stats
-      const { data: savedStatsLV } = await supabase
-        .from('platform_stats')
-        .select('level_visits')
-        .eq('id', 1)
-        .single();
-      const archivedLevelVisits = ((savedStatsLV as Record<string, any> | null)?.level_visits ?? {}) as Record<string, number>;
-
-      // جلب الزيارات الحالية
-      let allAnalytics: any[] = [];
-      let from = 0;
-      const PAGE_SIZE = 1000;
-      while (true) {
-        const { data: batch } = await supabase
-          .from('site_analytics')
-          .select('page_path')
-          .like('page_path', '/levels/%')
-          .range(from, from + PAGE_SIZE - 1);
-        if (!batch || batch.length === 0) break;
-        allAnalytics = [...allAnalytics, ...batch];
-        if (batch.length < PAGE_SIZE) break;
-        from += PAGE_SIZE;
-      }
+      const archivedLevelVisits = ((savedStatsRes.data as Record<string, any> | null)?.level_visits ?? {}) as Record<string, number>;
 
       const currentVisitMap: Record<string, number> = {};
-      allAnalytics.forEach((row) => {
-        const parts   = row.page_path.split('/');
-        const levelId = parts[2];
-        if (levelId) currentVisitMap[levelId] = (currentVisitMap[levelId] || 0) + 1;
+      (countsRes.data || []).forEach((row: { level_id: string; visits: number }) => {
+        currentVisitMap[row.level_id] = Number(row.visits) || 0;
       });
 
       // دمج الأرشيف مع الحالي
-      return (levels || []).map((level) => ({
+      return (levelsRes.data || []).map((level) => ({
         id:     level.id,
         name:   level.name,
         visits: (archivedLevelVisits[level.id] ?? 0) + (currentVisitMap[level.id] ?? 0),
@@ -212,48 +169,21 @@ const AdminStatistics = () => {
     },
   });
 
-  // جلب زيارات كل قسم من المكتبة من site_analytics (بنفس منطق المستويات تماماً)
+  // جلب زيارات كل قسم من المكتبة — العدّ يتم داخل قاعدة البيانات عبر RPC
+  // (بنفس منطق المستويات تماماً، بدل سحب آلاف صفوف site_analytics للمتصفح)
   const { data: libraryVisits, isLoading: libraryLoading } = useQuery({
     queryKey: ['library-visits-stats'],
     queryFn: async () => {
-      // جلب الأرقام المحفوظة (المؤرشفة) من platform_stats
-      const { data: savedStatsLib } = await supabase
-        .from('platform_stats')
-        .select('library_visits')
-        .eq('id', 1)
-        .single();
-      const archivedLibraryVisits = ((savedStatsLib as Record<string, any> | null)?.library_visits ?? {}) as Record<string, number>;
-
-      // جلب الزيارات الحالية (المتبقية في الجدول، لم تُؤرشف بعد)
-      // استعلامان منفصلان (تطابق تام للصفحة الرئيسية + like للأقسام الفرعية)
-      // لتجنّب أي التباس في صياغة or() مع like داخل PostgREST
-      const fetchAllPaths = async (filterFn: (q: any) => any) => {
-        let rows: any[] = [];
-        let from = 0;
-        const PAGE_SIZE = 1000;
-        while (true) {
-          const { data: batch } = await filterFn(
-            supabase.from('site_analytics').select('page_path')
-          ).range(from, from + PAGE_SIZE - 1);
-          if (!batch || batch.length === 0) break;
-          rows = [...rows, ...batch];
-          if (batch.length < PAGE_SIZE) break;
-          from += PAGE_SIZE;
-        }
-        return rows;
-      };
-
-      const [homeRows, subRows] = await Promise.all([
-        fetchAllPaths((q) => q.eq('page_path', '/library')),
-        fetchAllPaths((q) => q.like('page_path', '/library/%')),
+      const [savedStatsRes, countsRes] = await Promise.all([
+        supabase.from('platform_stats').select('library_visits').eq('id', 1).single(),
+        (supabase as any).rpc('get_library_section_visit_counts'),
       ]);
-      const allAnalytics = [...homeRows, ...subRows];
+
+      const archivedLibraryVisits = ((savedStatsRes.data as Record<string, any> | null)?.library_visits ?? {}) as Record<string, number>;
 
       const currentVisitMap: Record<string, number> = {};
-      allAnalytics.forEach((row) => {
-        const path = row.page_path as string;
-        const sectionKey = path === '/library' ? 'home' : path.split('/')[2];
-        if (sectionKey) currentVisitMap[sectionKey] = (currentVisitMap[sectionKey] || 0) + 1;
+      (countsRes.data || []).forEach((row: { section_key: string; visits: number }) => {
+        currentVisitMap[row.section_key] = Number(row.visits) || 0;
       });
 
       // دمج الأرشيف مع الحالي لكل المفاتيح الظاهرة في كليهما
