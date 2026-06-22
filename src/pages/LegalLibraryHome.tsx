@@ -1,41 +1,115 @@
 /**
- * LegalLibraryHome.tsx
- * الصفحة الرئيسية لقسم "المكتبة القانونية" — شبكة الأقسام الجذرية
- * البند 2 من مواصفة Lovable: هيدر كحلي، بطاقتان كاملتا العرض + بطاقتان بعرض نصف،
- * زر بحث شامل ثابت أسفل الشبكة.
+ * LegalLibraryHome.tsx — تصميم احترافي عالمي
+ * Dark hero header + بطاقات بيضاء مع accent ذهبي + typography راقية
  */
 import { useState, useEffect, ElementType } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
-import { Scale, Landmark, FileText, Menu, Search } from 'lucide-react';
+import {
+  BookMarked, Gavel, FolderOpen, FileStack, Search, AlignJustify, ChevronLeft
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LegalSidebarDrawer } from '@/components/legal-library/LegalSidebarDrawer';
 import { LegalWelcomeOnboarding, hasSeenLegalOnboarding } from '@/components/legal-library/LegalWelcomeOnboarding';
 import { TrialEndedScreen, LimitedUsageModal } from '@/components/legal-library/LegalLimitedAccessModals';
 import { useLegalAccessMode } from '@/hooks/useLegalLibrary';
 
-function RootCard({
-  icon: Icon, title, subtitle, fullWidth, onClick,
-}: {
-  icon: ElementType; title: string; subtitle: string; fullWidth?: boolean; onClick: () => void;
-}) {
+/* ─── بيانات الأقسام ─── */
+interface Section {
+  icon: ElementType;
+  title: string;
+  subtitle: string;
+  tag: string;
+  route: string;
+  iconColor: string;
+  badgeColor: string;
+}
+
+const SECTIONS: Section[] = [
+  {
+    icon: BookMarked,
+    title: 'القوانين اليمنية',
+    subtitle: 'القوانين والتشريعات بآخر التعديلات الرسمية',
+    tag: 'تشريعات',
+    route: '/library/laws',
+    iconColor: '#c8a84b',
+    badgeColor: 'bg-amber-50 text-amber-700',
+  },
+  {
+    icon: Gavel,
+    title: 'القواعد القضائية',
+    subtitle: 'مبادئ وأحكام المحكمة العليا',
+    tag: 'قضاء',
+    route: '/library/judicial',
+    iconColor: '#6366f1',
+    badgeColor: 'bg-indigo-50 text-indigo-700',
+  },
+  {
+    icon: FolderOpen,
+    title: 'تعليمات النيابة',
+    subtitle: 'الملفات والتعليمات الجزائية',
+    tag: 'نيابة',
+    route: '/library/prosecutions',
+    iconColor: '#0ea5e9',
+    badgeColor: 'bg-sky-50 text-sky-700',
+  },
+  {
+    icon: FileStack,
+    title: 'اللوائح والأنظمة',
+    subtitle: 'اللوائح التنفيذية والتشريعية المعمول بها',
+    tag: 'لوائح',
+    route: '/library/regulations',
+    iconColor: '#10b981',
+    badgeColor: 'bg-emerald-50 text-emerald-700',
+  },
+];
+
+/* ─── بطاقة القسم ─── */
+function SectionCard({ section, index }: { section: Section; index: number }) {
+  const navigate = useNavigate();
+  const Icon = section.icon;
+
   return (
     <button
-      onClick={onClick}
-      className={cn(
-        'group relative rounded-2xl border border-border bg-gradient-to-b from-card to-muted/40 p-6 text-center shadow-card hover:shadow-card-md transition-all duration-200 active:scale-[0.98]',
-        fullWidth ? 'col-span-2' : 'col-span-1'
-      )}
+      onClick={() => navigate(section.route)}
+      className="w-full group flex items-center gap-4 bg-white rounded-2xl p-4 text-right active:scale-[0.985] transition-transform duration-150"
+      style={{
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)',
+      }}
     >
-      <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center">
-        <Icon className="h-10 w-10 text-amber-500" strokeWidth={1.75} />
+      {/* أيقونة مع حلقة دائرية */}
+      <div
+        className="flex-shrink-0 flex items-center justify-center w-14 h-14 rounded-2xl"
+        style={{ background: `${section.iconColor}12` }}
+      >
+        <Icon
+          className="w-7 h-7"
+          style={{ color: section.iconColor }}
+          strokeWidth={1.6}
+        />
       </div>
-      <h3 className="text-base font-black text-[#1a2744] dark:text-foreground">{title}</h3>
-      <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
+
+      {/* النص */}
+      <div className="flex-1 min-w-0 text-right">
+        <div className="flex items-center gap-2 justify-end mb-1">
+          <h3 className="text-[15px] font-bold text-gray-900 leading-tight">{section.title}</h3>
+          <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full', section.badgeColor)}>
+            {section.tag}
+          </span>
+        </div>
+        <p className="text-xs text-gray-400 leading-relaxed line-clamp-1">{section.subtitle}</p>
+      </div>
+
+      {/* سهم */}
+      <ChevronLeft
+        className="flex-shrink-0 w-4 h-4 text-gray-300 group-active:text-gray-500 transition-colors"
+        strokeWidth={2.5}
+      />
     </button>
   );
 }
 
+/* ─── الصفحة الرئيسية ─── */
 export default function LegalLibraryHome() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -49,64 +123,100 @@ export default function LegalLibraryHome() {
 
   return (
     <MainLayout>
-      {/* الهيدر الكحلي */}
-      <div className="bg-[#1a2744] sticky top-0 z-30">
-        <div className="container max-w-5xl flex items-center justify-between py-4">
-          <h1 className="text-lg font-black text-white">الرئيـــسية</h1>
+
+      {/* ══════════ HERO HEADER ══════════ */}
+      <div
+        className="sticky top-0 z-30 pt-5 pb-6 px-5"
+        style={{
+          background: 'linear-gradient(160deg, #0f1923 0%, #162032 60%, #1a2a40 100%)',
+        }}
+      >
+        {/* الصف الأعلى */}
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <p className="text-[11px] font-medium text-gray-400 tracking-widest uppercase mb-0.5">
+              Al-Naser Platform
+            </p>
+            <h1 className="text-xl font-black text-white leading-tight">
+              المكتبة القانونية
+            </h1>
+          </div>
           <button
             onClick={() => setSidebarOpen(true)}
-            className="text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+            className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/8 border border-white/10 text-white active:bg-white/15 transition-colors"
             aria-label="القائمة"
           >
-            <Menu className="w-6 h-6" />
+            <AlignJustify className="w-5 h-5" />
           </button>
         </div>
-      </div>
 
-      <div className="bg-[#f5f5f5] dark:bg-background min-h-[calc(100vh-64px)] pb-28">
-        <div className="container max-w-5xl py-6">
-          <div className="grid grid-cols-2 gap-4">
-            <RootCard
-              icon={Scale}
-              title="القوانين اليمنية"
-              subtitle="بآخر التعديلات"
-              fullWidth
-              onClick={() => navigate('/library/laws')}
-            />
-            <RootCard
-              icon={Landmark}
-              title="القواعد القضائية"
-              subtitle="مبادئ المحكمة العليا"
-              fullWidth
-              onClick={() => navigate('/library/judicial')}
-            />
-            <RootCard
-              icon={Landmark}
-              title="تعليمات النيابة"
-              subtitle=""
-              onClick={() => navigate('/library/prosecutions')}
-            />
-            <RootCard
-              icon={FileText}
-              title="اللوائح"
-              subtitle=""
-              onClick={() => navigate('/library/regulations')}
-            />
-          </div>
+        {/* شريط إحصائي صغير */}
+        <div
+          className="flex items-center justify-around rounded-2xl py-3"
+          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+        >
+          {[
+            { value: '٢٧٢', label: 'قانون ووثيقة' },
+            { value: '١٩٩٧', label: 'قاعدة قضائية' },
+            { value: '٥', label: 'دوائر قضائية' },
+          ].map((stat, i) => (
+            <div key={i} className="text-center px-2">
+              <p className="text-[17px] font-black text-[#c8a84b] leading-tight">{stat.value}</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">{stat.label}</p>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* زر البحث الشامل الثابت */}
-      <div className="fixed bottom-0 inset-x-0 z-40">
-        <div className="container max-w-5xl px-4 pb-4">
-          <button
-            onClick={() => navigate('/library/search')}
-            className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl bg-[#1a2744] text-white font-bold shadow-lg"
+      {/* ══════════ المحتوى ══════════ */}
+      <div className="bg-[#f4f6f9] dark:bg-background min-h-[calc(100vh-180px)] pb-28">
+
+        {/* عنوان الأقسام */}
+        <div className="px-5 pt-5 pb-3 flex items-center justify-between">
+          <span className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">
+            الأقسام
+          </span>
+          <div className="h-px flex-1 mx-3 bg-gray-200" />
+        </div>
+
+        {/* البطاقات */}
+        <div className="px-4 flex flex-col gap-3">
+          {SECTIONS.map((section, i) => (
+            <SectionCard key={section.route} section={section} index={i} />
+          ))}
+        </div>
+
+        {/* فاصل */}
+        <div className="mx-4 mt-5 mb-1 h-px bg-gray-200" />
+
+        {/* hint صغير */}
+        <p className="text-center text-[11px] text-gray-400 py-2">
+          جميع المحتويات مُحدَّثة وفق آخر الإصدارات الرسمية
+        </p>
+      </div>
+
+      {/* ══════════ زر البحث الثابت ══════════ */}
+      <div className="fixed bottom-0 inset-x-0 z-40 bg-gradient-to-t from-[#f4f6f9] via-[#f4f6f9]/95 to-transparent pt-4 pb-4 px-4">
+        <button
+          onClick={() => navigate('/library/search')}
+          className="w-full flex items-center gap-3 rounded-2xl px-5 active:scale-[0.98] transition-transform"
+          style={{
+            background: 'linear-gradient(135deg, #0f1923 0%, #1a2a40 100%)',
+            height: '54px',
+            boxShadow: '0 4px 20px rgba(15,25,35,0.35)',
+          }}
+        >
+          <div
+            className="flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0"
+            style={{ background: 'rgba(200,168,75,0.18)' }}
           >
-            <Search className="w-4 h-4 text-amber-400" />
-            <span>البحث الشامل في جميع الأقسام</span>
-          </button>
-        </div>
+            <Search className="w-4 h-4 text-[#c8a84b]" />
+          </div>
+          <span className="flex-1 text-right text-[14px] font-bold text-white">
+            البحث الشامل في جميع الأقسام
+          </span>
+          <ChevronLeft className="w-4 h-4 text-gray-500 flex-shrink-0" strokeWidth={2.5} />
+        </button>
       </div>
 
       <LegalSidebarDrawer open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
