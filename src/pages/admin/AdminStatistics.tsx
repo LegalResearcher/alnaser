@@ -269,6 +269,17 @@ const AdminStatistics = () => {
   });
 
 
+  // عدد المستخدمين (الأجهزة) الذين بدأوا التجربة المجانية للمكتبة
+  const { data: libraryTrialCount, isLoading: trialCountLoading } = useQuery({
+    queryKey: ['library-trial-users-count'],
+    queryFn: async () => {
+      const { count } = await (supabase as any)
+        .from('legal_trial_starts')
+        .select('id', { count: 'exact', head: true });
+      return count ?? 0;
+    },
+  });
+
   const { data: appStats } = useQuery({
     queryKey: ['app-stats'],
     queryFn: async () => {
@@ -639,8 +650,25 @@ const AdminStatistics = () => {
         <div className="bg-card rounded-xl border p-4 sm:p-5">
           <h3 className="font-bold mb-4 flex items-center gap-2 text-sm sm:text-base">
             <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-            الزيارات الفعلية حسب أقسام المكتبة
+            إحصائيات المكتبة القانونية
           </h3>
+
+          {/* عدد المستخدمين بالتجربة المجانية */}
+          <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 mb-4">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-lg bg-emerald-500 flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs sm:text-sm text-muted-foreground">عدد المستخدمين بالتجربة المجانية</p>
+              {trialCountLoading ? (
+                <Skeleton className="h-6 w-16 mt-1 rounded" />
+              ) : (
+                <p className="font-bold text-lg sm:text-xl">{(libraryTrialCount ?? 0).toLocaleString('ar-SA')}</p>
+              )}
+            </div>
+          </div>
+
+          <h4 className="font-bold mb-3 text-sm">الزيارات الفعلية حسب أقسام المكتبة</h4>
           {libraryLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, i) => (
