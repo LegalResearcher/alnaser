@@ -13,15 +13,16 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { getDeviceFingerprint } from '@/hooks/useLegalLibrary';
+import { LEGAL_ONBOARDING_KEY, LEGAL_TRIAL_START_KEY, TRIAL_DAYS } from '@/lib/legalLibraryKeys';
 import {
   Scale, ChevronRight, Award, PlayCircle, KeyRound, CheckCircle2,
   WifiOff, Gift, RefreshCcw, Search, Moon, Heart, ListTree, TrendingUp,
   Calendar, Info,
 } from 'lucide-react';
 
-export const LEGAL_ONBOARDING_KEY = 'legal_library_onboarding_seen_v2';
-const LEGAL_TRIAL_START_KEY = 'legal_library_trial_start_v1';
-export const TRIAL_DAYS = 3;
+// إعادة تصدير للحفاظ على توافق الاستيرادات الحالية من هذا الملف
+// (مثلاً: src/pages/LegalSubscription.tsx) دون أي تعديل عليها
+export { LEGAL_ONBOARDING_KEY, TRIAL_DAYS };
 
 export function hasSeenLegalOnboarding(): boolean {
   try { return localStorage.getItem(LEGAL_ONBOARDING_KEY) === '1'; } catch { return true; }
