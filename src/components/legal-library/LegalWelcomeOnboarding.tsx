@@ -11,6 +11,8 @@
  */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { getDeviceFingerprint } from '@/hooks/useLegalLibrary';
 import {
   Scale, ChevronRight, Award, PlayCircle, KeyRound, CheckCircle2,
   WifiOff, Gift, RefreshCcw, Search, Moon, Heart, ListTree, TrendingUp,
@@ -33,9 +35,23 @@ function markLegalOnboardingSeen() {
 function ensureTrialStarted(): { start: Date; end: Date } {
   let startIso: string | null = null;
   try { startIso = localStorage.getItem(LEGAL_TRIAL_START_KEY); } catch { /* ignore */ }
+  const isFirstStart = !startIso;
   if (!startIso) {
     startIso = new Date().toISOString();
     try { localStorage.setItem(LEGAL_TRIAL_START_KEY, startIso); } catch { /* ignore */ }
+  }
+  // تسجيل بدء التجربة في Supabase مرة واحدة فقط لكل جهاز (لعدّها في الإحصائيات)
+  if (isFirstStart) {
+    (async () => {
+      try {
+        await (supabase as any)
+          .from('legal_trial_starts')
+          .upsert(
+            { device_fingerprint: getDeviceFingerprint(), started_at: startIso },
+            { onConflict: 'device_fingerprint', ignoreDuplicates: true }
+          );
+      } catch { /* تجاهل أخطاء التتبع */ }
+    })();
   }
   const start = new Date(startIso);
   const end = new Date(start);
