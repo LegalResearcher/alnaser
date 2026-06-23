@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { Header } from './Header';
 import { Footer } from './Footer';
 import { supabase } from '@/integrations/supabase/client';
+import { getDeviceFingerprint } from '@/hooks/useLegalLibrary';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -44,7 +45,10 @@ export function MainLayout({ children }: MainLayoutProps) {
         await supabase.from('site_analytics').insert({
           page_path: pathname,
           visitor_id: visitorId,
-        });
+          // device_fingerprint: معيار أكثر ثباتاً (نفس المنطق المستخدم في التجربة المجانية)
+          // لا يُستبدل visitor_id، بل يُضاف بجانبه لحساب "الزائر الفريد" بدقة أعلى
+          device_fingerprint: getDeviceFingerprint(),
+        } as any);
         localStorage.setItem(cacheKey, now.toString());
 
       } catch { /* تجاهل أخطاء التتبع */ }
