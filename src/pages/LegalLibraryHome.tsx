@@ -6,13 +6,15 @@ import { useState, useEffect, ElementType } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import {
-  BookMarked, Gavel, FolderOpen, FileStack, Search, AlignJustify, ChevronLeft
+  BookMarked, Gavel, FolderOpen, FileStack, Search, AlignJustify, ChevronLeft,
+  Heart, Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LegalSidebarDrawer } from '@/components/legal-library/LegalSidebarDrawer';
 import { LegalWelcomeOnboarding, hasSeenLegalOnboarding } from '@/components/legal-library/LegalWelcomeOnboarding';
 import { TrialEndedScreen, LimitedUsageModal } from '@/components/legal-library/LegalLimitedAccessModals';
 import { useLegalAccessMode } from '@/hooks/useLegalLibrary';
+import { LegalAboutModal } from '@/components/legal-library/LegalAboutModal';
 
 /* ─── بيانات الأقسام ─── */
 interface Section {
@@ -115,6 +117,7 @@ export default function LegalLibraryHome() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showLimitedUsageModal, setShowLimitedUsageModal] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
   const { shouldShowTrialEndedScreen, enterLimitedMode, trialDates } = useLegalAccessMode();
 
   useEffect(() => {
@@ -133,6 +136,7 @@ export default function LegalLibraryHome() {
       >
         {/* الصف الأعلى */}
         <div className="flex items-center justify-between mb-5">
+          {/* العنوان */}
           <div>
             <p className="text-[11px] font-medium text-gray-400 tracking-widest uppercase mb-0.5">
               Al-Naser Platform
@@ -141,13 +145,39 @@ export default function LegalLibraryHome() {
               المكتبة القانونية
             </h1>
           </div>
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/8 border border-white/10 text-white active:bg-white/15 transition-colors"
-            aria-label="القائمة"
-          >
-            <AlignJustify className="w-5 h-5" />
-          </button>
+
+          {/* أزرار الهيدر الثلاثة */}
+          <div className="flex items-center gap-2">
+
+            {/* زر المفضلة */}
+            <button
+              onClick={() => navigate('/library/favorites')}
+              className="flex items-center justify-center w-10 h-10 rounded-xl border border-white/10 active:bg-white/15 transition-colors"
+              style={{ background: 'rgba(200,168,75,0.12)' }}
+              aria-label="المفضلة"
+            >
+              <Heart className="w-4.5 h-4.5" style={{ color: '#c8a84b' }} strokeWidth={1.8} />
+            </button>
+
+            {/* زر حول */}
+            <button
+              onClick={() => setShowAbout(true)}
+              className="flex items-center justify-center w-10 h-10 rounded-xl border border-white/10 active:bg-white/15 transition-colors"
+              style={{ background: 'rgba(99,149,255,0.12)' }}
+              aria-label="حول المكتبة"
+            >
+              <Info className="w-4.5 h-4.5 text-sky-400" strokeWidth={1.8} />
+            </button>
+
+            {/* زر القائمة */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/8 border border-white/10 text-white active:bg-white/15 transition-colors"
+              aria-label="القائمة"
+            >
+              <AlignJustify className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* شريط إحصائي صغير */}
@@ -220,6 +250,12 @@ export default function LegalLibraryHome() {
       </div>
 
       <LegalSidebarDrawer open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      <LegalAboutModal
+        open={showAbout}
+        onClose={() => setShowAbout(false)}
+        sectionLabel="وثائق وقوانين المكتبة القانونية"
+      />
 
       {showOnboarding && (
         <LegalWelcomeOnboarding onDone={() => setShowOnboarding(false)} />
