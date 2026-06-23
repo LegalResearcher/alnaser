@@ -44,7 +44,7 @@ export function Footer() {
               {[
                 {
                   label: "Telegram",
-                  href: `https://t.me/share/url?url=${encodeURIComponent('https://alnaseer.org')}&text=${encodeURIComponent('منصة الناصر القانونية — منصة رقمية مستقلة لطلاب الشريعة والقانون والمحامين والباحثين')}`,
+                  href: `https://t.me/share/url?url=${encodeURIComponent('https://alnaseer.org')}&text=${encodeURIComponent('منصة الناصر القانونية هي منصة رقمية مستقلة، تم تأسيسها وتطويرها برؤية وإشراف أ. معين الناصر. تضم المنصة أكثر من ٢٥٬٠٢٨+ سؤال مؤتمت ومكتبة قانونية متكاملة، جرى تصميمها خصيصاً لخدمة وتدريب طلاب الشريعة والقانون، ودعم المحامين والباحثين في تطوير ملكتهم المعرفية والقضائية.')}`,
                   color: "hover:bg-[#229ED9]",
                   svg: (
                     <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current">
@@ -54,7 +54,7 @@ export function Footer() {
                 },
                 {
                   label: "WhatsApp",
-                  href: `https://wa.me/?text=${encodeURIComponent('منصة الناصر القانونية — منصة رقمية مستقلة لطلاب الشريعة والقانون والمحامين والباحثين\nhttps://alnaseer.org')}`,
+                  href: `https://wa.me/?text=${encodeURIComponent('منصة الناصر القانونية هي منصة رقمية مستقلة، تم تأسيسها وتطويرها برؤية وإشراف أ. معين الناصر. تضم المنصة أكثر من ٢٥٬٠٢٨+ سؤال مؤتمت ومكتبة قانونية متكاملة، جرى تصميمها خصيصاً لخدمة وتدريب طلاب الشريعة والقانون، ودعم المحامين والباحثين في تطوير ملكتهم المعرفية والقضائية.\nhttps://alnaseer.org')}`,
                   color: "hover:bg-[#25D366]",
                   svg: (
                     <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current">
