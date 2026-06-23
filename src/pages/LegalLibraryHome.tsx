@@ -67,7 +67,7 @@ const SECTIONS: Section[] = [
 ];
 
 /* ─── بطاقة القسم ─── */
-function SectionCard({ section, index }: { section: Section; index: number }) {
+function SectionCard({ section }: { section: Section }) {
   const navigate = useNavigate();
   const Icon = section.icon;
 
@@ -75,23 +75,15 @@ function SectionCard({ section, index }: { section: Section; index: number }) {
     <button
       onClick={() => navigate(section.route)}
       className="w-full group flex items-center gap-4 bg-white rounded-2xl p-4 text-right active:scale-[0.985] transition-transform duration-150"
-      style={{
-        boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)',
-      }}
+      style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)' }}
     >
-      {/* أيقونة مع حلقة دائرية */}
       <div
         className="flex-shrink-0 flex items-center justify-center w-14 h-14 rounded-2xl"
         style={{ background: `${section.iconColor}12` }}
       >
-        <Icon
-          className="w-7 h-7"
-          style={{ color: section.iconColor }}
-          strokeWidth={1.6}
-        />
+        <Icon className="w-7 h-7" style={{ color: section.iconColor }} strokeWidth={1.6} />
       </div>
 
-      {/* النص */}
       <div className="flex-1 min-w-0 text-right">
         <div className="flex items-center gap-2 justify-end mb-1">
           <h3 className="text-[15px] font-bold text-gray-900 leading-tight">{section.title}</h3>
@@ -102,7 +94,6 @@ function SectionCard({ section, index }: { section: Section; index: number }) {
         <p className="text-xs text-gray-400 leading-relaxed line-clamp-1">{section.subtitle}</p>
       </div>
 
-      {/* سهم */}
       <ChevronLeft
         className="flex-shrink-0 w-4 h-4 text-gray-300 group-active:text-gray-500 transition-colors"
         strokeWidth={2.5}
@@ -117,12 +108,21 @@ export default function LegalLibraryHome() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showLimitedUsageModal, setShowLimitedUsageModal] = useState(false);
+
+  // ← نافذة "عن المكتبة": تُفتح يدوياً من زر Info، أو تلقائياً بعد Onboarding أول مرة
   const [showAbout, setShowAbout] = useState(false);
+
   const { shouldShowTrialEndedScreen, enterLimitedMode, trialDates } = useLegalAccessMode();
 
   useEffect(() => {
     if (!hasSeenLegalOnboarding()) setShowOnboarding(true);
   }, []);
+
+  // يُستدعى بعد انتهاء الـ Onboarding → يُظهر نافذة "عن المكتبة" مباشرةً
+  const handleOnboardingDone = () => {
+    setShowOnboarding(false);
+    setShowAbout(true);
+  };
 
   return (
     <MainLayout>
@@ -130,13 +130,10 @@ export default function LegalLibraryHome() {
       {/* ══════════ HERO HEADER ══════════ */}
       <div
         className="sticky top-0 z-30 pt-5 pb-6 px-5"
-        style={{
-          background: 'linear-gradient(160deg, #0f1923 0%, #162032 60%, #1a2a40 100%)',
-        }}
+        style={{ background: 'linear-gradient(160deg, #0f1923 0%, #162032 60%, #1a2a40 100%)' }}
       >
         {/* الصف الأعلى */}
         <div className="flex items-center justify-between mb-5">
-          {/* العنوان */}
           <div>
             <p className="text-[11px] font-medium text-gray-400 tracking-widest uppercase mb-0.5">
               Al-Naser Platform
@@ -146,7 +143,7 @@ export default function LegalLibraryHome() {
             </h1>
           </div>
 
-          {/* أزرار الهيدر الثلاثة */}
+          {/* أزرار الهيدر */}
           <div className="flex items-center gap-2">
 
             {/* زر المفضلة */}
@@ -156,7 +153,7 @@ export default function LegalLibraryHome() {
               style={{ background: 'rgba(200,168,75,0.12)' }}
               aria-label="المفضلة"
             >
-              <Heart className="w-4.5 h-4.5" style={{ color: '#c8a84b' }} strokeWidth={1.8} />
+              <Heart className="w-[18px] h-[18px]" style={{ color: '#c8a84b' }} strokeWidth={1.8} />
             </button>
 
             {/* زر حول */}
@@ -166,7 +163,7 @@ export default function LegalLibraryHome() {
               style={{ background: 'rgba(99,149,255,0.12)' }}
               aria-label="حول المكتبة"
             >
-              <Info className="w-4.5 h-4.5 text-sky-400" strokeWidth={1.8} />
+              <Info className="w-[18px] h-[18px] text-sky-400" strokeWidth={1.8} />
             </button>
 
             {/* زر القائمة */}
@@ -180,7 +177,7 @@ export default function LegalLibraryHome() {
           </div>
         </div>
 
-        {/* شريط إحصائي صغير */}
+        {/* شريط إحصائي */}
         <div
           className="flex items-center justify-around rounded-2xl py-3"
           style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
@@ -201,25 +198,18 @@ export default function LegalLibraryHome() {
       {/* ══════════ المحتوى ══════════ */}
       <div className="bg-[#f4f6f9] dark:bg-background min-h-[calc(100vh-180px)] pb-28">
 
-        {/* عنوان الأقسام */}
         <div className="px-5 pt-5 pb-3 flex items-center justify-between">
-          <span className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">
-            الأقسام
-          </span>
+          <span className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">الأقسام</span>
           <div className="h-px flex-1 mx-3 bg-gray-200" />
         </div>
 
-        {/* البطاقات */}
         <div className="px-4 flex flex-col gap-3">
-          {SECTIONS.map((section, i) => (
-            <SectionCard key={section.route} section={section} index={i} />
+          {SECTIONS.map((section) => (
+            <SectionCard key={section.route} section={section} />
           ))}
         </div>
 
-        {/* فاصل */}
         <div className="mx-4 mt-5 mb-1 h-px bg-gray-200" />
-
-        {/* hint صغير */}
         <p className="text-center text-[11px] text-gray-400 py-2">
           جميع المحتويات مُحدَّثة وفق آخر الإصدارات الرسمية
         </p>
@@ -249,19 +239,22 @@ export default function LegalLibraryHome() {
         </button>
       </div>
 
+      {/* ══════════ Drawers & Modals ══════════ */}
+
       <LegalSidebarDrawer open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
+      {/* Onboarding — بدون تغيير، فقط onDone يشير لـ handleOnboardingDone */}
+      {showOnboarding && (
+        <LegalWelcomeOnboarding onDone={handleOnboardingDone} />
+      )}
+
+      {/* نافذة "عن المكتبة": تظهر بعد Onboarding مباشرةً، أو عند الضغط على زر Info */}
       <LegalAboutModal
         open={showAbout}
         onClose={() => setShowAbout(false)}
-        sectionLabel="وثائق وقوانين المكتبة القانونية"
       />
 
-      {showOnboarding && (
-        <LegalWelcomeOnboarding onDone={() => setShowOnboarding(false)} />
-      )}
-
-      {!showOnboarding && shouldShowTrialEndedScreen && !showLimitedUsageModal && (
+      {!showOnboarding && !showAbout && shouldShowTrialEndedScreen && !showLimitedUsageModal && (
         <TrialEndedScreen
           trialDates={trialDates}
           onGoSubscribe={() => navigate('/library/subscription')}
