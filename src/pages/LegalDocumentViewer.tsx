@@ -90,6 +90,11 @@ export default function LegalDocumentViewer() {
   const articleRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const sectionRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const observerRef = useRef<IntersectionObserver | null>(null);
+  // مرجع الهيدر اللاصق (sticky) — نحتاج ارتفاعه الفعلي لتصحيح نقطة التمرير،
+  // لأن scrollIntoView الافتراضي يضع العنصر عند top:0 فيختفي خلف الهيدر اللاصق
+  // (هذا كان سبب وصول الفهرس/البحث إلى مكان يبدو خاطئاً: العنصر الصحيح كان
+  // يصل فعلاً لأعلى الصفحة لكنه يُحجب بالكامل خلف الهيدر).
+  const headerRef = useRef<HTMLDivElement | null>(null);
 
   const category = document?.category ?? 'law';
   const theme = CATEGORY_THEME[category];
@@ -137,13 +142,22 @@ export default function LegalDocumentViewer() {
       });
   }, [document, searchQuery, searchByNumber, exactMatch]);
 
+  // ── تمرير مُصحَّح يطرح ارتفاع الهيدر اللاصق فعلياً، بدل الاعتماد على
+  //    scrollIntoView الافتراضي الذي كان يضع العنصر خلف الهيدر فيظهر "مخطئاً" ──
+  const scrollToElementWithOffset = (el: HTMLElement | null | undefined) => {
+    if (!el) return;
+    const headerHeight = headerRef.current?.getBoundingClientRect().height ?? 0;
+    const top = el.getBoundingClientRect().top + window.scrollY - headerHeight - 12;
+    window.scrollTo({ top: Math.max(top, 0), behavior: 'smooth' });
+  };
+
   // ── استرجاع موضع القراءة المحفوظ عند فتح المستند ──
   useEffect(() => {
     if (!docId || !document || isLocked) return;
     const saved = getReadingPosition(docId);
     if (saved && articleRefs.current[saved]) {
       setTimeout(() => {
-        articleRefs.current[saved]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        scrollToElementWithOffset(articleRefs.current[saved]);
       }, 150);
     }
   }, [docId, document, isLocked]);
@@ -169,21 +183,19 @@ export default function LegalDocumentViewer() {
 
   const scrollToIndex = (idx: number) => {
     setShowIndex(false);
-    sectionRefs.current[idx]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(() => scrollToElementWithOffset(sectionRefs.current[idx]), 50);
   };
 
   const jumpToArticleFromIndex = (idx: number) => {
     setShowIndex(false);
     const key = String(idx);
-    setTimeout(() => {
-      articleRefs.current[key]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 50);
+    setTimeout(() => scrollToElementWithOffset(articleRefs.current[key]), 50);
   };
 
   const scrollToArticle = (idx: number) => {
     setSearchOpen(false);
     const key = String(idx);
-    articleRefs.current[key]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    scrollToElementWithOffset(articleRefs.current[key]);
   };
 
   if (isLoading) {
@@ -214,7 +226,7 @@ export default function LegalDocumentViewer() {
     <MainLayout>
       <div className={cn(nightMode ? 'bg-slate-950 text-slate-100' : 'bg-background', 'min-h-screen')}>
         {/* الهيدر */}
-        <div className={cn(theme.headerBg, 'sticky top-0 z-30')}>
+        <div ref={headerRef} className={cn(theme.headerBg, 'sticky top-0 z-30')}>
           <div className="container max-w-3xl flex items-center gap-3 py-3">
             <button onClick={() => navigate(-1)} className="text-white p-1.5 -m-1 shrink-0" aria-label="رجوع">
               <ChevronRight className="w-5 h-5" />
