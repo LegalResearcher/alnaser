@@ -174,9 +174,11 @@ const AdminStatistics = () => {
   const { data: libraryVisits, isLoading: libraryLoading } = useQuery({
     queryKey: ['library-visits-stats'],
     queryFn: async () => {
-      const [savedStatsRes, countsRes] = await Promise.all([
+      const [savedStatsRes, countsRes, uniqueVisitorsRes] = await Promise.all([
         supabase.from('platform_stats').select('library_visits').eq('id', 1).single(),
         (supabase as any).rpc('get_library_section_visit_counts'),
+        // عدد الزوّار الفريدين (distinct visitor_id) لكل قسم — مقياس تكميلي بجانب الزيارات الخام
+        (supabase as any).rpc('get_library_section_unique_visitor_counts'),
       ]);
 
       const archivedLibraryVisits = ((savedStatsRes.data as Record<string, any> | null)?.library_visits ?? {}) as Record<string, number>;
@@ -186,6 +188,11 @@ const AdminStatistics = () => {
         currentVisitMap[row.section_key] = Number(row.visits) || 0;
       });
 
+      const uniqueVisitorMap: Record<string, number> = {};
+      (uniqueVisitorsRes.data || []).forEach((row: { section_key: string; unique_visitors: number }) => {
+        uniqueVisitorMap[row.section_key] = Number(row.unique_visitors) || 0;
+      });
+
       // دمج الأرشيف مع الحالي لكل المفاتيح الظاهرة في كليهما
       const allKeys = new Set([...Object.keys(archivedLibraryVisits), ...Object.keys(currentVisitMap)]);
       return Array.from(allKeys)
@@ -193,6 +200,8 @@ const AdminStatistics = () => {
           id: key,
           name: libraryLabel(key),
           visits: (archivedLibraryVisits[key] ?? 0) + (currentVisitMap[key] ?? 0),
+          // ملاحظة: لا يوجد أرشيف تاريخي لعدد الزوّار الفريدين (هذا مقياس جديد)، فهو يعكس فقط البيانات الحالية في site_analytics
+          uniqueVisitors: uniqueVisitorMap[key] ?? 0,
         }))
         .sort((a, b) => b.visits - a.visits);
     },
@@ -620,9 +629,14 @@ const AdminStatistics = () => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1.5">
                         <span className="font-semibold text-sm truncate">{section.name}</span>
-                        <span className="font-bold text-sm shrink-0 mr-2">
-                          {section.visits.toLocaleString('ar-SA')} زيارة
-                        </span>
+                        <div className="flex flex-col items-end shrink-0 mr-2">
+                          <span className="font-bold text-sm">
+                            {section.visits.toLocaleString('ar-SA')} زيارة
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">
+                            {section.uniqueVisitors.toLocaleString('ar-SA')} زائر فريد
+                          </span>
+                        </div>
                       </div>
                       <div className="w-full bg-muted rounded-full h-2">
                         <div
