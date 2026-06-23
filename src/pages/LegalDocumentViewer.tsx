@@ -58,7 +58,17 @@ export default function LegalDocumentViewer() {
   const { data: contentData, isLoading: contentLoading } = useLegalDocumentContent(docId, !isLocked, isLimitedMode);
 
   // مستند مُجمَّع للاستخدام في باقي الصفحة — content فاضي طالما محجوب (لم يُطلب أصلاً)
-  const document = meta ? { ...meta, content: (isLocked ? [] : contentData) ?? [] } : null;
+  // ⚠️ السبب الجذري للخلل: كان هذا الكائن يُعاد بناؤه (مرجع جديد) في كل
+  // render — حتى بدون تغيّر فعلي بالبيانات. وبما أنه موجود بقائمة اعتماديات
+  // useEffect الخاص باستعادة "آخر موضع قراءة"، كان ذلك الـeffect يُعاد تشغيله
+  // عند أي تفاعل (فتح/إغلاق الفهرس، إلخ)، فيُجدوِل scroll لموضع القراءة
+  // المحفوظ مسبقاً ويُنفَّذ بعد الـscroll الصحيح المطلوب من الفهرس فيُلغيه —
+  // ولهذا كان أي عنصر بالفهرس يوصل لنفس المكان المحفوظ دائماً. تثبيت المرجع
+  // بـ useMemo يحل ذلك جذرياً.
+  const document = useMemo(
+    () => (meta ? { ...meta, content: (isLocked ? [] : contentData) ?? [] } : null),
+    [meta, isLocked, contentData]
+  );
   const isLoading = metaLoading || (!isLocked && contentLoading);
 
   const { isFavorite, toggleFavorite } = useLegalFavorites();
