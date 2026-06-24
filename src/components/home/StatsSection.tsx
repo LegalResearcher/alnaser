@@ -1,166 +1,120 @@
 /**
- * Alnasser Tech Digital Solutions
- * Component: StatsSection — Version 3.0 (World-Class)
+ * StatsSection.tsx — أرقام ضخمة، dark موحّد
+ * مع الحفاظ على المنطق الأصلي لجلب البيانات من Supabase
  */
-
-import { BookOpen, Users, Award, Target, TrendingUp } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCachedQuery } from '@/hooks/useCachedQuery';
-import { useEffect, useRef, useState } from 'react';
+import { Users, BookOpen, CheckCircle, Trophy } from 'lucide-react';
 
-interface Stats {
-  questionsCount: number;
-  subjectsCount:  number;
-  examsCount:     number;
-  passRate:       number;
-}
-
-// عداد متحرك مع IntersectionObserver
-function Counter({ target, suffix = '' }: { target: number; suffix?: string }) {
-  const [val, setVal]      = useState(0);
-  const ref                = useRef<HTMLSpanElement>(null);
-  const started            = useRef(false);
-
+/* ── عداد متحرك ── */
+function Counter({ target, visible, suffix = '' }: { target: number; visible: boolean; suffix?: string }) {
+  const [val, setVal] = useState(0);
+  const started = useRef(false);
   useEffect(() => {
-    const obs = new IntersectionObserver(([e]) => {
-      if (!e.isIntersecting || started.current) return;
-      started.current = true;
-      const steps = 55;
-      const dur   = 1600;
-      let curr    = 0;
-      const inc   = target / steps;
-      const t     = setInterval(() => {
-        curr += inc;
-        if (curr >= target) { setVal(target); clearInterval(t); }
-        else setVal(Math.floor(curr));
-      }, dur / steps);
-    }, { threshold: 0.4 });
-    if (ref.current) obs.observe(ref.current);
-    return () => obs.disconnect();
-  }, [target]);
-
-  return <span ref={ref}>{val.toLocaleString('ar-EG')}{suffix}</span>;
+    if (!visible || started.current) return;
+    started.current = true;
+    const dur = 1800, steps = 70;
+    let cur = 0;
+    const inc = target / steps;
+    const t = setInterval(() => {
+      cur += inc;
+      if (cur >= target) { setVal(target); clearInterval(t); }
+      else setVal(Math.round(cur));
+    }, dur / steps);
+  }, [visible, target]);
+  return <>{val.toLocaleString('ar-EG')}{suffix}</>;
 }
 
 export function StatsSection() {
-  const { data: stats } = useCachedQuery<Stats>(
-    ['site-stats'],
-    async () => {
-      const [qRes, sRes, eRes] = await Promise.all([
-        supabase.from('questions').select('id', { count: 'exact', head: true }).eq('status', 'active'),
-        supabase.from('subjects').select('id', { count: 'exact', head: true }),
-        supabase.from('exam_results').select('id, passed', { count: 'exact' }),
-      ]);
-      const examsData  = eRes.data || [];
-      const examsCount = eRes.count || 0;
-      const passed     = examsData.filter(e => e.passed).length;
-      return {
-        questionsCount: qRes.count  || 0,
-        subjectsCount:  sRes.count  || 0,
-        examsCount,
-        passRate: examsCount > 0 ? Math.round((passed / examsCount) * 100) : 85,
-      };
-    }
-  );
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
 
-  const items = [
-    { icon: BookOpen, value: stats?.questionsCount ?? 10000, suffix: '+', label: 'سؤال قانوني',   sub: 'مراجع ومحدَّث باستمرار',    color: 'from-blue-500 to-indigo-500',   glow: 'rgba(59,130,246,0.35)' },
-    { icon: Users,    value: stats?.examsCount      ?? 500,  suffix: '+', label: 'باحث ومختبر',   sub: 'سجّلوا نتائجهم على المنصة', color: 'from-violet-500 to-purple-600', glow: 'rgba(139,92,246,0.35)' },
-    { icon: Award,    value: stats?.subjectsCount   ?? 43,   suffix: '',  label: 'مادة تعليمية', sub: 'في كل فروع القانون',          color: 'from-emerald-500 to-teal-500',  glow: 'rgba(16,185,129,0.35)' },
-    { icon: Target,   value: stats?.passRate        ?? 85,   suffix: '%', label: 'نسبة النجاح',  sub: 'بناءً على نتائج المنصة',    color: 'from-orange-500 to-amber-500',  glow: 'rgba(249,115,22,0.35)' },
+  useEffect(() => {
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect(); } }, { threshold: 0.1 });
+    if (sectionRef.current) obs.observe(sectionRef.current);
+    return () => obs.disconnect();
+  }, []);
+
+  /* جلب الإحصائيات */
+  const { data: questionCount = 0 } = useCachedQuery<number>(['stats-questions'], async () => {
+    const { count } = await supabase.from('questions').select('id', { count: 'exact', head: true }).eq('status', 'active');
+    return count ?? 0;
+  });
+
+  const { data: levelCount = 0 } = useCachedQuery<number>(['stats-levels'], async () => {
+    const { count } = await supabase.from('levels').select('id', { count: 'exact', head: true });
+    return count ?? 0;
+  });
+
+  const { data: subjectCount = 0 } = useCachedQuery<number>(['stats-subjects'], async () => {
+    const { count } = await supabase.from('subjects').select('id', { count: 'exact', head: true });
+    return count ?? 0;
+  });
+
+  const { data: examCount = 0 } = useCachedQuery<number>(['stats-exams'], async () => {
+    const { count } = await supabase.from('exam_sessions').select('id', { count: 'exact', head: true });
+    return count ?? 0;
+  });
+
+  const STATS = [
+    { icon: BookOpen,    value: questionCount, suffix: '+', label: 'سؤال نشط',       color: 'hsl(217 91% 62%)' },
+    { icon: Trophy,      value: levelCount,    suffix: '',  label: 'مستوى دراسي',     color: '#c8a84b' },
+    { icon: CheckCircle, value: subjectCount,  suffix: '+', label: 'مادة قانونية',    color: '#34d399' },
+    { icon: Users,       value: examCount,     suffix: '+', label: 'اختبار أُجري',    color: '#f472b6' },
   ];
 
   return (
-    <section className="relative py-20 md:py-28 overflow-hidden" style={{ background: 'linear-gradient(180deg, #050d1f 0%, #080f20 50%, #060c1a 100%)' }}>
+    <div ref={sectionRef} dir="rtl" style={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(180deg, #070d1a 0%, #08111f 100%)', padding: '56px 0 64px' }}>
 
-      {/* نسيج نقطي */}
-      <div className="absolute inset-0 opacity-[0.12] pointer-events-none"
-        style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.4) 1px, transparent 1px)', backgroundSize: '28px 28px' }} />
+      {/* خط أعلى */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg, transparent, rgba(200,168,75,0.18), transparent)', pointerEvents: 'none' }} />
 
-      {/* توهج مركزي */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse, rgba(59,130,246,0.08) 0%, transparent 70%)', filter: 'blur(40px)' }} />
+      {/* خلفية شبكة خفيفة */}
+      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', backgroundImage: 'linear-gradient(rgba(200,168,75,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(200,168,75,0.025) 1px, transparent 1px)', backgroundSize: '72px 72px' }} />
 
-      <div className="container mx-auto px-4 md:px-6 relative z-10">
-
-        {/* Header */}
-        <div className="flex flex-col items-center mb-14 md:mb-20 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-5 text-[10px] font-black uppercase tracking-[0.25em]"
-            style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)', color: 'hsl(217 91% 75%)' }}>
-            <TrendingUp className="w-3 h-3" />
-            إحصائيات المنصة الحية
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          </div>
-          <h2 className="font-cairo font-black text-white leading-tight"
-            style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)' }}>
-            نحن ننمو{' '}
-            <span style={{
-              background: 'linear-gradient(135deg, hsl(217 91% 70%), hsl(160 84% 55%))',
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-            }}>
-              بثقتكم
-            </span>
-            {' '}كل يوم
-          </h2>
-        </div>
-
-        {/* Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 max-w-5xl mx-auto">
-          {items.map((item, i) => (
-            <div
-              key={i}
-              className="group relative flex flex-col items-center text-center p-6 md:p-8 rounded-2xl md:rounded-3xl transition-all duration-500 cursor-default"
-              style={{
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                backdropFilter: 'blur(12px)',
-                animation: `fadeSlideUp 0.7s ${i * 0.1}s cubic-bezier(0.16,1,0.3,1) both`,
-              }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.07)';
-                (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.15)';
-                (e.currentTarget as HTMLElement).style.transform = 'translateY(-6px)';
-                (e.currentTarget as HTMLElement).style.boxShadow = `0 20px 60px ${item.glow}`;
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)';
-                (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.08)';
-                (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
-                (e.currentTarget as HTMLElement).style.boxShadow = 'none';
-              }}
-            >
-              {/* أيقونة */}
-              <div className={`w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-gradient-to-br ${item.color} flex items-center justify-center mb-5 shadow-xl transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`}
-                style={{ boxShadow: `0 8px 32px ${item.glow}` }}>
-                <item.icon className="w-7 h-7 md:w-8 md:h-8 text-white" />
-              </div>
-
-              {/* رقم */}
-              <div className="font-cairo font-black leading-none mb-1.5 tabular-nums"
+      <div style={{ maxWidth: 1080, margin: '0 auto', padding: '0 24px', position: 'relative', zIndex: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
+          {STATS.map((s, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'stretch' }}>
+              {/* فاصل رأسي */}
+              {i > 0 && (
+                <div style={{ width: 1, background: 'rgba(255,255,255,0.06)', margin: '8px 0', flexShrink: 0 }} />
+              )}
+              <div
                 style={{
-                  fontSize: 'clamp(2rem, 5vw, 3rem)',
-                  background: 'linear-gradient(135deg, #fff 60%, rgba(255,255,255,0.6))',
-                  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-                }}>
-                <Counter target={item.value} suffix={item.suffix} />
+                  flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  padding: '28px 24px', textAlign: 'center',
+                  opacity: visible ? 1 : 0,
+                  transform: visible ? 'translateY(0)' : 'translateY(20px)',
+                  transition: `all 0.6s cubic-bezier(0.16,1,0.3,1) ${i * 0.1}s`,
+                }}
+              >
+                {/* أيقونة */}
+                <div style={{ width: 44, height: 44, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, background: `${s.color}12`, border: `1px solid ${s.color}20` }}>
+                  <s.icon style={{ width: 20, height: 20, color: s.color }} strokeWidth={1.6} />
+                </div>
+
+                {/* الرقم */}
+                <div style={{ fontSize: 'clamp(2rem, 4vw, 2.8rem)', fontWeight: 900, color: '#fff', lineHeight: 1, marginBottom: 8, letterSpacing: '-0.02em' }}>
+                  <Counter target={s.value} visible={visible} suffix={s.suffix} />
+                </div>
+
+                {/* التسمية */}
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', fontWeight: 700, letterSpacing: '0.04em' }}>
+                  {s.label}
+                </div>
+
+                {/* خط ملوّن */}
+                <div style={{ width: 28, height: 2, borderRadius: 2, marginTop: 14, background: s.color, opacity: 0.5 }} />
               </div>
-
-              <p className="font-bold text-sm md:text-base text-white/80 mb-1">{item.label}</p>
-              <p className="text-[10px] md:text-xs text-white/35 leading-relaxed">{item.sub}</p>
-
-              {/* خط تزييني */}
-              <div className={`mt-4 h-0.5 w-0 group-hover:w-12 rounded-full bg-gradient-to-r ${item.color} transition-all duration-500`} />
             </div>
           ))}
         </div>
       </div>
 
-      <style>{`
-        @keyframes fadeSlideUp {
-          from { opacity: 0; transform: translateY(24px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
-    </section>
+      {/* خط أسفل */}
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)', pointerEvents: 'none' }} />
+    </div>
   );
 }
