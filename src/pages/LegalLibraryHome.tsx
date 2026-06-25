@@ -119,11 +119,13 @@ export default function LegalLibraryHome() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showLimitedUsageModal, setShowLimitedUsageModal] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
-  const { shouldShowTrialEndedScreen, enterLimitedMode, trialDates } = useLegalAccessMode();
+  const { shouldShowTrialEndedScreen, enterLimitedMode, trialDates, effectiveTrialDays, libraryFree, trialEnabled } = useLegalAccessMode();
 
   useEffect(() => {
+    // إذا المكتبة مفتوحة مجاناً أو التجربة معطّلة → لا نُظهر شاشة الترحيب/التجربة
+    if (libraryFree || !trialEnabled) return;
     if (!hasSeenLegalOnboarding()) setShowOnboarding(true);
-  }, []);
+  }, [libraryFree, trialEnabled]);
 
   return (
     <MainLayout>
@@ -258,7 +260,7 @@ export default function LegalLibraryHome() {
       />
 
       {showOnboarding && (
-        <LegalWelcomeOnboarding onDone={() => setShowOnboarding(false)} />
+        <LegalWelcomeOnboarding onDone={() => setShowOnboarding(false)} trialDays={effectiveTrialDays} />
       )}
 
       {!showOnboarding && shouldShowTrialEndedScreen && !showLimitedUsageModal && (
