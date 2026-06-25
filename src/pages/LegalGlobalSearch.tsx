@@ -17,6 +17,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/MainLayout';
+import { LibrarySearchSEO } from '@/components/seo/SEOHead';
 import {
   ChevronRight, Search, X, Copy, Check, SlidersHorizontal, Type, Moon, Sun, Hash, Equal,
 } from 'lucide-react';
@@ -241,6 +242,7 @@ export default function LegalGlobalSearch() {
 
   return (
     <MainLayout>
+      <LibrarySearchSEO />
       <div className="bg-[#1a2744] sticky top-0 z-30">
         <div className="container max-w-3xl flex items-center gap-3 py-4">
           <button onClick={() => navigate(-1)} className="text-white p-1 -m-1">
