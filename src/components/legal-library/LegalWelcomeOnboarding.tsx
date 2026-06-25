@@ -6,14 +6,16 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { getDeviceFingerprint } from '@/hooks/useLegalLibrary';
-import { LEGAL_ONBOARDING_KEY, LEGAL_TRIAL_START_KEY, TRIAL_DAYS } from '@/lib/legalLibraryKeys';
+import { LEGAL_ONBOARDING_KEY, LEGAL_TRIAL_START_KEY, TRIAL_DAYS_DEFAULT } from '@/lib/legalLibraryKeys';
 import {
   Scale, ChevronRight, ChevronLeft, Award, PlayCircle, KeyRound, CheckCircle2,
   Gift, RefreshCcw, Search, Moon, Heart, ListTree, TrendingUp,
   Calendar, Crown,
 } from 'lucide-react';
 
-export { LEGAL_ONBOARDING_KEY, TRIAL_DAYS };
+export { LEGAL_ONBOARDING_KEY };
+/** @deprecated استخدم TRIAL_DAYS_DEFAULT أو useLibraryTrialSettings */
+export const TRIAL_DAYS = TRIAL_DAYS_DEFAULT;
 
 export function hasSeenLegalOnboarding(): boolean {
   try { return localStorage.getItem(LEGAL_ONBOARDING_KEY) === '1'; } catch { return true; }
@@ -21,7 +23,7 @@ export function hasSeenLegalOnboarding(): boolean {
 function markLegalOnboardingSeen() {
   try { localStorage.setItem(LEGAL_ONBOARDING_KEY, '1'); } catch { }
 }
-function ensureTrialStarted(): { start: Date; end: Date } {
+function ensureTrialStarted(trialDays: number = TRIAL_DAYS_DEFAULT): { start: Date; end: Date } {
   let startIso: string | null = null;
   try { startIso = localStorage.getItem(LEGAL_TRIAL_START_KEY); } catch { }
   const isFirstStart = !startIso;
@@ -43,16 +45,16 @@ function ensureTrialStarted(): { start: Date; end: Date } {
   }
   const start = new Date(startIso);
   const end = new Date(start);
-  end.setDate(end.getDate() + TRIAL_DAYS);
+  end.setDate(end.getDate() + trialDays);
   return { start, end };
 }
-export function getLegalTrialDates(): { start: Date; end: Date } | null {
+export function getLegalTrialDates(trialDays: number = TRIAL_DAYS_DEFAULT): { start: Date; end: Date } | null {
   let startIso: string | null = null;
   try { startIso = localStorage.getItem(LEGAL_TRIAL_START_KEY); } catch { }
   if (!startIso) return null;
   const start = new Date(startIso);
   const end = new Date(start);
-  end.setDate(end.getDate() + TRIAL_DAYS);
+  end.setDate(end.getDate() + trialDays);
   return { start, end };
 }
 export function formatDate(d: Date): string {
@@ -116,13 +118,15 @@ const TRIAL_PERKS = [
 /* ══════════════════════════════════════════
    المكوّن الرئيسي
 ══════════════════════════════════════════ */
-export function LegalWelcomeOnboarding({ onDone }: { onDone: () => void }) {
+export function LegalWelcomeOnboarding({ onDone, trialDays: trialDaysProp }: { onDone: () => void; trialDays?: number }) {
   const navigate = useNavigate();
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [trialDates, setTrialDates] = useState<{ start: Date; end: Date } | null>(null);
 
+  const effectiveTrialDays = trialDaysProp ?? TRIAL_DAYS_DEFAULT;
+
   const close = () => { markLegalOnboardingSeen(); onDone(); };
-  const startTrial = () => { setTrialDates(ensureTrialStarted()); setStep(2); };
+  const startTrial = () => { setTrialDates(ensureTrialStarted(effectiveTrialDays)); setStep(2); };
   const goSubscription = () => { markLegalOnboardingSeen(); onDone(); navigate('/library/subscription'); };
 
   /* ════════════════════════════════
@@ -276,14 +280,14 @@ export function LegalWelcomeOnboarding({ onDone }: { onDone: () => void }) {
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-2xl font-black text-white">{TRIAL_DAYS}</span>
+            <span className="text-2xl font-black text-white">{effectiveTrialDays}</span>
             <span className="text-[10px] text-gray-400">يوم</span>
           </div>
         </div>
         <p className="text-[11px] font-medium text-gray-400 tracking-widest uppercase mb-1">Free Trial</p>
         <h1 className="text-xl font-black text-white leading-tight mb-2">تجربتك المجانية</h1>
         <p className="text-[13px] text-gray-300/80 leading-relaxed">
-          استمتع بكل مزايا المكتبة مجاناً لمدة <span className="text-[#c8a84b] font-black">{TRIAL_DAYS} أيام</span> كاملة
+          استمتع بكل مزايا المكتبة مجاناً لمدة <span className="text-[#c8a84b] font-black">{effectiveTrialDays} أيام</span> كاملة
         </p>
         <div className="mt-6"><StepDots current={1} /></div>
       </div>
@@ -319,8 +323,8 @@ export function LegalWelcomeOnboarding({ onDone }: { onDone: () => void }) {
   ════════════════════════════════ */
   const daysLeft = trialDates
     ? Math.max(0, Math.ceil((trialDates.end.getTime() - Date.now()) / 86400000))
-    : TRIAL_DAYS;
-  const progressPct = Math.min(100, Math.max(0, ((TRIAL_DAYS - daysLeft) / TRIAL_DAYS) * 100));
+    : effectiveTrialDays;
+  const progressPct = Math.min(100, Math.max(0, ((effectiveTrialDays - daysLeft) / effectiveTrialDays) * 100));
 
   return (
     <div className="fixed inset-0 z-[9999] flex flex-col" style={{ background: '#f4f6f9' }}>
@@ -361,7 +365,7 @@ export function LegalWelcomeOnboarding({ onDone }: { onDone: () => void }) {
             </div>
             <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-gray-400">{TRIAL_DAYS} أيام</span>
+                <span className="text-xs font-bold text-gray-400">{effectiveTrialDays} أيام</span>
                 <span className="text-xs font-black text-emerald-600">متبقي {daysLeft} يوم</span>
               </div>
               <ProgressBar pct={progressPct} />
