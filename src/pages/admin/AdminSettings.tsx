@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { Settings, User, Lock, Save, MessageSquare, CalendarDays, ShieldCheck, ShieldOff, CreditCard } from 'lucide-react';
+import { Settings, User, Lock, Save, MessageSquare, CalendarDays, ShieldCheck, ShieldOff, CreditCard, FlaskConical, Infinity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -96,6 +96,12 @@ const AdminSettings = () => {
   const [planAnnualLabel, setPlanAnnualLabel] = useState('اشتراك سنوي');
   const [planLoading, setPlanLoading] = useState(false);
 
+  // ── إعدادات الفترة التجريبية للمكتبة ──
+  const [trialDays, setTrialDays] = useState('3');
+  const [trialEnabled, setTrialEnabled] = useState(true);
+  const [libraryFree, setLibraryFree] = useState(false);
+  const [trialLoading, setTrialLoading] = useState(false);
+
   useEffect(() => {
     (async () => {
       const { data } = await (supabase as any)
@@ -152,6 +158,25 @@ const AdminSettings = () => {
     })();
   }, []);
 
+  // ── تحميل إعدادات الفترة التجريبية ──
+  useEffect(() => {
+    (async () => {
+      const { data } = await (supabase as any)
+        .from('platform_settings')
+        .select('value')
+        .eq('key', 'library_trial_settings')
+        .maybeSingle();
+      if (data?.value) {
+        try {
+          const parsed = JSON.parse(data.value);
+          if (typeof parsed.trialDays === 'number') setTrialDays(String(parsed.trialDays));
+          if (typeof parsed.trialEnabled === 'boolean') setTrialEnabled(parsed.trialEnabled);
+          if (typeof parsed.libraryFree === 'boolean') setLibraryFree(parsed.libraryFree);
+        } catch {}
+      }
+    })();
+  }, []);
+
   const saveSubscriptionMessage = async () => {
     setSubMsgLoading(true);
     const value = JSON.stringify({ fee: subFee, feeLabel: subFeeLabel, note: subNote });
@@ -189,6 +214,22 @@ const AdminSettings = () => {
     queryClient.invalidateQueries({ queryKey: ['library_subscription_plans'] });
     setPlanLoading(false);
     toast({ title: 'تم الحفظ', description: 'تم تحديث باقتي اشتراك المكتبة بنجاح' });
+  };
+
+  const saveTrialSettings = async () => {
+    setTrialLoading(true);
+    const days = parseInt(trialDays, 10);
+    const value = JSON.stringify({
+      trialDays: isNaN(days) || days < 1 ? 3 : days,
+      trialEnabled,
+      libraryFree,
+    });
+    await (supabase as any)
+      .from('platform_settings')
+      .upsert({ key: 'library_trial_settings', value }, { onConflict: 'key' });
+    queryClient.invalidateQueries({ queryKey: ['library_trial_settings'] });
+    setTrialLoading(false);
+    toast({ title: 'تم الحفظ', description: 'تم تحديث إعدادات الفترة التجريبية بنجاح' });
   };
 
   const toggleYear = (levelId: string, year: number) => {
@@ -740,6 +781,125 @@ const AdminSettings = () => {
           >
             <Save className="w-4 h-4" />
             {yearsLoading ? 'جاري الحفظ...' : 'حفظ السنوات لجميع المستويات'}
+          </Button>
+        </div>
+
+        {/* ── إعدادات الفترة التجريبية للمكتبة ── */}
+        <div className="bg-card rounded-xl border p-4 sm:p-6" dir="rtl">
+          <h2 className="font-bold mb-1 flex items-center gap-2 text-sm sm:text-base">
+            <FlaskConical className="w-4 h-4 sm:w-5 sm:h-5 text-violet-500" />
+            إعدادات الفترة التجريبية للمكتبة القانونية
+          </h2>
+          <p className="text-xs text-muted-foreground mb-5">
+            تحكم في مدة التجربة المجانية، أو أوقفها، أو افتح المكتبة مجاناً للجميع بدون قيود.
+          </p>
+
+          {/* الوضع: مفتوح مجاناً */}
+          <div className="space-y-3 mb-5">
+            <button
+              type="button"
+              onClick={() => setLibraryFree(v => !v)}
+              className={`w-full flex items-center justify-between gap-3 rounded-xl border-2 px-4 py-3.5 transition-all duration-200 text-right ${
+                libraryFree
+                  ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                  : 'border-border bg-muted/40 text-muted-foreground hover:border-emerald-400/40'
+              }`}
+            >
+              <div>
+                <p className="font-bold text-sm flex items-center gap-1.5">
+                  <Infinity className="w-4 h-4" />
+                  المكتبة مفتوحة مجاناً للجميع
+                </p>
+                <p className="text-[11px] mt-0.5 opacity-70">
+                  {libraryFree ? 'مفعّل — جميع المستخدمين يدخلون بدون قيود أو تجربة' : 'معطّل — يعمل نظام التجربة والاشتراك بشكل طبيعي'}
+                </p>
+              </div>
+              <div className={`w-10 h-6 rounded-full flex items-center transition-all duration-300 px-0.5 shrink-0 ${
+                libraryFree ? 'bg-emerald-500 justify-end' : 'bg-muted-foreground/30 justify-start'
+              }`}>
+                <div className="w-5 h-5 bg-white rounded-full shadow-sm" />
+              </div>
+            </button>
+          </div>
+
+          {/* الفترة التجريبية — تظهر فقط إذا لم تكن مجانية */}
+          {!libraryFree && (
+            <div className="space-y-4 border-t pt-4">
+              {/* تفعيل/إيقاف التجربة */}
+              <button
+                type="button"
+                onClick={() => setTrialEnabled(v => !v)}
+                className={`w-full flex items-center justify-between gap-3 rounded-xl border-2 px-4 py-3.5 transition-all duration-200 text-right ${
+                  trialEnabled
+                    ? 'border-violet-500 bg-violet-500/10 text-violet-700 dark:text-violet-400'
+                    : 'border-border bg-muted/40 text-muted-foreground hover:border-violet-400/40'
+                }`}
+              >
+                <div>
+                  <p className="font-bold text-sm flex items-center gap-1.5">
+                    <FlaskConical className="w-4 h-4" />
+                    الفترة التجريبية المجانية
+                  </p>
+                  <p className="text-[11px] mt-0.5 opacity-70">
+                    {trialEnabled
+                      ? 'مفعّلة — يحصل كل زائر جديد على فترة تجريبية'
+                      : 'معطّلة — يُطلب الاشتراك مباشرة بدون تجربة'}
+                  </p>
+                </div>
+                <div className={`w-10 h-6 rounded-full flex items-center transition-all duration-300 px-0.5 shrink-0 ${
+                  trialEnabled ? 'bg-violet-500 justify-end' : 'bg-muted-foreground/30 justify-start'
+                }`}>
+                  <div className="w-5 h-5 bg-white rounded-full shadow-sm" />
+                </div>
+              </button>
+
+              {/* مدة التجربة */}
+              {trialEnabled && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-bold">مدة الفترة التجريبية (بالأيام)</Label>
+                  <div className="flex items-center gap-3">
+                    <Input
+                      type="number"
+                      min="1"
+                      max="365"
+                      value={trialDays}
+                      onChange={e => setTrialDays(e.target.value)}
+                      className="bg-background text-sm w-28 text-center font-black text-lg"
+                      dir="ltr"
+                    />
+                    <span className="text-sm text-muted-foreground font-medium">يوم</span>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {[1, 3, 7, 14, 30].map(d => (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => setTrialDays(String(d))}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                            trialDays === String(d)
+                              ? 'bg-violet-500 text-white border-violet-500'
+                              : 'border-border text-muted-foreground hover:border-violet-400'
+                          }`}
+                        >
+                          {d} {d === 1 ? 'يوم' : 'أيام'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    ⚠️ التغيير يؤثر على المستخدمين الجدد فقط — من بدأ تجربته مسبقاً تظل مدته بالأيام التي بدأ بها.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <Button
+            onClick={saveTrialSettings}
+            disabled={trialLoading}
+            className="gradient-primary text-primary-foreground border-0 gap-2 mt-5"
+          >
+            <Save className="w-4 h-4" />
+            {trialLoading ? 'جاري الحفظ...' : 'حفظ إعدادات التجربة'}
           </Button>
         </div>
 
