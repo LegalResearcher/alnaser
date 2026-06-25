@@ -5,6 +5,7 @@
 import { useState, useEffect, ElementType } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
+import { LibraryHomeSEO } from '@/components/seo/SEOHead';
 import {
   BookMarked, Gavel, FolderOpen, FileStack, Search, AlignJustify, ChevronLeft,
   Heart, Info,
@@ -126,8 +127,7 @@ export default function LegalLibraryHome() {
 
   return (
     <MainLayout>
-
-      {/* ══════════ HERO HEADER ══════════ */}
+      <LibraryHomeSEO />
       <div
         className="sticky top-0 z-30 pt-5 pb-6 px-5"
         style={{
