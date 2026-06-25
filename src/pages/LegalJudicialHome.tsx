@@ -4,6 +4,7 @@
  */
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
+import { LibraryJudicialSEO } from '@/components/seo/SEOHead';
 import { ChevronLeft, ChevronRight, Search, Scale } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useJudicialCircuits } from '@/hooks/useLegalLibrary';
@@ -142,6 +143,7 @@ export default function LegalJudicialHome() {
 
   return (
     <MainLayout>
+      <LibraryJudicialSEO />
 
       {/* ══════════ HERO HEADER ══════════ */}
       <div
