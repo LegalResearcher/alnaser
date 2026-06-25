@@ -4,6 +4,7 @@
  */
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
+import { LibraryOtherServicesSEO } from '@/components/seo/SEOHead';
 import { ChevronRight, ChevronLeft, Gavel, BookOpenText } from 'lucide-react';
 
 const SERVICES = [
@@ -30,6 +31,7 @@ export default function LegalOtherServices() {
 
   return (
     <MainLayout>
+      <LibraryOtherServicesSEO />
 
       {/* Hero Header */}
       <div
