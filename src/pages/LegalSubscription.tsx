@@ -6,6 +6,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
+import { LibrarySubscriptionSEO } from '@/components/seo/SEOHead';
 import {
   ChevronRight, ChevronLeft, Crown, Lock, KeyRound,
   MessageSquareText, CheckCircle2, Gift, Calendar, Info,
@@ -155,6 +156,7 @@ export default function LegalSubscription() {
 
   return (
     <MainLayout>
+      <LibrarySubscriptionSEO />
 
       {/* ══════════ HERO HEADER ══════════ */}
       <div
