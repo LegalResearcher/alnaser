@@ -16,7 +16,8 @@ import { cn } from '@/lib/utils';
 import { useIsPremiumUnlocked } from '@/hooks/useLegalLibrary';
 import { useLibrarySubscriptionMessage, useLibrarySubscriptionPlans } from '@/hooks/useLibrarySubscriptionMessage';
 import { LibraryPasswordModal, LibrarySubscriptionModal } from '@/components/shared/LibrarySubscriptionModals';
-import { getLegalTrialDates, formatDate, TRIAL_DAYS } from '@/components/legal-library/LegalWelcomeOnboarding';
+import { getLegalTrialDates, formatDate } from '@/components/legal-library/LegalWelcomeOnboarding';
+import { useLibraryTrialSettings } from '@/hooks/useLegalLibrary';
 
 /* ─── مزايا ثابتة كـ fallback إن كانت القاعدة فارغة ─── */
 const DEFAULT_FEATURES = [
@@ -124,15 +125,17 @@ export default function LegalSubscription() {
   const { isPremiumUnlocked, setIsPremiumUnlocked, checked, subscriptionDates } = useIsPremiumUnlocked();
   const subMsg = useLibrarySubscriptionMessage();
   const plans = useLibrarySubscriptionPlans();
+  const { data: trialSettings } = useLibraryTrialSettings();
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<{ fileName: string; fee: string } | null>(null);
 
-  const trialDates = getLegalTrialDates();
+  const effectiveTrialDays = trialSettings?.trialDays ?? 3;
+  const trialDates = getLegalTrialDates(effectiveTrialDays);
   const trialDaysLeft = trialDates ? Math.max(0, Math.ceil((trialDates.end.getTime() - Date.now()) / 86400000)) : 0;
   const trialActive = !!trialDates && trialDaysLeft > 0;
   const trialProgressPct = trialDates
-    ? Math.min(100, Math.max(0, ((TRIAL_DAYS - trialDaysLeft) / TRIAL_DAYS) * 100))
+    ? Math.min(100, Math.max(0, ((effectiveTrialDays - trialDaysLeft) / effectiveTrialDays) * 100))
     : 0;
 
   const subTotalDays = subscriptionDates?.end
@@ -318,7 +321,7 @@ export default function LegalSubscription() {
 
                 <div className="mb-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-gray-400">{TRIAL_DAYS} أيام</span>
+                    <span className="text-xs font-bold text-gray-400">{effectiveTrialDays} أيام</span>
                     <span className={cn('text-xs font-black', trialActive ? 'text-emerald-600' : 'text-gray-400')}>
                       {trialActive ? `متبقي ${trialDaysLeft} يوم` : 'انتهت المدة'}
                     </span>
