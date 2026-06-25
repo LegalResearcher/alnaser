@@ -6,6 +6,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
+import { LibraryLegislationSEO, LibraryProsecutionSEO, LibraryRegulationsSEO } from '@/components/seo/SEOHead';
 import { ChevronRight, ChevronLeft, Search, Star, Info, Lock, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -117,8 +118,14 @@ export default function LegalDocumentList() {
     toggleFavorite('document', String(docId));
   };
 
+  const SEOComponent =
+    segment === 'regulations'   ? LibraryRegulationsSEO :
+    segment === 'prosecutions'  ? LibraryProsecutionSEO :
+                                  LibraryLegislationSEO;
+
   return (
     <MainLayout>
+      <SEOComponent />
 
       {/* ══════════ HERO HEADER ══════════ */}
       <div
