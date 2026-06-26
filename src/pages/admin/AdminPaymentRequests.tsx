@@ -744,7 +744,7 @@ export default function AdminPaymentRequests() {
             <div className="px-5 pb-5 flex gap-3">
               <button
                 onClick={() => editMut.mutate(editModal)}
-                disabled={editMut.isPending || editModal.subject_ids.length === 0}
+                disabled={editMut.isPending}
                 className="flex-1 py-2.5 rounded-xl text-sm font-black bg-amber-500 hover:bg-amber-600 text-white transition-colors disabled:opacity-60"
               >
                 {editMut.isPending ? 'جاري الحفظ...' : 'حفظ التعديلات'}
