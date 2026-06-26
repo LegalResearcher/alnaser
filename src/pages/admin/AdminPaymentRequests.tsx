@@ -20,11 +20,26 @@ const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789abcdefghjkmnpqrstuvwxyz';
 const seg = () => Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 const genPwd = () => `${seg()}-${seg()}-${seg()}`;
 
+// ── تحديد مدة الاشتراك بناءً على نوع الباقة المختارة ──
+function getSubscriptionDays(req: any): { days: number; label: string } {
+  const name: string = (req.subject_name || req.fileName || '').toLowerCase();
+  const isAnnual =
+    name.includes('سنوي') ||
+    name.includes('annual') ||
+    name.includes('yearly') ||
+    name.includes('سنة') ||
+    name.includes('year');
+  return isAnnual
+    ? { days: 365, label: '365 يوم (سنة كاملة)' }
+    : { days: 30,  label: '30 يوم' };
+}
+
 async function confirmSingle(req: any) {
   const newPwd = genPwd();
+  const { days, label: durationLabel } = getSubscriptionDays(req);
   const { data: pwData, error: pwErr } = await (supabase as any)
     .from('review_passwords')
-    .insert({ subject_id: req.subject_id, password: newPwd, label: req.student_name, duration_days: 30, is_active: true })
+    .insert({ subject_id: req.subject_id, password: newPwd, label: req.student_name, duration_days: days, is_active: true })
     .select().single();
   if (pwErr) throw pwErr;
   await (supabase as any).from('payment_requests').update({
@@ -36,7 +51,7 @@ async function confirmSingle(req: any) {
     localStorage.setItem('review_pwd_contacts', JSON.stringify(all));
   } catch {}
   await supabase.functions.invoke('send-telegram', {
-    body: { message: `✅ <b>تأكيد طلب اشتراك</b>\n\n👤 ${req.student_name}\n📱 ${req.phone_number}\n📚 ${req.subject_name}\n🔑 كلمة المرور: <b>${newPwd}</b>\n⏳ المدة: 30 يوم\n\nأرسل كلمة المرور للطالب على: ${req.phone_number}` },
+    body: { message: `✅ <b>تأكيد طلب اشتراك</b>\n\n👤 ${req.student_name}\n📱 ${req.phone_number}\n📚 ${req.subject_name}\n🔑 كلمة المرور: <b>${newPwd}</b>\n⏳ المدة: ${durationLabel}\n\nأرسل كلمة المرور للطالب على: ${req.phone_number}` },
   });
 }
 
@@ -98,11 +113,14 @@ export default function AdminPaymentRequests() {
     if (req.review_password_id) {
       const { data } = await (supabase as any)
         .from('review_passwords')
-        .select('password')
+        .select('password, duration_days')
         .eq('id', req.review_password_id)
         .single();
       if (data?.password) pwd = data.password;
     }
+
+    // تحديد المدة الصحيحة: أولاً من قاعدة البيانات، ثم من اسم الباقة
+    const { label: durationLabel } = getSubscriptionDays(req);
 
     const isLibrary = (req.subject_name || '').includes('المكتبة');
     const subjectUrl = isLibrary
@@ -114,7 +132,7 @@ export default function AdminPaymentRequests() {
         `تم تفعيل اشتراكك في منصة الناصر القانونية بنجاح ✅\n\n` +
         `📚 المادة: ${req.subject_name}\n` +
         `🔑 رمز التفعيل: \`${pwd}\`\n` +
-        `⏳ المدة: 30 يوماً\n\n` +
+        `⏳ المدة: ${durationLabel}\n\n` +
         `🔗 رابط الدخول المباشر:\n` +
         `${subjectUrl}\n\n` +
         `💡 طريقة البدء:\n` +
@@ -124,7 +142,7 @@ export default function AdminPaymentRequests() {
         `تم تفعيل اشتراكك في منصة الناصر القانونية بنجاح ✅\n\n` +
         `📚 المادة: ${req.subject_name}\n` +
         `🔑 رمز التفعيل: \`${pwd}\`\n` +
-        `⏳ المدة: 30 يوماً\n\n` +
+        `⏳ المدة: ${durationLabel}\n\n` +
         `🔗 رابط الدخول المباشر:\n` +
         `${subjectUrl}\n\n` +
         `💡 طريقة البدء:\n` +
