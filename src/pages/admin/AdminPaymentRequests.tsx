@@ -94,6 +94,7 @@ interface EditForm {
   level_id: string | null;
   duration_days: number;
   review_password_id: string | null;
+  is_library: boolean;
 }
 
 export default function AdminPaymentRequests() {
@@ -334,6 +335,7 @@ export default function AdminPaymentRequests() {
       level_id: allSubjects.find((s: any) => s.id === req.subject_id)?.level_id || null,
       duration_days: currentDays,
       review_password_id: req.review_password_id || null,
+      is_library: (req.subject_name || '').includes('المكتبة'),
     });
   };
 
@@ -707,7 +709,7 @@ export default function AdminPaymentRequests() {
                   </p>
                 )}
               </div>
-              <div>
+              {!editModal.is_library && <div>
                 <label className="text-xs font-black text-slate-500 mb-2 block flex items-center gap-1">
                   <Plus className="w-3.5 h-3.5" /> المواد (يمكن اختيار أكثر من مادة)
                 </label>
@@ -739,7 +741,7 @@ export default function AdminPaymentRequests() {
                     ⚠️ سيتم إنشاء {editModal.subject_ids.length - 1} طلب إضافي وتجميعها تلقائياً مع هذا الطالب
                   </p>
                 )}
-              </div>
+              </div>}
             </div>
             <div className="px-5 pb-5 flex gap-3">
               <button
