@@ -92,6 +92,8 @@ interface EditForm {
   wallet_type: string;
   subject_ids: string[];
   level_id: string | null;
+  duration_days: number;
+  review_password_id: string | null;
 }
 
 export default function AdminPaymentRequests() {
@@ -229,6 +231,25 @@ export default function AdminPaymentRequests() {
         subject_id: form.subject_ids[0] || original?.subject_id,
         subject_name: allSubjects.find((s: any) => s.id === form.subject_ids[0])?.name || original?.subject_name,
       }).eq('id', form.id);
+      // تحديث duration_days في review_passwords إن وُجد (للطلبات المؤكدة مسبقاً)
+      if (form.review_password_id) {
+        const { data: pwData } = await (supabase as any)
+          .from('review_passwords')
+          .select('first_used_at, expires_at, duration_days')
+          .eq('id', form.review_password_id)
+          .single();
+        const updatePayload: any = { duration_days: form.duration_days };
+        // إذا كان الطالب قد استخدم كلمة المرور، نعيد حساب تاريخ الانتهاء
+        if (pwData?.first_used_at) {
+          const newExpiry = new Date(pwData.first_used_at);
+          newExpiry.setDate(newExpiry.getDate() + form.duration_days);
+          updatePayload.expires_at = newExpiry.toISOString();
+        }
+        await (supabase as any)
+          .from('review_passwords')
+          .update(updatePayload)
+          .eq('id', form.review_password_id);
+      }
       if (form.subject_ids.length > 1) {
         const extras = form.subject_ids.slice(1).map((sid: string) => ({
           student_name: form.student_name,
@@ -293,7 +314,16 @@ export default function AdminPaymentRequests() {
     }
   };
 
-  const openEdit = (req: any) => {
+  const openEdit = async (req: any) => {
+    let currentDays = getSubscriptionDays(req).days;
+    if (req.review_password_id) {
+      const { data: pwData } = await (supabase as any)
+        .from('review_passwords')
+        .select('duration_days')
+        .eq('id', req.review_password_id)
+        .single();
+      if (pwData?.duration_days) currentDays = pwData.duration_days;
+    }
     setEditModal({
       id: req.id,
       student_name: req.student_name || '',
@@ -302,6 +332,8 @@ export default function AdminPaymentRequests() {
       wallet_type: req.wallet_type || '',
       subject_ids: req.subject_id ? [req.subject_id] : [],
       level_id: allSubjects.find((s: any) => s.id === req.subject_id)?.level_id || null,
+      duration_days: currentDays,
+      review_password_id: req.review_password_id || null,
     });
   };
 
@@ -645,6 +677,35 @@ export default function AdminPaymentRequests() {
                     </button>
                   ))}
                 </div>
+              </div>
+              <div>
+                <label className="text-xs font-black text-slate-500 mb-1 block">⏳ عدد أيام الاشتراك</label>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="number"
+                    min={1}
+                    value={editModal.duration_days}
+                    onChange={e => setEditModal(m => m && ({ ...m, duration_days: Math.max(1, parseInt(e.target.value) || 1) }))}
+                    className="w-28 h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-black focus:outline-none focus:border-blue-400 text-center"
+                    dir="ltr"
+                  />
+                  <div className="flex gap-1.5 flex-wrap">
+                    {[30, 90, 180, 365].map(d => (
+                      <button
+                        key={d}
+                        onClick={() => setEditModal(m => m && ({ ...m, duration_days: d }))}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-black transition-colors ${editModal.duration_days === d ? 'bg-blue-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200'}`}
+                      >
+                        {d === 365 ? 'سنة' : d === 180 ? '6 أشهر' : d === 90 ? '3 أشهر' : '30 يوم'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {editModal.review_password_id && (
+                  <p className="text-[10px] text-blue-500 dark:text-blue-400 mt-1 font-semibold">
+                    ✅ سيتم تحديث مدة اشتراك الطالب المؤكد فوراً
+                  </p>
+                )}
               </div>
               <div>
                 <label className="text-xs font-black text-slate-500 mb-2 block flex items-center gap-1">
