@@ -74,7 +74,7 @@ export function Footer() {
                 },
                 {
                   label: "Facebook",
-                  href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent('https://alnaseer.org')}`,
+                  href: `https://www.facebook.com/share/14fdickuNAD/${encodeURIComponent('https://alnaseer.org')}`,
                   color: "hover:bg-[#1877F2]",
                   svg: (
                     <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current">
