@@ -566,7 +566,11 @@ function ContentBlock({
           className={cn('rounded-2xl border p-5', nightMode ? 'bg-slate-900 border-slate-800' : 'bg-card border-border')}
         >
           <div className="flex items-center justify-between mb-3">
-            <span className={cn('font-black text-base', theme.articleNumColor)}>المادة ({item.num})</span>
+            {item.num ? (
+              <span className={cn('font-black text-base', theme.articleNumColor)}>المادة ({item.num})</span>
+            ) : (
+              <span className={cn('font-black text-sm', theme.articleNumColor)}>نص الصيغة</span>
+            )}
             <div className="flex items-center gap-3">
               <button onClick={() => copy(text, key)} aria-label="نسخ">
                 {copiedKey === key ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4 text-muted-foreground/50" />}
