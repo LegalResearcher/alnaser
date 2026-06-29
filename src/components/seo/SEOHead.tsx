@@ -223,6 +223,14 @@ export const LibraryRegulationsSEO = () => (
   />
 );
 
+export const LibraryTemplatesSEO = () => (
+  <SEOHead
+    title="صيغ وعقود قانونية | المكتبة القانونية | منصة الناصر"
+    description="أكثر من ٧٠ نموذج جاهز لصيغ العقود والإقرارات والتوكيلات اليمنية — مكتبة قانونية رقمية على منصة الناصر."
+    keywords="صيغ عقود، نماذج عقود يمنية، عقد بيع، عقد إيجار، توكيل، إقرار بدين، منصة الناصر"
+  />
+);
+
 export const LibrarySearchSEO = () => (
   <SEOHead
     title="البحث القانوني الشامل | المكتبة القانونية | منصة الناصر"
