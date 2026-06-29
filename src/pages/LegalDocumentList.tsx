@@ -6,7 +6,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
-import { LibraryLegislationSEO, LibraryProsecutionSEO, LibraryRegulationsSEO } from '@/components/seo/SEOHead';
+import { LibraryLegislationSEO, LibraryProsecutionSEO, LibraryRegulationsSEO, LibraryTemplatesSEO } from '@/components/seo/SEOHead';
 import { ChevronRight, ChevronLeft, Search, Star, Info, Lock, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -17,13 +17,14 @@ import { LibraryPasswordModal, LibrarySubscriptionModal } from '@/components/sha
 import { LegalAboutModal } from '@/components/legal-library/LegalAboutModal';
 import { FeatureLockedModal } from '@/components/legal-library/LegalLimitedAccessModals';
 
-const VALID_CATEGORIES: LegalCategory[] = ['law', 'regulation', 'prosecution_instruction'];
+const VALID_CATEGORIES: LegalCategory[] = ['law', 'regulation', 'prosecution_instruction', 'contract_template'];
 
 /* ─── ثيمات الأقسام ─── */
 const SECTION_THEME: Record<LegalCategory, { accent: string; label: string; sublabel: string }> = {
   law:                    { accent: '#1b6ca8', label: 'القوانين اليمنية',    sublabel: 'بآخر التعديلات الرسمية' },
   regulation:             { accent: '#b45309', label: 'اللوائح والأنظمة',    sublabel: 'اللوائح التنفيذية والتشريعية' },
   prosecution_instruction:{ accent: '#0d7a5c', label: 'تعليمات النيابة',     sublabel: 'الملفات والإجراءات الجزائية' },
+  contract_template:      { accent: '#8a5a3b', label: 'صيغ وعقود قانونية',  sublabel: 'نماذج عقود وإقرارات جاهزة' },
 };
 
 /* ─── صف الوثيقة ─── */
@@ -90,7 +91,8 @@ export default function LegalDocumentList() {
   const segment = params.category as string;
   const category: LegalCategory =
     segment === 'regulations' ? 'regulation' :
-    segment === 'prosecutions' ? 'prosecution_instruction' : 'law';
+    segment === 'prosecutions' ? 'prosecution_instruction' :
+    segment === 'templates' ? 'contract_template' : 'law';
 
   const theme = CATEGORY_THEME[category];
   const sectionTheme = SECTION_THEME[category];
@@ -121,6 +123,7 @@ export default function LegalDocumentList() {
   const SEOComponent =
     segment === 'regulations'   ? LibraryRegulationsSEO :
     segment === 'prosecutions'  ? LibraryProsecutionSEO :
+    segment === 'templates'     ? LibraryTemplatesSEO :
                                   LibraryLegislationSEO;
 
   return (
@@ -220,7 +223,7 @@ export default function LegalDocumentList() {
           <section>
             <div className="flex items-center gap-3 mb-3">
               <span className="text-[12px] font-bold text-gray-400 uppercase tracking-wider">
-                جميع {category === 'law' ? 'القوانين' : category === 'regulation' ? 'اللوائح' : 'التعليمات'}
+                جميع {category === 'law' ? 'القوانين' : category === 'regulation' ? 'اللوائح' : category === 'contract_template' ? 'الصيغ' : 'التعليمات'}
               </span>
               <div className="h-px flex-1 bg-gray-200" />
               <span className="text-[11px] text-gray-400 font-medium">{filtered.length}</span>
