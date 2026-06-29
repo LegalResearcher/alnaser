@@ -31,6 +31,7 @@ const CATEGORY_FILTERS: { value: LegalCategory; label: string }[] = [
   { value: 'law', label: 'القوانين' },
   { value: 'regulation', label: 'اللوائح' },
   { value: 'prosecution_instruction', label: 'تعليمات النيابة' },
+  { value: 'contract_template', label: 'صيغ وعقود' },
 ];
 
 function escapeRegex(s: string) {
