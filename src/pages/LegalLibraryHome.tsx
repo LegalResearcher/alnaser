@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { LibraryHomeSEO } from '@/components/seo/SEOHead';
 import {
-  BookMarked, Gavel, FolderOpen, FileStack, Search, AlignJustify, ChevronLeft,
+  BookMarked, Gavel, FolderOpen, FileStack, FileSignature, Search, AlignJustify, ChevronLeft,
   Heart, Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -64,6 +64,15 @@ const SECTIONS: Section[] = [
     route: '/library/regulations',
     iconColor: '#10b981',
     badgeColor: 'bg-emerald-50 text-emerald-700',
+  },
+  {
+    icon: FileSignature,
+    title: 'صيغ وعقود قانونية',
+    subtitle: 'نماذج جاهزة لأكثر من ٧٠ صيغة عقد وإقرار',
+    tag: 'صيغ',
+    route: '/library/templates',
+    iconColor: '#8a5a3b',
+    badgeColor: 'bg-orange-50 text-orange-700',
   },
 ];
 
