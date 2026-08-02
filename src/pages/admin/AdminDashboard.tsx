@@ -129,40 +129,38 @@ const AdminDashboard = () => {
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['admin-stats-v2'],
     queryFn: async () => {
-      const [levels, subjects, questions, results, savedStatsRes] = await Promise.all([
+      const [levels, subjects, questions, examSummaryRes, savedStatsRes] = await Promise.all([
         supabase.from('levels').select('id', { count: 'exact', head: true }),
         supabase.from('subjects').select('id', { count: 'exact', head: true }),
         supabase.from('questions').select('id', { count: 'exact', head: true }).eq('status', 'active'),
-        supabase.from('exam_results').select('id, passed, created_at', { count: 'exact' }).limit(10000),
+        (supabase as any).rpc('get_exam_results_summary'),
         supabase.from('platform_stats' as any).select('total_exams, total_passed, total_failed').eq('id', 1).single(),
       ]);
+
+      const summary = (examSummaryRes.data ?? {}) as {
+        total?: number; passed?: number; failed?: number;
+        daily?: { date: string; count: number }[];
+      };
 
       const savedStats    = savedStatsRes.data as any;
       const archivedExams  = (savedStats?.total_exams  ?? 0) as number;
       const archivedPassed = (savedStats?.total_passed ?? 0) as number;
       const archivedFailed = (savedStats?.total_failed ?? 0) as number;
 
-      const currentPassed = results.data?.filter(r => r.passed).length ?? 0;
-      const currentTotal  = results.count ?? 0;
+      const currentPassed = summary.passed ?? 0;
+      const currentFailed = summary.failed ?? 0;
+      const currentTotal  = summary.total  ?? 0;
       const totalExams    = archivedExams  + currentTotal;
       const totalPassed   = archivedPassed + currentPassed;
-      const totalFailed   = archivedFailed + (currentTotal - currentPassed);
+      const totalFailed   = archivedFailed + currentFailed;
       const passRate      = totalExams > 0 ? Math.round((totalPassed / totalExams) * 100) : 0;
 
-      const dailyMap: Record<string, { label: string; count: number }> = {};
-      results.data?.forEach((r: any) => {
-        const d   = new Date(r.created_at);
-        const key = d.toISOString().split('T')[0];
-        if (!dailyMap[key]) dailyMap[key] = {
-          label: d.toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' }),
-          count: 0,
-        };
-        dailyMap[key].count++;
-      });
-      const dailyData = Object.entries(dailyMap)
-        .sort(([a], [b]) => a.localeCompare(b))
+      const dailyData = (summary.daily || [])
         .slice(-7)
-        .map(([, v]) => ({ date: v.label, count: v.count }));
+        .map((d) => ({
+          date:  new Date(`${d.date}T00:00:00Z`).toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' }),
+          count: d.count,
+        }));
 
       return {
         levels:    levels.count   ?? 0,
