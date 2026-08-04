@@ -1,0 +1,23 @@
+name: Supabase Keep Alive
+
+on:
+  schedule:
+    # كل 3 أيام الساعة 6 صباحًا UTC — يبقي المشروع نشط (الباقة المجانية توقف بعد أسبوع سكون)
+    - cron: '0 6 */3 * *'
+  workflow_dispatch: {}   # يسمح بتشغيله يدويًا من تبويب Actions لو حبيت تختبره
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "${{ secrets.VITE_SUPABASE_URL }}/rest/v1/levels?select=id&limit=1" \
+            -H "apikey: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}")
+          echo "Supabase responded with status: $STATUS"
+          if [ "$STATUS" -ge 400 ]; then
+            echo "⚠️ Unexpected status code from Supabase"
+            exit 1
+          fi
