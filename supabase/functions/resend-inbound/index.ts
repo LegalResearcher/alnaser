@@ -1,7 +1,7 @@
 // Resend Inbound Webhook → Forward to personal inbox
 // Configure in Resend Dashboard → Inbound → Add Route:
 //   Match: to == info@alnaseer.org
-//   Action: Webhook → POST https://tozmmphymxiamvdxfmjv.supabase.co/functions/v1/resend-inbound
+//   Action: Webhook → POST https://nhrlwemvkvgmtzoiwcym.supabase.co/functions/v1/resend-inbound
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
