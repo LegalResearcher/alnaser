@@ -7,9 +7,9 @@ import fs from "fs";
 import path from "path";
 import readline from "readline";
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || "https://tozmmphymxiamvdxfmjv.supabase.co";
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || "https://nhrlwemvkvgmtzoiwcym.supabase.co";
 const SUPABASE_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvem1tcGh5bXhpYW12ZHhmbWp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY1MjY4NTMsImV4cCI6MjA4MjEwMjg1M30.u1HKn54vgXlIgb2Z-9X2hfUIWQtOcEHLFlpsc1ATzo0";
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ocmx3ZW12a3ZnbXR6b2l3Y3ltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2MTYwNjksImV4cCI6MjA5MjE5MjA2OX0.3yQUgUlS7oPmUXFOaG4RRYZUT54_Lws54etRxTF9n6k";
 
 // كل الجداول المستخرجة من ملفات supabase/migrations
 const TABLES = [
