@@ -1,7 +1,14 @@
 // Resend Inbound Webhook → Forward to personal inbox
-// Configure in Resend Dashboard → Inbound → Add Route:
-//   Match: to == info@alnaseer.org
-//   Action: Webhook → POST https://nhrlwemvkvgmtzoiwcym.supabase.co/functions/v1/resend-inbound
+// Configure in Resend Dashboard → Webhooks → Add Webhook:
+//   Endpoint URL: https://nhrlwemvkvgmtzoiwcym.supabase.co/functions/v1/resend-inbound
+//   Event: email.received
+//
+// SECURITY: verifies the svix signature Resend attaches to every webhook
+// request, using the "Signing Secret" shown on the webhook's detail page.
+// Store it as a Supabase secret named RESEND_WEBHOOK_SECRET
+// (supabase secrets set RESEND_WEBHOOK_SECRET=whsec_...).
+
+import { Webhook } from "https://esm.sh/svix@1.24.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,7 +29,33 @@ Deno.serve(async (req) => {
       });
     }
 
-    const payload = await req.json();
+    const WEBHOOK_SECRET = Deno.env.get("RESEND_WEBHOOK_SECRET");
+    if (!WEBHOOK_SECRET) {
+      return new Response(JSON.stringify({ error: "RESEND_WEBHOOK_SECRET missing" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Read the raw body first — signature verification needs the exact bytes,
+    // not a re-serialized JSON.parse() copy.
+    const rawBody = await req.text();
+    const svixHeaders = {
+      "svix-id": req.headers.get("svix-id") || "",
+      "svix-timestamp": req.headers.get("svix-timestamp") || "",
+      "svix-signature": req.headers.get("svix-signature") || "",
+    };
+
+    let payload: any;
+    try {
+      const wh = new Webhook(WEBHOOK_SECRET);
+      payload = wh.verify(rawBody, svixHeaders);
+    } catch (verifyErr) {
+      console.error("Signature verification failed:", verifyErr);
+      return new Response(JSON.stringify({ error: "invalid signature" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     console.log("Inbound payload:", JSON.stringify(payload).slice(0, 500));
 
     // Resend inbound webhook shape: { type: "email.received", data: { from, to, subject, text, html, headers, attachments } }
