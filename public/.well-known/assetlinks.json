@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.app.alnasermobile",
+      "sha256_cert_fingerprints": [
+        "09:40:03:09:A4:FE:14:5F:DA:B4:0C:9D:E6:D7:81:C7:E9:AB:3A:FF:DA:4D:47:1F:06:61:AA:82:23:C9:75:24"
+      ]
+    }
+  }
+]
