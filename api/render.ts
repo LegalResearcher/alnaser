@@ -14,6 +14,7 @@ export const config = { runtime: 'edge' };
 
 const BASE_URL  = 'https://alnaseer.org';
 const OG_IMAGE  = `${BASE_URL}/og-image.png`;
+const BOT_SOCIAL_IMAGE = `${BASE_URL}/images/alnaser-bot-social-logo.png`;
 const SITE_NAME = 'منصة الناصر | الباحث القانوني المتخصص';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || '';
@@ -47,8 +48,13 @@ function html(
   desc: string,
   url: string,
   body: string,
-  schema?: object
+  schema?: object,
+  social?: { image: string; width: number; height: number; alt: string }
 ): string {
+  const image = social?.image || OG_IMAGE;
+  const imageWidth = social?.width || 1200;
+  const imageHeight = social?.height || 630;
+  const imageAlt = social?.alt || title;
   return `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -63,15 +69,19 @@ function html(
 <meta property="og:url" content="${e(url)}"/>
 <meta property="og:title" content="${e(title)}"/>
 <meta property="og:description" content="${e(desc)}"/>
-<meta property="og:image" content="${OG_IMAGE}"/>
-<meta property="og:image:width" content="1200"/>
-<meta property="og:image:height" content="630"/>
+<meta property="og:image" content="${e(image)}"/>
+<meta property="og:image:secure_url" content="${e(image)}"/>
+<meta property="og:image:type" content="image/png"/>
+<meta property="og:image:width" content="${imageWidth}"/>
+<meta property="og:image:height" content="${imageHeight}"/>
+<meta property="og:image:alt" content="${e(imageAlt)}"/>
 <meta property="og:locale" content="ar_YE"/>
 <meta name="twitter:card" content="summary_large_image"/>
 <meta name="twitter:site" content="@AlnasserTech"/>
 <meta name="twitter:title" content="${e(title)}"/>
 <meta name="twitter:description" content="${e(desc)}"/>
-<meta name="twitter:image" content="${OG_IMAGE}"/>
+<meta name="twitter:image" content="${e(image)}"/>
+<meta name="twitter:image:alt" content="${e(imageAlt)}"/>
 ${schema ? `<script type="application/ld+json">${JSON.stringify(schema)}</script>` : ''}
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
@@ -271,6 +281,7 @@ export default async function handler(req: Request): Promise<Response> {
   let desc   = 'منصة الناصر القانونية هي منصة رقمية مستقلة، تم تأسيسها وتطويرها برؤية وإشراف أ. معين الناصر. تضم المنصة أكثر من ٢٥٬٠٢٨+ سؤال مؤتمت ومكتبة قانونية متكاملة، جرى تصميمها خصيصاً لخدمة وتدريب طلاب الشريعة والقانون، ودعم المحامين والباحثين في تطوير ملكتهم المعرفية والقضائية.';
   let body   = '';
   let schema: object | undefined;
+  let social: { image: string; width: number; height: number; alt: string } | undefined;
 
   // ── / الرئيسية ──
   if (pathname === '/') {
@@ -373,6 +384,12 @@ export default async function handler(req: Request): Promise<Response> {
         { '@type': 'WebPage', name: 'بوت الناصر القانوني على تيليغرام', description: desc, url: `${BASE_URL}/bot`, inLanguage: 'ar' },
         { '@type': 'SoftwareApplication', name: 'بوت الناصر القانوني', applicationCategory: 'EducationalApplication', operatingSystem: 'Telegram', url: 'https://t.me/Moieen2025Bot', provider: { '@type': 'Organization', name: 'منصة الناصر القانونية', url: BASE_URL } },
       ],
+    };
+    social = {
+      image: BOT_SOCIAL_IMAGE,
+      width: 1408,
+      height: 768,
+      alt: 'شعار بوت الناصر القانوني — المرجع الرقمي الشامل للتشريعات والاختبارات',
     };
   }
 
@@ -776,7 +793,7 @@ export default async function handler(req: Request): Promise<Response> {
     body = `<h1>${e(title)}</h1><p>${e(desc)}</p>`;
   }
 
-  const responseHtml = html(title, desc, fullUrl, body, schema);
+  const responseHtml = html(title, desc, fullUrl, body, schema, social);
 
   return new Response(responseHtml, {
     status: 200,

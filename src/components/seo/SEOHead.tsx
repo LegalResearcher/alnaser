@@ -4,11 +4,15 @@ import { useLocation } from 'react-router-dom';
 const BASE_URL = 'https://alnaseer.org';
 const SITE_NAME = 'منصة الناصر — الباحث القانوني';
 const DEFAULT_IMAGE = `${BASE_URL}/og-image.png`;
+const TELEGRAM_BOT_SOCIAL_IMAGE = `${BASE_URL}/images/alnaser-bot-social-logo.png`;
 
 interface SEOHeadProps {
   title: string;
   description: string;
   image?: string;
+  imageWidth?: number;
+  imageHeight?: number;
+  imageAlt?: string;
   type?: 'website' | 'article';
   noIndex?: boolean;
   keywords?: string;
@@ -19,6 +23,9 @@ export function SEOHead({
   title,
   description,
   image = DEFAULT_IMAGE,
+  imageWidth = 1200,
+  imageHeight = 630,
+  imageAlt,
   type = 'website',
   noIndex = false,
   keywords,
@@ -41,15 +48,18 @@ export function SEOHead({
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={description} />
       <meta property="og:image" content={image} />
-      <meta property="og:image:width" content="1200" />
-      <meta property="og:image:height" content="630" />
-      <meta property="og:image:alt" content={title} />
+      <meta property="og:image:secure_url" content={image} />
+      <meta property="og:image:type" content="image/png" />
+      <meta property="og:image:width" content={String(imageWidth)} />
+      <meta property="og:image:height" content={String(imageHeight)} />
+      <meta property="og:image:alt" content={imageAlt || title} />
       <meta property="og:locale" content="ar_YE" />
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:site" content="@AlnasserTech" />
       <meta name="twitter:title" content={fullTitle} />
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image" content={image} />
+      <meta name="twitter:image:alt" content={imageAlt || title} />
       {schema && (
         <script type="application/ld+json">
           {JSON.stringify(schema)}
@@ -194,6 +204,10 @@ export const TelegramBotSEO = () => (
     title="بوت الناصر القانوني على تيليغرام | مكتبة واختبارات قانونية عربية"
     description="بوت الناصر القانوني على تيليغرام يسهّل تصفح المصادر القانونية والبحث فيها وخوض اختبارات الشريعة والقانون والثانوية العامة من محادثة عربية منظمة."
     keywords="بوت قانوني تيليغرام، بوت الناصر القانوني، اختبارات قانونية تيليغرام، مكتبة قانونية يمنية، اختبارات الثانوية العامة"
+    image={TELEGRAM_BOT_SOCIAL_IMAGE}
+    imageWidth={1408}
+    imageHeight={768}
+    imageAlt="شعار بوت الناصر القانوني — المرجع الرقمي الشامل للتشريعات والاختبارات"
     schema={{
       '@context': 'https://schema.org',
       '@graph': [

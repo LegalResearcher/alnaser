@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -6,6 +7,7 @@ import {
   CheckCircle2,
   GraduationCap,
   Search,
+  Share2,
   Send,
   ShieldCheck,
   Sparkles,
@@ -42,7 +44,40 @@ const usageSteps = [
   'تصفح المصادر أو ابدأ اختبارك أو استخدم البحث للوصول إلى ما تحتاجه.',
 ];
 
+const BOT_PAGE_URL = 'https://alnaseer.org/bot';
+const BOT_PAGE_SHARE_TEXT = 'بوت الناصر القانوني على تيليغرام: مكتبة قانونية واختبارات تفاعلية عربية من منصة الناصر القانونية.';
+
+function SocialIcon({ network }: { network: 'facebook' | 'x' | 'whatsapp' | 'telegram' | 'instagram' }) {
+  const paths = {
+    facebook: <path d="M13.5 22v-8h2.8l.4-3h-3.2V9.1c0-.9.3-1.5 1.6-1.5H16.8V4.9c-.3 0-1.3-.1-2.4-.1-2.4 0-4 1.4-4 4.1V11H7.7v3h2.7v8h3.1Z" />,
+    x: <path d="M18.2 2h3.3l-7.2 8.3 8.5 11.2h-6.7l-5.2-6.8-6 6.8H1.6l7.7-8.8L1.2 2h6.8l4.7 6.2L18.2 2Zm-1.1 17.6h1.8L7.1 4.1H5.1l12 15.5Z" />,
+    whatsapp: <path d="M20.5 3.5A11.8 11.8 0 0 0 12.1 0C5.6 0 .3 5.3.3 11.8c0 2.1.5 4.1 1.5 5.9L.1 24l6.4-1.7a11.8 11.8 0 0 0 5.6 1.4h.1c6.5 0 11.8-5.3 11.8-11.8 0-3.2-1.2-6.1-3.5-8.4Zm-8.4 18.2a9.9 9.9 0 0 1-5-1.4l-.4-.2-3.7 1 1-3.7-.2-.4a9.9 9.9 0 0 1-1.5-5.2C2.3 6.3 6.7 2 12.1 2c2.6 0 5.1 1 7 2.9a9.8 9.8 0 0 1 2.9 7c0 5.4-4.4 9.8-9.9 9.8Zm5.4-7.4c-.3-.1-1.8-.9-2.1-1s-.5-.1-.7.2c-.2.3-.8 1-1 1.2-.2.2-.3.2-.6.1-1.8-.9-3-2.6-3.3-3-.2-.3 0-.4.1-.6l.5-.6c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5l-1-2.3c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1.1 1-1.1 2.5s1.1 2.9 1.2 3.1c.2.2 2.1 3.2 5.1 4.5.7.3 1.3.5 1.7.6.7.2 1.4.2 1.9.1.6-.1 1.8-.7 2.1-1.4.3-.7.3-1.3.2-1.4 0-.1-.3-.2-.6-.4Z" />,
+    telegram: <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.6 0 12 0Zm5.6 8.2-2 9.3c-.1.7-.5.8-1.1.5l-3-2.2-1.4 1.4c-.2.2-.3.3-.6.3l.2-3.1 5.6-5c.2-.2-.1-.3-.4-.1L7.5 14.7l-3-.9c-.6-.2-.7-.7.1-1L16.2 8.3c.5-.2 1 .1.3.9Z" />,
+    instagram: <path d="M7.2 0h9.6A7.2 7.2 0 0 1 24 7.2v9.6a7.2 7.2 0 0 1-7.2 7.2H7.2A7.2 7.2 0 0 1 0 16.8V7.2A7.2 7.2 0 0 1 7.2 0Zm-.2 2.4A4.6 4.6 0 0 0 2.4 7v10A4.6 4.6 0 0 0 7 21.6h10a4.6 4.6 0 0 0 4.6-4.6V7A4.6 4.6 0 0 0 17 2.4H7Zm10.9 1.8a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 5.8A6.2 6.2 0 1 1 5.8 12 6.2 6.2 0 0 1 12 5.8Zm0 2.4a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Z" />,
+  };
+
+  return <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden="true">{paths[network]}</svg>;
+}
+
 export default function TelegramBot() {
+  const [shareNotice, setShareNotice] = useState('');
+  const shareUrl = encodeURIComponent(BOT_PAGE_URL);
+  const shareText = encodeURIComponent(BOT_PAGE_SHARE_TEXT);
+
+  const handleInstagramShare = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'بوت الناصر القانوني', text: BOT_PAGE_SHARE_TEXT, url: BOT_PAGE_URL });
+        setShareNotice('اختر إنستغرام من قائمة المشاركة على هاتفك.');
+        return;
+      }
+      await navigator.clipboard.writeText(BOT_PAGE_URL);
+      window.open('https://www.instagram.com/', '_blank', 'noopener,noreferrer');
+      setShareNotice('تم نسخ الرابط. الصقه في إنستغرام لمشاركته.');
+    } catch {
+      setShareNotice('يمكنك نسخ رابط الصفحة ومشاركته عبر إنستغرام.');
+    }
+  };
   return (
     <MainLayout>
       <TelegramBotSEO />
@@ -80,6 +115,19 @@ export default function TelegramBot() {
                     استكشف اختبارات المنصة
                     <ArrowLeft className="h-5 w-5" />
                   </Link>
+                </div>
+                <div className="mt-7 border-t border-white/15 pt-5">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="inline-flex items-center gap-2 text-sm font-bold text-slate-200"><Share2 className="h-4 w-4" /> شارك صفحة البوت</span>
+                    <div className="flex items-center gap-2" dir="ltr">
+                      <a aria-label="مشاركة صفحة البوت عبر فيسبوك" href={`https://www.facebook.com/sharer/sharer.php?u=${shareUrl}`} target="_blank" rel="noopener noreferrer" className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1877F2] text-white shadow-lg shadow-sky-950/20 transition-transform hover:-translate-y-0.5 active:scale-95"><SocialIcon network="facebook" /></a>
+                      <a aria-label="مشاركة صفحة البوت عبر تويتر" href={`https://twitter.com/intent/tweet?url=${shareUrl}&text=${shareText}`} target="_blank" rel="noopener noreferrer" className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-slate-950 shadow-lg shadow-sky-950/20 transition-transform hover:-translate-y-0.5 active:scale-95"><SocialIcon network="x" /></a>
+                      <a aria-label="مشاركة صفحة البوت عبر واتساب" href={`https://wa.me/?text=${encodeURIComponent(`${BOT_PAGE_SHARE_TEXT}\n${BOT_PAGE_URL}`)}`} target="_blank" rel="noopener noreferrer" className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#25D366] text-white shadow-lg shadow-sky-950/20 transition-transform hover:-translate-y-0.5 active:scale-95"><SocialIcon network="whatsapp" /></a>
+                      <a aria-label="مشاركة صفحة البوت عبر تليغرام" href={`https://t.me/share/url?url=${shareUrl}&text=${shareText}`} target="_blank" rel="noopener noreferrer" className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#229ED9] text-white shadow-lg shadow-sky-950/20 transition-transform hover:-translate-y-0.5 active:scale-95"><SocialIcon network="telegram" /></a>
+                      <button type="button" aria-label="مشاركة صفحة البوت عبر إنستغرام" onClick={handleInstagramShare} className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-[#ffba29] via-[#e1306c] to-[#833ab4] text-white shadow-lg shadow-sky-950/20 transition-transform hover:-translate-y-0.5 active:scale-95"><SocialIcon network="instagram" /></button>
+                    </div>
+                  </div>
+                  {shareNotice && <p role="status" className="mt-3 text-xs font-semibold text-sky-200">{shareNotice}</p>}
                 </div>
               </div>
 

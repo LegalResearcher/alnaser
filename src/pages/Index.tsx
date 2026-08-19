@@ -3,6 +3,7 @@ import { HomeSEO } from '@/components/seo/SEOHead';
 import { HeroSection } from '@/components/home/HeroSection';
 import { StatsSection } from '@/components/home/StatsSection';
 import { LibraryBanner } from '@/components/home/LibraryBanner';
+import { TelegramBotBanner } from '@/components/home/TelegramBotBanner';
 import { LevelsPreview } from '@/components/home/LevelsPreview';
 import { FAQSection } from '@/components/home/FAQSection';
 import { ContactSection } from '@/components/home/ContactSection';
@@ -26,6 +27,7 @@ const Index = () => {
         <div className="relative z-20 -mt-10 md:-mt-16">
           <StatsSection />
         </div>
+        <TelegramBotBanner />
         <LibraryBanner />
         <section className="relative">
           <LevelsPreview />
