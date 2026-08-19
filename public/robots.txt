@@ -3,5 +3,8 @@
 User-agent: *
 Allow: /
 Disallow: /admin/
+Disallow: /progress
+Disallow: /exam/*/start
+Disallow: /exam/*/result
 
 Sitemap: https://alnaseer.org/sitemap.xml
