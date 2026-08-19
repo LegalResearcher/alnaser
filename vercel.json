@@ -13,7 +13,7 @@
       "destination": "/api/sitemap"
     },
     {
-      "source": "/((?!api/)(?!assets/).*)",
+      "source": "/((?!api/)(?!assets/)(?!images/).*)",
       "has": [
         {
           "type": "header",
@@ -24,7 +24,7 @@
       "destination": "/api/render?path=/$1"
     },
     {
-      "source": "/((?!api/)(?!assets/).*)",
+      "source": "/((?!api/)(?!assets/)(?!images/).*)",
       "destination": "/index.html"
     }
   ],
