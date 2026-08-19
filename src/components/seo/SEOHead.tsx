@@ -4,7 +4,7 @@ import { useLocation } from 'react-router-dom';
 const BASE_URL = 'https://alnaseer.org';
 const SITE_NAME = 'منصة الناصر — الباحث القانوني';
 const DEFAULT_IMAGE = `${BASE_URL}/og-image.png`;
-const TELEGRAM_BOT_SOCIAL_IMAGE = `${BASE_URL}/images/alnaser-bot-social-logo.png`;
+const TELEGRAM_BOT_SOCIAL_IMAGE = 'https://raw.githubusercontent.com/LegalResearcher/alnaser/2a0a5a0ecc3392dc40f5baee57a10fb96306add5/public/images/alnaser-bot-social-logo.png';
 
 interface SEOHeadProps {
   title: string;

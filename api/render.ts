@@ -14,7 +14,7 @@ export const config = { runtime: 'edge' };
 
 const BASE_URL  = 'https://alnaseer.org';
 const OG_IMAGE  = `${BASE_URL}/og-image.png`;
-const BOT_SOCIAL_IMAGE = `${BASE_URL}/images/alnaser-bot-social-logo.png`;
+const BOT_SOCIAL_IMAGE = 'https://raw.githubusercontent.com/LegalResearcher/alnaser/2a0a5a0ecc3392dc40f5baee57a10fb96306add5/public/images/alnaser-bot-social-logo.png';
 const SITE_NAME = 'منصة الناصر | الباحث القانوني المتخصص';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || '';

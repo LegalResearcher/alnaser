@@ -36,7 +36,7 @@ describe('فهرسة منصة الناصر', () => {
     expect(response.headers.get('X-Robots-Tag')).toBe('index, follow');
     expect(html).toContain('بوت الناصر القانوني على تيليغرام');
     expect(html).toContain('https://t.me/Moieen2025Bot');
-    expect(html).toContain('https://alnaseer.org/images/alnaser-bot-social-logo.png');
+    expect(html).toContain('https://raw.githubusercontent.com/LegalResearcher/alnaser/2a0a5a0ecc3392dc40f5baee57a10fb96306add5/public/images/alnaser-bot-social-logo.png');
     expect(html).toContain('SoftwareApplication');
   });
 });
