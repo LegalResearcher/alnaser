@@ -46,6 +46,7 @@ const LegalSubscription    = lazy(() => import("./pages/LegalSubscription"));   
 const LegalOtherServices   = lazy(() => import("./pages/LegalOtherServices"));   // ← "خدماتنا الأخرى": شبكة الخدمات
 const LegalRulingsIndex    = lazy(() => import("./pages/LegalRulingsIndex"));    // ← فهارس أحكام المحكمة العليا
 const LegalReferencesService = lazy(() => import("./pages/LegalReferencesService")); // ← تفاصيل خدمة "توفير مراجع قانونية حسب الطلب"
+const TelegramBot = lazy(() => import("./pages/TelegramBot"));
 
 // صفحات الإدارة — Lazy Loading
 const AdminLogin            = lazy(() => import("./pages/admin/AdminLogin"));
@@ -113,6 +114,7 @@ const App = () => (
                     <Route path="/exam/:subjectId/start"  element={<ExamPage />} />
                     <Route path="/exam/:subjectId/result" element={<ExamResult />} />
                     <Route path="/about" element={<About />} />
+                    <Route path="/bot" element={<TelegramBot />} />
                     <Route path="/privacy"        element={<Privacy />} />
                     <Route path="/progress"       element={<StudentProgress />} />
                     <Route path="/diagnostic"     element={<DiagnosticTest />} />

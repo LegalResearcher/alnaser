@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MainLayout } from '@/components/layout/MainLayout';
+import { SEOHead } from '@/components/seo/SEOHead';
 
 /* ── helpers ── */
 const cleanOptionText = (text: string | null | undefined): string => {
@@ -175,6 +176,22 @@ export default function SharedQuestion() {
   /* ══════════════ Render ══════════════ */
   return (
     <MainLayout>
+      <SEOHead
+        title={`${question.question_text.slice(0, 70)}${question.question_text.length > 70 ? '…' : ''} | ${subject?.name || 'سؤال قانوني'}`}
+        description={`سؤال تدريبي من مادة ${subject?.name || 'قانون'}${question.exam_year ? ` لعام ${question.exam_year}` : ''}. جرّب إجابتك على منصة الناصر القانونية.`}
+        type="article"
+        keywords={`سؤال ${subject?.name || 'قانوني'}، اختبار ${subject?.name || 'قانوني'}، منصة الناصر`}
+        schema={{
+          '@context': 'https://schema.org',
+          '@type': 'Quiz',
+          name: question.question_text,
+          description: `سؤال تدريبي من مادة ${subject?.name || 'قانون'}.`,
+          url: `https://alnaseer.org/question/${questionId}`,
+          inLanguage: 'ar',
+          educationalUse: 'assessment',
+          provider: { '@type': 'Organization', name: 'منصة الناصر القانونية', url: 'https://alnaseer.org' },
+        }}
+      />
       <div className="min-h-screen" dir="rtl">
         <div className="container max-w-2xl mx-auto px-4 py-6 pb-40">
 

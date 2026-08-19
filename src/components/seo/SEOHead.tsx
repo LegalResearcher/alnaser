@@ -34,7 +34,7 @@ export function SEOHead({
       <meta name="description" content={description} />
       {keywords && <meta name="keywords" content={keywords} />}
       <link rel="canonical" href={canonicalUrl} />
-      <meta name="robots" content={noIndex ? 'noindex, nofollow' : 'index, follow'} />
+      <meta name="robots" content={noIndex ? 'noindex, nofollow' : 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1'} />
       <meta property="og:type" content={type} />
       <meta property="og:site_name" content={SITE_NAME} />
       <meta property="og:url" content={canonicalUrl} />
@@ -154,6 +154,70 @@ export const PrivacySEO = () => (
   <SEOHead
     title="سياسة الخصوصية | منصة الناصر"
     description="سياسة الخصوصية وحماية البيانات لمنصة الناصر القانونية."
+  />
+);
+
+export const AboutSEO = () => (
+  <SEOHead
+    title="عن منصة الناصر القانونية"
+    description="تعرف على منصة الناصر القانونية: منصة رقمية عربية لتدريب طلاب الشريعة والقانون والباحثين والمحامين عبر اختبارات تفاعلية ومكتبة قانونية منظمة."
+    keywords="عن منصة الناصر، منصة قانونية يمنية، تدريب قانوني، اختبارات الشريعة والقانون"
+    schema={{
+      '@context': 'https://schema.org',
+      '@type': 'AboutPage',
+      name: 'عن منصة الناصر القانونية',
+      url: 'https://alnaseer.org/about',
+      inLanguage: 'ar',
+      mainEntity: { '@type': 'Organization', name: 'منصة الناصر القانونية', url: 'https://alnaseer.org' },
+    }}
+  />
+);
+
+export const FeaturesSEO = () => (
+  <SEOHead
+    title="مزايا منصة الناصر القانونية"
+    description="استكشف مزايا منصة الناصر القانونية: اختبارات تفاعلية، بنك أسئلة قانوني، مكتبة رقمية، تتبع للتقدم، وغرف منافسة جماعية."
+    keywords="مزايا منصة الناصر، بنك أسئلة قانوني، اختبارات تفاعلية، مكتبة قانونية يمنية"
+    schema={{
+      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      name: 'مزايا منصة الناصر القانونية',
+      url: 'https://alnaseer.org/features',
+      inLanguage: 'ar',
+      isPartOf: { '@type': 'WebSite', name: 'منصة الناصر القانونية', url: 'https://alnaseer.org' },
+    }}
+  />
+);
+
+export const TelegramBotSEO = () => (
+  <SEOHead
+    title="بوت الناصر القانوني على تيليغرام | مكتبة واختبارات قانونية عربية"
+    description="بوت الناصر القانوني على تيليغرام يسهّل تصفح المصادر القانونية والبحث فيها وخوض اختبارات الشريعة والقانون والثانوية العامة من محادثة عربية منظمة."
+    keywords="بوت قانوني تيليغرام، بوت الناصر القانوني، اختبارات قانونية تيليغرام، مكتبة قانونية يمنية، اختبارات الثانوية العامة"
+    schema={{
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'WebPage',
+          name: 'بوت الناصر القانوني على تيليغرام',
+          description: 'صفحة تعريفية لبوت الناصر القانوني لخدمات المصادر القانونية والاختبارات التفاعلية.',
+          url: 'https://alnaseer.org/bot',
+          inLanguage: 'ar',
+          isPartOf: { '@type': 'WebSite', name: 'منصة الناصر القانونية', url: 'https://alnaseer.org' },
+        },
+        {
+          '@type': 'SoftwareApplication',
+          name: 'بوت الناصر القانوني',
+          applicationCategory: 'EducationalApplication',
+          operatingSystem: 'Telegram',
+          url: 'https://t.me/Moieen2025Bot',
+          inLanguage: 'ar',
+          description: 'بوت تيليغرام عربي لتصفح المصادر القانونية والبحث فيها وخوض الاختبارات التفاعلية.',
+          provider: { '@type': 'Organization', name: 'منصة الناصر القانونية', url: 'https://alnaseer.org' },
+          offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        },
+      ],
+    }}
   />
 );
 

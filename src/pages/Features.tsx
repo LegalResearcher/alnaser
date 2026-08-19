@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useCachedQuery } from '@/hooks/useCachedQuery';
 import { MainLayout } from '@/components/layout/MainLayout';
+import { FeaturesSEO } from '@/components/seo/SEOHead';
 import { cn } from '@/lib/utils';
 import {
   BookOpen, Target, Timer, BarChart3, Brain, TrendingUp,
@@ -476,6 +477,7 @@ const FeaturesPage = () => {
 
   return (
     <MainLayout>
+      <FeaturesSEO />
       <div
         className="min-h-screen bg-background relative"
         dir="rtl"

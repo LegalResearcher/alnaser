@@ -14,7 +14,7 @@ function url(loc: string, changefreq: string, priority: string, lastmod = TODAY)
 }
 
 // أسئلة مختارة للفهرسة (صفحات /question/:id عامة وقابلة للفهرسة)
-const QUESTION_IDS = [
+const LEGACY_QUESTION_IDS = [
   // ════ المستوى الأول (25 سؤال) ════
   'c68ad808-b931-474a-bd1b-832926c6df7d',
   '29c96eb9-90fd-419e-8c18-1229a2638441',
@@ -121,6 +121,24 @@ const QUESTION_IDS = [
   '0d7d3c56-f87e-4c57-8cca-6f84b1b1ebee',
 ];
 
+// صفحات اختبار عامة منتقاة من كل مستوى؛ لا تتضمن نتائج أو ملفات شخصية.
+const FEATURED_EXAM_IDS = [
+  '31817818-25ec-43eb-b9d5-40be136b4948', '8d4e69ec-7f8a-4d55-8992-a3314280a6d3', 'fe767112-56f2-44e6-a974-4f94c5c417a3', '739e8677-bbff-4e8a-9d8e-0511e04aadde',
+  'b55f63d4-15c1-4a92-8df1-40e247b4ca9f', '83ffd7f4-2eeb-4912-93fa-78f0eba8586d', '1d11b518-d4b9-4d06-8320-f335ff140cae', '40600ce8-dc9c-474a-ac5c-209c03cb6fe6',
+  'e55ca73c-6791-424f-a79f-61ae880c7a82', 'f8fbd310-6bdc-4cac-80fd-978bb019df3d', '3b162fc3-2166-4e42-8b28-831676738cb9', '5a437f66-6667-4a79-8b35-381f8ac90433',
+  '6556e38f-d2c4-43fc-8797-c96a8f18edd8', 'ce047082-80c1-4198-a48f-0588b52fd346', 'dbec4bac-a06e-4bc6-98e6-99f2a2f4e095', 'f4415910-f0bb-47b4-8b6a-6b8127d9d902',
+];
+
+// سؤالان متنوعان لكل مادة منتقاة من المستويات الأربعة.
+const CURATED_QUESTION_IDS = [
+  '00058303-2b8c-453f-99db-8010780aefc2', '001765dc-228a-4bb9-8841-428a4934d0af', '00236b4e-0225-416b-8b19-4e598835339e', '003b9dd8-bfd6-4ae6-a307-01d73bf65ada', '0046ed25-d52b-494b-9957-00f77ebb51ed', '00472432-5585-49ec-925b-e5ccb47c1dc6', '005f6b71-5b70-421e-aff0-8a5712b61aa5', '024dea2e-e6e4-48bd-a014-a2d500583d38',
+  '000e959e-491b-4588-a4cb-7519509ec95a', '0031aa6a-58c1-4261-ac8c-91ebbb4eddda', '0076da1c-cbf9-4fe3-88a7-c4180c753382', '00fd84fd-8a53-4a28-b9c3-2ae6eb986484', '013c4d2b-6594-4f0c-9808-b960dd2be510', '015df532-7e61-440e-9129-c56b1981f01f', '0277637b-eafc-40c1-87ef-13b547e28884', '02f8c7b7-2170-4dea-852d-eb35554e19a8',
+  '0002fc49-b577-4e11-841a-773bf8222322', '0005f67d-93b1-4ff7-bea8-fde05279148b', '003d8add-c5a6-435c-bc27-b078e5cc560b', '007af2f6-6fb1-4e06-843a-cd4e6dd6d712', '008bb1ea-5e30-49f1-9024-4feb2bd06a12', '00bf9268-8959-4b0d-a0a3-9a2742fb6d77', '00cac3ee-22ca-47da-8e56-97a804242f45', '00d9ac89-a3e0-4fad-b7a0-b458aaae4d8a',
+  '0002ad16-960a-4219-b15e-ac1ef0b667e3', '0006b301-3adf-412a-8f41-862ea2a6c92d', '0025e061-cd8f-42ba-86da-83d10934367e', '00329ae5-1f25-4431-bc85-724864e697a2', '005c4179-3167-4684-88fa-aa1e0b05ede3', '00871dfd-143e-4908-b4f9-d15780f3eade', '016ef3cf-f8f4-4691-8029-52d3d4cba85a', '02e60160-d091-411d-86f6-f40ea60b5387',
+];
+
+const QUESTION_IDS = Array.from(new Set([...CURATED_QUESTION_IDS, ...LEGACY_QUESTION_IDS]));
+
 export default async function handler(_req: Request): Promise<Response> {
   const entries: string[] = [];
 
@@ -128,6 +146,7 @@ export default async function handler(_req: Request): Promise<Response> {
   entries.push(url(`${BASE_URL}`,            'weekly',  '1.0'));
   entries.push(url(`${BASE_URL}/levels`,     'weekly',  '0.9'));
   entries.push(url(`${BASE_URL}/about`,      'monthly', '0.7'));
+  entries.push(url(`${BASE_URL}/bot`,        'weekly',  '0.8'));
   entries.push(url(`${BASE_URL}/features`,   'monthly', '0.6'));
   entries.push(url(`${BASE_URL}/diagnostic`, 'monthly', '0.7'));
   entries.push(url(`${BASE_URL}/privacy`,    'yearly',  '0.3'));
@@ -145,13 +164,17 @@ export default async function handler(_req: Request): Promise<Response> {
   entries.push(url(`${BASE_URL}/library/other-services/legal-references`,     'monthly', '0.6'));
   entries.push(url(`${BASE_URL}/library/subscription`,                        'monthly', '0.5'));
 
+  // ── اختبارات عامة متنوعة من المستويات الأربعة ──
+  for (const id of FEATURED_EXAM_IDS) {
+    entries.push(url(`${BASE_URL}/exam/${id}`, 'weekly', '0.7'));
+  }
+
   // ── أسئلة مشتركة (صفحات عامة بمحتوى قانوني فعلي) ──
   for (const id of QUESTION_IDS) {
     entries.push(url(`${BASE_URL}/question/${id}`, 'monthly', '0.5'));
   }
 
-  // ملاحظة: تم حذف /exam/:id و /levels/:id و /progress من الـ sitemap
-  // لأنها صفحات ديناميكية تتطلب تسجيل دخول أو تُعيد redirect
+  // تُستبعد النتائج الفردية والتقدم وصفحات الإدارة لأنها خاصة بالمستخدم أو تتطلب تسجيل دخول.
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset

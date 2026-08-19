@@ -105,10 +105,11 @@ ${schema ? `<script type="application/ld+json">${JSON.stringify(schema)}</script
 </head>
 <body>
 <div class="wrap">
-<nav>
-  <a href="${BASE_URL}/">🏠 الرئيسية</a>
-  <a href="${BASE_URL}/levels">📚 المستويات</a>
-  <a href="${BASE_URL}/about">ℹ️ عن المنصة</a>
+	<nav>
+	  <a href="${BASE_URL}/">🏠 الرئيسية</a>
+	  <a href="${BASE_URL}/levels">📚 المستويات</a>
+	  <a href="${BASE_URL}/bot">🤖 البوت</a>
+	  <a href="${BASE_URL}/about">ℹ️ عن المنصة</a>
   <a href="${BASE_URL}/diagnostic">🔬 التشخيصي</a>
 </nav>
 ${body}
@@ -136,10 +137,9 @@ async function renderQuestion(id: string, url: string) {
   const desc  = `سؤال من مادة ${subjectName}${q.exam_year ? ` — ${q.exam_year}` : ''} · اختبر معلوماتك القانونية على منصة الناصر`;
 
   const optionsHtml = opts.map(({ key, text }) => `
-    <div class="option${key === q.correct_option ? ' correct' : ''}">
+    <div class="option">
       <span class="opt-label">${labels[key]}</span>
       <span class="opt-text">${e(text)}</span>
-      ${key === q.correct_option ? '<span class="correct-badge">✓ الإجابة الصحيحة</span>' : ''}
     </div>`).join('');
 
   const body = `
@@ -160,11 +160,7 @@ async function renderQuestion(id: string, url: string) {
     hasPart: [{
       '@type': 'Question',
       name: qText,
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: cleanOpt(q[`option_${q.correct_option?.toLowerCase()}`] || ''),
-      },
-      suggestedAnswer: opts.filter(o => o.key !== q.correct_option).map(o => ({
+      suggestedAnswer: opts.map(o => ({
         '@type': 'Answer', text: o.text,
       })),
     }],
@@ -353,6 +349,31 @@ export default async function handler(req: Request): Promise<Response> {
     const result = await renderExam(id, fullUrl);
     if (result) { title = result.title; desc = result.desc; body = result.body; schema = result.schema; }
     else { title = 'اختبار قانوني | منصة الناصر'; body = `<h1>${title}</h1><p>${desc}</p>`; }
+  }
+
+  // ── /bot ──
+  else if (pathname === '/bot') {
+    title = 'بوت الناصر القانوني على تيليغرام | مكتبة واختبارات قانونية عربية';
+    desc  = 'بوت الناصر القانوني على تيليغرام يسهّل تصفح المصادر القانونية والبحث فيها وخوض اختبارات الشريعة والقانون والثانوية العامة من محادثة عربية منظمة.';
+    body  = `
+      <span class="badge">بوت تيليغرام عربي</span>
+      <h1>بوت الناصر القانوني على تيليغرام</h1>
+      <p>${desc}</p>
+      <h2>خدمات البوت</h2>
+      <ul>
+        <li>تصفح المكتبة القانونية والبحث في المصادر والمراجع.</li>
+        <li>اختبارات تفاعلية لطلاب الشريعة والقانون.</li>
+        <li>نماذج اختبارات الثانوية العامة داخل تجربة عربية منظمة.</li>
+        <li>تسليم الملفات المطلوبة في المحادثة الفردية مع البوت.</li>
+      </ul>
+      <p style="margin-top:16px"><a class="cta-btn" href="https://t.me/Moieen2025Bot">افتح بوت الناصر القانوني على تيليغرام</a></p>`;
+    schema = {
+      '@context': 'https://schema.org',
+      '@graph': [
+        { '@type': 'WebPage', name: 'بوت الناصر القانوني على تيليغرام', description: desc, url: `${BASE_URL}/bot`, inLanguage: 'ar' },
+        { '@type': 'SoftwareApplication', name: 'بوت الناصر القانوني', applicationCategory: 'EducationalApplication', operatingSystem: 'Telegram', url: 'https://t.me/Moieen2025Bot', provider: { '@type': 'Organization', name: 'منصة الناصر القانونية', url: BASE_URL } },
+      ],
+    };
   }
 
   // ── /about ──

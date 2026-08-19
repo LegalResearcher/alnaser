@@ -133,6 +133,7 @@ export function Footer() {
               {[
                 { to: "/", label: "الرئيسية" },
                 { to: "/levels", label: "المستويات" },
+                { to: "/bot", label: "بوت الناصر القانوني" },
                 { to: "/about", label: "عن المنصة" },
                 { to: "/privacy", label: "الخصوصية" }
               ].map((link) => (

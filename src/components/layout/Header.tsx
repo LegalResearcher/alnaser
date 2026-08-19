@@ -15,6 +15,7 @@ const navLinks = [
   { href: '/',                   label: 'الرئيسية' },
   { href: '/levels',             label: 'المستويات' },
   { href: '/library',            label: '📚 المكتبة' },
+  { href: '/bot',                label: '🤖 البوت' },
   { href: '/features',           label: 'المزايا' },
   { href: '/diagnostic',         label: 'التشخيص' },
   { href: '/progress',           label: 'تقدمي' },
