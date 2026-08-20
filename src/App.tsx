@@ -65,6 +65,7 @@ const AdminReviewPasswords  = lazy(() => import("./pages/admin/AdminReviewPasswo
 const AdminPaymentRequests  = lazy(() => import("./pages/admin/AdminPaymentRequests"));
 const AdminHonorRequests    = lazy(() => import("./pages/admin/AdminHonorRequests"));
 const AdminLibrary          = lazy(() => import("./pages/admin/AdminLibrary"));
+const AdminTelegramBot      = lazy(() => import("./pages/admin/AdminTelegramBot"));
 
 // صفحات المنافسة الجماعية
 const BattleCreate = lazy(() => import("./pages/BattleCreate"));
@@ -158,6 +159,7 @@ const App = () => (
                     <Route path="/admin/payment-requests"  element={<AdminPaymentRequests />} />
                     <Route path="/admin/honor-requests"    element={<AdminHonorRequests />} />
                     <Route path="/admin/library"           element={<AdminLibrary />} />
+                    <Route path="/admin/bot"               element={<AdminTelegramBot />} />
                     <Route path="/admin/settings"          element={<AdminSettings />} />
 
                     {/* ── 404 ── */}
