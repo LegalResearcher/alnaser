@@ -28,7 +28,10 @@ const Index = () => {
     fetch(TELEGRAM_PLATFORM_VISIT_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ initData: webApp.initData }),
+      body: JSON.stringify({
+        initData: webApp.initData,
+        region: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      }),
     })
       .then(response => {
         if (!response.ok) throw new Error('verification-failed');

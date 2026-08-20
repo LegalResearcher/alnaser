@@ -4,7 +4,7 @@ import { AdminLayout } from '@/components/admin/AdminLayout';
 import {
   BookOpen, Users, Target, TrendingUp, Clock, CheckCircle2,
   XCircle, MessageSquare, Lightbulb, ArrowLeft, BarChart3,
-  ChevronLeft, ChevronRight, Eye, Layers, AlertCircle
+  ChevronLeft, ChevronRight, Eye, Layers, AlertCircle, MapPin
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -42,6 +42,7 @@ const SUGGESTION_STATUS: Record<string, { label: string; color: string }> = {
 
 const PIE_COLORS = ['#10b981', '#ef4444'];
 const EXAMS_PAGE_SIZE = 8;
+const TELEGRAM_BOT_STATS_ENDPOINT = 'https://moilegbot-cd9jlnvj.manus.space/api/telegram/admin-stats';
 
 // ──────────────────────────────────────────────
 // Helpers
@@ -50,6 +51,8 @@ const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('ar-SA');
 const fmtTime = (iso: string) =>
   new Date(iso).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+const fmtDateTime = (iso: string | null | undefined) =>
+  iso ? new Date(iso).toLocaleString('ar-SA', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
 
 // ──────────────────────────────────────────────
 // Sub-components
@@ -121,7 +124,7 @@ function SectionHeader({ title, icon: Icon, href, count }: {
 // Main Component
 // ──────────────────────────────────────────────
 const AdminDashboard = () => {
-  const { role } = useAuth();
+  const { role, session } = useAuth();
   const isAdmin = role === 'admin';
   const [examsPage, setExamsPage] = useState(0);
 
@@ -171,6 +174,24 @@ const AdminDashboard = () => {
         passed:    totalPassed,
         failed:    totalFailed,
         dailyData,
+      };
+    },
+    staleTime: 1000 * 60 * 2,
+  });
+
+  const { data: telegramBotStats, isLoading: telegramBotStatsLoading } = useQuery({
+    queryKey: ['dashboard-telegram-bot-stats'],
+    enabled: isAdmin && Boolean(session?.access_token),
+    queryFn: async () => {
+      const response = await fetch(TELEGRAM_BOT_STATS_ENDPOINT, {
+        headers: { Authorization: `Bearer ${session!.access_token}` },
+      });
+      if (!response.ok) throw new Error('تعذر تحميل إحصاءات مستخدمي البوت');
+      return await response.json() as {
+        totalSubscribers: number;
+        firstSubscribedAt: string | null;
+        lastActiveAt: string | null;
+        regions: Array<{ region: string; count: number }>;
       };
     },
     staleTime: 1000 * 60 * 2,
@@ -267,6 +288,7 @@ const AdminDashboard = () => {
                   <>
                     <StatCard label="المستويات"   value={stats?.levels   ?? 0} icon={Layers}     color="bg-blue-500"    />
                     <StatCard label="المواد"       value={stats?.subjects ?? 0} icon={BookOpen}   color="bg-emerald-500" />
+                    <StatCard label="مستخدمو البوت" value={telegramBotStats?.totalSubscribers ?? 0} icon={Users} color="bg-sky-500" />
                   </>
                 )}
                 <StatCard label="الأسئلة النشطة" value={stats?.questions ?? 0} icon={CheckCircle2} color="bg-amber-500"  />
@@ -298,6 +320,37 @@ const AdminDashboard = () => {
               </>
           }
         </div>
+
+        {isAdmin && (
+          <section className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <Users className="w-4 h-4 text-sky-600" />
+              <h2 className="font-black text-slate-800 dark:text-slate-100">إحصاءات مستخدمي بوت الناصر</h2>
+            </div>
+            {telegramBotStatsLoading ? (
+              <Skeleton className="h-28 rounded-xl" />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="rounded-xl bg-slate-50 dark:bg-slate-900/50 p-4">
+                  <p className="text-xs text-slate-500">أول تسجيل</p>
+                  <p className="mt-1 text-sm font-bold text-slate-800 dark:text-slate-100">{fmtDateTime(telegramBotStats?.firstSubscribedAt)}</p>
+                </div>
+                <div className="rounded-xl bg-slate-50 dark:bg-slate-900/50 p-4">
+                  <p className="text-xs text-slate-500">آخر نشاط</p>
+                  <p className="mt-1 text-sm font-bold text-slate-800 dark:text-slate-100">{fmtDateTime(telegramBotStats?.lastActiveAt)}</p>
+                </div>
+                <div className="rounded-xl bg-slate-50 dark:bg-slate-900/50 p-4">
+                  <div className="flex items-center gap-1.5 text-xs text-slate-500"><MapPin className="w-3.5 h-3.5" /> المناطق المجمعة</div>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {telegramBotStats?.regions?.length
+                      ? telegramBotStats.regions.map((item) => <span key={item.region} className="rounded-full bg-sky-100 px-2 py-1 text-xs font-bold text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">{item.region}: {item.count}</span>)
+                      : <span className="text-xs text-slate-500">تظهر بعد توثيق زيارة المنصة.</span>}
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
 
         {/* ── Charts Row (للمدير فقط) ── */}
         {isAdmin && (
