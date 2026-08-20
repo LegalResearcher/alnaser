@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, BookOpen, GraduationCap, Layers, Sparkles, ShieldOff, HelpCircle } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -56,8 +56,36 @@ const levelColors = [
   },
 ];
 
+const TELEGRAM_PLATFORM_VISIT_ENDPOINT = 'https://moilegbot-cd9jlnvj.manus.space/api/telegram/platform-visit';
+
+type TelegramMiniApp = {
+  initData?: string;
+  ready: () => void;
+};
+
+type TelegramWindow = Window & { Telegram?: { WebApp?: TelegramMiniApp } };
+
 const Levels = () => {
   const [disabledDialog, setDisabledDialog] = useState<Level | null>(null);
+  const [telegramVisitStatus, setTelegramVisitStatus] = useState<'idle' | 'checking' | 'verified' | 'failed'>('idle');
+
+  useEffect(() => {
+    const webApp = (window as TelegramWindow).Telegram?.WebApp;
+    if (!webApp?.initData) return;
+
+    webApp.ready();
+    setTelegramVisitStatus('checking');
+    fetch(TELEGRAM_PLATFORM_VISIT_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData: webApp.initData }),
+    })
+      .then(response => {
+        if (!response.ok) throw new Error('verification-failed');
+        setTelegramVisitStatus('verified');
+      })
+      .catch(() => setTelegramVisitStatus('failed'));
+  }, []);
 
   // جلب المستويات مع الترتيب
   const { data: levels = [], isLoading: levelsLoading } = useCachedQuery<Level[]>(
@@ -121,6 +149,13 @@ const Levels = () => {
   return (
     <MainLayout>
       <LevelsSEO />
+      {telegramVisitStatus !== 'idle' && (
+        <div className="fixed top-4 left-4 right-4 z-50 mx-auto max-w-md rounded-2xl border border-primary/20 bg-white/95 px-4 py-3 text-center text-sm font-bold text-slate-800 shadow-xl backdrop-blur dark:bg-slate-900/95 dark:text-white" role="status">
+          {telegramVisitStatus === 'checking' && 'جارٍ توثيق زيارة المنصة…'}
+          {telegramVisitStatus === 'verified' && 'تم توثيق زيارتك للمنصة بنجاح.'}
+          {telegramVisitStatus === 'failed' && 'تعذر توثيق الزيارة حاليًا. افتح الصفحة من زر المنصة داخل البوت وحاول مرة أخرى.'}
+        </div>
+      )}
       {/* Inject keyframes */}
       <style>{`
         @keyframes floatBadge { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
