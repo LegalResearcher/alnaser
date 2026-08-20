@@ -12,7 +12,7 @@ type AuditLog = { id: number; action: string; entityType: string; entityId: stri
 type ManagedMessageTemplate = { messageKey: 'welcome' | 'about' | 'help'; title: string; content: string };
 type ManagedSource = { id: number; title: string; description: string; collection: string; sortOrder: number; isFeatured: boolean; updatedAt: string };
 type ManagedFolder = { id: number; name: string; collection: string; sortOrder: number; driveFolderId: string; parentDriveFolderId: string | null };
-type ManagedBroadcast = { id: number; message: string | null; status: 'draft' | 'sending' | 'sent' | 'cancelled'; recipientCount: number; successCount: number; failureCount: number; createdAt: string; completedAt: string | null };
+type ManagedBroadcast = { id: number; message: string | null; status: 'draft' | 'sending' | 'sent' | 'cancelled'; recipientCount: number; successCount: number; failureCount: number; scheduledFor: string | null; createdAt: string; completedAt: string | null };
 type SubscriptionRequest = { id: number; telegramUserId: string; telegramUsername: string | null; telegramFirstName: string | null; telegramLastName: string | null; paymentMethod: string | null; createdAt: string };
 type UsageAnalytics = { periodDays: number; totalEvents: number; uniqueUsers: number; eventTypes: Array<{ eventType: string; count: number }>; topSections: Array<{ sectionKey: string; count: number }>; topSources: Array<{ sourceId: number; title: string; count: number }> };
 type UploadDraft = { title: string; description: string; collection: string; category: string; sortOrder: number; isFeatured: boolean };
@@ -36,6 +36,9 @@ export default function AdminTelegramBot() {
   const [folderQuery, setFolderQuery] = useState('');
   const [broadcasts, setBroadcasts] = useState<ManagedBroadcast[]>([]);
   const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [scheduleFor, setScheduleFor] = useState('');
+  const [schedulingBroadcastId, setSchedulingBroadcastId] = useState<number | null>(null);
+  const [scheduleConfirmation, setScheduleConfirmation] = useState('');
   const [subscriptionRequests, setSubscriptionRequests] = useState<SubscriptionRequest[]>([]);
   const [usageAnalytics, setUsageAnalytics] = useState<UsageAnalytics | null>(null);
   const [uploadDraft, setUploadDraft] = useState<UploadDraft>(emptyUploadDraft);
@@ -197,6 +200,16 @@ export default function AdminTelegramBot() {
     catch (error) { toast({ title: 'تعذر تنفيذ البث', description: error instanceof Error ? error.message : undefined, variant: 'destructive' }); }
     finally { setBroadcastSaving(false); }
   };
+  const scheduleBroadcast = async (id: number) => {
+    if (!scheduleFor) { toast({ title: 'اختر تاريخ ووقت الإرسال', variant: 'destructive' }); return; }
+    if (scheduleConfirmation !== 'SCHEDULE') { toast({ title: 'أدخل SCHEDULE لتأكيد الجدولة', variant: 'destructive' }); return; }
+    const scheduledFor = new Date(scheduleFor);
+    if (Number.isNaN(scheduledFor.getTime()) || scheduledFor.getTime() < Date.now() + 60_000) { toast({ title: 'اختر موعدًا بعد دقيقة واحدة على الأقل', variant: 'destructive' }); return; }
+    setBroadcastSaving(true);
+    try { const result = await request(`/api/telegram/admin/broadcasts/${id}/schedule`, { method: 'POST', body: JSON.stringify({ confirmation: 'SCHEDULE', scheduledFor: scheduledFor.toISOString() }) }); setBroadcasts(current => current.map(item => item.id === id ? { ...item, scheduledFor: result.scheduledFor } : item)); setSchedulingBroadcastId(null); setScheduleFor(''); setScheduleConfirmation(''); toast({ title: 'تمت جدولة البث', description: `سيُرسل تلقائيًا في ${scheduledFor.toLocaleString('ar-YE')}.` }); }
+    catch (error) { toast({ title: 'تعذرت جدولة البث', description: error instanceof Error ? error.message : undefined, variant: 'destructive' }); }
+    finally { setBroadcastSaving(false); }
+  };
   const decideSubscription = async (request: SubscriptionRequest, decision: 'approve' | 'reject') => {
     const label = decision === 'approve' ? 'اعتماد' : 'رفض';
     if (!window.confirm(`هل تؤكد ${label} طلب الاشتراك رقم #${request.id}؟ سيُرسل إشعار تلقائي للمستخدم.`)) return;
@@ -207,6 +220,7 @@ export default function AdminTelegramBot() {
   };
 
   return <AdminLayout><div className="space-y-7" dir="rtl">
+    <section className="rounded-3xl border border-indigo-100 bg-indigo-50/50 p-5 shadow-sm"><div className="flex items-start gap-2"><Send className="mt-0.5 h-5 w-5 text-indigo-700" /><div><h2 className="font-black text-slate-800">جدولة بث جماعي</h2><p className="mt-1 text-xs leading-5 text-slate-600">اختر مسودة سابقة، ثم الموعد حسب توقيت جهازك. لا يتم الإرسال إلا بعد كتابة <bdi className="font-mono">SCHEDULE</bdi>، ويمكن إلغاء الموعد قبل التنفيذ.</p></div></div><div className="mt-4 grid gap-3 md:grid-cols-4"><select value={schedulingBroadcastId ?? ''} onChange={event => setSchedulingBroadcastId(event.target.value ? Number(event.target.value) : null)} className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-primary"><option value="">اختر مسودة البث</option>{broadcasts.filter(item => item.status === 'draft' && !item.scheduledFor).map(item => <option key={item.id} value={item.id}>مسودة #{item.id} — {item.message?.slice(0, 36) || 'رسالة'}</option>)}</select><input type="datetime-local" value={scheduleFor} onChange={event => setScheduleFor(event.target.value)} min={new Date(Date.now() + 60_000).toISOString().slice(0, 16)} className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-primary" /><input value={scheduleConfirmation} onChange={event => setScheduleConfirmation(event.target.value)} placeholder="اكتب SCHEDULE" dir="ltr" className="h-11 rounded-xl border border-indigo-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-primary" /><button onClick={() => schedulingBroadcastId && void scheduleBroadcast(schedulingBroadcastId)} disabled={!schedulingBroadcastId || broadcastSaving} className="h-11 rounded-xl bg-indigo-700 px-4 text-xs font-bold text-white disabled:opacity-60">جدولة الإرسال</button></div>{broadcasts.filter(item => item.status === 'draft' && item.scheduledFor).length > 0 && <div className="mt-4 space-y-2">{broadcasts.filter(item => item.status === 'draft' && item.scheduledFor).map(item => <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-100 bg-white p-3 text-sm"><span><b>مسودة #{item.id}</b> · مجدول: {new Date(item.scheduledFor!).toLocaleString('ar-YE')}</span><button onClick={() => void cancelBroadcast(item.id)} className="h-9 rounded-xl bg-rose-50 px-3 text-xs font-bold text-rose-700">إلغاء الموعد</button></div>)}</div>}</section>
     <section className="rounded-3xl bg-gradient-to-l from-indigo-700 via-blue-700 to-sky-600 p-7 text-white shadow-xl"><div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between"><div className="flex gap-4"><div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/15"><Bot className="h-7 w-7" /></div><div><h1 className="text-2xl font-black">مركز إدارة بوت الناصر</h1><p className="mt-1 text-sm text-blue-100">اضبط ظهور الأقسام والأزرار والرسائل والروابط من مساحة إدارية واحدة.</p></div></div><a href="https://t.me/Moieen2025Bot" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 self-start rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-blue-700"><ExternalLink className="h-4 w-4" />فتح البوت</a></div></section>
 
     <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><div className="mb-5 flex items-start justify-between gap-4"><div><div className="flex items-center gap-2"><LayoutList className="h-5 w-5 text-primary" /><h2 className="font-black text-slate-800">الأقسام الأساسية</h2></div><p className="mt-1 text-xs leading-5 text-slate-500">يمكنك تعديل تسمية القسم أو ترتيبه أو إخفاؤه. لا تتغير قواعد الاشتراك الإلزامية أو حماية القسم المدفوع من هذه الشاشة.</p></div><span className="shrink-0 rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">{sections.filter(section => section.enabled).length} ظاهر</span></div>
