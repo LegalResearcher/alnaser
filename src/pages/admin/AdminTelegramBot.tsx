@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Bot, ExternalLink, FileText, FolderTree, History, LayoutList, Loader2, MessageSquareText, Pencil, Plus, Save, Search, Trash2, Upload, X } from 'lucide-react';
+import { Bot, ExternalLink, FileText, FolderTree, History, LayoutList, Loader2, MessageSquareText, Pencil, Plus, Save, Search, Send, Trash2, Upload, X } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -12,6 +12,7 @@ type AuditLog = { id: number; action: string; entityType: string; entityId: stri
 type ManagedMessageTemplate = { messageKey: 'welcome' | 'about' | 'help'; title: string; content: string };
 type ManagedSource = { id: number; title: string; description: string; collection: string; sortOrder: number; isFeatured: boolean; updatedAt: string };
 type ManagedFolder = { id: number; name: string; collection: string; sortOrder: number; driveFolderId: string; parentDriveFolderId: string | null };
+type ManagedBroadcast = { id: number; message: string | null; status: 'draft' | 'sending' | 'sent' | 'cancelled'; recipientCount: number; successCount: number; failureCount: number; createdAt: string; completedAt: string | null };
 type UploadDraft = { title: string; description: string; collection: string; category: string; sortOrder: number; isFeatured: boolean };
 const emptyUploadDraft: UploadDraft = { title: '', description: '', collection: 'judicial', category: 'general', sortOrder: 0, isFeatured: false };
 type Draft = Omit<ManagedMenuItem, 'id' | 'createdAt' | 'updatedAt'>;
@@ -31,6 +32,8 @@ export default function AdminTelegramBot() {
   const [sourceTotal, setSourceTotal] = useState(0);
   const [folders, setFolders] = useState<ManagedFolder[]>([]);
   const [folderQuery, setFolderQuery] = useState('');
+  const [broadcasts, setBroadcasts] = useState<ManagedBroadcast[]>([]);
+  const [broadcastMessage, setBroadcastMessage] = useState('');
   const [uploadDraft, setUploadDraft] = useState<UploadDraft>(emptyUploadDraft);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
@@ -44,6 +47,9 @@ export default function AdminTelegramBot() {
   const [uploading, setUploading] = useState(false);
   const [foldersLoading, setFoldersLoading] = useState(false);
   const [savingFolder, setSavingFolder] = useState<number | null>(null);
+  const [broadcastSaving, setBroadcastSaving] = useState(false);
+  const [confirmingBroadcastId, setConfirmingBroadcastId] = useState<number | null>(null);
+  const [broadcastConfirmation, setBroadcastConfirmation] = useState('');
 
   const request = async (path: string, options: RequestInit = {}) => {
     const token = session?.access_token;
@@ -58,11 +64,12 @@ export default function AdminTelegramBot() {
     if (!session?.access_token || role !== 'admin') return;
     setLoading(true);
     try {
-      const [itemsResponse, sectionsResponse, logsResponse, templatesResponse] = await Promise.all([request('/api/telegram/admin/menu-items'), request('/api/telegram/admin/sections'), request('/api/telegram/admin/audit-logs'), request('/api/telegram/admin/message-templates')]);
+      const [itemsResponse, sectionsResponse, logsResponse, templatesResponse, broadcastsResponse] = await Promise.all([request('/api/telegram/admin/menu-items'), request('/api/telegram/admin/sections'), request('/api/telegram/admin/audit-logs'), request('/api/telegram/admin/message-templates'), request('/api/telegram/admin/broadcasts')]);
       setItems(itemsResponse.items ?? []);
       setSections(sectionsResponse.sections ?? []);
       setLogs(logsResponse.logs ?? []);
       setTemplates(templatesResponse.templates ?? []);
+      setBroadcasts(broadcastsResponse.broadcasts ?? []);
     } catch (error) {
       toast({ title: 'تعذر تحميل إعدادات البوت', description: error instanceof Error ? error.message : undefined, variant: 'destructive' });
     } finally { setLoading(false); }
@@ -165,6 +172,24 @@ export default function AdminTelegramBot() {
     try { await request(`/api/telegram/admin/folders/${folder.id}`, { method: 'DELETE' }); setFolders(current => current.filter(value => value.id !== folder.id)); toast({ title: 'تم حذف المجلد الفارغ' }); }
     catch (error) { toast({ title: 'تعذر حذف المجلد', description: error instanceof Error && error.message.includes('folder_not_empty') ? 'المجلد يحتوي ملفات أو مجلدات فرعية؛ احذف أو انقل محتواه أولاً.' : 'تحقق من أن المجلد فارغ ثم أعد المحاولة.', variant: 'destructive' }); }
   };
+  const createBroadcast = async () => {
+    if (!broadcastMessage.trim()) { toast({ title: 'اكتب رسالة البث أولًا', variant: 'destructive' }); return; }
+    setBroadcastSaving(true);
+    try { const result = await request('/api/telegram/admin/broadcasts', { method: 'POST', body: JSON.stringify({ message: broadcastMessage }) }); setBroadcasts(current => [result.broadcast, ...current]); setBroadcastMessage(''); toast({ title: 'تم إنشاء مسودة البث', description: 'راجِع النص وعدد المستلمين ثم أكّد الإرسال بكتابة SEND.' }); }
+    catch (error) { toast({ title: 'تعذر إنشاء مسودة البث', description: error instanceof Error ? error.message : undefined, variant: 'destructive' }); }
+    finally { setBroadcastSaving(false); }
+  };
+  const cancelBroadcast = async (id: number) => {
+    try { await request(`/api/telegram/admin/broadcasts/${id}/cancel`, { method: 'POST' }); setBroadcasts(current => current.map(item => item.id === id ? { ...item, status: 'cancelled' } : item)); toast({ title: 'تم إلغاء مسودة البث' }); }
+    catch (error) { toast({ title: 'تعذر إلغاء المسودة', description: error instanceof Error ? error.message : undefined, variant: 'destructive' }); }
+  };
+  const confirmBroadcast = async (id: number) => {
+    if (broadcastConfirmation !== 'SEND') { toast({ title: 'أدخل SEND لتأكيد الإرسال', variant: 'destructive' }); return; }
+    setBroadcastSaving(true);
+    try { const result = await request(`/api/telegram/admin/broadcasts/${id}/confirm`, { method: 'POST', body: JSON.stringify({ confirmation: 'SEND' }) }); setBroadcasts(current => current.map(item => item.id === id ? { ...item, status: 'sent', successCount: result.successCount, failureCount: result.failureCount, completedAt: new Date().toISOString() } : item)); setConfirmingBroadcastId(null); setBroadcastConfirmation(''); toast({ title: 'اكتمل البث', description: `نجح الإرسال: ${result.successCount}، تعذر: ${result.failureCount}.` }); }
+    catch (error) { toast({ title: 'تعذر تنفيذ البث', description: error instanceof Error ? error.message : undefined, variant: 'destructive' }); }
+    finally { setBroadcastSaving(false); }
+  };
 
   return <AdminLayout><div className="space-y-7" dir="rtl">
     <section className="rounded-3xl bg-gradient-to-l from-indigo-700 via-blue-700 to-sky-600 p-7 text-white shadow-xl"><div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between"><div className="flex gap-4"><div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/15"><Bot className="h-7 w-7" /></div><div><h1 className="text-2xl font-black">مركز إدارة بوت الناصر</h1><p className="mt-1 text-sm text-blue-100">اضبط ظهور الأقسام والأزرار والرسائل والروابط من مساحة إدارية واحدة.</p></div></div><a href="https://t.me/Moieen2025Bot" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 self-start rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-blue-700"><ExternalLink className="h-4 w-4" />فتح البوت</a></div></section>
@@ -174,6 +199,8 @@ export default function AdminTelegramBot() {
     </section>
 
     <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><div className="mb-5 flex items-start gap-2"><FileText className="mt-0.5 h-5 w-5 text-primary" /><div><h2 className="font-black text-slate-800">قوالب الرسائل التعريفية</h2><p className="mt-1 text-xs leading-5 text-slate-500">تُدار رسائل الترحيب و«عن المكتبة» والمساعدة فقط. تبقى رسائل الاشتراك والتحقق والدفع محمية وثابتة.</p></div></div>{loading ? <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div> : <div className="grid gap-4 xl:grid-cols-3">{templates.map(template => <article key={template.messageKey} className="rounded-2xl border border-slate-100 bg-slate-50 p-4"><h3 className="font-bold text-slate-800">{template.title}</h3><textarea value={template.content} onChange={event => updateTemplateState(template.messageKey, event.target.value)} rows={8} className="mt-3 w-full resize-y rounded-xl border border-slate-200 bg-white p-3 text-sm leading-6 text-slate-700 outline-none focus:border-primary" /><button onClick={() => void saveTemplate(template)} disabled={savingTemplate === template.messageKey} className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-slate-800 text-xs font-bold text-white hover:bg-slate-700 disabled:opacity-60">{savingTemplate === template.messageKey ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}حفظ القالب</button></article>)}</div>}</section>
+
+    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><div className="mb-5 flex items-start gap-2"><Send className="mt-0.5 h-5 w-5 text-primary" /><div><h2 className="font-black text-slate-800">بث جماعي للمشتركين</h2><p className="mt-1 text-xs leading-5 text-slate-500">ينشئ النظام مسودة ومعاينة أولًا، ولا يرسل أي رسالة إلا بعد كتابة <bdi className="font-mono">SEND</bdi> للتأكيد الصريح.</p></div></div><textarea value={broadcastMessage} onChange={event => setBroadcastMessage(event.target.value)} rows={4} maxLength={4000} placeholder="اكتب رسالة البث هنا…" className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-7 text-slate-800 outline-none focus:border-primary" /><div className="mt-3 flex items-center justify-between gap-3"><p className="text-xs text-slate-500">{broadcastMessage.length}/4000 حرف</p><button onClick={() => void createBroadcast()} disabled={broadcastSaving} className="flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-xs font-bold text-white disabled:opacity-60"><Send className="h-3.5 w-3.5" />إنشاء معاينة البث</button></div><div className="mt-5 space-y-3">{broadcasts.slice(0, 8).map(broadcast => <article key={broadcast.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><div className="flex items-center gap-2"><span className="rounded-full bg-white px-2 py-1 text-[10px] font-black text-slate-600">#{broadcast.id}</span><span className={`rounded-full px-2 py-1 text-[10px] font-black ${broadcast.status === 'sent' ? 'bg-emerald-100 text-emerald-700' : broadcast.status === 'draft' ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-600'}`}>{broadcast.status === 'sent' ? 'تم الإرسال' : broadcast.status === 'draft' ? 'مسودة' : broadcast.status === 'cancelled' ? 'ملغى' : 'جارٍ الإرسال'}</span></div><span className="text-xs text-slate-500">{broadcast.recipientCount} مستلمًا</span></div><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">{broadcast.message}</p>{broadcast.status === 'sent' && <p className="mt-2 text-xs text-slate-500">نجح: {broadcast.successCount} | تعذر: {broadcast.failureCount}</p>}{broadcast.status === 'draft' && <div className="mt-3 flex flex-wrap items-center gap-2">{confirmingBroadcastId === broadcast.id ? <><input value={broadcastConfirmation} onChange={event => setBroadcastConfirmation(event.target.value)} placeholder="اكتب SEND" dir="ltr" className="h-10 w-32 rounded-xl border border-amber-300 bg-white px-3 text-sm outline-none" /><button onClick={() => void confirmBroadcast(broadcast.id)} disabled={broadcastSaving} className="h-10 rounded-xl bg-rose-600 px-4 text-xs font-bold text-white disabled:opacity-60">تأكيد الإرسال</button><button onClick={() => { setConfirmingBroadcastId(null); setBroadcastConfirmation(''); }} className="h-10 rounded-xl bg-white px-3 text-xs font-bold text-slate-600">رجوع</button></> : <><button onClick={() => setConfirmingBroadcastId(broadcast.id)} className="h-10 rounded-xl bg-amber-500 px-4 text-xs font-bold text-white">إرسال بعد التأكيد</button><button onClick={() => void cancelBroadcast(broadcast.id)} className="h-10 rounded-xl bg-white px-4 text-xs font-bold text-rose-700">إلغاء المسودة</button></>}</div>}</article>)}</div></section>
 
     <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between"><div><div className="flex items-center gap-2"><FolderTree className="h-5 w-5 text-primary" /><h2 className="font-black text-slate-800">مجلدات فهرس البوت</h2></div><p className="mt-1 text-xs leading-5 text-slate-500">عدّل اسم المجلد وترتيبه. لا يسمح النظام بحذف أي مجلد يحتوي ملفاتًا أو مجلدات فرعية.</p></div><div className="flex w-full gap-2 lg:w-[420px]"><input value={folderQuery} onChange={event => setFolderQuery(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') void loadFolders(); }} placeholder="ابحث باسم المجلد" className="h-10 min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-primary" /><button onClick={() => void loadFolders()} disabled={foldersLoading} className="flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-white disabled:opacity-60">{foldersLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}بحث</button></div></div>{folders.length === 0 ? <p className="rounded-2xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500">ابحث باسم المجلد لإدارته. لا تُحمّل المجلدات كاملة تلقائيًا.</p> : <div className="grid gap-3 lg:grid-cols-2">{folders.map(folder => <article key={folder.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4"><div className="flex items-center justify-between"><span className="rounded-full bg-white px-2 py-1 text-[10px] font-black text-slate-600">{folder.collection}</span><span className="text-[10px] text-slate-400">#{folder.id}</span></div><div className="mt-3 grid grid-cols-[minmax(0,1fr)_100px] gap-3"><label className="text-xs font-bold text-slate-600">اسم المجلد<input value={folder.name} onChange={event => updateFolderState(folder.id, { name: event.target.value })} className="mt-1.5 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-primary" /></label><label className="text-xs font-bold text-slate-600">الترتيب<input type="number" value={folder.sortOrder} onChange={event => updateFolderState(folder.id, { sortOrder: Number(event.target.value) })} className="mt-1.5 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm" /></label></div><div className="mt-3 flex gap-2"><button onClick={() => void saveFolder(folder)} disabled={savingFolder === folder.id} className="flex h-10 items-center gap-2 rounded-xl bg-slate-800 px-4 text-xs font-bold text-white disabled:opacity-60">{savingFolder === folder.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}حفظ</button><button onClick={() => void removeFolder(folder)} className="flex h-10 items-center gap-2 rounded-xl bg-rose-50 px-4 text-xs font-bold text-rose-700 hover:bg-rose-100"><Trash2 className="h-3.5 w-3.5" />حذف فارغ</button></div></article>)}</div>}</section>
 
