@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Bot, ExternalLink, FileText, History, LayoutList, Loader2, MessageSquareText, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
+import { Bot, ExternalLink, FileText, History, LayoutList, Loader2, MessageSquareText, Pencil, Plus, Save, Search, Trash2, Upload, X } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -10,6 +10,9 @@ type ManagedMenuItem = { id: number; label: string; actionType: 'url' | 'message
 type ManagedSection = { sectionKey: string; displayLabel: string; enabled: boolean; sortOrder: number };
 type AuditLog = { id: number; action: string; entityType: string; entityId: string | null; createdAt: string };
 type ManagedMessageTemplate = { messageKey: 'welcome' | 'about' | 'help'; title: string; content: string };
+type ManagedSource = { id: number; title: string; description: string; collection: string; sortOrder: number; isFeatured: boolean; updatedAt: string };
+type UploadDraft = { title: string; description: string; collection: string; category: string; sortOrder: number; isFeatured: boolean };
+const emptyUploadDraft: UploadDraft = { title: '', description: '', collection: 'judicial', category: 'general', sortOrder: 0, isFeatured: false };
 type Draft = Omit<ManagedMenuItem, 'id' | 'createdAt' | 'updatedAt'>;
 const emptyDraft: Draft = { label: '', actionType: 'url', actionValue: '', rowIndex: 100, sortOrder: 0, enabled: true };
 
@@ -22,12 +25,20 @@ export default function AdminTelegramBot() {
   const [sections, setSections] = useState<ManagedSection[]>([]);
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [templates, setTemplates] = useState<ManagedMessageTemplate[]>([]);
+  const [sources, setSources] = useState<ManagedSource[]>([]);
+  const [sourceQuery, setSourceQuery] = useState('');
+  const [sourceTotal, setSourceTotal] = useState(0);
+  const [uploadDraft, setUploadDraft] = useState<UploadDraft>(emptyUploadDraft);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingSection, setSavingSection] = useState<string | null>(null);
   const [savingTemplate, setSavingTemplate] = useState<string | null>(null);
+  const [sourceLoading, setSourceLoading] = useState(false);
+  const [savingSource, setSavingSource] = useState<number | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const request = async (path: string, options: RequestInit = {}) => {
     const token = session?.access_token;
@@ -96,6 +107,42 @@ export default function AdminTelegramBot() {
     finally { setSavingTemplate(null); }
   };
 
+  const loadSources = async () => {
+    setSourceLoading(true);
+    try {
+      const result = await request(`/api/telegram/admin/sources?q=${encodeURIComponent(sourceQuery)}&page=1`);
+      setSources(result.sources ?? []); setSourceTotal(result.total ?? 0);
+    } catch (error) { toast({ title: 'تعذر تحميل ملفات البوت', description: error instanceof Error ? error.message : undefined, variant: 'destructive' }); }
+    finally { setSourceLoading(false); }
+  };
+  const updateSourceState = (id: number, patch: Partial<ManagedSource>) => setSources(current => current.map(source => source.id === id ? { ...source, ...patch } : source));
+  const saveSource = async (source: ManagedSource) => {
+    setSavingSource(source.id);
+    try {
+      const result = await request(`/api/telegram/admin/sources/${source.id}`, { method: 'PUT', body: JSON.stringify({ title: source.title, description: source.description, sortOrder: source.sortOrder, isFeatured: source.isFeatured }) });
+      setSources(current => current.map(value => value.id === source.id ? result.source : value));
+      toast({ title: 'تم تحديث بيانات الملف' });
+    } catch (error) { toast({ title: 'تعذر تحديث الملف', description: error instanceof Error ? error.message : undefined, variant: 'destructive' }); }
+    finally { setSavingSource(null); }
+  };
+  const removeSource = async (source: ManagedSource) => {
+    if (!window.confirm(`سيُحذف «${source.title}» من فهرس البوت فقط، ولن يُحذف من Google Drive. هل تريد المتابعة؟`)) return;
+    try { await request(`/api/telegram/admin/sources/${source.id}`, { method: 'DELETE' }); setSources(current => current.filter(value => value.id !== source.id)); setSourceTotal(total => Math.max(0, total - 1)); toast({ title: 'تم حذف الملف من فهرس البوت فقط' }); }
+    catch (error) { toast({ title: 'تعذر حذف الملف', description: error instanceof Error ? error.message : undefined, variant: 'destructive' }); }
+  };
+  const uploadSource = async () => {
+    if (!uploadFile || !uploadDraft.title.trim() || !uploadDraft.description.trim()) { toast({ title: 'أكمل بيانات الملف', description: 'اختر ملفًا واكتب اسم العرض والوصف.', variant: 'destructive' }); return; }
+    if (uploadFile.size > 20 * 1024 * 1024) { toast({ title: 'حجم الملف كبير', description: 'الحد الإداري للرفع 20 ميغابايت لضمان التسليم الآمن داخل تيليغرام.', variant: 'destructive' }); return; }
+    setUploading(true);
+    try {
+      const contentBase64 = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onerror = () => reject(new Error('تعذر قراءة الملف')); reader.onload = () => resolve(String(reader.result).split(',')[1] ?? ''); reader.readAsDataURL(uploadFile); });
+      await request('/api/telegram/admin/sources/upload', { method: 'POST', body: JSON.stringify({ ...uploadDraft, fileName: uploadFile.name, contentType: uploadFile.type || 'application/octet-stream', contentBase64 }) });
+      toast({ title: 'تم رفع الملف وإضافته إلى فهرس البوت', description: 'سيُرسل للمستخدمين كمستند داخل تيليغرام من دون عرض رابط التخزين.' });
+      setUploadFile(null); setUploadDraft(emptyUploadDraft); await loadSources();
+    } catch (error) { toast({ title: 'تعذر رفع الملف', description: error instanceof Error ? error.message : undefined, variant: 'destructive' }); }
+    finally { setUploading(false); }
+  };
+
   return <AdminLayout><div className="space-y-7" dir="rtl">
     <section className="rounded-3xl bg-gradient-to-l from-indigo-700 via-blue-700 to-sky-600 p-7 text-white shadow-xl"><div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between"><div className="flex gap-4"><div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/15"><Bot className="h-7 w-7" /></div><div><h1 className="text-2xl font-black">مركز إدارة بوت الناصر</h1><p className="mt-1 text-sm text-blue-100">اضبط ظهور الأقسام والأزرار والرسائل والروابط من مساحة إدارية واحدة.</p></div></div><a href="https://t.me/Moieen2025Bot" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 self-start rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-blue-700"><ExternalLink className="h-4 w-4" />فتح البوت</a></div></section>
 
@@ -104,6 +151,8 @@ export default function AdminTelegramBot() {
     </section>
 
     <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><div className="mb-5 flex items-start gap-2"><FileText className="mt-0.5 h-5 w-5 text-primary" /><div><h2 className="font-black text-slate-800">قوالب الرسائل التعريفية</h2><p className="mt-1 text-xs leading-5 text-slate-500">تُدار رسائل الترحيب و«عن المكتبة» والمساعدة فقط. تبقى رسائل الاشتراك والتحقق والدفع محمية وثابتة.</p></div></div>{loading ? <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div> : <div className="grid gap-4 xl:grid-cols-3">{templates.map(template => <article key={template.messageKey} className="rounded-2xl border border-slate-100 bg-slate-50 p-4"><h3 className="font-bold text-slate-800">{template.title}</h3><textarea value={template.content} onChange={event => updateTemplateState(template.messageKey, event.target.value)} rows={8} className="mt-3 w-full resize-y rounded-xl border border-slate-200 bg-white p-3 text-sm leading-6 text-slate-700 outline-none focus:border-primary" /><button onClick={() => void saveTemplate(template)} disabled={savingTemplate === template.messageKey} className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-slate-800 text-xs font-bold text-white hover:bg-slate-700 disabled:opacity-60">{savingTemplate === template.messageKey ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}حفظ القالب</button></article>)}</div>}</section>
+
+    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between"><div><div className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" /><h2 className="font-black text-slate-800">فهرس ملفات البوت</h2></div><p className="mt-1 text-xs leading-5 text-slate-500">ارفع ملفًا محليًا إلى تخزين البوت، أو ابحث في الملفات المسجلة لتعديل العرض. الحذف يزيل السجل من البوت فقط ولا يمس المصدر الأصلي.</p></div><div className="flex w-full gap-2 lg:w-[420px]"><input value={sourceQuery} onChange={event => setSourceQuery(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') void loadSources(); }} placeholder="ابحث باسم الملف أو وصفه" className="h-10 min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-primary" /><button onClick={() => void loadSources()} disabled={sourceLoading} className="flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-white disabled:opacity-60">{sourceLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}بحث</button></div></div><div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50/50 p-4"><div className="mb-3 flex items-center gap-2"><Upload className="h-4 w-4 text-primary" /><h3 className="text-sm font-black text-slate-800">رفع ملف جديد إلى البوت</h3><span className="text-[10px] text-slate-500">PDF وWord وExcel وTXT حتى 20 ميغابايت</span></div><div className="grid gap-3 lg:grid-cols-4"><label className="text-xs font-bold text-slate-600">الملف<input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt" onChange={event => { const file = event.target.files?.[0] ?? null; setUploadFile(file); if (file && !uploadDraft.title) setUploadDraft(current => ({ ...current, title: file.name.replace(/\.[^.]+$/, '') })); }} className="mt-1.5 block w-full text-xs" /></label><label className="text-xs font-bold text-slate-600">اسم العرض<input value={uploadDraft.title} onChange={event => setUploadDraft({ ...uploadDraft, title: event.target.value })} className="mt-1.5 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-primary" /></label><label className="text-xs font-bold text-slate-600">القسم<select value={uploadDraft.collection} onChange={event => setUploadDraft({ ...uploadDraft, collection: event.target.value })} className="mt-1.5 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm"><option value="judicial">القواعد القضائية</option><option value="legislation">التشريعات اليمنية</option><option value="legal_forms">نماذج وصيغ قانونية</option><option value="featured_references">مراجع مميزة</option><option value="illustrated_legal_forms">نماذج مصورة</option><option value="all_yemeni_laws">جميع القوانين اليمنية</option></select></label><label className="text-xs font-bold text-slate-600">التصنيف<select value={uploadDraft.category} onChange={event => setUploadDraft({ ...uploadDraft, category: event.target.value })} className="mt-1.5 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm"><option value="general">عام</option><option value="fiqh">فقه</option><option value="civil">مدني</option><option value="commercial">تجاري</option><option value="procedure">إجراءات</option></select></label></div><div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_110px_auto]"><label className="text-xs font-bold text-slate-600">وصف الملف<textarea value={uploadDraft.description} onChange={event => setUploadDraft({ ...uploadDraft, description: event.target.value })} rows={2} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none focus:border-primary" /></label><label className="text-xs font-bold text-slate-600">الترتيب<input type="number" value={uploadDraft.sortOrder} onChange={event => setUploadDraft({ ...uploadDraft, sortOrder: Number(event.target.value) })} className="mt-1.5 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm" /></label><button onClick={() => void uploadSource()} disabled={uploading} className="self-end flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-xs font-bold text-white disabled:opacity-60">{uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}رفع وإضافة</button></div></div>{sources.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-200 p-7 text-center text-sm text-slate-500">اكتب عبارة بحث ثم اضغط «بحث» لإدارة الملفات. لا تُحمّل القائمة كاملة تلقائيًا لحماية الأداء.</div> : <><p className="mb-3 text-xs text-slate-500">النتائج: {sourceTotal}</p><div className="space-y-3">{sources.map(source => <article key={source.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4"><div className="flex items-center justify-between gap-3"><span className="rounded-full bg-white px-2 py-1 text-[10px] font-black text-slate-600">{source.collection}</span><label className="flex items-center gap-2 text-xs font-bold text-slate-600">مميز<input type="checkbox" checked={source.isFeatured} onChange={event => updateSourceState(source.id, { isFeatured: event.target.checked })} className="h-4 w-4 accent-primary" /></label></div><div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_110px]"><label className="text-xs font-bold text-slate-600">اسم العرض<input value={source.title} onChange={event => updateSourceState(source.id, { title: event.target.value })} className="mt-1.5 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-primary" /></label><label className="text-xs font-bold text-slate-600">الترتيب<input type="number" value={source.sortOrder} onChange={event => updateSourceState(source.id, { sortOrder: Number(event.target.value) })} className="mt-1.5 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-primary" /></label></div><label className="mt-3 block text-xs font-bold text-slate-600">الوصف<textarea value={source.description} onChange={event => updateSourceState(source.id, { description: event.target.value })} rows={3} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white p-3 text-sm leading-6 text-slate-700 outline-none focus:border-primary" /></label><div className="mt-3 flex gap-2"><button onClick={() => void saveSource(source)} disabled={savingSource === source.id} className="flex h-10 items-center gap-2 rounded-xl bg-slate-800 px-4 text-xs font-bold text-white hover:bg-slate-700 disabled:opacity-60">{savingSource === source.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}حفظ الملف</button><button onClick={() => void removeSource(source)} className="flex h-10 items-center gap-2 rounded-xl bg-rose-50 px-4 text-xs font-bold text-rose-700 hover:bg-rose-100"><Trash2 className="h-3.5 w-3.5" />حذف من البوت</button></div></article>)}</div></>}</section>
 
     <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><div className="mb-5 flex items-center gap-2"><History className="h-5 w-5 text-primary" /><div><h2 className="font-black text-slate-800">سجل عمليات الإدارة</h2><p className="mt-1 text-xs text-slate-500">يسجل أحدث التعديلات على العناصر والأقسام، من دون إظهار أي رموز أو أسرار.</p></div></div>{loading ? <div className="flex justify-center py-7"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div> : logs.length === 0 ? <p className="rounded-2xl bg-slate-50 p-4 text-center text-sm text-slate-500">لا توجد عمليات مسجلة في هذا المركز حتى الآن.</p> : <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">{logs.slice(0, 12).map(log => <div key={log.id} className="rounded-2xl bg-slate-50 p-3"><div className="flex items-center justify-between gap-3"><span className="rounded-full bg-white px-2 py-1 text-[10px] font-black text-slate-600">{log.entityType === 'section' ? 'قسم' : 'زر'}</span><span className="text-[10px] text-slate-400">{new Date(log.createdAt).toLocaleString('ar-YE')}</span></div><p className="mt-2 text-sm font-bold text-slate-800">{log.action === 'create' ? 'إضافة' : log.action === 'delete' ? 'حذف' : 'تعديل'} {log.entityId ? `#${log.entityId}` : ''}</p></div>)}</div>}</section>
 
