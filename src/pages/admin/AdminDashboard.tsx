@@ -192,6 +192,8 @@ const AdminDashboard = () => {
         firstSubscribedAt: string | null;
         lastActiveAt: string | null;
         regions: Array<{ region: string; count: number }>;
+        platformVisits: { total: number; latestAt: string | null };
+        hasadVisits: { total: number; latestAt: string | null };
       };
     },
     staleTime: 1000 * 60 * 2,
@@ -289,6 +291,8 @@ const AdminDashboard = () => {
                     <StatCard label="المستويات"   value={stats?.levels   ?? 0} icon={Layers}     color="bg-blue-500"    />
                     <StatCard label="المواد"       value={stats?.subjects ?? 0} icon={BookOpen}   color="bg-emerald-500" />
                     <StatCard label="مستخدمو البوت" value={telegramBotStats?.totalSubscribers ?? 0} icon={Users} color="bg-sky-500" />
+                    <StatCard label="زيارات منصة الناصر" value={telegramBotStats?.platformVisits?.total ?? 0} icon={Eye} color="bg-indigo-500" />
+                    <StatCard label="زيارات حصاد اليوم" value={telegramBotStats?.hasadVisits?.total ?? 0} icon={Eye} color="bg-teal-500" />
                   </>
                 )}
                 <StatCard label="الأسئلة النشطة" value={stats?.questions ?? 0} icon={CheckCircle2} color="bg-amber-500"  />
@@ -330,7 +334,7 @@ const AdminDashboard = () => {
             {telegramBotStatsLoading ? (
               <Skeleton className="h-28 rounded-xl" />
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
                 <div className="rounded-xl bg-slate-50 dark:bg-slate-900/50 p-4">
                   <p className="text-xs text-slate-500">أول تسجيل</p>
                   <p className="mt-1 text-sm font-bold text-slate-800 dark:text-slate-100">{fmtDateTime(telegramBotStats?.firstSubscribedAt)}</p>
@@ -346,6 +350,16 @@ const AdminDashboard = () => {
                       ? telegramBotStats.regions.map((item) => <span key={item.region} className="rounded-full bg-sky-100 px-2 py-1 text-xs font-bold text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">{item.region}: {item.count}</span>)
                       : <span className="text-xs text-slate-500">تظهر بعد توثيق زيارة المنصة.</span>}
                   </div>
+                </div>
+                <div className="rounded-xl border border-indigo-100 bg-indigo-50/70 p-4 dark:border-indigo-900/50 dark:bg-indigo-950/20">
+                  <p className="text-xs text-indigo-700 dark:text-indigo-300">زيارات منصة الناصر الموثقة</p>
+                  <p className="mt-1 text-2xl font-black text-indigo-800 dark:text-indigo-200">{(telegramBotStats?.platformVisits?.total ?? 0).toLocaleString('ar-SA')}</p>
+                  <p className="mt-1 text-[11px] text-indigo-700/80 dark:text-indigo-300/80">آخر توثيق: {fmtDateTime(telegramBotStats?.platformVisits?.latestAt)}</p>
+                </div>
+                <div className="rounded-xl border border-teal-100 bg-teal-50/70 p-4 dark:border-teal-900/50 dark:bg-teal-950/20">
+                  <p className="text-xs text-teal-700 dark:text-teal-300">زيارات حصاد اليوم الموثقة</p>
+                  <p className="mt-1 text-2xl font-black text-teal-800 dark:text-teal-200">{(telegramBotStats?.hasadVisits?.total ?? 0).toLocaleString('ar-SA')}</p>
+                  <p className="mt-1 text-[11px] text-teal-700/80 dark:text-teal-300/80">آخر توثيق: {fmtDateTime(telegramBotStats?.hasadVisits?.latestAt)}</p>
                 </div>
               </div>
             )}
