@@ -124,6 +124,11 @@ export default function AdminTelegramBot() {
   };
 
   useEffect(() => { void load(); }, [session?.access_token, role]);
+  useEffect(() => {
+    if (editingId === null) return;
+    const frame = window.requestAnimationFrame(() => document.querySelector<HTMLElement>('aside.h-fit')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [editingId]);
   const loadVisitAnalytics = async (period: VisitPeriod) => {
     setVisitPeriod(period); setVisitLoading(true);
     try { const result = await request(`/api/telegram/admin/visit-analytics?period=${period}`); setVisitAnalytics(result.analytics ?? null); }

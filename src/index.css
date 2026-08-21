@@ -305,6 +305,28 @@
   }
 }
 
+/* بطاقات الأزرار المخصصة: تُبقي الاسم وأزرار الإدارة قابلة للمس على الهاتف. */
+@media (max-width: 640px) {
+  [dir="rtl"] section > .space-y-3 > article:has(> .min-w-0) {
+    display: grid;
+    grid-template-columns: 2.75rem minmax(0, 1fr);
+    align-items: start;
+    gap: 0.65rem;
+  }
+
+  [dir="rtl"] section > .space-y-3 > article:has(> .min-w-0) > .min-w-0 {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  [dir="rtl"] section > .space-y-3 > article:has(> .min-w-0) > button {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--card));
+  }
+}
+
 /* ═══════════════════════════════════════
    KEYFRAMES
 ═══════════════════════════════════════ */
