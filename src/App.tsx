@@ -20,6 +20,7 @@ import NotFound from "./pages/NotFound";
 
 // الصفحات العامة — Lazy Loading
 const Levels        = lazy(() => import("./pages/Levels"));
+const ThirdSecondary = lazy(() => import("./pages/ThirdSecondary"));
 const LevelSubjects = lazy(() => import("./pages/LevelSubjects"));
 const ExamStart     = lazy(() => import("./pages/ExamStart"));
 const ExamPage      = lazy(() => import("./pages/ExamPage"));
@@ -109,6 +110,7 @@ const App = () => (
                     {/* ── الصفحات العامة ── */}
                     <Route path="/"               element={<Index />} />
                     <Route path="/levels"         element={<Levels />} />
+                    <Route path="/third-secondary" element={<ThirdSecondary />} />
                     <Route path="/levels/:levelId" element={<LevelSubjects />} />
                     <Route path="/exam/:subjectId" element={<ExamStart />} />
                     <Route path="/question/:questionId" element={<SharedQuestion />} />
