@@ -269,6 +269,7 @@ const ExamStart = () => {
 
   const isTrialSelected = selectedYear === 'trial';
   const isThirdSecondary = subject?.levels?.name?.includes('ثالث ثانوي') ?? false;
+  const isThirdSecondary2026 = isThirdSecondary && selectedYear === '2026';
 
   const defaultTrialForms = useMemo(() => Array.from({ length: 15 }, (_, i) => ({ id: `Model_${i + 1}`, name: toArabicOrdinal(i + 1), order_index: i + 1 })), []);
 
@@ -278,23 +279,24 @@ const ExamStart = () => {
       const { data } = await (supabase.from('subject_exam_forms' as any) as any).select('*').eq('subject_id', subjectId).order('order_index');
       return (data || []) as { form_id: string; form_name: string; order_index: number; hidden?: boolean }[];
     },
-    enabled: isTrialSelected && !!subjectId,
+    enabled: (isTrialSelected || isThirdSecondary2026) && !!subjectId,
   });
 
   const { data: formsWithCounts = {} } = useQuery({
-    queryKey: ['trial-forms-counts', subjectId],
+    queryKey: ['trial-forms-counts', subjectId, isThirdSecondary2026 ? 2026 : null],
     queryFn: async () => {
-      const { data } = await supabase
+      let query = supabase
         .from('questions')
         .select('exam_form')
         .eq('subject_id', subjectId!)
-        .eq('status', 'active')
-        .is('exam_year', null);
+        .eq('status', 'active');
+      query = isThirdSecondary2026 ? query.eq('exam_year', 2026) : query.is('exam_year', null);
+      const { data } = await query;
       const counts: Record<string, number> = {};
       (data || []).forEach((q: any) => { counts[q.exam_form] = (counts[q.exam_form] || 0) + 1; });
       return counts;
     },
-    enabled: isTrialSelected && !!subjectId,
+    enabled: (isTrialSelected || isThirdSecondary2026) && !!subjectId,
   });
 
   const activeTrialForms = useMemo(() => {
@@ -310,7 +312,17 @@ const ExamStart = () => {
     return [...defaults, ...customs].sort((a, b) => a.order_index - b.order_index).map(({ id, name }) => ({ id, name }));
   }, [defaultTrialForms, customForms, formsWithCounts]);
 
-  const activeExamForms = useMemo(() => EXAM_FORMS, []);
+  const activeThirdSecondaryForms = useMemo(() => {
+    return customForms
+      .filter(f => !f.hidden && ((formsWithCounts as Record<string, number>)[f.form_id] ?? 0) > 0)
+      .sort((a, b) => a.order_index - b.order_index)
+      .map(f => ({ id: f.form_id, name: f.form_name }));
+  }, [customForms, formsWithCounts]);
+
+  const activeExamForms = useMemo(
+    () => isThirdSecondary2026 ? activeThirdSecondaryForms : EXAM_FORMS,
+    [isThirdSecondary2026, activeThirdSecondaryForms],
+  );
 
   const { data: questionCount = 0, isLoading: countLoading } = useQuery({
     queryKey: ['question-count', subjectId, selectedYear, selectedExamForm, selectedTrialForm],
@@ -384,7 +396,12 @@ const ExamStart = () => {
   useEffect(() => {
     if (subject) {
       setExamTime(subject.default_time_minutes || 30);
-      setSelectedYear(prev => { if (!prev && subject.levels?.name?.includes('ثالث ثانوي')) return 'trial'; return prev; });
+      if (subject.levels?.name?.includes('ثالث ثانوي')) {
+        setSelectedYear(prev => prev || '2026');
+        setSelectedExamForm(prev => prev === 'General' ? '' : prev);
+      } else {
+        setSelectedYear(prev => prev);
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subject]);
@@ -767,12 +784,18 @@ const ExamStart = () => {
 
               <div className="space-y-2">
                 <FieldLabel>نموذج سنة الاختبار</FieldLabel>
-                <Select value={selectedYear} onValueChange={(v) => { setSelectedYear(v); if (v !== 'trial') setSelectedTrialForm(''); }}>
+                <Select value={selectedYear} onValueChange={(v) => { setSelectedYear(v); if (v !== 'trial') setSelectedTrialForm(''); if (v === '2026' && isThirdSecondary) setSelectedExamForm(''); else if (v !== '2026') setSelectedExamForm('General'); }}>
                   <SelectTrigger className="h-14 rounded-[1rem] bg-slate-50 dark:bg-muted border-slate-200 dark:border-border font-bold px-5 focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"><SelectValue placeholder="اختر السنة" /></SelectTrigger>
-                  <SelectContent className="z-[9999] bg-white dark:bg-card border-slate-200 dark:border-border rounded-2xl shadow-2xl max-h-[280px]">
-                    <SelectItem value="trial" className="h-11 rounded-xl font-bold cursor-pointer text-violet-600">🧪 أسئلة تجريبية</SelectItem>
-                    {enabledExamYears.map((year) => (<SelectItem key={year} value={year.toString()} className="h-11 rounded-xl font-bold cursor-pointer">دورة عام {year}</SelectItem>))}
-                  </SelectContent>
+                    <SelectContent className="z-[9999] bg-white dark:bg-card border-slate-200 dark:border-border rounded-2xl shadow-2xl max-h-[280px]">
+                      {isThirdSecondary ? (
+                        <SelectItem value="2026" className="h-11 rounded-xl font-bold cursor-pointer">دورة عام 2026</SelectItem>
+                      ) : (
+                        <>
+                          <SelectItem value="trial" className="h-11 rounded-xl font-bold cursor-pointer text-violet-600">🧪 أسئلة تجريبية</SelectItem>
+                          {enabledExamYears.map((year) => (<SelectItem key={year} value={year.toString()} className="h-11 rounded-xl font-bold cursor-pointer">دورة عام {year}</SelectItem>))}
+                        </>
+                      )}
+                    </SelectContent>
                 </Select>
               </div>
 
