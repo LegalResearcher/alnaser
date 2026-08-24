@@ -191,32 +191,6 @@ const Levels = () => {
             </p>
           </div>
 
-          {/* ── اختبارات ثالث ثانوي ── */}
-          <div className="max-w-5xl mx-auto mb-7">
-            <Link to="/third-secondary" className="group block">
-              <div className="relative overflow-hidden rounded-[2rem] border border-violet-200/70 dark:border-violet-900/60 bg-gradient-to-l from-violet-700 via-indigo-700 to-blue-700 p-5 md:p-6 text-white shadow-xl shadow-violet-900/20 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl active:scale-[0.99]">
-                <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.8) 1px, transparent 1px)', backgroundSize: '18px 18px' }} />
-                <div className="relative flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-4 min-w-0">
-                    <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center shrink-0 shadow-lg">
-                      <GraduationCap className="w-7 h-7 md:w-8 md:h-8" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Sparkles className="w-4 h-4 text-violet-200 shrink-0" />
-                        <h2 className="font-black text-lg md:text-2xl truncate">اختبارات ثالث ثانوي</h2>
-                      </div>
-                      <p className="text-violet-100 text-xs md:text-sm font-medium leading-relaxed">نماذج اختبارات المواد — اختر المادة والنموذج وابدأ الاختبار</p>
-                    </div>
-                  </div>
-                  <div className="w-11 h-11 md:w-12 md:h-12 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:-translate-x-1">
-                    <ArrowLeft className="w-5 h-5" />
-                  </div>
-                </div>
-              </div>
-            </Link>
-          </div>
-
           {/* ── Grid ── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-7 max-w-5xl mx-auto">
             {levelsLoading && levels.length === 0
