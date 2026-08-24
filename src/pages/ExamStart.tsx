@@ -268,6 +268,7 @@ const ExamStart = () => {
   const enabledExamYears = enabledYearsData ?? [...ALL_EXAM_YEARS];
 
   const isTrialSelected = selectedYear === 'trial';
+  const isThirdSecondary = subject?.levels?.name?.includes('ثالث ثانوي') ?? false;
 
   const defaultTrialForms = useMemo(() => Array.from({ length: 15 }, (_, i) => ({ id: `Model_${i + 1}`, name: toArabicOrdinal(i + 1), order_index: i + 1 })), []);
 
@@ -459,7 +460,7 @@ const ExamStart = () => {
   const handleStartExam = async () => {
     if (!studentName.trim()) { toast({ title: 'تنبيه', description: 'يرجى إدخال اسمك الكامل للمتابعة', variant: 'destructive' }); return; }
     if (!selectedYear) { toast({ title: 'تنبيه', description: 'يرجى اختيار نموذج سنة الاختبار', variant: 'destructive' }); return; }
-    if (selectedYear === 'trial') { setShowTrialBlockedModal(true); return; }
+    if (selectedYear === 'trial' && !isThirdSecondary) { setShowTrialBlockedModal(true); return; }
     if (selectedYear === 'trial' && !selectedTrialForm) { toast({ title: 'تنبيه', description: 'يرجى اختيار النموذج التجريبي', variant: 'destructive' }); return; }
     if (questionCount === 0) { toast({ title: 'نعتذر', description: 'لا توجد أسئلة متوفرة لهذا الاختيار حالياً', variant: 'destructive' }); return; }
 
@@ -789,25 +790,33 @@ const ExamStart = () => {
 
               {selectedYear === 'trial' && (
                 <>
-                  {/* ── بطاقة: الأسئلة التجريبية حصرية لاختبار+ المراجعة ── */}
-                  <div className="relative overflow-hidden rounded-[1.25rem] animate-in fade-in slide-in-from-top-2 duration-300"
-                    style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef9ec 100%)', border: '1.5px solid rgba(245,158,11,0.35)', boxShadow: '0 4px 24px rgba(245,158,11,0.12)' }}>
-                    <div className="h-1 w-full" style={{ background: 'linear-gradient(90deg, #f59e0b, #fbbf24, #f59e0b)' }} />
-                    <div className="p-4 flex items-start gap-3.5">
-                      <div className="shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center shadow-md"
-                        style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', boxShadow: '0 4px 14px rgba(245,158,11,0.45)' }}>
-                        <Lock className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="flex-1 text-right">
-                        <p className="text-sm font-black text-amber-900 leading-snug mb-1">
-                          الأسئلة التجريبية متاحة حصرياً في وضع اختبار+ المراجعة
-                        </p>
-                        <p className="text-[11px] font-semibold leading-relaxed" style={{ color: '#92400e' }}>
-                          اضغط على زر "اختبار+ المراجعة" أدناه للوصول إلى الأسئلة التجريبية الشاملة مع التلميحات والشروح القانونية الكاملة.
-                        </p>
+                  {!isThirdSecondary && (
+                    /* ── الأسئلة التجريبية الحالية حصرية لاختبار+ المراجعة ── */
+                    <div className="relative overflow-hidden rounded-[1.25rem] animate-in fade-in slide-in-from-top-2 duration-300"
+                      style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef9ec 100%)', border: '1.5px solid rgba(245,158,11,0.35)', boxShadow: '0 4px 24px rgba(245,158,11,0.12)' }}>
+                      <div className="h-1 w-full" style={{ background: 'linear-gradient(90deg, #f59e0b, #fbbf24, #f59e0b)' }} />
+                      <div className="p-4 flex items-start gap-3.5">
+                        <div className="shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center shadow-md"
+                          style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', boxShadow: '0 4px 14px rgba(245,158,11,0.45)' }}>
+                          <Lock className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="flex-1 text-right">
+                          <p className="text-sm font-black text-amber-900 leading-snug mb-1">
+                            الأسئلة التجريبية متاحة حصرياً في وضع اختبار+ المراجعة
+                          </p>
+                          <p className="text-[11px] font-semibold leading-relaxed" style={{ color: '#92400e' }}>
+                            اضغط على زر "اختبار+ المراجعة" أدناه للوصول إلى الأسئلة التجريبية الشاملة مع التلميحات والشروح القانونية الكاملة.
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
+                  {isThirdSecondary && (
+                    <div className="rounded-[1.25rem] border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-right animate-in fade-in slide-in-from-top-2 duration-300">
+                      <p className="text-sm font-black text-indigo-900">نماذج ثالث ثانوي مستقلة</p>
+                      <p className="mt-1 text-[11px] font-semibold leading-relaxed text-indigo-700">اختر نموذج المادة، ثم اضغط «ابدأ الاختبار الآن» لبدء الاختبار بالأسئلة النصية.</p>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <FieldLabel><span className="inline-flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" />اختر النموذج</span></FieldLabel>
                     <Select value={selectedTrialForm} onValueChange={setSelectedTrialForm}>
