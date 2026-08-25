@@ -280,11 +280,11 @@ export default function AdminTelegramBot() {
     catch (error) { toast({ title: 'تعذرت جدولة البث', description: error instanceof Error ? error.message : undefined, variant: 'destructive' }); }
     finally { setBroadcastSaving(false); }
   };
-  const decideSubscription = async (request: SubscriptionRequest, decision: 'approve' | 'reject') => {
+  const decideSubscription = async (subscriptionRequest: SubscriptionRequest, decision: 'approve' | 'reject') => {
     const label = decision === 'approve' ? 'اعتماد' : 'رفض';
-    if (!window.confirm(`هل تؤكد ${label} طلب الاشتراك رقم #${request.id}؟ سيُرسل إشعار تلقائي للمستخدم.`)) return;
-    setSubscriptionActionId(request.id);
-    try { const result = await request(`/api/telegram/admin/subscriptions/${request.id}/${decision}`, { method: 'POST' }); setSubscriptionRequests(current => current.filter(item => item.id !== request.id)); toast({ title: `تم ${label} الطلب`, description: result.notified ? 'أُرسل إشعار تلقائي للمستخدم.' : 'تم حفظ القرار، وتعذر إشعار المستخدم حاليًا.' }); }
+    if (!window.confirm(`هل تؤكد ${label} طلب الاشتراك رقم #${subscriptionRequest.id}؟ سيُرسل إشعار تلقائي للمستخدم.`)) return;
+    setSubscriptionActionId(subscriptionRequest.id);
+    try { const result = await request(`/api/telegram/admin/subscriptions/${subscriptionRequest.id}/${decision}`, { method: 'POST' }); setSubscriptionRequests(current => current.filter(item => item.id !== subscriptionRequest.id)); toast({ title: `تم ${label} الطلب`, description: result.notified ? 'أُرسل إشعار تلقائي للمستخدم.' : 'تم حفظ القرار، وتعذر إشعار المستخدم حاليًا.' }); }
     catch (error) { toast({ title: `تعذر ${label} الطلب`, description: error instanceof Error ? error.message : undefined, variant: 'destructive' }); }
     finally { setSubscriptionActionId(null); }
   };
