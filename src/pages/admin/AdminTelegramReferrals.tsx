@@ -3,7 +3,7 @@ import { Gift, Loader2, RefreshCw, ShieldAlert, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
-const BOT_API = 'https://alnasser-legal-telegram-bot-supabase-git-sup-f04e08-hasadalyoum.vercel.app';
+const BOT_API = '/api/telegram-admin?path=';
 
 type ReferralReward = {
   id: number;
@@ -31,7 +31,7 @@ export function AdminTelegramReferrals() {
   const request = async (path: string, options: RequestInit = {}) => {
     const token = session?.access_token;
     if (!token) throw new Error('انتهت جلسة الإدارة. سجّل الدخول مجددًا.');
-    const response = await fetch(`${BOT_API}${path}`, {
+    const response = await fetch(`${BOT_API}${encodeURIComponent(path)}`, {
       ...options,
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...(options.headers ?? {}) },
     });

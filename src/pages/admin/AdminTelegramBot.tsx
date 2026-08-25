@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { AdminTelegramReferrals } from './AdminTelegramReferrals';
 
-const BOT_API = 'https://alnasser-legal-telegram-bot-supabase-git-sup-f04e08-hasadalyoum.vercel.app';
+const BOT_API = '/api/telegram-admin?path=';
 
 type ManagedMenuItem = { id: number; label: string; actionType: 'url' | 'message' | 'file'; actionValue: string; rowIndex: number; sortOrder: number; enabled: boolean; accessMode: 'free' | 'premium' | 'hasad'; createdAt: string; updatedAt: string };
 type ManagedSection = { sectionKey: string; displayLabel: string; enabled: boolean; accessMode: 'free' | 'premium' | 'hasad'; sortOrder: number };
@@ -100,7 +100,7 @@ export default function AdminTelegramBot() {
   const request = async (path: string, options: RequestInit = {}) => {
     const token = session?.access_token;
     if (!token) throw new Error('انتهت جلسة الإدارة. سجّل الدخول مجددًا.');
-    const response = await fetch(`${BOT_API}${path}`, { ...options, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...(options.headers ?? {}) } });
+    const response = await fetch(`${BOT_API}${encodeURIComponent(path)}`, { ...options, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...(options.headers ?? {}) } });
     const body = await response.json().catch(() => ({}));
     if (!response.ok || !body.ok) throw new Error(adminApiErrorMessage(body.error) || 'تعذر تنفيذ العملية. تحقق من صلاحية الإدارة أو من بيانات الحقل.');
     return body;
