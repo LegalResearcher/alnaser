@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
-const BOT_API = 'https://alnasser-legal-telegram-bot-supabase-git-sup-f04e08-hasadalyoum.vercel.app';
+const BOT_API = 'https://alnasser-legal-telegram-bot-supabase-hasadalyoum.vercel.app';
 const ALLOWED_PREFIX = '/api/telegram/admin/';
 
 type VercelRequest = IncomingMessage & { body?: unknown };
@@ -54,6 +54,8 @@ async function handler(request: VercelRequest, response: ServerResponse): Promis
   const contentType = requestHeader(request, 'content-type');
   if (authorization) headers.set('Authorization', authorization);
   if (contentType) headers.set('Content-Type', contentType);
+  // The bot protects admin routes by Origin; the server-to-server proxy must preserve the trusted platform origin.
+  headers.set('Origin', 'https://alnaseer.org');
 
   try {
     const upstream = await fetch(target, {
