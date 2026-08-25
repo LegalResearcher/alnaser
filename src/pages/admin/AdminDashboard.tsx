@@ -42,7 +42,7 @@ const SUGGESTION_STATUS: Record<string, { label: string; color: string }> = {
 
 const PIE_COLORS = ['#10b981', '#ef4444'];
 const EXAMS_PAGE_SIZE = 8;
-const TELEGRAM_BOT_STATS_ENDPOINT = 'https://alnasser-legal-telegram-bot-supabase-git-sup-f04e08-hasadalyoum.vercel.app/api/telegram/admin-stats';
+const TELEGRAM_BOT_STATS_ENDPOINT = '/api/telegram-admin?path=%2Fapi%2Ftelegram%2Fadmin-stats';
 
 // ──────────────────────────────────────────────
 // Helpers
