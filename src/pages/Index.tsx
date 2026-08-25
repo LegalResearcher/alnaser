@@ -11,7 +11,7 @@ import { ContactSection } from '@/components/home/ContactSection';
 import { useAutoPreload } from '@/hooks/useDataPreloader';
 import { Onboarding, useOnboarding } from '@/components/Onboarding';
 
-const TELEGRAM_PLATFORM_VISIT_ENDPOINT = 'https://moilegbot-cd9jlnvj.manus.space/api/telegram/platform-visit';
+const TELEGRAM_PLATFORM_VISIT_ENDPOINT = 'https://alnasser-legal-telegram-bot-supabase-git-sup-f04e08-hasadalyoum.vercel.app/api/telegram/platform-visit';
 
 type TelegramMiniApp = { initData?: string; ready: () => void };
 type TelegramWindow = Window & { Telegram?: { WebApp?: TelegramMiniApp } };
