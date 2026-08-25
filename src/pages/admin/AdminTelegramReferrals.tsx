@@ -3,7 +3,7 @@ import { Gift, Loader2, RefreshCw, ShieldAlert, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
-const BOT_API = 'https://moilegbot-cd9jlnvj.manus.space';
+const BOT_API = 'https://alnasser-legal-telegram-bot-supabase-git-sup-f04e08-hasadalyoum.vercel.app';
 
 type ReferralReward = {
   id: number;
