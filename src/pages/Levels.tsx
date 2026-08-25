@@ -56,7 +56,7 @@ const levelColors = [
   },
 ];
 
-const TELEGRAM_PLATFORM_VISIT_ENDPOINT = 'https://moilegbot-cd9jlnvj.manus.space/api/telegram/platform-visit';
+const TELEGRAM_PLATFORM_VISIT_ENDPOINT = 'https://alnasser-legal-telegram-bot-supabase-git-sup-f04e08-hasadalyoum.vercel.app/api/telegram/platform-visit';
 
 type TelegramMiniApp = {
   initData?: string;

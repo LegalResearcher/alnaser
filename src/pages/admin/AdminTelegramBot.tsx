@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { AdminTelegramReferrals } from './AdminTelegramReferrals';
 
-const BOT_API = 'https://moilegbot-cd9jlnvj.manus.space';
+const BOT_API = 'https://alnasser-legal-telegram-bot-supabase-git-sup-f04e08-hasadalyoum.vercel.app';
 
 type ManagedMenuItem = { id: number; label: string; actionType: 'url' | 'message' | 'file'; actionValue: string; rowIndex: number; sortOrder: number; enabled: boolean; accessMode: 'free' | 'premium' | 'hasad'; createdAt: string; updatedAt: string };
 type ManagedSection = { sectionKey: string; displayLabel: string; enabled: boolean; accessMode: 'free' | 'premium' | 'hasad'; sortOrder: number };
