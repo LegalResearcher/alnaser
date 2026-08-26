@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { Gift, Loader2, RefreshCw, ShieldAlert, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-
-const BOT_API = '/api/telegram-admin?path=';
+import { formatTelegramAdminError, telegramAdminRequest } from '@/lib/telegramAdminApi';
 
 type ReferralReward = {
   id: number;
@@ -26,28 +25,22 @@ export function AdminTelegramReferrals() {
   const { toast } = useToast();
   const [data, setData] = useState<ReferralPayload | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [revokingId, setRevokingId] = useState<number | null>(null);
 
-  const request = async (path: string, options: RequestInit = {}) => {
-    const token = session?.access_token;
-    if (!token) throw new Error('انتهت جلسة الإدارة. سجّل الدخول مجددًا.');
-    const response = await fetch(`${BOT_API}${encodeURIComponent(path)}`, {
-      ...options,
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...(options.headers ?? {}) },
-    });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok || !body.ok) throw new Error('تعذر تحميل بيانات الإحالات أو تنفيذ العملية.');
-    return body;
-  };
+  const request = (path: string, options: RequestInit = {}) => telegramAdminRequest(session?.access_token, path, options);
 
   const load = async () => {
     if (!session?.access_token || role !== 'admin') return;
     setLoading(true);
+    setError(null);
     try {
-      const payload = await request('/api/telegram/admin/referrals');
+      const payload = await request<ReferralPayload>('/api/telegram/admin/referrals');
       setData({ summary: payload.summary, rewards: payload.rewards ?? [] });
     } catch (error) {
-      toast({ title: 'تعذر تحميل نظام الإحالات', description: error instanceof Error ? error.message : undefined, variant: 'destructive' });
+      const message = formatTelegramAdminError(error);
+      setError(message);
+      toast({ title: 'تعذر تحميل نظام الإحالات', description: message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -64,7 +57,7 @@ export function AdminTelegramReferrals() {
       toast({ title: 'تم سحب مكافأة الإحالة', description: 'سُجل القرار في سجل التدقيق، وأزيل الوصول المؤقت.' });
       await load();
     } catch (error) {
-      toast({ title: 'تعذر سحب المكافأة', description: error instanceof Error ? error.message : undefined, variant: 'destructive' });
+      toast({ title: 'تعذر سحب المكافأة', description: formatTelegramAdminError(error), variant: 'destructive' });
     } finally {
       setRevokingId(null);
     }
@@ -85,7 +78,7 @@ export function AdminTelegramReferrals() {
         {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}تحديث
       </button>
     </div>
-    {loading || !data ? <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-violet-600" /></div> : <>
+    {loading ? <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-violet-600" /></div> : error ? <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800"><div className="flex flex-wrap items-center justify-between gap-3"><span>{error}</span><button onClick={() => void load()} className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-rose-700 ring-1 ring-rose-200">إعادة المحاولة</button></div><p className="mt-2 text-xs text-rose-700/80">لم تُخفَ البيانات السابقة بسبب الخطأ؛ سيبقى القسم مستقلًا عن بقية لوحة البوت.</p></div> : !data ? <div className="rounded-2xl bg-white p-5 text-center text-sm text-slate-500 ring-1 ring-violet-100">لا توجد بيانات إحالات متاحة بعد.</div> : <>
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="rounded-2xl bg-white p-4 ring-1 ring-violet-100"><p className="flex items-center gap-1.5 text-xs text-slate-500"><Users className="h-3.5 w-3.5" />إحالات مؤهلة</p><p className="mt-1 text-2xl font-black text-slate-800">{data.summary.qualifiedReferrals}</p></div>
         <div className="rounded-2xl bg-white p-4 ring-1 ring-violet-100"><p className="text-xs text-slate-500">قيد التأهيل (24 ساعة)</p><p className="mt-1 text-2xl font-black text-amber-600">{data.summary.pendingReferrals}</p></div>
