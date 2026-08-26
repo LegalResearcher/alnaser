@@ -194,7 +194,7 @@ export default function AdminTelegramBot() {
   const saveSection = async (section: ManagedSection) => {
     setSavingSection(section.sectionKey);
     try {
-      const result = await request(`/api/telegram/admin/sections/${encodeURIComponent(section.sectionKey)}`, { method: 'PUT', body: JSON.stringify(section) });
+      const result = await request(`/api/telegram/admin/sections/${section.sectionKey}`, { method: 'PUT', body: JSON.stringify(section) });
       setSections(current => current.map(value => value.sectionKey === section.sectionKey ? result.section : value));
       toast({ title: 'تم تحديث القسم', description: 'سيظهر التعديل عند فتح المستخدم القائمة الرئيسية لاحقًا.' });
     } catch (error) { toast({ title: 'تعذر حفظ إعداد القسم', description: error instanceof Error ? error.message : undefined, variant: 'destructive' }); }
