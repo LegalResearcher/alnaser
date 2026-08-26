@@ -48,7 +48,7 @@ async function handler(request: VercelRequest, response: ServerResponse): Promis
 
   const query = new URLSearchParams(incoming.searchParams);
   query.delete('path');
-  const target = `${BOT_API}${path}${query.size ? `?${query.toString()}` : ''}`;
+  const target = `${BOT_API}/api/telegram/admin/dispatch?target=${encodeURIComponent(path)}${query.size ? `&${query.toString()}` : ''}`;
   const headers = new Headers();
   const authorization = requestHeader(request, 'authorization');
   const contentType = requestHeader(request, 'content-type');
