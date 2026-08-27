@@ -40,14 +40,17 @@ async function handler(request: VercelRequest, response: ServerResponse): Promis
 
   const incoming = new URL(request.url || '/', 'https://alnaseer.org');
   const relativePath = incoming.searchParams.get('path') || '';
-  const path = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
+  const parsedTarget = new URL(relativePath.startsWith('/') ? relativePath : `/${relativePath}`, 'https://alnaseer.org');
+  const path = parsedTarget.pathname;
   if (!path.startsWith(ALLOWED_PREFIX) && path !== '/api/telegram/admin-stats') {
     jsonResponse(response, { ok: false, error: 'invalid_admin_path' }, 400);
     return;
   }
 
-  const query = new URLSearchParams(incoming.searchParams);
-  query.delete('path');
+  const query = new URLSearchParams(parsedTarget.search);
+  const outerQuery = new URLSearchParams(incoming.searchParams);
+  outerQuery.delete('path');
+  for (const [key, value] of outerQuery.entries()) query.append(key, value);
   const target = `${BOT_API}/api/telegram/admin/dispatch?target=${encodeURIComponent(path)}${query.size ? `&${query.toString()}` : ''}`;
   const headers = new Headers();
   const authorization = requestHeader(request, 'authorization');
